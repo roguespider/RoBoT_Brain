@@ -1,0 +1,11 @@
+E:\Tor\src_code\zed_mcp\target\debug\deps\deflate64-1be621a2a5df2d68.d: C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\lib.rs C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\buffer.rs C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\huffman_tree.rs C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\inflater_managed.rs C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\input_buffer.rs C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\output_window.rs C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\stream.rs
+
+E:\Tor\src_code\zed_mcp\target\debug\deps\libdeflate64-1be621a2a5df2d68.rmeta: C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\lib.rs C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\buffer.rs C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\huffman_tree.rs C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\inflater_managed.rs C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\input_buffer.rs C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\output_window.rs C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\stream.rs
+
+C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\lib.rs:
+C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\buffer.rs:
+C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\huffman_tree.rs:
+C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\inflater_managed.rs:
+C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\input_buffer.rs:
+C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\output_window.rs:
+C:\Users\miche\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\deflate64-0.1.12\src\stream.rs:
