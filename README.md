@@ -1,3 +1,4 @@
+================================================================================
 # RoBoT MCP
 
 A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with persistent memory, experience-based learning, and structured knowledge storage.

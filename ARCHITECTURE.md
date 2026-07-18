@@ -1,32 +1,32 @@
 ================================================================================
 ## Table of Contents
 
-01. [Chapter 01: Vision & Philosophy](#chapter-01-vision--philosophy)
-02. [Chapter 02: Core Principles](#chapter-02-core-principles)
-03. [Chapter 03: System Overview](#chapter-03-system-overview)
-04. [Chapter 04: High-Level Architecture](#chapter-04-high-level-architecture)
-05. [Chapter 05: Data Flow](#chapter-05-data-flow)
-06. [Chapter 06: Event System](#chapter-06-event-system)
-07. [Chapter 07: Experience System](#chapter-07-experience-system)
-08. [Chapter 08: Memory System](#chapter-08-memory-system)
-09. [Chapter 09: Knowledge System](#chapter-09-knowledge-system)
-10. [Chapter 10: Reflection](#chapter-10-reflection)
-11. [Chapter 11: Hypothesis](#chapter-11-hypothesis)
-12. [Chapter 12: Reputation](#chapter-12-reputation)
-13. [Chapter 13: Exploration](#chapter-13-exploration)
-14. [Chapter 14: Planning](#chapter-14-planning)
-15. [Chapter 15: Skills](#chapter-15-skills)
-16. [Chapter 16: Database](#chapter-16-database)
-17. [Chapter 17: MCP](#chapter-17-mcp)
-18. [Chapter 18: Services](#chapter-18-services)
-19. [Chapter 19: Repositories](#chapter-19-repositories)
-20. [Chapter 20: Coding Standards](#chapter-20-coding-standards)
-21. [Chapter 21: AI Development Workflow](#chapter-21-ai-development-workflow)
-22. [Chapter 22: Roadmap](#chapter-22-roadmap)
-23. [Chapter 23: Future Research](#chapter-23-future-research)
+01. [Chapter 01 - Vision & Philosophy](#chapter-01-vision--philosophy)
+02. [Chapter 02 - Core Principles](#chapter-02-core-principles)
+03. [Chapter 03 - System Overview](#chapter-03-system-overview)
+04. [Chapter 04 - High-Level Architecture](#chapter-04-high-level-architecture)
+05. [Chapter 05 - Data Flow](#chapter-05-data-flow)
+06. [Chapter 06 - Event System](#chapter-06-event-system)
+07. [Chapter 07 - Experience System](#chapter-07-experience-system)
+08. [Chapter 08 - Memory System](#chapter-08-memory-system)
+09. [Chapter 09 - Knowledge System](#chapter-09-knowledge-system)
+10. [Chapter 10 - Reflection](#chapter-10-reflection)
+11. [Chapter 11 - Hypothesis](#chapter-11-hypothesis)
+12. [Chapter 12 - Reputation](#chapter-12-reputation)
+13. [Chapter 13 - Exploration](#chapter-13-exploration)
+14. [Chapter 14 - Planning](#chapter-14-planning)
+15. [Chapter 15 - Skills](#chapter-15-skills)
+16. [Chapter 16 - Database](#chapter-16-database)
+17. [Chapter 17 - MCP](#chapter-17-mcp)
+18. [Chapter 18 - Services](#chapter-18-services)
+19. [Chapter 19 - Repositories](#chapter-19-repositories)
+20. [Chapter 20 - Coding Standards](#chapter-20-coding-standards)
+21. [Chapter 21 - AI Development Workflow](#chapter-21-ai-development-workflow)
+22. [Chapter 22 - Roadmap](#chapter-22-roadmap)
+23. [Chapter 23 - Future Research](#chapter-23-future-research)
 
 ================================================================================
-## Chapter 01: Vision & Philosophy
+## Chapter 01 - Vision & Philosophy
 
 # RoBoT Architecture Specification
 
@@ -197,7 +197,7 @@ RoBoT asks:
 Every subsystem in this repository exists to support that objective.
 
 ================================================================================
-## Chapter 02: Core Principles
+## Chapter 02 - Core Principles
 
 ## Purpose
 
@@ -523,7 +523,7 @@ Action creates new experience.
 The architecture exists to support this continuous learning cycle.
 
 ================================================================================
-## Chapter 03: System Overview
+## Chapter 03 - System Overview
 
 ## Purpose
 
@@ -940,7 +940,7 @@ The goal is to create a system capable of:
 RoBoT is therefore designed as a learning architecture rather than a storage architecture.
 
 ================================================================================
-## Chapter 04: High-Level Architecture
+## Chapter 04 - High-Level Architecture
 
 ## Purpose
 
@@ -956,7 +956,7 @@ The goal is to create a system that can grow in capability without becoming tigh
 
 ---
 
-# 1. Architectural Model
+# 4.01 Architectural Model
 
 RoBoT follows a layered architecture:
 
@@ -1006,7 +1006,7 @@ Lower layers provide capability.
 
 ---
 
-# 2. Separation of Responsibilities
+# 4.02 Separation of Responsibilities
 
 A core principle of RoBoT is:
 
@@ -1026,7 +1026,7 @@ Each subsystem communicates through defined interfaces.
 
 ---
 
-# 3. Cognitive Layer
+# 4.03 Cognitive Layer
 
 The cognitive layer contains the systems responsible for learning and reasoning.
 
@@ -1054,7 +1054,7 @@ Events → Understanding → Decisions
 
 ---
 
-## 3.1 Experience Processing
+## 4.03.1 Experience Processing
 
 Experience is the entry point for learning.
 
@@ -1072,7 +1072,7 @@ It should avoid interpretation.
 
 ---
 
-## 3.2 Reflection Processing
+## 4.03.2 Reflection Processing
 
 Reflection analyzes experiences.
 
@@ -1088,7 +1088,7 @@ Reflection converts raw events into meaningful information.
 
 ---
 
-## 3.3 Hypothesis Processing
+## 4.03.3 Hypothesis Processing
 
 Hypothesis generation creates possible explanations.
 
@@ -1104,7 +1104,7 @@ Hypotheses are temporary knowledge candidates.
 
 ---
 
-## 3.4 Knowledge Processing
+## 4.03.4 Knowledge Processing
 
 Knowledge stores reliable understanding.
 
@@ -1120,7 +1120,7 @@ Knowledge is the result of successful learning cycles.
 
 ---
 
-## 3.5 Planning Processing
+## 4.03.5 Planning Processing
 
 Planning uses knowledge to determine action.
 
@@ -1135,7 +1135,7 @@ Planning is the bridge between understanding and action.
 
 ---
 
-# 4. Event Architecture
+# 4.04 Event Architecture
 
 RoBoT uses events as the primary communication mechanism.
 
@@ -1194,7 +1194,7 @@ Reputation adjusts
 
 ---
 
-# 5. Service Architecture
+# 4.05 Service Architecture
 
 Major systems should expose services rather than exposing internal structures.
 
@@ -1231,7 +1231,7 @@ Benefits:
 
 ---
 
-# 6. Repository Pattern
+# 4.06 Repository Pattern
 
 Persistence is isolated through repositories.
 
@@ -1257,7 +1257,7 @@ It only knows the repository contract.
 
 ---
 
-# 7. Data Ownership
+# 4.07 Data Ownership
 
 Every piece of information should have a clear owner.
 
@@ -1294,7 +1294,7 @@ Ownership prevents conflicting modifications.
 
 ---
 
-# 8. Rust Implementation Philosophy
+# 4.08 Rust Implementation Philosophy
 
 The Rust implementation should reflect the architecture.
 
@@ -1337,7 +1337,7 @@ The architectural boundaries should remain.
 
 ---
 
-# 9. Dependency Rules
+# 4.09 Dependency Rules
 
 Dependencies should flow downward.
 
@@ -1371,7 +1371,7 @@ Circular dependencies create fragile systems.
 
 ---
 
-# 10. Growth Strategy
+# 4.10 Growth Strategy
 
 RoBoT is expected to evolve.
 
@@ -1419,7 +1419,7 @@ Independent Evolution
 The architecture exists to allow RoBoT to grow from a memory system into a complete cognitive platform.
 
 ================================================================================
-## Chapter 05: Data Flow
+## Chapter 05 - Data Flow
 
 ## 5.1 Overview
 
@@ -1822,9 +1822,9 @@ Learning becomes improved behavior.
 The data flow architecture provides the foundation that connects all major subsystems and allows the system to evolve over time.
 
 ================================================================================
-## Chapter 06: Subsystem Architecture
+## Chapter 06 - Subsystem Architecture
 
-## 5.1 Overview
+## 6.1 Overview
 
 The system is composed of specialized subsystems that cooperate through defined boundaries.
 Each subsystem owns a specific responsibility and communicates through explicit contracts.
@@ -1842,7 +1842,7 @@ The primary subsystems are:
 - MCP Integration Layer
 - Storage Layer
 
-## 5.2 Experience System
+## 6.2 Experience System
 
 The Experience System is responsible for recording, evaluating, and improving from interactions.
 
@@ -1860,7 +1860,7 @@ Core principle:
 Experiences are not memories.
 An experience is an event with context, outcome, and evaluation.
 
-## 5.3 Memory System
+## 6.3 Memory System
 
 The Memory System stores information that can be retrieved and reused.
 
@@ -1888,7 +1888,7 @@ Characteristics:
 - Confidence weighted
 - Relationship aware
 
-## 5.4 Knowledge System
+## 6.4 Knowledge System
 
 The Knowledge System represents structured understanding.
 
@@ -1903,7 +1903,7 @@ It contains:
 Knowledge is not raw storage.
 Knowledge is information that has survived evaluation.
 
-## 5.5 Learning System
+## 6.5 Learning System
 
 The Learning System transforms experience into improvement.
 
@@ -1921,7 +1921,7 @@ Validation
     ↓
 Knowledge Update
 
-## 5.6 Hypothesis System
+## 6.6 Hypothesis System
 
 The Hypothesis System allows the agent to reason about unknowns.
 
@@ -1933,7 +1933,7 @@ Responsibilities:
 - Test assumptions
 - Retire failed hypotheses
 
-## 5.7 Reflection System
+## 6.7 Reflection System
 
 Reflection analyzes completed experiences.
 
@@ -1945,7 +1945,7 @@ Questions:
 - What failed?
 - What should change?
 
-## 5.8 Reputation System
+## 6.8 Reputation System
 
 The Reputation System tracks reliability.
 
@@ -1957,7 +1957,7 @@ It evaluates:
 - Information confidence
 - Source quality
 
-## 5.9 MCP Integration Layer
+## 6.9 MCP Integration Layer
 
 The MCP layer provides controlled communication between the agent and external tools.
 
@@ -1969,7 +1969,7 @@ Responsibilities:
 - Permission boundaries
 - External integrations
 
-## 5.10 Storage Layer
+## 6.10 Storage Layer
 
 Storage provides persistence.
 
@@ -1984,59 +1984,319 @@ Primary components:
 ================================================================================
 ## Chapter 07 - Experience Engine Design
 
+07.01 Purpose
+
+introduction explaining why an Experience Engine exists.
+Design philosophy and why experience is separate from memory and knowledge.
+The complete lifecycle of an experience from observation to archival.
+Every major component with diagrams.
+Data flow between observer, events, evidence, scorer, reputation, hypothesis, reflection, repository, analytics, and coordinator.
+Design decisions and why alternatives were rejected.
+Rust module mapping.
+Database schema concepts.
+Concurrency model.
+Failure handling.
+Confidence mathematics.
+Examples that walk through a real experience from beginning to end.
+Design invariants.
+Future expansion points.
+
+07.02 Design Goals
+
+07.03 High-Level Architecture
+
+07.04 Experience Lifecycle
+
+07.05 Observation Pipeline
+
+07.06 Event Processing
+
+07.07 Evidence Collection
+
+07.08 Experience Construction
+
+07.09 Scoring & Confidence
+
+07.10 Reputation Integration
+
+07.11 Hypothesis Generation
+
+07.12 Reflection
+
+07.13 Promotion to Knowledge
+
+07.14 Storage Architecture
+
+07.15 Query & Retrieval
+
+07.16 Analytics
+
+07.17 Future Extensions
+
+## Design Invariants
+
+• Every experience originates from one or more observations.
+• Experiences are immutable once committed.
+• Confidence is updated through evidence, never manually.
+• Reflection creates new experiences rather than modifying old ones.
+• Promotion to Knowledge requires validation.
+• Historical data is never destroyed, only archived.
+
 ================================================================================
 ## Chapter 08 - Memory Architecture
+
+Chapter 08 - Knowledge System
+
+Experience and Memory are different.
+
+Knowledge deserves its own chapter.
+
+Topics:
+
+Knowledge lifecycle
+Facts
+Concepts
+Skills
+Relationships
+Confidence
+Versioning
+Validation
+Promotion from Experience
+
 
 ================================================================================
 ## Chapter 09 - Learning Pipeline
 
-================================================================================
-## Chapter 10 - Hypothesis and Reasoning
+Input
+↓
+Observation
+↓
+Memory
+↓
+Experience
+↓
+Knowledge
+↓
+Planning
+↓
+Decision
+↓
+Action
+↓
+Reflection
 
 ================================================================================
-## Chapter 11 - MCP and External Interfaces
+## Chapter 10: Hypothesis and Reasoning
+
+Chapter 10 - Planning
+
+Separate planning from decision making.
+
+Planning covers
+
+long-term goals
+task decomposition
+scheduling
+dependencies
+replanning
 
 ================================================================================
-## Chapter 12 - Database Schema
+## Chapter 11: MCP and External Interfaces
+
+Chapter 11 - Reflection
+
+One of the biggest pieces that makes an agent feel intelligent.
+
+Discuss
+
+failures
+successes
+hindsight
+lesson extraction
+confidence updates
+hypothesis creation
 
 ================================================================================
-## Chapter 13 - Rust Implementation Guidelines
+## Chapter 12: Database Schema
+
+Chapter 12 - Learning
+
+Different from memory.
+
+Learning answers
+
+"How do I become better?"
+
+Include
+
+reinforcement
+generalization
+abstraction
+transfer learning
+forgetting
+reputation updates
 
 ================================================================================
-## Chapter 14
+## Chapter 13: Rust Implementation Guidelines
+
+Chapter 13 - Personality
+
+Even if minimal.
+
+Include
+
+speaking style
+preferences
+humor
+curiosity
+emotional weighting
+interaction policies
+
+This keeps personality from leaking into core cognition.
 
 ================================================================================
-## Chapter 15
+## Chapter 14: Planning
+
+Chapter 14 - World Model
+
+One of the biggest missing pieces.
+
+RoBoT should eventually understand
+Objects
+Places
+People
+Events
+Time
+Goals
+Relationships
+Resources
+
+Basically
+"How the world works."
+Memory stores facts.
+World Model stores understanding.
 
 ================================================================================
-## Chapter 16
+## Chapter 15: Skills
+
+Chapter 15 - Skills
+
+Separate from knowledge.
+
+Knowledge:
+
+"I know SQL."
+
+Skill:
+
+"I can optimize a query."
+
+Include
+
+prerequisites
+mastery
+decay
+practice
+execution metrics
 
 ================================================================================
-## Chapter 17
+## Chapter 16: Database
+
+Chapter 16 - Safety
+
+Very important.
+
+Things like
+
+sandboxing
+permission checks
+confidence thresholds
+rollback
+hallucination handling
+uncertainty reporting
 
 ================================================================================
-## Chapter 18
+## Chapter 17: MCP
+
+Chapter 17 - Performance
+
+Future-you will thank present-you.
+
+Document
+
+threading
+queues
+async
+caching
+database strategy
+indexing
+batching
+memory limits
 
 ================================================================================
-## Chapter 19
+## Chapter 18: Services
+
+Chapter 18 - Future Roadmap
+
+Ideas that shouldn't clutter architecture but shouldn't disappear either.
+
+Examples
+
+distributed memory
+multiple robots
+swarm learning
+cloud synchronization
+multimodal perception
+robotics integration
 
 ================================================================================
-## Chapter 20
+## Chapter 19: Repositories
+
+Chapter 19 - AI Coding Standards
+
+Rather than scattered rules, have one chapter that every coding agent must obey.
+
+Examples:
+No duplicated logic.
+Composition over inheritance.
+Keep files under roughly 500 lines when practical.
+Public APIs remain stable.
+Document every module.
+Every subsystem owns its data.
+Avoid circular dependencies.
+Prefer deterministic behavior.
+Never bypass coordinator layers.
+Every async task must be cancel-safe.
+Every database migration is reversible.
+Every feature includes tests when feasible.
+No hidden global state.
 
 ================================================================================
-## Chapter 21
+## Chapter 20: Coding Standards
+
+Chapter 20 - Philosophy
+
+Not technical.
+Why does RoBoT exist?
+What principles guide every design decision?
+Something like
+RoBoT is designed to become more competent through accumulated experience rather than through hard-coded behavior.
+Those kinds of statements become tie-breakers when architecture choices compete.
 
 ================================================================================
-## Chapter 22
+## Chapter 21: AI Development Workflow
 
 ================================================================================
-## Chapter 23
+## Chapter 22: Roadmap
 
 ================================================================================
-## Chapter 24
+## Chapter 23: Future Research
 
 ================================================================================
-## Chapter 25
+## Chapter 24:
+
+================================================================================
+## Chapter 25:
 
 
 
