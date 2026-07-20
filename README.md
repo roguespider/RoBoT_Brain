@@ -1,9 +1,9 @@
 ================================================================================
 # RoBoT_Brain
 
-A Rust MCP (Model Context Protocol) server for Zed Editor - an AI agent with persistent memory, experience-based learning, and structured knowledge storage.
+A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with persistent memory, experience-based learning, and structured knowledge storage.
 
-> **Status:** v0.4 complete - All modules fully implemented including hypothesis graph, simulation, planner, planner module, skills, workflows, learning, and CLI. Database layer solid, experience system complete, reflection services complete, evolution system added, metrics and scheduler added, MCP bridge with RMCP/MCP/ACP protocols and tools implemented.
+> **Status:** v0.4 complete — All modules fully implemented including hypothesis graph, simulation, planner, planner module, skills, workflows, learning, and CLI. Database layer solid, experience system complete, reflection services complete, evolution system added, metrics and scheduler added, MCP bridge with RMCP/MCP/ACP protocols and tools implemented.
 
 ---
 
@@ -21,52 +21,53 @@ A Rust MCP (Model Context Protocol) server for Zed Editor - an AI agent with per
 | Confidence + Exploration    | Track confidence ± range and exploration_value. Balance proven reliability vs. controlled experimentation           |
 | Council Architecture        | No system overrides another. Modules advise via strict interfaces. Disagreements logged for policy tuning           |
 | Event-Based Decisions       | Only record decisions for meaningful events (new workflows, failures, explorations). Avoid noise from trivial calls |
-| Reflexes Before Imagination | Build execution/recording loop first. Defer LLM, graph, and learning modules until core is stable                |
+| Reflexes Before Imagination | Build execution/recording loop first. Defer LLM, graph, and learning modules until core is stable                   |
 
 ---
 
 ## Architecture
 
 ```
-    |    |    |    |+----------------+    |    |    |    | +----------------+
-    |    |    |    ||   RoBoT Brain  >-------------------> |   Zed Editor   |
-    |    |    |    |+--------+-------+    |    |    |    | +--------v-------+
-    |    |    |    |    |    |    |    |+--------+-------+    |    ||
-    |    |    |    |    |    |<---------<   MCP Server   <----------+
-    |    |    |    |    |    |    |    |+--------+-------+
-    |    |    +--------------+--------------+
-    |    |    |    |    |    |    |    |    |
-    | +-------v--------+    |    |+---------v---------+
-    | | Memory Core    |    |    || Experience System |
-    | +-------+--------+    |    |+---------+---------+
-    |    |    |    |    |    |    |    |    |
-    +---------+----------+    |    |+-------+-------+
-    |    |    |    |    ||    |    ||    |    |    |  |
-    |  Memories    |    ||    |    ||  Recorder    |  |
-    |  (content, types)  |    |    ||  Coordinator    |
-    |    |    |    |    ||    |    ||  Pipeline    |  |
-    |  Decisions    |    |    |    ||    |    |    |  |
-    |  (workflow choices)|    |    ||  Observers:    ||
-    |    |    |    |    ||    |    ||  - Hypothesis   |
-    |  Memory Sources    |    |    ||  - Exploration  |
-    |  (origin tracking) |    |    ||  - Reflection   |
-    |    |    |    |    ||    |    ||  - Evolution    |
-    |  Relationships    ||    |    ||    |    |    |  |
-    |  (graph links)    ||    |    ||  Scorer    |    |
-    |    |    |    |    ||    |    ||  Reputation    ||
-    |  Events    |    |  |    |    ||    |    |    |  |
-    |  (timeline)    |   |    |    |+-----------------+
-    |  Reputations    |  |    |    ||
-    +--------------------+    |    |+--------+----------+
-    |    |    |    |    |    |    |    |    |
-    |    |    +-------------+---------------+
-    |    |    |    |    |   |
-    |    |    |    |+-------v--------+
-    |    |    |    ||    |QLite    | |
-    |    |    |    ||  Single Source |
-    |    |    |    ||    |of Truth   |
-    |    |    |    |+----------------+
+                    +----------------+                     +----------------+
+                    |   RoBoT Brain  >-------------------> |   Zed Editor   |
+                    +--------+-------+                     +--------v-------+
+                             |          +--------+-------+          |
+                             |<---------<   MCP Server   <----------+
+                             |          +--------+-------+
+              +--------------+--------------+
+              |                             |
+      +-------v--------+          +---------v---------+
+      | Memory Core    |          | Experience System |
+      +-------+--------+          +---------+---------+
+              |                             |
+    +---------+----------+          +-------+-------+
+    |                    |          |                 |
+    |  Memories          |          |  Recorder       |
+    |  (content, types)  |          |  Coordinator    |
+    |                    |          |  Pipeline       |
+    |  Decisions         |          |                 |
+    |  (workflow choices)|          |  Observers:     |
+    |                    |          |  - Hypothesis   |
+    |  Memory Sources    |          |  - Exploration  |
+    |  (origin tracking) |          |  - Reflection   |
+    |                    |          |  - Evolution    |
+    |  Relationships     |          |                 |
+    |  (graph links)     |          |  Scorer         |
+    |                    |          |  Reputation     |
+    |  Events            |          |                 |
+    |  (timeline)        |          +-----------------+
+    |  Reputations       |          |
+    +--------------------+          +--------+----------+
+              |                             |
+              +-------------+---------------+
+                            |
+                    +-------v--------+
+                    |    SQLite      |
+                    |  Single Source |
+                    |     of Truth   |
+                    +----------------+
 ```
+
 
 ### Memory Layers
 
@@ -85,44 +86,6 @@ A Rust MCP (Model Context Protocol) server for Zed Editor - an AI agent with per
 3. **Memory Core** persists structured knowledge in SQLite
 4. **Migration System** manages schema evolution automatically
 
-### Working Memory State Machine
-
-Working memory items use a state machine with explicit promotion policies for confidence-based retention:
-
-**States:**
-| State | Description |
-|-------|-------------|
-| `Active` | Newly added, actively in use |
-| `Dormant` | No longer accessed, pending evaluation |
-| `Expired` | TTL expired, awaiting promotion decision |
-| `Repeated` | Same information seen multiple times |
-| `Confirmed` | Information confirmed by multiple sources |
-| `Contradicted` | Contradicted by conflicting information |
-| `Promoted` | Promoted to long-term memory |
-| `Rejected` | Rejected and marked for deletion |
-
-**State Transitions:**
-```
-Active ----(timeout)----> Dormant ----(timeout)----> Expired
-    |    |    |    |    |    |    |    |    |
-    +----(observe)----> Repeated ----(confirm)----> Confirmed
-    |    |    |    |    |    |    |    |    |
-    |    |    |    |----(contradict)----> Contradicted
-    |    |    |    |    |    |    |    |    |
-    +----(promote/reject)----> [Promoted/Rejected]
-```
-
-### Memory Lineage
-
-Long-term memories maintain full lineage tracking - RoBoT remembers *why* it believes something:
-
-- **Evidence Chain**: Link memories to supporting experiences/observations
-- **Observation History**: Track all observations related to a memory
-- **Refinement Chain**: Record when and why memory content changed
-- **Contradiction Resolution**: Handle conflicting information with resolution types
-- **Confirmation System**: Record external confirmations from various sources
-- **Supersession Chain**: Track when newer knowledge replaces older beliefs
-
 ---
 
 ## Database Schema
@@ -133,19 +96,19 @@ The database (`robot_brain.db`) is created automatically on first run via `Sqlit
 
 | Table | Purpose | Created By |
 |-------|---------|------------|
-| `memories` | Core memory storage (content, type, confidence, importance) | Migration 0->1 |
-| `decisions` | Records why workflows were chosen, alternatives considered, outcomes | Migration 1->2 |
-| `memory_sources` | Tracks where each memory came from (chat, file import, user input, etc.) | Migration 2->3 |
+| `memories` | Core memory storage (content, type, confidence, importance) | Migration 0→1 |
+| `decisions` | Records why workflows were chosen, alternatives considered, outcomes | Migration 1→2 |
+| `memory_sources` | Tracks where each memory came from (chat, file import, user input, etc.) | Migration 2→3 |
 | `relationships` | Graph connections between memories (source, target, type, strength) | `sqlite::initialize()` directly |
-| `events` | Event timeline (what happened, when, what it relates to) | Migration 3->4 |
-| `reputations` | Long-term reputation tracking per target | Migration 4->5 |
-| `scheduled_tasks` | Persistent background task scheduling | Migration 5->6 |
-| `memory_lineage` | Full history and evolution tracking for memories | Migration 6->7 |
-| `lineage_evidence` | Supporting evidence references for memories | Migration 6->7 |
-| `lineage_observations` | Observation records related to memories | Migration 6->7 |
-| `lineage_refinements` | Content change history for memories | Migration 6->7 |
-| `lineage_contradictions` | Contradiction challenges to memories | Migration 6->7 |
-| `lineage_confirmations` | External confirmations for memories | Migration 6->7 |
+| `events` | Event timeline (what happened, when, what it relates to) | Migration 3→4 |
+| `reputations` | Long-term reputation tracking per target | Migration 4→5 |
+| `scheduled_tasks` | Persistent background task scheduling | Migration 5→6 |
+| `memory_lineage` | Full history and evolution tracking for memories | Migration 6→7 |
+| `lineage_evidence` | Supporting evidence references for memories | Migration 6→7 |
+| `lineage_observations` | Observation records related to memories | Migration 6→7 |
+| `lineage_refinements` | Content change history for memories | Migration 6→7 |
+| `lineage_contradictions` | Contradiction challenges to memories | Migration 6→7 |
+| `lineage_confirmations` | External confirmations for memories | Migration 6→7 |
 
 > **Note:** The `relationships` table is created directly in `sqlite::initialize()` via raw SQL and has no corresponding migration. If the DB is re-created from scratch it works, but on upgrade from an old database that skipped init, it won't exist until a migration path handles it.
 
@@ -174,17 +137,17 @@ The database (`robot_brain.db`) is created automatically on first run via `Sqlit
 
 | Version | Changes |
 |---------|---------|
-| 0 - 1 | Core memory (`memories` table) |
-| 1 - 2 | Decision memory (`decisions` table) |
-| 2 - 3 | Source tracking (`memory_sources` table) |
-| 3 - 4 | Event history (`events` table) |
-| 4 - 5 | Reputation tracking (`reputations` table) |
-| 5 - 6 | Scheduled tasks persistence (`scheduled_tasks` table) |
-| 6 - 7 | Memory lineage tracking (lineage tables) |
+| 0 → 1 | Core memory (`memories` table) |
+| 1 → 2 | Decision memory (`decisions` table) |
+| 2 → 3 | Source tracking (`memory_sources` table) |
+| 3 → 4 | Event history (`events` table) |
+| 4 → 5 | Reputation tracking (`reputations` table) |
+| 5 → 6 | Scheduled tasks persistence (`scheduled_tasks` table) |
+| 6 → 7 | Memory lineage tracking (lineage tables) |
 
 ### Policy Engine Config (planned)
 
-Behavior tuning is intended to be externalized via TOML config - no implementation yet:
+Behavior tuning is intended to be externalized via TOML config — no implementation yet:
 
 ```toml
 [policy]
@@ -213,7 +176,7 @@ avoid_high_cost_failures = true
 
 ## Experience System
 
-The experience system tracks every action the agent takes, enabling learning over time. Modules communicate via typed structs passed through method calls (not yet event-driven - that's planned).
+The experience system tracks every action the agent takes, enabling learning over time. Modules communicate via typed structs passed through method calls (not yet event-driven — that's planned).
 
 ### Current Components
 
@@ -222,29 +185,29 @@ The experience system tracks every action the agent takes, enabling learning ove
 | `experience/types.rs` | `Experience`, `ExperienceType`, `ExperienceScore`, `ReputationRecord`, `OutcomeKind`, etc. | ✅ Implemented |
 | `experience/events.rs` | `ExperienceEvent` enum + `EventPayload` enum | ✅ Implemented |
 | `experience/observer.rs` | `ExperienceObserver` trait (name, accepts, observe, priority) | ✅ Implemented |
-| `experience/recorder.rs` | `ExperienceRecorder::record()` - inserts into DB via `ExperienceQueries` | ⚠️ Partial (see below) |
+| `experience/recorder.rs` | `ExperienceRecorder::record()` — inserts into DB via `ExperienceQueries` | ⚠️ Partial (see below) |
 | `experience/bus.rs` | Publish/subscribe routing for events | ❌ Stub (`bus.publish(experience_id)` only) |
 | `experience/queue.rs` | In-memory job queue with HashMap-backed push/pop/complete/fail | ✅ Implemented |
 | `experience/worker.rs` | Spawns async worker per observer, processes jobs from channel receiver | ✅ Implemented |
-| `experience/coordinator.rs` | Orchestrates full pipeline: recorder - scorer - reputation - hypothesis/exploration/reflection/evolution | ⚠️ Partial (imports resolved, but reflection/evolution stubbed) |
+| `experience/coordinator.rs` | Orchestrates full pipeline: recorder → scorer → reputation → hypothesis/exploration/reflection/evolution | ⚠️ Partial (imports resolved, but reflection/evolution stubbed) |
 
 ### Pipeline Design
 
 ```
 Experience Recorded
-    |   |
-    |   v
-    |ecorder (insert_experience)
-    |   |
-    |   v
-    |us - Job Queue
-    |   |
-    |   v
-    |otify Observers:
-    |>�->�->� Hypothesis Engine  ✅
-    |>�->�->� Exploration Engine  ✅
-    |>�->�->� Reflection Engine   ⚠️ Stubbed
-    |>>->�->� Evolution Engine    |️ Stubbed
+        |
+        v
+    Recorder (insert_experience)
+        |
+        v
+    Bus → Job Queue
+        |
+        v
+    Notify Observers:
+    ├── Hypothesis Engine  ✅
+    ├── Exploration Engine  ✅
+    ├── Reflection Engine   ⚠️ Stubbed
+    └── Evolution Engine    ⚠️ Stubbed
 ```
 
 ### Key Types
@@ -283,12 +246,12 @@ All previously-planned sub-modules now exist as files:
 
 ```rust
 pub trait ExperienceObserver: Send + Sync {
-    |n name(&self) - &'static str;    |  // Human-readable identifier
-    |n start(&self) - Result<()>;    |    |/ Initialization hook
-    |n shutdown(&self) - Result<()>;    | // Cleanup hook
-    |n accepts(&self, event: &ExperienceEvent) - bool;  // Default: accept all
-    |n priority(&self) - u8;    |    |    |/ Lower = runs first (default: 100)
-    |n observe(&self, event: &ExperienceEvent) - Result<()>;  // Core logic
+    fn name(&self) -> &'static str;       // Human-readable identifier
+    fn start(&self) -> Result<()>;         // Initialization hook
+    fn shutdown(&self) -> Result<()>;      // Cleanup hook
+    fn accepts(&self, event: &ExperienceEvent) -> bool;  // Default: accept all
+    fn priority(&self) -> u8;              // Lower = runs first (default: 100)
+    fn observe(&self, event: &ExperienceEvent) -> Result<()>;  // Core logic
 }
 ```
 
@@ -299,118 +262,118 @@ pub trait ExperienceObserver: Send + Sync {
 ```
 robot/
 src/
-->�->�->� main.rs    |    |    |    | ✅
-->�->�->� database\    |    |    |    |
-->�   ->�->�->� sqlite.rs    |    |    |✅← connection + initialization
-->�   ->�->�->� models.rs    |    |    |✅← database structs
-->�   ->�->�->� migrations/    |    |   ✅← schema migrations module
-->�   ->�   ->>->�->� mod.rs    |    |    |← migration functions
-->�   ->>->�->� queries.rs    |    |    |← CRUD operations
-->�->�->� experience\    |    |    |  ⚠️
-->�   ->�->�->� mod.rs    |    |    |   ✅←    |    |    |    |    |    |    | ->�->� xp backbone
-->�   ->�->�->� types.rs    |    |    | ✅← - experience data structures    |  ->�->� xp backbone
-->�   ->�->�->� observer.rs    |    |   ✅← - observer contract    |    |    | ->�->� xp backbone
-->�   ->>->�->� events.rs    |    |    |✅← - ExperienceEvent + EventPayload   ->�->� xp backbone
-->�   ->�->�->� events\    |    |    |  ✅← -    |    |    |    |    |    |    |>�->� xp backbone
-->�   ->�   ->�->�->� mod.rs    |    |    |← -    |    |    |    |    |    |    |>�->� xp backbone
-->�   ->�   ->�->�->� event.rs    |    |  ✅← - ExperienceEvent    |    |    |   ->�->� xp backbone
-->�   ->�   ->>->�->� payload.rs    |    |✅← ->EventPayload enum    |    |    |  ->�->� xp backbone
-->�   ->�->�->� bus.rs    |    |    |   ✅← - publish/subscribe routing    |   ->�->� xp backbone
-->�   ->�->�->� queue.rs    |    |    | ✅← - queued work + retry/recovery    |->�->� xp backbone
-->�   ->�->�->� worker.rs    |    |    |✅← - executes queued observer work    |>�->� xp backbone
-->�   ->�->�->� coordinator.rs    |    |✅← - owns the whole lifecycle    |    |>�->� xp backbone
-->�   ->�->�->� recorder.rs    |    |   ✅← entry point for writes experiences
-->�   ->�->�->� scorer.rs    |    |    |✅←
-->�   ->>->�->� reputation.rs    |    | ✅←
-->�   ->�->�->� reputation/    |    |   ✅←
-->�   ->�   ->�->�->� mod.rs	    |    |  ✅← Exposes the reputation subsystem
-->�   ->�   ->�->�->� reputation.rs    |  ✅← Core reputation state and updates
-->�   ->�   ->�->�->� factors.rs	    |   ✅← Different trust dimensions
-->�   ->�   ->�->�->� decay.rs	    |    |✅← Time-based reputation aging
-->�   ->�   ->�->�->� analytics.rs    |   ✅← Reports, trends, statistics
-->�   ->�   ->>->�->� repository.rs    |  ✅← Save/load reputation data
-->�   ->�->�->� working_memory/    |    | Planned but not started ← explicit promotion policies
-->�   ->�   ->�->�->� expired    |    |   📋 Planned but not started
-->�   ->�   ->�->�->� repeated    |    |  📋 Planned but not started
-->�   ->�   ->�->�->� confirmed    |    | 📋 Planned but not started
-->�   ->�   ->�->�->� contradicted    |   📋 Planned but not started
-->�   ->�   ->>->�->� promoted    |    |  📋 Planned but not started
-->�   ->�->�->� exploration/    |    |  ✅
-->�   ->�   ->�->�->� mod.rs    |    |    |
-->�   ->�   ->�->�->� exploration.rs    | ✅
-->�   ->�   ->�->�->� hypothesis.rs    |  ✅
-->�   ->�   ->�->�->� attempt.rs    |    |✅
-->�   ->�   ->�->�->� finding.rs    |    |✅
-->�   ->�   ->>->�->� store.rs    |    |  ✅
-->�   ->�->�->� hypothesis/    |    |   ✅
-->�   ->�    |>�->�->� mod.rs    |    |   ✅ Hypothesis engine entry point (moved from hypothesis.rs)
-->�   ->�    |>�->�->� core/    |    |    |
-->�   ->�    |>�   ->�->�->� mod.rs    |    | Define what hypothesis is
-->�   ->�    |>�   ->�->�->� hypothesis.rs  ✅ Core data structures (Hypothesis + HypothesisId)
-->�   ->�    |>�   ->�->�->� evidence.rs    | Evidence models
-->�   ->�    |>�   ->�->�->� evaluator.rs   ✅ Confidence updates and evaluation logic
-->�   ->�    |>�   ->>->�->� lifecycle.rs   ✅ State transitions
-->�   ->�    |>�->�->� services/    |    |✅
-->�   ->�    |>�   ->�->�->� mod.rs    |    |
-->�   ->�    |>�   ->�->�->� repository.rs  ✅ Storage interface similar to Experience/Reputation
-->�   ->�    |>�   ->�->�->� analytics.rs   ✅ Statistics and trend reporting
-->�   ->�    |>�   ->�->�->� generator.rs   ✅ Basic pattern detection and generation
-->�   ->�    |>�   ->�->�->� matcher.rs    |✅ Bridge between experiences and beliefs
-->�   ->�    |>�   ->>->�->� validator.rs   ✅ Contradiction checks and validation
-->�   ->�    |>>->�->� support/    |    | ✅
-->�   ->�    |    |>�->�->� mod.rs    |   ✅ Support module root
-->�   ->�    |    |>�->�->� statistics.rs ✅ Mostly counters and summaries
-->�   ->�    |    |>�->�->� graph.rs    | ✅ Full hypothesis graph with cycle detection, path finding, SCC
-->�   ->�    |    |>�->�->� simulation.rs ✅ What-if reasoning system with outcome simulation
-->�   ->�    |    |>>->�->� planner.rs    | Decision-support layer converting hypotheses to actions
-->�   ->�->�->� reflection/    |    |   ✅
-->�   ->�   ->�->�->� mod.rs    |    |    | Reflection module root
-->�   ->�   ->�->�->� reflection.rs    |  ✅ Core Reflection struct and methods
-->�   ->�   ->�->�->� insight.rs    |    |✅ Insight types for reusable knowledge
-->�   ->�   ->�->�->� pattern.rs    |    |✅ Pattern detection and management
-->�   ->�   ->�->�->� review.rs    |    | ✅ Reflection review types
-->�   ->�   ->>->�->� services/    |    | ✅
-->�   ->�    |  ->�->�->� mod.rs    |    |✅ Services module
-->�   ->�    |  ->�->�->� analyzer.rs    |✅ ReflectionAnalyzer for analyzing experiences
-->�   ->�    |  ->�->�->� generator.rs    | ReflectionGenerator for creating reflections
-->�   ->�    |  ->�->�->� repository.rs   ✅ Thread-safe in-memory reflection repository
-->�   ->�    |  ->>->�->� validator.rs    | ReflectionValidator for quality checks
-->�   ->�->�->� evolution/    |    |    |
-->�   ->�   ->�->�->� mod.rs    |    |    | Evolution module root
-->�   ->�   ->�->�->� behavior.rs    |    | Behavior struct and lifecycle management
-->�   ->�   ->�->�->� evidence.rs    |    | Evolution evidence types
-->�   ->�   ->>->�->� engine.rs    |    | ✅ Evolution engine for behavior management
-->�   ->�->�->� metrics.rs    |    |    | Metrics collection with counters, gauges, aggregation
-->�   ->�->�->� scheduler.rs    |    |  ✅ Background task scheduler with interval/daily/weekly schedules
-->�->�->� planner/    |    |    |    |✅
-->�   ->�->�->� planner.rs    |    |    | Core planning engine for task decomposition
-->�   ->>->�->� policy.rs    |    |    |✅ Policy engine for decision-making rules
-->�->�->� skills/    |    |    |    | ✅
-->�   ->>->�->� registry.rs    |    |   ✅ Skill registry with discovery and execution
-->�->�->� workflows/    |    |    |   ✅
-->�   ->>->�->� engine.rs    |    |    |✅ Workflow execution engine
-->�->�->� tools/    |    |    |    |  ✅
-->�   ->�->�->� mod.rs    |    |    |   ✅ Tools module root
-->�   ->�->�->� memory.rs    |    |    |✅ Memory tools (store, search, get, list)
-->�   ->�->�->� experience.rs    |    | ✅ Experience tools
-->�   ->�->�->� reflection.rs    |    | ✅ Reflection tools
-->�   ->�->�->� search.rs    |    |    |✅ Search tools
-->�   ->>->�->� ingestor.rs    |    |   ✅ File ingestion tools (import, delete with confirmation)
-->�->�->� learning/    |    |    |    |
-->�   ->�->�->� working_memory.rs    |  ✅ Short-term memory management
-->�   ->�->�->� hypothesis.rs    |    | ✅ Hypothesis tracking and evaluation
-->�   ->>->�->� candidates.rs    |    | ✅ Learning candidate generation
-->>->�->� cli/    |    |    |    |    |
-    |>�->�->� mod.rs    |    |    |   ✅ CLI module root
-    |>�->�->� commands/    |    |    |✅ CLI commands
-    |>�   ->�->�->� server.rs    |    | ✅ Start MCP server
-    |>�   ->�->�->� init.rs    |    |   ✅ Initialize database
-    |>�   ->�->�->� status.rs    |    | ✅ Check system status
-    |>�   ->�->�->� memory.rs    |    | ✅ Memory management
-    |>�   ->�->�->� experience.rs    |  ✅ Experience statistics
-    |>�   ->�->�->� config.rs    |    | ✅ Show configuration
-    |>�   ->>->�->� migrate.rs    |    |✅ Run migrations
-    |>>->�->� output.rs    |    |    |✅ Formatted output utilities
+├── main.rs                     ✅
+├── database\                   ✅
+│   ├── sqlite.rs               ✅← connection + initialization
+│   ├── models.rs               ✅← database structs
+│   ├── migrations/             ✅← schema migrations module
+│   │   └── mod.rs              ✅← migration functions
+│   └── queries.rs              ✅← CRUD operations
+├── experience\                 ⚠️
+│   ├── mod.rs                  ✅←                                    ├─ xp backbone
+│   ├── types.rs                ✅← → experience data structures       ├─ xp backbone
+│   ├── observer.rs             ✅← → observer contract                ├─ xp backbone
+│   └── events.rs               ✅← → ExperienceEvent + EventPayload   ├─ xp backbone
+│   ├── events\                 ✅← →                                  ├─ xp backbone
+│   │   ├── mod.rs              ✅← →                                  ├─ xp backbone
+│   │   ├── event.rs            ✅← → ExperienceEvent                  ├─ xp backbone
+│   │   └── payload.rs          ✅← →EventPayload enum                 ├─ xp backbone
+│   ├── bus.rs                  ✅← → publish/subscribe routing        ├─ xp backbone
+│   ├── queue.rs                ✅← → queued work + retry/recovery     ├─ xp backbone
+│   ├── worker.rs               ✅← → executes queued observer work    ├─ xp backbone
+│   ├── coordinator.rs          ✅← → owns the whole lifecycle         ├─ xp backbone
+│   ├── recorder.rs             ✅← entry point for writes experiences
+│   ├── scorer.rs               ✅←
+│   └── reputation.rs           ✅←
+│   ├── reputation/             ✅←
+│   │   ├── mod.rs	            ✅← Exposes the reputation subsystem
+│   │   ├── reputation.rs       ✅← Core reputation state and updates
+│   │   ├── factors.rs	        ✅← Different trust dimensions
+│   │   ├── decay.rs	          ✅← Time-based reputation aging
+│   │   ├── analytics.rs        ✅← Reports, trends, statistics
+│   │   └── repository.rs       ✅← Save/load reputation data
+│   ├── working_memory/         📋 Planned but not started ← explicit promotion policies
+│   │   ├── expired             📋 Planned but not started
+│   │   ├── repeated            📋 Planned but not started
+│   │   ├── confirmed           📋 Planned but not started
+│   │   ├── contradicted        📋 Planned but not started
+│   │   └── promoted            📋 Planned but not started
+│   ├── exploration/            ✅
+│   │   ├── mod.rs              ✅
+│   │   ├── exploration.rs      ✅
+│   │   ├── hypothesis.rs       ✅
+│   │   ├── attempt.rs          ✅
+│   │   ├── finding.rs          ✅
+│   │   └── store.rs            ✅
+│   ├── hypothesis/             ✅
+│   │    ├── mod.rs             ✅ Hypothesis engine entry point (moved from hypothesis.rs)
+│   │    ├── core/              ✅
+│   │    │   ├── mod.rs         ✅ Define what hypothesis is
+│   │    │   ├── hypothesis.rs  ✅ Core data structures (Hypothesis + HypothesisId)
+│   │    │   ├── evidence.rs    ✅ Evidence models
+│   │    │   ├── evaluator.rs   ✅ Confidence updates and evaluation logic
+│   │    │   └── lifecycle.rs   ✅ State transitions
+│   │    ├── services/          ✅
+│   │    │   ├── mod.rs         ✅
+│   │    │   ├── repository.rs  ✅ Storage interface similar to Experience/Reputation
+│   │    │   ├── analytics.rs   ✅ Statistics and trend reporting
+│   │    │   ├── generator.rs   ✅ Basic pattern detection and generation
+│   │    │   ├── matcher.rs     ✅ Bridge between experiences and beliefs
+│   │    │   └── validator.rs   ✅ Contradiction checks and validation
+│   │    └── support/           ✅
+│   │         ├── mod.rs        ✅ Support module root
+│   │         ├── statistics.rs ✅ Mostly counters and summaries
+│   │         ├── graph.rs      ✅ Full hypothesis graph with cycle detection, path finding, SCC
+│   │         ├── simulation.rs ✅ What-if reasoning system with outcome simulation
+│   │         └── planner.rs    ✅ Decision-support layer converting hypotheses to actions
+│   ├── reflection/             ✅
+│   │   ├── mod.rs              ✅ Reflection module root
+│   │   ├── reflection.rs       ✅ Core Reflection struct and methods
+│   │   ├── insight.rs          ✅ Insight types for reusable knowledge
+│   │   ├── pattern.rs          ✅ Pattern detection and management
+│   │   ├── review.rs           ✅ Reflection review types
+│   │   └── services/           ✅
+│   │       ├── mod.rs          ✅ Services module
+│   │       ├── analyzer.rs     ✅ ReflectionAnalyzer for analyzing experiences
+│   │       ├── generator.rs    ✅ ReflectionGenerator for creating reflections
+│   │       ├── repository.rs   ✅ Thread-safe in-memory reflection repository
+│   │       └── validator.rs    ✅ ReflectionValidator for quality checks
+│   ├── evolution/              ✅
+│   │   ├── mod.rs              ✅ Evolution module root
+│   │   ├── behavior.rs         ✅ Behavior struct and lifecycle management
+│   │   ├── evidence.rs         ✅ Evolution evidence types
+│   │   └── engine.rs           ✅ Evolution engine for behavior management
+│   ├── metrics.rs              ✅ Metrics collection with counters, gauges, aggregation
+│   ├── scheduler.rs            ✅ Background task scheduler with interval/daily/weekly schedules
+├── planner/                    ✅
+│   ├── planner.rs              ✅ Core planning engine for task decomposition
+│   └── policy.rs               ✅ Policy engine for decision-making rules
+├── skills/                     ✅
+│   └── registry.rs             ✅ Skill registry with discovery and execution
+├── workflows/                  ✅
+│   └── engine.rs               ✅ Workflow execution engine
+├── tools/                      ✅
+│   ├── mod.rs                  ✅ Tools module root
+│   ├── memory.rs               ✅ Memory tools (store, search, get, list)
+│   ├── experience.rs           ✅ Experience tools
+│   ├── reflection.rs           ✅ Reflection tools
+│   ├── search.rs               ✅ Search tools
+│   └── ingestor.rs             ✅ File ingestion tools (import, delete with confirmation)
+├── learning/                   ✅
+│   ├── working_memory.rs       ✅ Short-term memory management
+│   ├── hypothesis.rs           ✅ Hypothesis tracking and evaluation
+│   └── candidates.rs           ✅ Learning candidate generation
+└── cli/                        ✅
+    ├── mod.rs                  ✅ CLI module root
+    ├── commands/               ✅ CLI commands
+    │   ├── server.rs           ✅ Start MCP server
+    │   ├── init.rs             ✅ Initialize database
+    │   ├── status.rs           ✅ Check system status
+    │   ├── memory.rs           ✅ Memory management
+    │   ├── experience.rs       ✅ Experience statistics
+    │   ├── config.rs           ✅ Show configuration
+    │   └── migrate.rs          ✅ Run migrations
+    └── output.rs               ✅ Formatted output utilities
 ```
 
 **Legend:** ✅ Implemented | ⚠️ Stubbed/partial | ❌ Placeholder code only | 🟡 Partially done | 📋 Planned but not started
@@ -432,8 +395,8 @@ Rust
 SQLite
  90%
 
-Rust ------ SQLite
-    |   42%
+Rust ───── SQLite
+        42%
 
 The relationship confidence becomes its own entity.
 
@@ -518,12 +481,12 @@ Skill
 store
 
 Skill
-->�->�->� prerequisites
-->�->�->� confidence
-->�->�->� decay
-->�->�->� reinforcement
-->�->�->� evidence
-->>->�->� last successful use
+├── prerequisites
+├── confidence
+├── decay
+├── reinforcement
+├── evidence
+└── last successful use
 
 Now skills become alive instead of static.
 
@@ -667,107 +630,107 @@ F5-TTS and whisper-rs (quantized to 4-bit) for STT
  use std::path::Path;
  
  pub struct F5VoiceCloner {
-    |onnx_session: Session,
+     onnx_session: Session,
  }
  
  impl F5VoiceCloner {
-    |pub fn new(model_path: &str) - Result<Self, Box<dyn std::error::Error>> {
-    |    |/ Initialize the ONNX session optimized to strictly use CPU cores
-    |    |et session = Session::builder()?
-    |    |   .commit_from_file(model_path)?;
-    |    |k(Self { onnx_session: session })
-    |}
+     pub fn new(model_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
+         // Initialize the ONNX session optimized to strictly use CPU cores
+         let session = Session::builder()?
+             .commit_from_file(model_path)?;
+         Ok(Self { onnx_session: session })
+     }
  
-    |pub fn clone_voice_from_wav(
-    |    |self, 
-    |    |av_path: &str, 
-    |    |ef_text_tokens: Vec<i64>,  // Int tokens matching what is said in the WAV
-    |    |arget_text_tokens: Vec<i64> // Int tokens for the new phrase
-    |) - Result<Vec<f32>, Box<dyn std::error::Error>> {
-    |    
-    |    |/ 1. Open the custom WAV file and decode its audio samples
-    |    |et mut reader = hound::WavReader::open(wav_path)?;
-    |    |et spec = reader.spec();
+     pub fn clone_voice_from_wav(
+         &self, 
+         wav_path: &str, 
+         ref_text_tokens: Vec<i64>,  // Int tokens matching what is said in the WAV
+         target_text_tokens: Vec<i64> // Int tokens for the new phrase
+     ) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
+         
+         // 1. Open the custom WAV file and decode its audio samples
+         let mut reader = hound::WavReader::open(wav_path)?;
+         let spec = reader.spec();
  
-    |    |/ F5-TTS natively expects 24,000Hz mono audio data
-    |    |f spec.sample_rate != 24000 || spec.channels != 1 {
-    |    |   return Err("Reference WAV must be exactly 24kHz Mono!".into());
-    |    |
+         // F5-TTS natively expects 24,000Hz mono audio data
+         if spec.sample_rate != 24000 || spec.channels != 1 {
+             return Err("Reference WAV must be exactly 24kHz Mono!".into());
+         }
  
-    |    |/ Convert the raw 16-bit sound waves into a normalized f32 vector array
-    |    |et raw_samples: Vec<f32> = reader
-    |    |   .into_samples::<i16>()
-    |    |   .map(|s| s.unwrap() as f32 / 32768.0) 
-    |    |   .collect();
+         // Convert the raw 16-bit sound waves into a normalized f32 vector array
+         let raw_samples: Vec<f32> = reader
+             .into_samples::<i16>()
+             .map(|s| s.unwrap() as f32 / 32768.0) 
+             .collect();
  
-    |    |/ 2. Shape the reference audio into a 2D matrix shape for ONNX (1, sample_count)
-    |    |et sample_count = raw_samples.len();
-    |    |et audio_matrix = Array2::from_shape_vec((1, sample_count), raw_samples)?;
+         // 2. Shape the reference audio into a 2D matrix shape for ONNX (1, sample_count)
+         let sample_count = raw_samples.len();
+         let audio_matrix = Array2::from_shape_vec((1, sample_count), raw_samples)?;
  
-    |    |/ 3. Shape the text arrays into standard 2D token matrices
-    |    |et ref_text_matrix = Array2::from_shape_vec((1, ref_text_tokens.len()), ref_text_tokens)?;
-    |    |et target_text_matrix = Array2::from_shape_vec((1, target_text_tokens.len()), target_text_tokens)?;
+         // 3. Shape the text arrays into standard 2D token matrices
+         let ref_text_matrix = Array2::from_shape_vec((1, ref_text_tokens.len()), ref_text_tokens)?;
+         let target_text_matrix = Array2::from_shape_vec((1, target_text_tokens.len()), target_text_tokens)?;
  
-    |    |/ 4. Pass all data directly into the F5-TTS model session inputs
-    |    |et inputs = ort::inputs![
-    |    |   "ref_audio" => audio_matrix,
-    |    |   "ref_text" => ref_text_matrix,
-    |    |   "target_text" => target_text_matrix,
-    |    |)?;
+         // 4. Pass all data directly into the F5-TTS model session inputs
+         let inputs = ort::inputs![
+             "ref_audio" => audio_matrix,
+             "ref_text" => ref_text_matrix,
+             "target_text" => target_text_matrix,
+         ()?;
  
-    |    |/ 5. Execute the generation process natively on the CPU
-    |    |et outputs = self.onnx_session.run(inputs)?;
-    |    
-    |    |/ Extract the newly generated audio array
-    |    |et output_tensor = outputs["output_audio"].try_extract_tensor::<f32>()?;
-    |    |et generated_speech_raw = output_tensor.view().to_owned().into_raw_vec();
+         // 5. Execute the generation process natively on the CPU
+         let outputs = self.onnx_session.run(inputs)?;
+         
+         // Extract the newly generated audio array
+         let output_tensor = outputs["output_audio"].try_extract_tensor::<f32>()?;
+         let generated_speech_raw = output_tensor.view().to_owned().into_raw_vec();
  
-    |    |k(generated_speech_raw)
-    |}
+         Ok(generated_speech_raw)
+     }
  }
  ---
 
 tools\
-    |->�->�->�interaction\
-    ||  ->�->�->�audio <-- pass wav file directly into your execution pipeline for tts
-    ||  ->�->�->�chat --> output tts and print text to desktop ui
-    ||  ->�->�->�clipboard
-    ||  ->�->�->�documents
-    ||  ->�->�->�dragdrop
-    ||  ->�->�->�notifications
-    ||  ->�->�->�shortcuts
-    |   
-->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�
-->�    | Desktop UI (Rust)    | ->�
-->�    |    |    |    |    |    |>�
-->� 🎤 Start Listening    |    |->�
-->� 📄 Drop Files Here    |    |->�
-->� 💬 Conversation    |    |   ->�
-->� 🧠 Agent Thoughts    |    | ->�
-->>->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�
-    |    |    |->�
-    |    |    |�-�
-    |   RoBoT MCP Core
-    |    |    |->�
-    |    |    |RoBoT Desktop (Rust)
-    |    |    |    |   ->�
-    |    |    |    |   �-�
-    |    |    |Interaction Layer
-    |    |    |    |   ->�
-    |    |    | ->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�->�
-    |    |    | �-�    |    |    | �-�
-    |    |    |whisper-rs    | F5-TTS
-    |    |    |(STT)    |    |  (TTS)
-    |    |    |    |   ->�
-    |    |    |    |   �-�
-    |    |    |Experience Engine
-    |    |    |    |   ->�
-    |    |    |    |   �-�
-    |    |    |Planner
-    |    |    |    |   ->�
-    |    |    |    |   �-�
-    |    |    |Memory System
-    |    |    |
+     ├──interaction\
+     |  ├──audio <-- pass wav file directly into your execution pipeline for tts
+     |  ├──chat --> output tts and print text to desktop ui
+     |  ├──clipboard
+     |  ├──documents
+     |  ├──dragdrop
+     |  ├──notifications
+     |  ├──shortcuts
+        
+┌─────────────────────────────┐
+│      Desktop UI (Rust)      │
+│                             │
+│ 🎤 Start Listening          │
+│ 📄 Drop Files Here          │
+│ 💬 Conversation             │
+│ 🧠 Agent Thoughts           │
+└──────────────┬──────────────┘
+               │
+               ▼
+        RoBoT MCP Core
+               │
+               RoBoT Desktop (Rust)
+                       │
+                       ▼
+               Interaction Layer
+                       │
+                ┌──────┴─────────┐
+                ▼                ▼
+               whisper-rs      F5-TTS
+               (STT)            (TTS)
+                       │
+                       ▼
+               Experience Engine
+                       │
+                       ▼
+               Planner
+                       │
+                       ▼
+               Memory System
+               
 When idle, it collapse's into a tiny floating microphone button. speak, and watch the transcript appear.
 separate what the user says 'text in blue' from the agent's internal reasoning 'text in white' and what agent says 'text in lime green'.
 
@@ -786,15 +749,18 @@ sent to ingestor which adds it to short term memory for agent usage. simply hand
 
  F5-TTS and whisper-rs (quantized to 4-bit) for STT
 
+
+
+
 an Interaction Layer as a peer to your Experience and Memory systems:
 Interaction
-->�->�->� Voice
-->�->�->� Chat
-->�->�->� Documents
-->�->�->� Clipboard
-->�->�->� Screen (future)
-->�->�->� Notifications
-->>->�->� Commands
+├── Voice
+├── Chat
+├── Documents
+├── Clipboard
+├── Screen (future)
+├── Notifications
+└── Commands
 
 --------------------------------------------------------------------------------
 
@@ -830,15 +796,15 @@ Interaction
 cargo run
 
 # Run CLI commands
-cargo run -- init    |    | # Initialize database
-cargo run -- status    |    | Check system status
-cargo run -- memory list    | List memories
+cargo run -- init           # Initialize database
+cargo run -- status         # Check system status
+cargo run -- memory list    # List memories
 cargo run -- memory search <query>  # Search memories
 cargo run -- memory add <content>   # Add a memory
-cargo run -- memory stats    | Show memory statistics
-cargo run -- experience    | # Show experience statistics
-cargo run -- config    |    |# Show configuration
-cargo run -- migrate    |    | Run database migrations
+cargo run -- memory stats    # Show memory statistics
+cargo run -- experience      # Show experience statistics
+cargo run -- config          # Show configuration
+cargo run -- migrate         # Run database migrations
 ```
 
 ---
@@ -911,14 +877,14 @@ List files that have been successfully ingested and can be deleted.
 ```
 1. Place files in ./files_to_import/
 
-2. Call ingest_files - Files are chunked and stored in memory
-   ->>->� Response: List of successfully imported file paths
+2. Call ingest_files → Files are chunked and stored in memory
+   └─ Response: List of successfully imported file paths
 
 3. Review the imported files
 
 4. Call delete_ingested_files with confirmation to remove originals
-   ->>->� confirmation: "yes" - Actually deletes
-   ->>->� confirmation: anything else - Shows simulation only
+   └─ confirmation: "yes" → Actually deletes
+   └─ confirmation: anything else → Shows simulation only
 ```
 
 ### Configuration
@@ -947,7 +913,7 @@ cargo build --release
 
 | Area | Status | Details |
 |------|--------|---------|
-| Database layer | ✅ Functional | Schema + 6 migrations (v0->v6 via `migrations/` module), CRUD queries all implemented |
+| Database layer | ✅ Functional | Schema + 7 migrations (v0→v7 via `migrations/` module), CRUD queries all implemented |
 | Experience types/events | ✅ Complete | Full type system for experiences, scores, reputation, event payloads |
 | Observer pattern | ✅ Implemented | Trait defined with priority and filter hooks |
 | Job queue + worker | ✅ Implemented | In-memory queue with async worker (mpsc channel) |
@@ -976,18 +942,18 @@ cargo build --release
 
 ## Immediate Next Steps
 
-1. **Wire MCP tools to handlers** - Connect tool definitions to actual functionality
-2. **Implement tool execution** - Make tools actually perform their operations
-3. **Implement knowledge graph** - Broader knowledge representation system
-4. **Add LLM integration** - Enable actual reflection generation
+1. **Wire MCP tools to handlers** — Connect tool definitions to actual functionality
+2. **Implement tool execution** — Make tools actually perform their operations
+3. **Implement knowledge graph** — Broader knowledge representation system
+4. **Add LLM integration** — Enable actual reflection generation
 
 ---
 
 ## Known Issues
 
-- **Knowledge graph is placeholder** - Broader knowledge representation needed
+- **Knowledge graph is placeholder** — Broader knowledge representation needed
 
-## �-️ License & Fair-Pay Rule
+## ⚖️ License & Fair-Pay Rule
 
 This project is open-source, but it is also built on fairness. We believe that if the community helps improve this software, the community should share in its financial success.
 
