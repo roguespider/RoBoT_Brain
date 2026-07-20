@@ -337,6 +337,13 @@ src/
 │   └── registry.rs             ✅ Skill registry with discovery and execution
 ├── workflows/                  ✅
 │   └── engine.rs               ✅ Workflow execution engine
+├── tools/                      ✅
+│   ├── mod.rs                  ✅ Tools module root
+│   ├── memory.rs              ✅ Memory tools (store, search, get, list)
+│   ├── experience.rs          ✅ Experience tools
+│   ├── reflection.rs          ✅ Reflection tools
+│   ├── search.rs              ✅ Search tools
+│   └── ingestor.rs            ✅ File ingestion tools (import, delete with confirmation)
 ├── learning/                   ✅
 │   ├── working_memory.rs       ✅ Short-term memory management
 │   ├── hypothesis.rs           ✅ Hypothesis tracking and evaluation
@@ -369,7 +376,7 @@ src/
 | Identity | `uuid` v1 | Unique IDs (v4) for memories and experiences |
 | Time | `chrono` v0.4 | Timestamps (RFC3339) |
 | File walking | `walkdir` v2 | Directory traversal for file ingestion |
-| Compression | `zip` v2 | Zip archive handling |
+| Compression | `zip` v2, `tar` v0.4, `flate2` v1 | Archive handling (zip, tar, gz) |
 | Hashing | `sha2` v0.10 | File content hashing |
 | Paths | `dirs` v5 | OS data directory resolution |
 | Error handling | `anyhow` v1 | Result propagation throughout |
@@ -400,6 +407,94 @@ cargo run -- experience      # Show experience statistics
 cargo run -- config          # Show configuration
 cargo run -- migrate         # Run database migrations
 ```
+
+---
+
+## File Ingestion (Ingestor Tools)
+
+The ingestor tools allow you to import files from a `files_to_import/` folder into short-term memory. Files are automatically chunked and stored as memory cards.
+
+### Supported File Formats
+
+| Format | Extensions | Processing |
+|--------|------------|------------|
+| Archives | `.zip`, `.tar`, `.tar.gz`, `.tgz`, `.gz` | Extracted recursively |
+| Text | `.txt`, `.md`, `.rst`, `.csv`, `.log`, `.xml`, `.html` | Direct ingestion |
+| JSON | `.json`, `.jsonl` | Pretty-printed for search |
+| PDF | `.pdf` | Basic text extraction |
+| Audio | `.mp3`, `.wav`, `.m4a`, `.flac`, `.ogg`, `.aac` | Placeholder for transcription |
+
+### MCP Tools
+
+#### `ingest_files`
+Import files from `files_to_import/` folder into short-term memory.
+
+```json
+{
+  "folder": "files_to_import",
+  "chunk_size": 1000,
+  "memory_type": "file"
+}
+```
+
+**Response includes:**
+- `summary`: Ingestion statistics (total, successful, failed, chunks)
+- `successfully_ingested`: Array of file paths that were imported
+- `user_action_required`: Prompt to confirm deletion
+
+#### `list_importable`
+List files ready for import in the folder.
+
+```json
+{
+  "folder": "files_to_import"
+}
+```
+
+#### `list_ingested_files`
+List files that have been successfully ingested and can be deleted.
+
+```json
+{
+  "folder": "files_to_import",
+  "limit": 100
+}
+```
+
+#### `delete_ingested_files`
+**Requires confirmation** - Delete files after successful ingestion.
+
+```json
+{
+  "files": ["path/to/file1.txt", "path/to/file2.pdf"],
+  "confirmation": "yes"
+}
+```
+
+**Safety:** Without `confirmation: "yes"`, the tool runs in simulation mode showing what would be deleted.
+
+### Workflow
+
+```
+1. Place files in ./files_to_import/
+
+2. Call ingest_files → Files are chunked and stored in memory
+   └─ Response: List of successfully imported file paths
+
+3. Review the imported files
+
+4. Call delete_ingested_files with confirmation to remove originals
+   └─ confirmation: "yes" → Actually deletes
+   └─ confirmation: anything else → Shows simulation only
+```
+
+### Configuration
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| `chunk_size` | 1000 | Characters per chunk |
+| `chunk_overlap` | 100 | Overlap between chunks |
+| `memory_type` | "file" | Type for ingested memories |
 
 ### Build
 
@@ -435,7 +530,7 @@ cargo build --release
 | Metrics collection | ✅ Implemented | Counters, gauges, time series with aggregation |
 | Scheduler | ✅ Implemented | Background task scheduling with SQLite persistence |
 | MCP bridge | ✅ Implemented | RMCP, MCP, and ACP protocol implementations in `bridge/` folder |
-| MCP tools | ✅ Implemented | Memory, experience, reflection, and search tools defined |
+| MCP tools | ✅ Implemented | Memory, experience, reflection, search, and ingestor tools defined |
 | Planner module | ✅ Implemented | Planning engine and policy engine for task decomposition |
 | Skills module | ✅ Implemented | Skill registry for managing available skills |
 | Workflows module | ✅ Implemented | Workflow execution engine for multi-step tasks |
