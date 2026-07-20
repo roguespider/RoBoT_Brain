@@ -271,19 +271,14 @@ pub fn record_event(conn: &Connection, event: &MemoryEvent) -> Result<()> {
 fn parse_memory_type(value: &str) -> MemoryType {
     match value {
         "fact" => MemoryType::Fact,
-
         "task" => MemoryType::Task,
-
         "file" => MemoryType::File,
-
         "conversation" => MemoryType::Conversation,
-
         "code" => MemoryType::Code,
-
         "decision" => MemoryType::Decision,
-
         "event" => MemoryType::Event,
-
+        "encounter" => MemoryType::Encounter,
+        "experience" => MemoryType::Experience,
         _ => MemoryType::Note,
     }
 }

@@ -18,6 +18,8 @@ pub enum MemoryType {
     Code,
     Decision,
     Event,
+    Encounter,
+    Experience,
 }
 
 impl Default for MemoryType {
@@ -37,6 +39,8 @@ impl ToString for MemoryType {
             MemoryType::Code => "code",
             MemoryType::Decision => "decision",
             MemoryType::Event => "event",
+            MemoryType::Encounter => "encounter",
+            MemoryType::Experience => "experience",
         }
         .to_string()
     }

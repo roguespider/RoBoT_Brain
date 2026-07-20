@@ -47,7 +47,7 @@ pub use reflection::{Reflection, Lesson, ReflectionInsight, ReflectionEvidence};
 /// ============================================================================
 
 /// High-level category describing the purpose of a reflection.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum ReflectionType {
     /// Something worked particularly well.
     Success,
@@ -72,7 +72,7 @@ pub enum ReflectionType {
 }
 
 /// Current lifecycle state.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum ReflectionStatus {
     Draft,
     Active,

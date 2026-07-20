@@ -70,7 +70,7 @@ pub struct Exploration {
 }
 
 /// Current exploration state.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum ExplorationStatus {
     Planned,
     Active,
