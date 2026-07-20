@@ -209,7 +209,8 @@ impl LineageTracker {
     pub fn create_lineage(&mut self, memory_id: Uuid) -> &mut MemoryLineage {
         let lineage = MemoryLineage::new(memory_id);
         self.lineages.insert(memory_id, lineage);
-        self.lineages.get_mut(&memory_id).unwrap()
+        self.lineages.get_mut(&memory_id)
+            .expect("Lineage was just inserted, should always exist")
     }
     
     /// Get lineage for a memory

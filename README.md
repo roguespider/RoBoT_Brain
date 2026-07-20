@@ -297,8 +297,8 @@ src/
 │   │   ├── working_memory.rs   ✅ Working memory implementation
 │   │   ├── memory_state.rs     ✅ State machine definitions
 │   │   └── promotion.rs        ✅ Promotion policy engine
-│   ├── lineage.rs               ✅ Memory lineage tracking
-│   ├── candidates.rs            ✅ Candidate memory generation
+│   ├── lineage.rs              ✅ Memory lineage tracking
+│   ├── candidates.rs           ✅ Candidate memory generation
 │   ├── exploration/            ✅
 │   │   ├── mod.rs              ✅
 │   │   ├── exploration.rs      ✅

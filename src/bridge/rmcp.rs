@@ -261,4 +261,69 @@ impl McpServerHandler {
             })),
         }
     }
+
+    #[tool(name = "ingest_files", description = "Ingest files from a folder into memory")]
+    async fn ingest_files(
+        &self,
+        Parameters(input): Parameters<tools::ingestor::IngestFilesInput>,
+    ) -> Json<serde_json::Value> {
+        match tools::ingestor::execute_ingest_files(input, &self.context.database).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(serde_json::json!({
+                "error": e.to_string()
+            })),
+        }
+    }
+
+    #[tool(name = "list_importable", description = "List files available for import")]
+    async fn list_importable(
+        &self,
+        Parameters(input): Parameters<tools::ingestor::ListImportableInput>,
+    ) -> Json<serde_json::Value> {
+        match tools::ingestor::execute_list_importable(input).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(serde_json::json!({
+                "error": e.to_string()
+            })),
+        }
+    }
+
+    #[tool(name = "transcribe_audio", description = "Transcribe an audio file to text")]
+    async fn transcribe_audio(
+        &self,
+        Parameters(input): Parameters<tools::ingestor::TranscribeAudioInput>,
+    ) -> Json<serde_json::Value> {
+        match tools::ingestor::execute_transcribe_audio(input).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(serde_json::json!({
+                "error": e.to_string()
+            })),
+        }
+    }
+
+    #[tool(name = "list_ingested_files", description = "List files that have been ingested")]
+    async fn list_ingested_files(
+        &self,
+        Parameters(input): Parameters<tools::ingestor::ListIngestedFilesInput>,
+    ) -> Json<serde_json::Value> {
+        match tools::ingestor::execute_list_ingested_files(input).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(serde_json::json!({
+                "error": e.to_string()
+            })),
+        }
+    }
+
+    #[tool(name = "delete_ingested_files", description = "Delete successfully ingested files")]
+    async fn delete_ingested_files(
+        &self,
+        Parameters(input): Parameters<tools::ingestor::DeleteIngestedFilesInput>,
+    ) -> Json<serde_json::Value> {
+        match tools::ingestor::execute_delete_ingested_files(input).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(serde_json::json!({
+                "error": e.to_string()
+            })),
+        }
+    }
 }

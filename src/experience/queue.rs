@@ -62,7 +62,9 @@ impl JobQueue {
             .map(|(id, _)| id.clone());
 
         if let Some(id) = job_id {
-            let job = self.jobs.get(&id).unwrap().clone();
+            let job = self.jobs.get(&id)
+                .expect("Job ID from iterator should always exist")
+                .clone();
             // Mark as running immediately to prevent race conditions
             self.mark_running(&id);
             Some(job)

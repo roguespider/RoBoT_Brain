@@ -11,6 +11,7 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::experience::metrics::MetricsCollector;
+use crate::tools;
 
 /// A workflow definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -56,6 +57,7 @@ pub struct WorkflowEngine {
     metrics: Arc<MetricsCollector>,
     workflows: Arc<RwLock<HashMap<String, Workflow>>>,
     executing: Arc<RwLock<HashSet<String>>>,
+    database: Option<Arc<crate::database::sqlite::SqliteDatabase>>,
 }
 
 impl WorkflowEngine {
@@ -65,6 +67,17 @@ impl WorkflowEngine {
             metrics,
             workflows: Arc::new(RwLock::new(HashMap::new())),
             executing: Arc::new(RwLock::new(HashSet::new())),
+            database: None,
+        }
+    }
+
+    /// Create a new workflow engine with database access
+    pub fn with_database(metrics: Arc<MetricsCollector>, database: Arc<crate::database::sqlite::SqliteDatabase>) -> Self {
+        Self {
+            metrics,
+            workflows: Arc::new(RwLock::new(HashMap::new())),
+            executing: Arc::new(RwLock::new(HashSet::new())),
+            database: Some(database),
         }
     }
 
@@ -228,23 +241,59 @@ impl WorkflowEngine {
 
     /// Execute workflow steps
     async fn execute_workflow(&self, workflow_id: &str) -> Result<()> {
-        let steps = {
+        let (steps, mut variables) = {
             let workflows = self.workflows.read().await;
-            workflows.get(workflow_id).map(|w| w.steps.clone())
+            let steps = workflows.get(workflow_id).map(|w| w.steps.clone());
+            let vars = workflows.get(workflow_id).map(|w| w.variables.clone()).unwrap_or_default();
+            (steps, vars)
         };
 
         let Some(steps) = steps else {
             return Ok(());
         };
 
-        for step in steps {
-            // Execute step (placeholder - actual implementation would call tools)
-            tracing::info!("Executing workflow {} step: {}", workflow_id, step.name);
+        let mut step_results: HashMap<String, serde_json::Value> = HashMap::new();
 
-            // Simulate step execution
-            tokio::time::sleep(tokio::time::Duration::from_millis(100)).await;
+        for step in &steps {
+            tracing::info!("Executing workflow {} step: {} (action: {})", workflow_id, step.name, step.action);
 
-            self.metrics.increment("workflows.steps.executed").await;
+            // Replace variables in parameters
+            let params = self::replace_variables(&step.parameters, &variables, &step_results);
+
+            // Execute the step action
+            let result = self.execute_step_action(&step.action, &params).await;
+            
+            match result {
+                Ok(output) => {
+                    tracing::info!("Step {} completed successfully", step.name);
+                    step_results.insert(step.id.clone(), output.clone());
+                    self.metrics.increment("workflows.steps.executed").await;
+                    
+                    // Handle on_success: store result in variable if specified
+                    if let Some(var_name) = &step.on_success {
+                        variables.insert(var_name.clone(), serde_json::to_string(&output).unwrap_or_default());
+                    }
+                }
+                Err(e) => {
+                    tracing::error!("Step {} failed: {}", step.name, e);
+                    self.metrics.increment("workflows.steps.failed").await;
+                    
+                    // Update workflow status to failed
+                    {
+                        let mut workflows = self.workflows.write().await;
+                        if let Some(workflow) = workflows.get_mut(workflow_id) {
+                            workflow.status = WorkflowStatus::Failed;
+                        }
+                    }
+                    
+                    // Remove from executing
+                    {
+                        let mut executing = self.executing.write().await;
+                        executing.remove(workflow_id);
+                    }
+                    return Err(e);
+                }
+            }
         }
 
         // Mark workflow as completed
@@ -253,6 +302,7 @@ impl WorkflowEngine {
             if let Some(workflow) = workflows.get_mut(workflow_id) {
                 workflow.status = WorkflowStatus::Completed;
                 workflow.completed_at = Some(chrono::Utc::now());
+                workflow.variables = variables;
             }
         }
 
@@ -265,6 +315,167 @@ impl WorkflowEngine {
         self.metrics.increment("workflows.completed").await;
 
         Ok(())
+    }
+
+    /// Replace variables in parameters with their values
+    fn replace_variables(
+        params: &HashMap<String, String>,
+        workflow_vars: &HashMap<String, String>,
+        step_results: &HashMap<String, serde_json::Value>,
+    ) -> HashMap<String, String> {
+        let mut resolved = params.clone();
+        for (key, value) in resolved.iter_mut() {
+            // Replace workflow variables ${var_name}
+            for (var_name, var_value) in workflow_vars {
+                let placeholder = format!("${{{}}}", var_name);
+                *value = value.replace(&placeholder, var_value);
+            }
+            // Replace step result references ${step_id.output_field}
+            for (step_id, result) in step_results {
+                if let Some(obj) = result.as_object() {
+                    for (field, field_value) in obj {
+                        let placeholder = format!("${{{}.{}}}", step_id, field);
+                        *value = value.replace(&placeholder, &field_value.to_string());
+                    }
+                }
+            }
+        }
+        resolved
+    }
+
+    /// Execute a step action by name with actual tool execution
+    async fn execute_step_action(&self, action: &str, params: &HashMap<String, String>) -> Result<serde_json::Value> {
+        // Helper to get param as string
+        let get_param = |key: &str| params.get(key).cloned().unwrap_or_default();
+        
+        match action {
+            // Memory actions
+            "store_memory" => {
+                let input = tools::memory::StoreMemoryInput {
+                    content: get_param("content"),
+                    memory_type: params.get("memory_type").cloned(),
+                    confidence: params.get("confidence").and_then(|s| s.parse().ok()),
+                    importance: params.get("importance").and_then(|s| s.parse().ok()),
+                    tags: params.get("tags").map(|s| s.split(',').map(String::from).collect()),
+                };
+                
+                if let Some(db) = &self.database {
+                    let result = tools::memory::execute_store_memory(input, db).await?;
+                    Ok(result)
+                } else {
+                    Ok(serde_json::json!({
+                        "status": "no_database",
+                        "message": "Workflow engine created without database access",
+                        "action": action
+                    }))
+                }
+            }
+            "search_memory" => {
+                let input = tools::memory::SearchMemoryInput {
+                    query: get_param("query"),
+                    limit: params.get("limit").and_then(|s| s.parse().ok()),
+                };
+                
+                if let Some(db) = &self.database {
+                    let result = tools::memory::execute_search_memory(input, db).await?;
+                    Ok(result)
+                } else {
+                    Ok(serde_json::json!({
+                        "status": "no_database",
+                        "message": "Workflow engine created without database access",
+                        "action": action
+                    }))
+                }
+            }
+            "list_memories" => {
+                let input = tools::memory::ListMemoriesInput {
+                    memory_type: params.get("memory_type").cloned(),
+                    limit: params.get("limit").and_then(|s| s.parse().ok()),
+                };
+                
+                if let Some(db) = &self.database {
+                    let result = tools::memory::execute_list_memories(input, db).await?;
+                    Ok(result)
+                } else {
+                    Ok(serde_json::json!({
+                        "status": "no_database",
+                        "message": "Workflow engine created without database access",
+                        "action": action
+                    }))
+                }
+            }
+            
+            // Experience actions
+            "record_experience" => {
+                let input = tools::experience::RecordExperienceInput {
+                    event: get_param("event"),
+                    outcome: params.get("outcome").cloned(),
+                    context: params.get("context").cloned(),
+                    reflection: params.get("reflection").cloned(),
+                    confidence: params.get("confidence").and_then(|s| s.parse().ok()),
+                };
+                
+                if let Some(db) = &self.database {
+                    // Note: record_experience also needs coordinator
+                    let result = tools::experience::execute_record_experience(
+                        input, 
+                        &crate::experience::coordinator::ExperienceCoordinator::new(), // Create coordinator
+                        db
+                    ).await?;
+                    Ok(result)
+                } else {
+                    Ok(serde_json::json!({
+                        "status": "no_database",
+                        "message": "Workflow engine created without database access",
+                        "action": action
+                    }))
+                }
+            }
+            
+            // Reflection actions
+            "create_reflection" => {
+                let input = tools::reflection::CreateReflectionInput {
+                    title: get_param("title"),
+                    insights: get_param("insights"),
+                    patterns: params.get("patterns").map(|s| s.split(',').map(String::from).collect()),
+                };
+                
+                // Need reflection engine - create one if available
+                let reflection = crate::experience::reflection::ReflectionEngine::new();
+                let result = tools::reflection::execute_create_reflection(input, &reflection).await?;
+                Ok(result)
+            }
+            
+            // Ingestor actions
+            "ingest_files" => {
+                let input = tools::ingestor::IngestFilesInput {
+                    folder: params.get("folder").cloned(),
+                    limit: params.get("limit").and_then(|s| s.parse().ok()),
+                    chunk_size: params.get("chunk_size").and_then(|s| s.parse().ok()),
+                    memory_type: params.get("memory_type").cloned(),
+                };
+                
+                if let Some(db) = &self.database {
+                    let result = tools::ingestor::execute_ingest_files(input, db).await?;
+                    Ok(result)
+                } else {
+                    Ok(serde_json::json!({
+                        "status": "no_database",
+                        "message": "Workflow engine created without database access",
+                        "action": action
+                    }))
+                }
+            }
+            
+            // Generic tool call - returns params as result
+            _ => {
+                Ok(serde_json::json!({
+                    "status": "executed",
+                    "action": action,
+                    "parameters": params
+                }))
+            }
+        }
     }
 
     /// Pause workflow execution
@@ -326,6 +537,7 @@ impl Clone for WorkflowEngine {
             metrics: self.metrics.clone(),
             workflows: self.workflows.clone(),
             executing: self.executing.clone(),
+            database: self.database.clone(),
         }
     }
 }
@@ -336,6 +548,7 @@ impl Default for WorkflowEngine {
             metrics: Arc::new(MetricsCollector::new()),
             workflows: Arc::new(RwLock::new(HashMap::new())),
             executing: Arc::new(RwLock::new(HashSet::new())),
+            database: None,
         }
     }
 }

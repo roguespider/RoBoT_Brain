@@ -18,9 +18,13 @@ impl ReputationAnalytics {
             return 0.0;
         }
 
-        let first = reputation.history.first().unwrap().impact;
+        let first = reputation.history.first()
+            .map(|h| h.impact)
+            .unwrap_or(0.0);
 
-        let last = reputation.history.last().unwrap().impact;
+        let last = reputation.history.last()
+            .map(|h| h.impact)
+            .unwrap_or(0.0);
 
         last - first
     }

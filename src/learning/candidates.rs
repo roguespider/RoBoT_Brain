@@ -145,9 +145,9 @@ impl CandidateGenerator {
         let candidates = self.candidates.read().await;
         let mut sorted: Vec<_> = candidates.clone();
         sorted.sort_by(|a, b| {
-            b.score.calculate_weighted()
-                .partial_cmp(&a.score.calculate_weighted())
-                .unwrap()
+            let wa = a.score.calculate_weighted();
+            let wb = b.score.calculate_weighted();
+            wb.partial_cmp(&wa).unwrap_or(std::cmp::Ordering::Equal)
         });
         sorted.truncate(limit);
         sorted

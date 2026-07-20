@@ -219,7 +219,10 @@ impl HypothesisManager {
             .cloned()
             .collect();
         
-        result.sort_by(|a, b| b.confidence.partial_cmp(&a.confidence).unwrap());
+        result.sort_by(|a, b| {
+            b.confidence.partial_cmp(&a.confidence)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         result
     }
 

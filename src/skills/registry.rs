@@ -210,7 +210,10 @@ impl SkillRegistry {
             .filter(|s| s.usage_count >= min_uses)
             .cloned()
             .collect();
-        result.sort_by(|a, b| b.success_rate().partial_cmp(&a.success_rate()).unwrap());
+        result.sort_by(|a, b| {
+            b.success_rate().partial_cmp(&a.success_rate())
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         result
     }
 

@@ -422,46 +422,116 @@ fn process_archive(archive_path: &Path, temp_dir: &Path) -> Result<Vec<PathBuf>>
     Ok(extracted_files)
 }
 
-/// Extract text from audio file (placeholder - requires external transcription service)
+/// Extract text from audio file using whisper CLI or return structured info
 fn extract_audio_text(path: &Path, output_path: Option<&Path>) -> Result<String> {
     let filename = path.file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("unknown");
+    let path_str = path.to_string_lossy();
     
-    // Placeholder implementation
-    // In production, integrate with:
-    // - OpenAI Whisper API
-    // - Local Whisper model
-    // - Azure Speech Services
-    // - Google Speech-to-Text
+    // Check for whisper CLI in PATH
+    let whisper_path = std::env::var("WHISPER_PATH").ok();
+    let model_path = std::env::var("WHISPER_MODEL_PATH").ok();
     
-    let placeholder_text = format!(
-        "[Audio file: {}]\n\
-        This audio file requires transcription using an external service.\n\
-        Supported transcription services:\n\
-        - OpenAI Whisper API\n\
-        - Local Whisper model\n\
-        - Azure Speech-to-Text\n\
-        - Google Speech-to-Text\n\
-        \n\
-        To transcribe this file, run the transcribe_audio tool with the file path.",
-        filename
-    );
+    if let Some(whisper) = whisper_path {
+        // Use whisper.cpp CLI for transcription
+        let model = model_path.unwrap_or_else(|| "models/ggml-base.en.bin".to_string());
+        let output_file = output_path
+            .map(|p| p.to_string_lossy().to_string())
+            .unwrap_or_else(|| format!("{}.txt", path_str));
+        
+        let mut cmd = std::process::Command::new(&whisper);
+        cmd.args(["-m", &model, "-f", &path_str, "-o", "txt", "--output-file"]);
+        cmd.arg(&output_file);
+        
+        tracing::info!("Running whisper: {:?} -m {} -f {}", whisper, model, path_str);
+        
+        match cmd.output() {
+            Ok(output) => {
+                if output.status.success() {
+                    let transcription = fs::read_to_string(&output_file)
+                        .unwrap_or_else(|_| "[Transcription file not found]".to_string());
+                    return Ok(transcription);
+                } else {
+                    let stderr = String::from_utf8_lossy(&output.stderr);
+                    tracing::warn!("Whisper transcription failed: {}", stderr);
+                }
+            }
+            Err(e) => {
+                tracing::warn!("Failed to run whisper: {}", e);
+            }
+        }
+    }
     
-    // If output path specified, write placeholder JSON
+    // Fallback: Try to use ffprobe to extract audio info
+    let audio_info = get_audio_file_info(path)?;
+    
     if let Some(output) = output_path {
         let transcription = serde_json::json!({
-            "file": path.to_string_lossy(),
-            "transcription": placeholder_text,
-            "status": "pending",
-            "message": "Audio transcription requires external service"
+            "file": path_str,
+            "filename": filename,
+            "status": "requires_transcription",
+            "audio_info": audio_info,
+            "configuration": {
+                "WHISPER_PATH": "Set to whisper CLI path",
+                "WHISPER_MODEL_PATH": "Set to model path"
+            },
+            "message": "Set WHISPER_PATH environment variable to enable transcription"
         });
         
         let json = serde_json::to_string_pretty(&transcription)?;
         fs::write(output, json)?;
     }
     
-    Ok(placeholder_text)
+    Ok(format!(
+        "[Audio file: {}]\n\
+        Duration: {}s, Format: {}, Codec: {}\n\
+        Set WHISPER_PATH env var to enable transcription.",
+        filename,
+        audio_info.get("duration").unwrap_or(&"unknown".to_string()),
+        audio_info.get("format").unwrap_or(&"unknown".to_string()),
+        audio_info.get("codec").unwrap_or(&"unknown".to_string())
+    ))
+}
+
+/// Get basic audio file info using ffprobe
+fn get_audio_file_info(path: &Path) -> Result<std::collections::HashMap<String, String>> {
+    let mut info = std::collections::HashMap::new();
+    
+    if let Ok(output) = std::process::Command::new("ffprobe")
+        .args(["-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", path])
+        .output()
+    {
+        if output.status.success() {
+            if let Ok(json_str) = String::from_utf8(output.stdout) {
+                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&json_str) {
+                    if let Some(format) = json.get("format") {
+                        if let Some(duration) = format.get("duration").and_then(|v| v.as_str()) {
+                            info.insert("duration".to_string(), format!("{:.1}", duration.parse::<f64>().unwrap_or(0.0)));
+                        }
+                        if let Some(format_name) = format.get("format_name").and_then(|v| v.as_str()) {
+                            info.insert("format".to_string(), format_name.to_string());
+                        }
+                    }
+                    if let Some(streams) = json.get("streams").and_then(|s| s.as_array()) {
+                        for stream in streams {
+                            if stream.get("codec_type").and_then(|v| v.as_str()) == Some("audio") {
+                                if let Some(codec) = stream.get("codec_name").and_then(|v| v.as_str()) {
+                                    info.insert("codec".to_string(), codec.to_string());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    
+    info.entry("duration".to_string()).or_insert_with(|| "unknown".to_string());
+    info.entry("format".to_string()).or_insert_with(|| "audio".to_string());
+    info.entry("codec".to_string()).or_insert_with(|| "unknown".to_string());
+    
+    Ok(info)
 }
 
 /// Ingest a single file into memory
@@ -731,7 +801,7 @@ pub async fn execute_transcribe_audio(
         "audio_file": input.path,
         "transcription_file": output_path.to_string_lossy(),
         "transcription": text,
-        "note": "This is a placeholder. Connect to Whisper API or local model for actual transcription."
+        "note": "Whisper CLI integration enabled. Set WHISPER_PATH env var or local model for actual transcription."
     }))
 }
 

@@ -344,7 +344,10 @@ impl WorkingMemory {
             .cloned()
             .collect();
         
-        result.sort_by(|a, b| b.importance.partial_cmp(&a.importance).unwrap());
+        result.sort_by(|a, b| {
+            b.importance.partial_cmp(&a.importance)
+                .unwrap_or(std::cmp::Ordering::Equal)
+        });
         result
     }
     
@@ -440,7 +443,10 @@ impl WorkingMemory {
     async fn evict_low_importance(&self, items: &mut HashMap<String, WorkingMemoryItem>) {
         let keys_to_remove: Vec<String> = {
             let mut sorted: Vec<_> = items.iter().collect();
-            sorted.sort_by(|a, b| a.1.importance.partial_cmp(&b.1.importance).unwrap());
+            sorted.sort_by(|a, b| {
+                a.1.importance.partial_cmp(&b.1.importance)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
             
             // Remove bottom 10%
             let to_remove = (items.len() / 10).max(1);

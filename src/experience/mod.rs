@@ -11,7 +11,6 @@ pub mod evolution;
 pub mod exploration;
 pub mod hypothesis;
 
-pub mod knowledge;
 
 pub mod metrics;
 pub mod observer;
