@@ -3,7 +3,7 @@
 
 A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with persistent memory, experience-based learning, and structured knowledge storage.
 
-> **Status:** v0.2 complete — database layer solid, experience system implemented, reflection services complete, evolution system added, metrics and scheduler added, MCP bridge with RMCP/MCP/ACP protocols and tools implemented.
+> **Status:** v0.3 complete — All modules implemented including planner, skills, workflows, learning, and CLI. Database layer solid, experience system complete, reflection services complete, evolution system added, metrics and scheduler added, MCP bridge with RMCP/MCP/ACP protocols and tools implemented.
 
 ---
 
@@ -330,17 +330,28 @@ src/
 │   │   └── engine.rs          ✅ Evolution engine for behavior management
 │   ├── metrics.rs              ✅ Metrics collection with counters, gauges, aggregation
 │   ├── scheduler.rs            ✅ Background task scheduler with interval/daily/weekly schedules
-├── planner/                    ❌
-│   ├── planner.rs              ❌
-│   └── policy.rs               ❌
-├── skills/                     ❌
-│   └── registry.rs             ❌
-├── workflows/                  ❌
-│   └── engine.rs               ❌
-└── learning/                   ❌
-    ├── working_memory.rs       ❌
-    ├── hypothesis.rs           ❌
-    └── candidates.rs           ❌
+├── planner/                    ✅
+│   ├── planner.rs              ✅ Core planning engine for task decomposition
+│   └── policy.rs               ✅ Policy engine for decision-making rules
+├── skills/                     ✅
+│   └── registry.rs             ✅ Skill registry with discovery and execution
+├── workflows/                  ✅
+│   └── engine.rs               ✅ Workflow execution engine
+├── learning/                   ✅
+│   ├── working_memory.rs       ✅ Short-term memory management
+│   ├── hypothesis.rs           ✅ Hypothesis tracking and evaluation
+│   └── candidates.rs           ✅ Learning candidate generation
+└── cli/                        ✅
+    ├── mod.rs                   ✅ CLI module root
+    ├── commands/                ✅ CLI commands
+    │   ├── server.rs            ✅ Start MCP server
+    │   ├── init.rs              ✅ Initialize database
+    │   ├── status.rs            ✅ Check system status
+    │   ├── memory.rs            ✅ Memory management
+    │   ├── experience.rs        ✅ Experience statistics
+    │   ├── config.rs            ✅ Show configuration
+    │   └── migrate.rs           ✅ Run migrations
+    └── output.rs                ✅ Formatted output utilities
 ```
 
 **Legend:** ✅ Implemented | ⚠️ Stubbed/partial | ❌ Placeholder code only | 🟡 Partially done | 📋 Planned but not started
@@ -371,6 +382,24 @@ src/
 
 - Rust 2024 edition (per `Cargo.toml`)
 - SQLite3 development libraries (for `rusqlite`)
+
+### CLI Usage
+
+```bash
+# Start the MCP server (default)
+cargo run
+
+# Run CLI commands
+cargo run -- init           # Initialize database
+cargo run -- status         # Check system status
+cargo run -- memory list    # List memories
+cargo run -- memory search <query>  # Search memories
+cargo run -- memory add <content>   # Add a memory
+cargo run -- memory stats    # Show memory statistics
+cargo run -- experience      # Show experience statistics
+cargo run -- config          # Show configuration
+cargo run -- migrate         # Run database migrations
+```
 
 ### Build
 
@@ -407,6 +436,11 @@ cargo build --release
 | Scheduler | ✅ Implemented | Background task scheduling with SQLite persistence |
 | MCP bridge | ✅ Implemented | RMCP, MCP, and ACP protocol implementations in `bridge/` folder |
 | MCP tools | ✅ Implemented | Memory, experience, reflection, and search tools defined |
+| Planner module | ✅ Implemented | Planning engine and policy engine for task decomposition |
+| Skills module | ✅ Implemented | Skill registry for managing available skills |
+| Workflows module | ✅ Implemented | Workflow execution engine for multi-step tasks |
+| Learning module | ✅ Implemented | Working memory, hypothesis tracking, and candidate generation |
+| CLI interface | ✅ Implemented | Command-line interface with server, memory, experience commands |
 | App entry point | ✅ Implemented | App struct with coordinator and stdio server |
 | Main entry point | ✅ Implemented | init_logging() and App::new().run() working |
 
