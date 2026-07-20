@@ -3,7 +3,7 @@
 
 A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with persistent memory, experience-based learning, and structured knowledge storage.
 
-> **Status:** v0.2 in progress — database layer is solid, experience system is largely implemented, reflection services complete, MCP bridge with RMCP/MCP/ACP protocols added. Foundation is stabilizing.
+> **Status:** v0.2 complete — database layer solid, experience system implemented, reflection services complete, evolution system added, metrics and scheduler added, MCP bridge with RMCP/MCP/ACP protocols and tools implemented.
 
 ---
 
@@ -320,12 +320,13 @@ src/
 │   │       ├── generator.rs   ✅ ReflectionGenerator for creating reflections
 │   │       ├── repository.rs  ✅ Thread-safe in-memory reflection repository
 │   │       └── validator.rs   ✅ ReflectionValidator for quality checks
-│   ├── evolution.rs            ❌
-│   ├── metrics.rs              ❌
-│   └── scheduler.rs            ❌
-│   │   ├── evolution.rs        ❌
-│   │   ├── evidence.rs         ❌        
-│   │   └── metrics.rs          ❌
+│   ├── evolution/              ✅
+│   │   ├── mod.rs             ✅ Evolution module root
+│   │   ├── behavior.rs        ✅ Behavior struct and lifecycle management
+│   │   ├── evidence.rs        ✅ Evolution evidence types
+│   │   └── engine.rs          ✅ Evolution engine for behavior management
+│   ├── metrics.rs              ✅ Metrics collection with counters, gauges, aggregation
+│   ├── scheduler.rs            ✅ Background task scheduler with interval/daily/weekly schedules
 ├── planner/                    ❌
 │   ├── planner.rs              ❌
 │   └── policy.rs               ❌
@@ -386,7 +387,7 @@ cargo build --features rusqlite/bundled
 | Experience types/events | ✅ Complete | Full type system for experiences, scores, reputation, event payloads |
 | Observer pattern | ✅ Implemented | Trait defined with priority and filter hooks |
 | Job queue + worker | ✅ Implemented | In-memory queue with async worker (mpsc channel) |
-| Event bus | ⚠️ Partial | Basic structure exists, needs full channel integration |
+| Event bus | ✅ Implemented | Full pub/sub with broadcast channel, subscriber tracking |
 | Experience coordinator | ✅ Implemented | Pipeline logic with all sub-modules wired up |
 | Experience recorder | ✅ Implemented | Record/success/failure methods working with database |
 | Experience repository | ✅ Implemented | Full CRUD for encounters and experiences |
@@ -394,7 +395,11 @@ cargo build --features rusqlite/bundled
 | Hypothesis system | ✅ Implemented | Core hypothesis with evidence, evaluation, lifecycle, and services |
 | Exploration system | ✅ Implemented | Exploration tracking with repository |
 | Reputation system | ✅ Implemented | Full reputation tracking with decay and analytics |
+| Evolution system | ✅ Implemented | Behavior creation from insights, tracking, promotion/deprecation |
+| Metrics collection | ✅ Implemented | Counters, gauges, time series with aggregation |
+| Scheduler | ✅ Implemented | Background task scheduling with interval/daily/weekly support |
 | MCP bridge | ✅ Implemented | RMCP, MCP, and ACP protocol implementations |
+| MCP tools | ✅ Implemented | Memory, experience, reflection, and search tools defined |
 | App entry point | ✅ Implemented | App struct with coordinator and stdio server |
 | Main entry point | ✅ Implemented | init_logging() and App::new().run() working |
 
@@ -402,20 +407,19 @@ cargo build --features rusqlite/bundled
 
 ## Immediate Next Steps
 
-1. **Implement MCP tools** — Register actual tools for Zed Editor to call
-2. **Wire event bus fully** — Connect bus to observer queue via channels
-3. **Implement evolution engine** — Transform insights into behavioral changes
-4. **Add metrics collection** — Track performance and learning metrics
-5. **Implement scheduler** — Background job scheduling for learning tasks
+1. **Wire MCP tools to handlers** — Connect tool definitions to actual functionality
+2. **Implement tool execution** — Make tools actually perform their operations
+3. **Add SQLite persistence for scheduler** — Persist scheduled tasks across restarts
+4. **Implement knowledge graph** — Broader knowledge representation system
+5. **Add LLM integration** — Enable actual reflection generation
 
 ---
 
 ## Known Issues
 
-- **Event bus is minimal** — Basic publish/subscribe exists but full channel integration pending
 - **Queue is in-memory only** — No SQLite persistence for jobs yet
-- **Evolution system is stub** — Insight-to-behavior transformation not yet implemented
-- **MCP tools not exposed** — Server runs but specific tools for Zed need implementation
+- **MCP tools need wiring** — Tool definitions exist but handlers are stubs
+- **Knowledge graph is placeholder** — Broader knowledge representation needed
 
 ## ⚖️ License & Fair-Pay Rule
 

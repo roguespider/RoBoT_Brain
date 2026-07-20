@@ -3,3 +3,4 @@
 pub mod mcp;
 pub mod rmcp;
 pub mod acp;
+pub mod tools;
