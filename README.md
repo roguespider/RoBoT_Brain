@@ -1,5 +1,5 @@
 ================================================================================
-# RoBoT MCP
+# RoBoT_Brain
 
 A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with persistent memory, experience-based learning, and structured knowledge storage.
 
@@ -374,29 +374,43 @@ Upgrades to add
 
 focus on making the architecture itself smarter. Several ideas fit your design without turning it into a monolith.
 
-1. Memory Promotion Pipeline (Highest Priority)
+1. Memory Promotion Pipeline (Highest Priority) ✅ **IMPLEMENTED**
 
-Right now the architecture has:
+Working memory now uses a state machine with explicit promotion policies:
 
-Working Memory
-        ↓
-Experience
-        ↓
-Knowledge
+**States:**
+- `Active` - Newly added, actively in use
+- `Dormant` - No longer accessed, pending evaluation
+- `Expired` - TTL expired, awaiting promotion decision
+- `Repeated` - Same information seen multiple times
+- `Confirmed` - Information confirmed by multiple sources
+- `Contradicted` - Contradicted by conflicting information
+- `Promoted` - Promoted to long-term memory
+- `Rejected` - Rejected and marked for deletion
 
-I'd add explicit promotion policies:
+**State Transitions:**
+```
+Active ──(timeout)──> Dormant ──(timeout)──> Expired
+    │                                        │
+    ├──(observe)──> Repeated ──(confirm)──> Confirmed
+    │                    │                    │
+    │                    └──(contradict)──> Contradicted
+    │                                        │
+    └──(promote/reject)──> [Promoted/Rejected]
+```
 
-Working Memory
-        │
-        ├── expired
-        ├── repeated
-        ├── confirmed
-        ├── contradicted
-        └── promoted
+**Features:**
+- Importance-based eviction when at capacity
+- TTL support for automatic expiration
+- Access tracking with repeated count
+- Confirmation/contradiction tracking
+- Transition history for auditing
+- Configurable promotion policies
 
-Each memory becomes a state machine instead of simply existing.
-
-That makes confidence much more meaningful.
+**Files Added:**
+- `src/learning/memory_state.rs` - State machine definitions
+- `src/learning/promotion.rs` - Promotion policy engine
+- Enhanced `src/learning/working_memory.rs` - Full state machine integration
 
 2. Memory Lineage
 

@@ -7,6 +7,16 @@ pub mod working_memory;
 pub mod hypothesis;
 pub mod candidates;
 
-pub use working_memory::WorkingMemory;
+pub use working_memory::{
+    WorkingMemory, 
+    WorkingMemoryItem, 
+    MemoryItemType, 
+    MemoryStats,
+    MemoryState,
+    StateTransition,
+    StateTransitionRecord,
+    PromotionPolicy,
+    PromotionEvaluation,
+};
 pub use hypothesis::{Hypothesis, HypothesisEvidence, HypothesisStatus};
 pub use candidates::{Candidate, CandidateGenerator, CandidateScore};
