@@ -258,7 +258,7 @@ impl WorkflowEngine {
             tracing::info!("Executing workflow {} step: {} (action: {})", workflow_id, step.name, step.action);
 
             // Replace variables in parameters
-            let params = self::replace_variables(&step.parameters, &variables, &step_results);
+            let params = Self::replace_variables(&step.parameters, &variables, &step_results);
 
             // Execute the step action
             let result = self.execute_step_action(&step.action, &params).await;
@@ -324,7 +324,7 @@ impl WorkflowEngine {
         step_results: &HashMap<String, serde_json::Value>,
     ) -> HashMap<String, String> {
         let mut resolved = params.clone();
-        for (key, value) in resolved.iter_mut() {
+        for (_key, value) in resolved.iter_mut() {
             // Replace workflow variables ${var_name}
             for (var_name, var_value) in workflow_vars {
                 let placeholder = format!("${{{}}}", var_name);
@@ -353,7 +353,7 @@ impl WorkflowEngine {
             "store_memory" => {
                 let input = tools::memory::StoreMemoryInput {
                     content: get_param("content"),
-                    memory_type: params.get("memory_type").cloned(),
+                    memory_type: params.get("memory_type").cloned().unwrap_or_else(|| "note".to_string()),
                     confidence: params.get("confidence").and_then(|s| s.parse().ok()),
                     importance: params.get("importance").and_then(|s| s.parse().ok()),
                     tags: params.get("tags").map(|s| s.split(',').map(String::from).collect()),
@@ -407,19 +407,23 @@ impl WorkflowEngine {
             
             // Experience actions
             "record_experience" => {
+                let context_value = params.get("context")
+                    .and_then(|s| serde_json::from_str::<serde_json::Value>(s).ok());
+                
                 let input = tools::experience::RecordExperienceInput {
-                    event: get_param("event"),
-                    outcome: params.get("outcome").cloned(),
-                    context: params.get("context").cloned(),
-                    reflection: params.get("reflection").cloned(),
-                    confidence: params.get("confidence").and_then(|s| s.parse().ok()),
+                    title: get_param("title"),
+                    description: get_param("description"),
+                    experience_type: params.get("experience_type").cloned().unwrap_or_else(|| "general".to_string()),
+                    outcome: params.get("outcome").cloned().unwrap_or_else(|| "success".to_string()),
+                    context: context_value,
                 };
                 
                 if let Some(db) = &self.database {
-                    // Note: record_experience also needs coordinator
+                    let scorer = crate::experience::scorer::ExperienceScorer::new();
+                    let coordinator = Arc::new(crate::experience::coordinator::ExperienceCoordinator::new(scorer));
                     let result = tools::experience::execute_record_experience(
                         input, 
-                        &crate::experience::coordinator::ExperienceCoordinator::new(), // Create coordinator
+                        &coordinator,
                         db
                     ).await?;
                     Ok(result)
@@ -436,12 +440,13 @@ impl WorkflowEngine {
             "create_reflection" => {
                 let input = tools::reflection::CreateReflectionInput {
                     title: get_param("title"),
-                    insights: get_param("insights"),
-                    patterns: params.get("patterns").map(|s| s.split(',').map(String::from).collect()),
+                    description: get_param("description"),
+                    reflection_type: params.get("reflection_type").cloned().unwrap_or_else(|| "general".to_string()),
+                    experience_ids: params.get("experience_ids").map(|s| s.split(',').map(String::from).collect()).unwrap_or_default(),
                 };
                 
                 // Need reflection engine - create one if available
-                let reflection = crate::experience::reflection::ReflectionEngine::new();
+                let reflection = Arc::new(crate::experience::reflection::ReflectionEngine::new());
                 let result = tools::reflection::execute_create_reflection(input, &reflection).await?;
                 Ok(result)
             }

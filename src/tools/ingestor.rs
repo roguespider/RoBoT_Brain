@@ -499,7 +499,8 @@ fn get_audio_file_info(path: &Path) -> Result<std::collections::HashMap<String, 
     let mut info = std::collections::HashMap::new();
     
     if let Ok(output) = std::process::Command::new("ffprobe")
-        .args(["-v", "quiet", "-print_format", "json", "-show_format", "-show_streams", path])
+        .args(["-v", "quiet", "-print_format", "json", "-show_format", "-show_streams"])
+        .arg(path.to_string_lossy().as_ref())
         .output()
     {
         if output.status.success() {

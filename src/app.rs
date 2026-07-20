@@ -52,9 +52,11 @@ pub struct App {
     mcp_context: Arc<McpContext>,
 
     /// Working memory for short-term memory items.
+    #[allow(dead_code)]
     working_memory: Arc<WorkingMemory>,
 
     /// Lineage tracker for memory relationships.
+    #[allow(dead_code)]
     lineage_tracker: Arc<LineageTracker>,
 }
 
@@ -76,7 +78,7 @@ impl App {
         let evolution_engine = Arc::new(EvolutionEngine::new());
         
         // Create working memory and lineage tracker
-        let working_memory = Arc::new(WorkingMemory::new());
+        let working_memory = Arc::new(WorkingMemory::new(1000));
         let lineage_tracker = Arc::new(LineageTracker::new());
         
         // Create scheduler with background tasks

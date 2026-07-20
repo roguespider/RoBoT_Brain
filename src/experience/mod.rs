@@ -5,6 +5,7 @@ pub mod bus;
 pub mod coordinator;
 pub mod encounter_recorder;
 
+pub mod compression;
 pub mod events;
 
 pub mod evolution;

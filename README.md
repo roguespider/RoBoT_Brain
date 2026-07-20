@@ -3,7 +3,7 @@
 
 A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with persistent memory, experience-based learning, and structured knowledge storage.
 
-> **Status:** v0.4 complete — All modules fully implemented including hypothesis graph, simulation, planner, planner module, skills, workflows, learning, and CLI. Database layer solid, experience system complete, reflection services complete, evolution system added, metrics and scheduler added, MCP bridge with RMCP/MCP/ACP protocols and tools implemented.
+> **Status:** v0.5 complete — All modules fully implemented including hypothesis graph, simulation, planner, planner module, skills, workflows, learning, CLI, and Experience Compression. Database layer solid, experience system complete, reflection services complete, evolution system added, metrics and scheduler added, MCP bridge with RMCP/MCP/ACP protocols and tools implemented.
 
 ---
 
@@ -78,6 +78,109 @@ A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with p
 | **Flat Memory** (Raw Chunks) | Original document chunks in SQLite. Only high-scoring chunks receive embeddings | Variable | ⏳ Deferred |
 | **Graph Memory** | Stores relationships/facts only, never prose. Extracted async in background | Variable | ✅ Implemented (schema + tables) |
 | **Long-term Memory** | Promoted memories with full lineage tracking | Persistent | ✅ Implemented (lineage) |
+
+### Experience Compression
+
+The Experience Compression system reduces memory overhead by detecting patterns across similar experiences and compressing them into efficient representations.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                    Experience Compression                    │
+├─────────────────────────────────────────────────────────────┤
+│                                                             │
+│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐   │
+│   │ Experience 1│    │ Experience 2│    │ Experience 3│   │
+│   └──────┬──────┘    └──────┬──────┘    └──────┬──────┘   │
+│          │                   │                   │          │
+│          └───────────────────┼───────────────────┘          │
+│                              │                              │
+│                    ┌─────────▼─────────┐                    │
+│                    │ Pattern Detector  │                    │
+│                    │  - Common tags   │                    │
+│                    │  - Keywords      │                    │
+│                    │  - Success rate  │                    │
+│                    └─────────┬─────────┘                    │
+│                              │                              │
+│          ┌───────────────────┼───────────────────┐         │
+│          │                   │                   │         │
+│   ┌──────▼──────┐    ┌───────▼───────┐   ┌──────▼──────┐  │
+│   │   Pattern   │    │  Compressed   │   │  Exception  │  │
+│   │ (common     │    │  Experience   │   │  Tracker    │  │
+│   │  elements)  │    │ (aggregated   │   │  (deviations│  │
+│   └─────────────┘    │  confidence)  │   └─────────────┘  │
+│                      └───────────────┘                     │
+└─────────────────────────────────────────────────────────────┘
+```
+
+#### Components
+
+| Component | File | Description |
+|-----------|------|-------------|
+| `ExperienceCompressor` | `compression/compressor.rs` | Main compressor for reducing similar experiences |
+| `PatternDetector` | `compression/pattern.rs` | Finds common elements across experiences |
+| `ExceptionTracker` | `compression/exceptions.rs` | Tracks deviations from patterns |
+
+#### Compression Algorithm
+
+1. **Collection**: Gather 3+ similar experiences
+2. **Pattern Detection**: Extract common tags, keywords, and actions
+3. **Confidence Calculation**: Aggregate confidence statistics (mean ± std)
+4. **Exception Detection**: Identify experiences that deviate from the pattern
+5. **Result**: Return `CompressionResult` with pattern, aggregated stats, and exceptions
+
+#### Usage Example
+
+```rust
+use crate::experience::compression::{ExperienceCompressor, PatternDetector};
+
+// Create compressor with custom settings
+let compressor = ExperienceCompressor::with_config(
+    min_experiences: 3,
+    similarity_threshold: 0.7
+);
+
+// Compress multiple experiences
+if let Some(result) = compressor.compress(&experiences) {
+    println!("Compressed {} experiences into pattern: {}", 
+             result.experience_count, 
+             result.pattern.action);
+    println!("Aggregated confidence: {:.2} ± {:.2}", 
+             result.confidence, 
+             result.confidence_range);
+}
+```
+
+#### Pattern Detection
+
+```rust
+let detector = PatternDetector::new();
+if let Some(pattern) = detector.detect_pattern(&experiences) {
+    // Access common elements
+    println!("Action: {}", pattern.action);
+    println!("Tags: {:?}", pattern.common_tags);
+    println!("Keywords: {:?}", pattern.keywords);
+    println!("Success rate: {:.1}%", pattern.success_rate * 100.0);
+}
+```
+
+#### Exception Tracking
+
+```rust
+let mut tracker = ExceptionTracker::new();
+
+// Add exceptions when experiences deviate from patterns
+let exception = Exception::new(
+    experience_id,
+    pattern_id,
+    0.5, // deviation score
+    "Unexpected outcome".to_string()
+);
+tracker.add_exception(exception);
+
+// Query exceptions
+let significant = tracker.get_significant(0.3);
+let by_type = tracker.get_by_type(DeviationType::DifferentOutcome);
+```
 
 ### Data Flow
 
@@ -344,6 +447,11 @@ src/
 │   │   ├── behavior.rs         ✅ Behavior struct and lifecycle management
 │   │   ├── evidence.rs         ✅ Evolution evidence types
 │   │   └── engine.rs           ✅ Evolution engine for behavior management
+│   ├── compression/            ✅ Experience pattern compression
+│   │   ├── mod.rs              ✅ Compression module root
+│   │   ├── compressor.rs       ✅ Core compression algorithm
+│   │   ├── pattern.rs         ✅ Pattern detection
+│   │   └── exceptions.rs       ✅ Exception tracking
 │   ├── metrics.rs              ✅ Metrics collection with counters, gauges, aggregation
 │   ├── scheduler.rs            ✅ Background task scheduler with interval/daily/weekly schedules
 ├── planner/                    ✅
@@ -935,6 +1043,7 @@ cargo build --release
 | Skills module | ✅ Implemented | Skill registry for managing available skills |
 | Workflows module | ✅ Implemented | Workflow execution engine for multi-step tasks |
 | Learning module | ✅ Implemented | Working memory, hypothesis tracking, and candidate generation |
+| Experience Compression | ✅ Implemented | Pattern detection, exception tracking, and compression algorithms |
 | CLI interface | ✅ Implemented | Command-line interface with server, memory, experience commands |
 | App entry point | ✅ Implemented | App struct with coordinator and stdio server |
 | Main entry point | ✅ Implemented | init_logging() and App::new().run() working |

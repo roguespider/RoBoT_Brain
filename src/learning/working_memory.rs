@@ -66,11 +66,11 @@ impl WorkingMemoryItem {
     
     /// Attempt a state transition
     pub fn transition(&mut self, transition: StateTransition, reason: Option<String>) -> bool {
-        if !self.state.can_transition(transition) {
+        if !self.state.can_transition(&transition) {
             return false;
         }
         
-        if let Some(new_state) = self.state.transition_to(transition) {
+        if let Some(new_state) = self.state.transition_to(&transition) {
             let record = StateTransitionRecord::new(
                 self.state,
                 new_state,
@@ -128,14 +128,7 @@ impl WorkingMemoryItem {
     
     /// Check if item should be promoted based on policy
     pub fn should_promote(&self, policy: &PromotionPolicy) -> bool {
-        let eval = policy.evaluate(
-            self.state,
-            self.importance,
-            self.access_count,
-            self.repeated_count,
-            self.confirmation_count,
-            self.created_at,
-        );
+        let eval = policy.evaluate(self);
         eval.should_promote
     }
 }
@@ -189,7 +182,7 @@ impl WorkingMemory {
         // Check if key already exists - update instead of create
         {
             let items = self.items.read().await;
-            if let Some(existing) = items.get(&key_str) {
+            if items.contains_key(&key_str) {
                 drop(items);
                 return self.update(&key_str, value).await;
             }
@@ -387,8 +380,6 @@ impl WorkingMemory {
         if let Some(item) = items.get_mut(key) {
             if item.transition(StateTransition::Promote, Some("Manual promotion".to_string())) {
                 item.confidence = self.policy.calculate_confidence(
-                    item.confidence,
-                    item.state,
                     item.access_count,
                     item.confirmation_count,
                 );
@@ -476,20 +467,11 @@ impl WorkingMemory {
             }
             
             // Apply promotion policy evaluation
-            let eval = self.policy.evaluate(
-                item.state,
-                item.importance,
-                item.access_count,
-                item.repeated_count,
-                item.confirmation_count,
-                item.created_at,
-            );
+            let eval = self.policy.evaluate(item);
             
-            if let Some(transition) = eval.recommended_transition {
-                if item.transition(transition, Some(eval.reason.clone())) {
+            if eval.should_promote {
+                if item.transition(StateTransition::Promote, Some("Policy promotion".to_string())) {
                     item.confidence = self.policy.calculate_confidence(
-                        item.confidence,
-                        item.state,
                         item.access_count,
                         item.confirmation_count,
                     );
