@@ -100,6 +100,7 @@ The database (`robot_brain.db`) is created automatically on first run via `Sqlit
 | `relationships` | Graph connections between memories (source, target, type, strength) | `sqlite::initialize()` directly |
 | `events` | Event timeline (what happened, when, what it relates to) | Migration 3→4 |
 | `reputations` | Long-term reputation tracking per target | Migration 4→5 |
+| `scheduled_tasks` | Persistent background task scheduling | Migration 5→6 |
 
 > **Note:** The `relationships` table is created directly in `sqlite::initialize()` via raw SQL and has no corresponding migration. If the DB is re-created from scratch it works, but on upgrade from an old database that skipped init, it won't exist until a migration path handles it.
 
@@ -133,6 +134,7 @@ The database (`robot_brain.db`) is created automatically on first run via `Sqlit
 | 2 → 3 | Source tracking (`memory_sources` table) |
 | 3 → 4 | Event history (`events` table) |
 | 4 → 5 | Reputation tracking (`reputations` table) |
+| 5 → 6 | Scheduled tasks persistence (`scheduled_tasks` table) |
 
 ### Policy Engine Config (planned)
 
@@ -255,7 +257,8 @@ src/
 ├── database\                   ✅
 │   ├── sqlite.rs               ✅← connection + initialization
 │   ├── models.rs               ✅← database structs
-│   ├── migrations.rs           ✅← schema creation
+│   ├── migrations/             ✅← schema migrations module
+│   │   └── mod.rs             ✅← migration functions
 │   └── queries.rs              ✅← CRUD operations
 ├── experience\                 ⚠️
 │   ├── mod.rs                  ✅←                                    ├─ xp backbone
@@ -367,15 +370,19 @@ src/
 ### Prerequisites
 
 - Rust 2024 edition (per `Cargo.toml`)
-- SQLite development libraries (for `rusqlite` with `load_extension`)
+- SQLite3 development libraries (for `rusqlite`)
 
 ### Build
 
 ```bash
-cargo build --features rusqlite/bundled
+# Development build
+cargo build
+
+# Release build (recommended for production)
+cargo build --release
 ```
 
-> **Note:** Project compiles successfully. The `rusqlite/bundled` feature includes bundled SQLite for easier builds.
+> **Note:** The project uses the system SQLite3 library. The database (`robot_brain.db`) is created automatically on first run.
 
 ---
 
@@ -383,7 +390,7 @@ cargo build --features rusqlite/bundled
 
 | Area | Status | Details |
 |------|--------|---------|
-| Database layer | ✅ Functional | Schema + 5 migrations (v0→v5 via `migrations.rs`), CRUD queries all implemented |
+| Database layer | ✅ Functional | Schema + 6 migrations (v0→v6 via `migrations/` module), CRUD queries all implemented |
 | Experience types/events | ✅ Complete | Full type system for experiences, scores, reputation, event payloads |
 | Observer pattern | ✅ Implemented | Trait defined with priority and filter hooks |
 | Job queue + worker | ✅ Implemented | In-memory queue with async worker (mpsc channel) |
@@ -397,8 +404,8 @@ cargo build --features rusqlite/bundled
 | Reputation system | ✅ Implemented | Full reputation tracking with decay and analytics |
 | Evolution system | ✅ Implemented | Behavior creation from insights, tracking, promotion/deprecation |
 | Metrics collection | ✅ Implemented | Counters, gauges, time series with aggregation |
-| Scheduler | ✅ Implemented | Background task scheduling with interval/daily/weekly support |
-| MCP bridge | ✅ Implemented | RMCP, MCP, and ACP protocol implementations |
+| Scheduler | ✅ Implemented | Background task scheduling with SQLite persistence |
+| MCP bridge | ✅ Implemented | RMCP, MCP, and ACP protocol implementations in `bridge/` folder |
 | MCP tools | ✅ Implemented | Memory, experience, reflection, and search tools defined |
 | App entry point | ✅ Implemented | App struct with coordinator and stdio server |
 | Main entry point | ✅ Implemented | init_logging() and App::new().run() working |
@@ -409,16 +416,13 @@ cargo build --features rusqlite/bundled
 
 1. **Wire MCP tools to handlers** — Connect tool definitions to actual functionality
 2. **Implement tool execution** — Make tools actually perform their operations
-3. **Add SQLite persistence for scheduler** — Persist scheduled tasks across restarts
-4. **Implement knowledge graph** — Broader knowledge representation system
-5. **Add LLM integration** — Enable actual reflection generation
+3. **Implement knowledge graph** — Broader knowledge representation system
+4. **Add LLM integration** — Enable actual reflection generation
 
 ---
 
 ## Known Issues
 
-- **Queue is in-memory only** — No SQLite persistence for jobs yet
-- **MCP tools need wiring** — Tool definitions exist but handlers are stubs
 - **Knowledge graph is placeholder** — Broader knowledge representation needed
 
 ## ⚖️ License & Fair-Pay Rule
