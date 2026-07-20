@@ -9,7 +9,7 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use super::behavior::{Behavior, BehaviorAction, BehaviorPriority, BehaviorStatus};
-use super::evidence::{EvolutionEvidence, EvidenceType, EvidenceVerdict};
+use super::evidence::{EvolutionEvidence, EvidenceVerdict};
 use crate::experience::reflection::insight::Insight;
 
 /// Configuration for the evolution engine
@@ -363,7 +363,7 @@ impl EvolutionEngine {
         let mut behaviors = self.behaviors.write().await;
         
         let source = behaviors.remove(source_id);
-        if let Some(mut source) = source {
+        if let Some(source) = source {
             if let Some(target) = behaviors.get_mut(target_id) {
                 // Transfer evidence from source to target
                 if let Some(evidence) = self.evidence.read().await.get(source_id) {

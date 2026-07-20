@@ -41,8 +41,7 @@ pub mod review;
 pub mod services;
 
 // Re-export from submodules
-pub use reflection::{Reflection, Lesson, ReflectionInsight, ReflectionEvidence};
-pub use engine::{ReflectionEngine, ReflectionEngineConfig, AnalysisReport, ValidationReport, EngineStats};
+pub use reflection::Reflection;
 
 /// ============================================================================
 /// Reflection Types

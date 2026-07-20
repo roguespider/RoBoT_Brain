@@ -27,7 +27,7 @@ pub struct GetReputationInput {
 
 /// Search tool definitions
 pub mod definitions {
-    use super::*;
+    
     
     pub const GLOBAL_SEARCH: &str = "global_search";
     pub const GET_RECOMMENDATIONS: &str = "get_recommendations";

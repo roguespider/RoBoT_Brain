@@ -2,5 +2,4 @@
 pub mod exploration;
 pub mod store;
 
-pub use exploration::{Exploration, ExplorationStatus, ExplorationAttempt, ExplorationFinding, Hypothesis};
-pub use store::{ExplorationRepository, InMemoryExplorationRepository};
+pub use exploration::Exploration;

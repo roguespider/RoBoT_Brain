@@ -1,4 +1,5 @@
 // src/experience/mod.rs
+#![allow(dead_code)]
 
 pub mod bus;
 pub mod coordinator;

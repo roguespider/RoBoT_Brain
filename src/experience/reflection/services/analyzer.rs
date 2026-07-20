@@ -2,7 +2,7 @@
 // Analyzes experiences to identify patterns, themes, and insights
 
 use crate::experience::types::{Experience, ExperienceType};
-use super::super::{Reflection, ReflectionConfidence, ReflectionType};
+use super::super::Reflection;
 
 /// Analysis result containing detected patterns and themes
 #[derive(Debug, Clone)]

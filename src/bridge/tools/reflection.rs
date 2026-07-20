@@ -35,7 +35,7 @@ pub struct GetPatternsInput {
 
 /// Reflection tool definitions
 pub mod definitions {
-    use super::*;
+    
     
     pub const GET_INSIGHTS: &str = "get_insights";
     pub const CREATE_REFLECTION: &str = "create_reflection";

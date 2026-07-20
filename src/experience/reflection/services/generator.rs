@@ -1,11 +1,10 @@
 // /src/experience/reflection/services/generator.rs
 // Generates reflections from experiences
 
-use chrono::Utc;
 use uuid::Uuid;
 
 use crate::experience::types::Experience;
-use super::super::{Reflection, ReflectionConfidence, ReflectionStatus, ReflectionType};
+use super::super::{Reflection, ReflectionType};
 
 /// Generates reflections from collections of experiences
 pub struct ReflectionGenerator {
@@ -72,7 +71,7 @@ impl ReflectionGenerator {
         reflection.summary = summary;
 
         // Generate description from outcomes
-        let mut descriptions: Vec<String> = experiences.iter()
+        let descriptions: Vec<String> = experiences.iter()
             .filter_map(|e| e.outcome.message.clone())
             .collect();
         reflection.description = descriptions.join(" ");

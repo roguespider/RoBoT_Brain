@@ -36,7 +36,7 @@ pub struct ListMemoriesInput {
 
 /// Memory tool definitions
 pub mod definitions {
-    use super::*;
+    
     
     pub const STORE_MEMORY: &str = "store_memory";
     pub const SEARCH_MEMORY: &str = "search_memory";

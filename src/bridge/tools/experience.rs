@@ -35,7 +35,7 @@ pub struct GetExperienceInput {
 
 /// Experience tool definitions
 pub mod definitions {
-    use super::*;
+    
     
     pub const RECORD_EXPERIENCE: &str = "record_experience";
     pub const GET_EXPERIENCE_STATS: &str = "get_experience_stats";
