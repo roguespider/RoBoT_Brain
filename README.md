@@ -372,8 +372,6 @@ src/
 --- 
 Upgrades to add
 
-focus on making the architecture itself smarter. Several ideas fit your design without turning it into a monolith.
-
 1. Memory Promotion Pipeline (Highest Priority) ✅ **IMPLEMENTED**
 
 Working memory now uses a state machine with explicit promotion policies:
@@ -412,26 +410,37 @@ Active ──(timeout)──> Dormant ──(timeout)──> Expired
 - `src/learning/promotion.rs` - Promotion policy engine
 - Enhanced `src/learning/working_memory.rs` - Full state machine integration
 
-2. Memory Lineage
+2. Memory Lineage ✅ **IMPLEMENTED**
 
-Instead of
+Track the full history and evolution of memories - RoBoT remembers *why* it believes something.
 
-Fact
+**Core Concept:**
+Instead of replacing knowledge, RoBoT maintains the full lineage of each memory:
+- Where it came from
+- What supports it
+- What contradicts it
+- How it's been refined
 
-store
+**Features:**
+- **Evidence Tracking**: Link memories to supporting experiences/observations
+- **Observation History**: Track all observations related to a memory
+- **Refinement Chain**: Record when and why memory content changed
+- **Contradiction Resolution**: Handle conflicting information with resolution types
+- **Confirmation System**: Record external confirmations from various sources
+- **Supersession Chain**: Track when newer knowledge replaces older beliefs
+- **Confidence Calculation**: Compute confidence based on lineage factors
 
-Fact
-├── came from experience
-├── supported by 6 observations
-├── contradicted twice
-├── refined 4 times
-└── superseded by newer knowledge
+**Tables Added:**
+- `memory_lineage` - Main lineage record
+- `lineage_evidence` - Supporting evidence references
+- `lineage_observations` - Observation records
+- `lineage_refinements` - Content change history
+- `lineage_contradictions` - Contradiction challenges
+- `lineage_confirmations` - External confirmations
 
-This is very similar to how scientific knowledge evolves.
-
-Instead of replacing knowledge...
-
-...RoBoT remembers why it believes something.
+**New Files:**
+- `src/learning/lineage.rs` - Lineage tracking types and tracker
+- `src/database/migrations/007_create_lineage.sql` - Database schema
 
 3. Confidence Graph
 
