@@ -12,6 +12,7 @@ pub mod memory;
 pub mod experience;
 pub mod reflection;
 pub mod search;
+pub mod ingestor;
 
 /// Global tool registry (lazily initialized)
 static TOOL_REGISTRY: std::sync::OnceLock<Arc<RwLock<ToolRegistry>>> = std::sync::OnceLock::new();
@@ -48,12 +49,17 @@ pub fn register_tools(context: &Arc<McpContext>) {
     let tools = search::definitions::all();
     tracing::info!("Registered {} search tools", tools.len());
     
+    // Register ingestor tools
+    let tools = ingestor::definitions::all();
+    tracing::info!("Registered {} ingestor tools", tools.len());
+    
     // Collect all tools
     let all_tools = memory::definitions::all()
         .into_iter()
         .chain(experience::definitions::all())
         .chain(reflection::definitions::all())
         .chain(search::definitions::all())
+        .chain(ingestor::definitions::all())
         .collect();
     
     // Update registry
