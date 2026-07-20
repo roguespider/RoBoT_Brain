@@ -2,13 +2,14 @@
 // The main engine that transforms insights into behaviors
 
 use anyhow::Result;
+use chrono::Utc;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use super::behavior::{Behavior, BehaviorAction, BehaviorPriority, BehaviorStatus};
-use super::evidence::{EvolutionEvidence, EvidenceVerdict};
+use super::evidence::{EvolutionEvidence, EvidenceType, EvidenceVerdict};
 use crate::experience::reflection::insight::Insight;
 
 /// Configuration for the evolution engine
@@ -25,6 +26,12 @@ pub struct EvolutionConfig {
     
     /// Days unused before deprecation
     pub unused_threshold_days: i64,
+    
+    /// Applications before practice phase
+    pub applications_before_practice: u32,
+    
+    /// Applications before integration
+    pub applications_before_integration: u32,
 }
 
 impl Default for EvolutionConfig {
@@ -34,8 +41,22 @@ impl Default for EvolutionConfig {
             min_confidence_for_promotion: 0.7,
             failure_threshold: 0.5,
             unused_threshold_days: 30,
+            applications_before_practice: 10,
+            applications_before_integration: 20,
         }
     }
+}
+
+/// Trait for evolution engine implementations
+pub trait EvolutionEngineTrait: Send + Sync {
+    /// Create a behavior from an insight
+    fn create_behavior_from_insight(&self, insight: &Insight) -> impl std::future::Future<Output = Result<Behavior>> + Send;
+    
+    /// Record a behavior application result
+    fn record_result(&self, behavior_id: &str, success: bool) -> impl std::future::Future<Output = Result<()>> + Send;
+    
+    /// Get active behaviors for a context
+    fn get_active_behaviors(&self, context: &str) -> impl std::future::Future<Output = Vec<Behavior>> + Send;
 }
 
 /// The evolution engine transforms insights into behaviors
@@ -119,28 +140,69 @@ impl EvolutionEngine {
         active
     }
 
+    /// Create a behavior directly
+    pub async fn create_behavior(
+        &self,
+        name: impl Into<String>,
+        description: impl Into<String>,
+        action: BehaviorAction,
+    ) -> Result<Behavior> {
+        let behavior = Behavior::new(
+            Uuid::new_v4().to_string(),
+            name,
+            description,
+            action,
+        );
+        
+        let mut behaviors = self.behaviors.write().await;
+        let behavior_id = behavior.id.clone();
+        behaviors.insert(behavior_id.clone(), behavior.clone());
+        
+        tracing::info!("Created behavior: {}", behavior_id);
+        Ok(behavior)
+    }
+
     /// Record application result
     pub async fn record_result(&self, behavior_id: &str, success: bool) -> Result<()> {
         let mut behaviors = self.behaviors.write().await;
         if let Some(behavior) = behaviors.get_mut(behavior_id) {
             if success {
                 behavior.record_success();
+                
+                // Check for promotion to practicing
+                if behavior.status == BehaviorStatus::Active 
+                    && behavior.application_count >= self.config.applications_before_practice
+                {
+                    behavior.start_practicing();
+                    tracing::info!("Behavior {} promoted to practicing", behavior_id);
+                }
             } else {
                 behavior.record_failure();
+                
+                // Check for deprecation
+                if behavior.should_deprecate(self.config.failure_threshold, self.config.unused_threshold_days) {
+                    behavior.deprecate();
+                    tracing::warn!("Behavior {} deprecated due to failures", behavior_id);
+                }
             }
             
-            // Check for promotion
+            // Check for promotion from candidate
             if behavior.is_ready_for_promotion(
                 self.config.min_applications_for_promotion,
                 self.config.min_confidence_for_promotion,
             ) && behavior.status == BehaviorStatus::Candidate
             {
                 behavior.activate();
+                tracing::info!("Behavior {} promoted to active", behavior_id);
             }
             
-            // Check for deprecation
-            if behavior.should_deprecate(self.config.failure_threshold, self.config.unused_threshold_days) {
-                behavior.deprecate();
+            // Check for integration from practicing
+            if behavior.status == BehaviorStatus::Practicing 
+                && behavior.application_count >= self.config.applications_before_integration
+                && behavior.confidence >= 0.9
+            {
+                behavior.integrate();
+                tracing::info!("Behavior {} integrated", behavior_id);
             }
         }
         Ok(())
@@ -248,6 +310,105 @@ impl EvolutionEngine {
             total_evidence,
             supporting_evidence,
             average_confidence: avg_confidence,
+        }
+    }
+
+    /// Get integrated behaviors (fully learned)
+    pub async fn get_integrated_behaviors(&self) -> Vec<Behavior> {
+        let behaviors = self.behaviors.read().await;
+        behaviors
+            .values()
+            .filter(|b| b.status == BehaviorStatus::Integrated)
+            .cloned()
+            .collect()
+    }
+
+    /// Get deprecated behaviors
+    pub async fn get_deprecated_behaviors(&self) -> Vec<Behavior> {
+        let behaviors = self.behaviors.read().await;
+        behaviors
+            .values()
+            .filter(|b| b.status == BehaviorStatus::Deprecated)
+            .cloned()
+            .collect()
+    }
+
+    /// Update behavior priority
+    pub async fn update_priority(&self, behavior_id: &str, priority: BehaviorPriority) -> Result<()> {
+        if let Some(behavior) = self.behaviors.write().await.get_mut(behavior_id) {
+            behavior.priority = priority;
+            behavior.updated_at = Utc::now();
+        }
+        Ok(())
+    }
+
+    /// Archive deprecated behaviors
+    pub async fn archive_deprecated(&self) -> Result<usize> {
+        let mut count = 0;
+        let mut behaviors = self.behaviors.write().await;
+        
+        for behavior in behaviors.values_mut() {
+            if behavior.status == BehaviorStatus::Deprecated {
+                behavior.status = BehaviorStatus::Deprecated;
+                count += 1;
+            }
+        }
+        
+        tracing::info!("Archived {} deprecated behaviors", count);
+        Ok(count)
+    }
+
+    /// Merge similar behaviors
+    pub async fn merge_behaviors(&self, source_id: &str, target_id: &str) -> Result<()> {
+        let mut behaviors = self.behaviors.write().await;
+        
+        let source = behaviors.remove(source_id);
+        if let Some(mut source) = source {
+            if let Some(target) = behaviors.get_mut(target_id) {
+                // Transfer evidence from source to target
+                if let Some(evidence) = self.evidence.read().await.get(source_id) {
+                    let mut evidence_store = self.evidence.write().await;
+                    evidence_store
+                        .entry(target_id.to_string())
+                        .or_insert_with(Vec::new)
+                        .extend(evidence.clone());
+                }
+                
+                // Transfer applications
+                target.application_count += source.application_count;
+                target.success_count += source.success_count;
+                target.updated_at = Utc::now();
+                
+                // Recalculate confidence
+                if target.application_count > 0 {
+                    target.confidence = target.success_count as f32 / target.application_count as f32;
+                }
+                
+                tracing::info!("Merged behavior {} into {}", source_id, target_id);
+            }
+        }
+        
+        Ok(())
+    }
+
+    /// Get behavior effectiveness score
+    pub async fn get_effectiveness(&self, behavior_id: &str) -> Option<f32> {
+        self.behaviors.read().await
+            .get(behavior_id)
+            .map(|b| b.success_rate())
+    }
+
+    /// Check if a behavior should be recommended
+    pub async fn should_recommend(&self, behavior_id: &str) -> bool {
+        if let Some(behavior) = self.behaviors.read().await.get(behavior_id) {
+            match behavior.status {
+                BehaviorStatus::Active | BehaviorStatus::Practicing | BehaviorStatus::Integrated => {
+                    behavior.confidence >= 0.6 && !behavior.should_deprecate(0.5, 30)
+                }
+                _ => false,
+            }
+        } else {
+            false
         }
     }
 }

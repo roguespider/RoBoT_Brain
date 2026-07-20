@@ -21,6 +21,6 @@ pub mod behavior;
 pub mod engine;
 pub mod evidence;
 
-pub use behavior::{Behavior, BehaviorPriority, BehaviorStatus};
-pub use engine::EvolutionEngine;
-pub use evidence::EvolutionEvidence;
+pub use behavior::{Behavior, BehaviorAction, BehaviorPriority, BehaviorStatus};
+pub use engine::{EvolutionEngine, EvolutionConfig, EvolutionEngineTrait, EvaluationSummary, EvolutionMetrics};
+pub use evidence::{EvolutionEvidence, EvidenceType, EvidenceVerdict};

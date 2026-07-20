@@ -33,6 +33,7 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
+pub mod engine;
 pub mod insight;
 pub mod pattern;
 pub mod reflection;
@@ -41,6 +42,7 @@ pub mod services;
 
 // Re-export from submodules
 pub use reflection::{Reflection, Lesson, ReflectionInsight, ReflectionEvidence};
+pub use engine::{ReflectionEngine, ReflectionEngineConfig, AnalysisReport, ValidationReport, EngineStats};
 
 /// ============================================================================
 /// Reflection Types
