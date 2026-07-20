@@ -292,12 +292,13 @@ src/
 │   │   ├── decay.rs	          ✅← Time-based reputation aging
 │   │   ├── analytics.rs        ✅← Reports, trends, statistics
 │   │   └── repository.rs       ✅← Save/load reputation data
-│   ├── working_memory/         📋 Planned but not started ← explicit promotion policies
-│   │   ├── expired             📋 Planned but not started
-│   │   ├── repeated            📋 Planned but not started
-│   │   ├── confirmed           📋 Planned but not started
-│   │   ├── contradicted        📋 Planned but not started
-│   │   └── promoted            📋 Planned but not started
+│   ├── working_memory/         ✅ Working memory with state machine
+│   │   ├── mod.rs              ✅ Module entry point
+│   │   ├── working_memory.rs   ✅ Working memory implementation
+│   │   ├── memory_state.rs     ✅ State machine definitions
+│   │   └── promotion.rs        ✅ Promotion policy engine
+│   ├── lineage.rs               ✅ Memory lineage tracking
+│   ├── candidates.rs            ✅ Candidate memory generation
 │   ├── exploration/            ✅
 │   │   ├── mod.rs              ✅
 │   │   ├── exploration.rs      ✅
