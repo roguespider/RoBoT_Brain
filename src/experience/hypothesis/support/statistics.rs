@@ -11,7 +11,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::experience::hypothesis::core::{Hypothesis, HypothesisStatus};
+use crate::experience::hypothesis::core::hypothesis::{Hypothesis, HypothesisStatus};
 
 /// ============================================================================
 /// STATISTICS TRACKER

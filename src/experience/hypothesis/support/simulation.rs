@@ -8,11 +8,9 @@
 //!
 //! This module simulates the implications of trusting or acting on hypotheses.
 
-use std::collections::HashMap;
-
 use serde::{Deserialize, Serialize};
 
-use crate::experience::hypothesis::core::{HypothesisId, Hypothesis, HypothesisStatus};
+use crate::experience::hypothesis::core::hypothesis::{HypothesisId, Hypothesis, HypothesisStatus};
 
 /// ============================================================================
 /// HYPOTHESIS SIMULATOR
@@ -75,6 +73,8 @@ impl HypothesisSimulator {
         let evidence_bonus = (hypothesis.evaluations as f32 * 0.01).min(0.2);
         let adjusted_confidence = (hypothesis.confidence.value + evidence_bonus).min(1.0);
         
+        let outcome_count = outcomes.len();
+        
         SimulationResult {
             hypothesis_id: hypothesis.id.clone(),
             confidence: hypothesis.confidence.value,
@@ -85,7 +85,7 @@ impl HypothesisSimulator {
             recommendations: self.generate_recommendations(hypothesis, success_probability),
             notes: format!(
                 "Simulated {} outcomes with {:.2} expected value",
-                outcomes.len(),
+                outcome_count,
                 expected_value
             ),
         }
@@ -140,7 +140,7 @@ impl HypothesisSimulator {
     }
 
     /// Find the safest hypothesis to act on
-    pub fn find_safest(&self, hypotheses: &[Hypothesis]) -> Option<&Hypothesis> {
+    pub fn find_safest<'a>(&self, hypotheses: &'a [Hypothesis]) -> Option<&'a Hypothesis> {
         hypotheses
             .iter()
             .filter(|h| h.status == HypothesisStatus::Supported)

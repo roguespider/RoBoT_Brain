@@ -13,7 +13,7 @@ use std::collections::{HashMap, HashSet, VecDeque};
 
 use serde::{Deserialize, Serialize};
 
-use crate::experience::hypothesis::core::{HypothesisId, Hypothesis, HypothesisStatus};
+use crate::experience::hypothesis::core::hypothesis::HypothesisId;
 
 /// ============================================================================
 /// HYPOTHESIS GRAPH
@@ -346,7 +346,7 @@ impl HypothesisGraph {
         
         // Kahn's algorithm
         let mut queue: VecDeque<String> = in_degree.iter()
-            .filter(|(_, &d)| d == 0)
+            .filter(|item| *item.1 == 0)
             .map(|(id, _)| id.clone())
             .collect();
         

@@ -10,7 +10,10 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::experience::hypothesis::core::{HypothesisId, Hypothesis, HypothesisConfidence};
+use crate::experience::hypothesis::core::hypothesis::{
+    HypothesisId, Hypothesis, 
+    HypothesisCategory, HypothesisPriority, HypothesisStatus
+};
 
 /// ============================================================================
 /// HYPOTHESIS PLANNER
@@ -58,6 +61,7 @@ impl HypothesisPlanner {
     /// Generate actionable plan for a high-confidence hypothesis
     fn generate_actionable_plan(&self, hypothesis: &Hypothesis) -> PlanningResult {
         let actions = self.derive_actions(hypothesis);
+        let action_count = actions.len();
         
         PlanningResult {
             hypothesis_id: hypothesis.id.clone(),
@@ -67,7 +71,7 @@ impl HypothesisPlanner {
             notes: format!(
                 "Created plan for '{}' with {} actionable steps",
                 hypothesis.title, 
-                if actions.is_empty() { "0" } else { "multiple" }
+                if action_count == 0 { "0" } else { "multiple" }
             ),
         }
     }
@@ -78,7 +82,7 @@ impl HypothesisPlanner {
         
         // Generate actions based on hypothesis category
         match hypothesis.category {
-            crate::experience::hypothesis::core::HypothesisCategory::Behavioral => {
+            HypothesisCategory::Behavioral => {
                 actions.push(PlannedAction {
                     action_type: ActionType::AdjustBehavior,
                     description: format!("Implement behavior: {}", hypothesis.title),
@@ -86,7 +90,7 @@ impl HypothesisPlanner {
                     estimated_impact: hypothesis.confidence.value,
                 });
             }
-            crate::experience::hypothesis::core::HypothesisCategory::Preference => {
+            HypothesisCategory::Preference => {
                 actions.push(PlannedAction {
                     action_type: ActionType::UpdatePreference,
                     description: format!("Update preference based on: {}", hypothesis.title),
@@ -94,7 +98,7 @@ impl HypothesisPlanner {
                     estimated_impact: hypothesis.confidence.value,
                 });
             }
-            crate::experience::hypothesis::core::HypothesisCategory::Performance => {
+            HypothesisCategory::Performance => {
                 actions.push(PlannedAction {
                     action_type: ActionType::Optimize,
                     description: format!("Optimize performance: {}", hypothesis.title),
@@ -102,7 +106,7 @@ impl HypothesisPlanner {
                     estimated_impact: hypothesis.confidence.value,
                 });
             }
-            crate::experience::hypothesis::core::HypothesisCategory::Workflow => {
+            HypothesisCategory::Workflow => {
                 actions.push(PlannedAction {
                     action_type: ActionType::ImproveWorkflow,
                     description: format!("Improve workflow: {}", hypothesis.title),
@@ -110,7 +114,7 @@ impl HypothesisPlanner {
                     estimated_impact: hypothesis.confidence.value,
                 });
             }
-            crate::experience::hypothesis::core::HypothesisCategory::Knowledge => {
+            HypothesisCategory::Knowledge => {
                 actions.push(PlannedAction {
                     action_type: ActionType::Learn,
                     description: format!("Learn from: {}", hypothesis.title),
@@ -133,7 +137,7 @@ impl HypothesisPlanner {
             actions.push(PlannedAction {
                 action_type: ActionType::Validate,
                 description: "Gather more evidence to validate this hypothesis".to_string(),
-                priority: crate::experience::hypothesis::core::HypothesisPriority::Normal,
+                priority: HypothesisPriority::Normal,
                 estimated_impact: 0.5,
             });
         }
@@ -145,7 +149,7 @@ impl HypothesisPlanner {
     pub fn create_plans(&self, hypotheses: &[Hypothesis]) -> Vec<PlanningResult> {
         hypotheses
             .iter()
-            .filter(|h| h.status == crate::experience::hypothesis::core::HypothesisStatus::Supported)
+            .filter(|h| h.status == HypothesisStatus::Supported)
             .map(|h| self.create_plan(h))
             .collect()
     }
@@ -157,11 +161,12 @@ impl HypothesisPlanner {
             .into_iter()
             .filter(|p| p.status == PlanningStatus::Ready)
             .flat_map(|p| {
-                p.actions.into_iter().map(|a| {
-                    let priority_value = match p.confidence >= 0.9 {
+                let confidence = p.confidence;
+                p.actions.into_iter().map(move |a| {
+                    let priority_value = match confidence >= 0.9 {
                         true => 100,
-                        false if p.confidence >= 0.8 => 75,
-                        false if p.confidence >= 0.7 => 50,
+                        false if confidence >= 0.8 => 75,
+                        false if confidence >= 0.7 => 50,
                         _ => 25,
                     };
                     (priority_value, a.estimated_impact, a)
@@ -219,7 +224,7 @@ impl Default for PlanningStatus {
 pub struct PlannedAction {
     pub action_type: ActionType,
     pub description: String,
-    pub priority: crate::experience::hypothesis::core::HypothesisPriority,
+    pub priority: HypothesisPriority,
     pub estimated_impact: f32,
 }
 

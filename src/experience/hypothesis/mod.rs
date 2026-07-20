@@ -16,6 +16,7 @@
 //! This module acts as the public interface for the entire hypothesis subsystem.
 
 pub mod core;
+pub mod support;
 
 pub use core::evaluator::HypothesisEvaluator;
 
