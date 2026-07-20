@@ -7,6 +7,7 @@ mod database;
 mod experience;
 
 mod bridge;
+mod tools;
 
 use app::App;
 use logging::init_logging;

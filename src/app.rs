@@ -14,7 +14,7 @@ use crate::experience::scheduler::{Scheduler, TaskSchedule, TaskType};
 use crate::experience::scorer::ExperienceScorer;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::rmcp::run_stdio_server;
-use crate::bridge::tools;
+use crate::tools;
 
 
 /// Root application container.

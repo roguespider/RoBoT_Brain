@@ -33,7 +33,7 @@ pub async fn find_similar_encounters(
     query: &str,
 ) -> Result<Vec<Encounter>> {
     let conn = db.connection()?;
-    let memories = queries::search_memory(&conn, query)?;
+    let memories = queries::search_memory(&conn, query, 100)?;
     Ok(memories.into_iter().map(|m| m.into_encounter()).collect())
 }
 

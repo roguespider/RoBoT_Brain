@@ -1,10 +1,12 @@
-// src/bridge/tools/mod.rs
+// src/tools/mod.rs
 // MCP tools for Zed Editor integration
+
+#![allow(dead_code)]
 
 use std::sync::Arc;
 use tokio::sync::RwLock;
 
-use super::mcp::McpContext;
+use crate::bridge::mcp::McpContext;
 
 pub mod memory;
 pub mod experience;
@@ -16,7 +18,7 @@ static TOOL_REGISTRY: std::sync::OnceLock<Arc<RwLock<ToolRegistry>>> = std::sync
 
 /// Tool registry for MCP tools
 pub struct ToolRegistry {
-    pub tools: Vec<super::mcp::McpTool>,
+    pub tools: Vec<crate::bridge::mcp::McpTool>,
 }
 
 impl ToolRegistry {
@@ -66,7 +68,7 @@ pub fn register_tools(context: &Arc<McpContext>) {
 
 /// Get all registered tools
 #[allow(dead_code)]
-pub fn get_tools() -> Vec<super::mcp::McpTool> {
+pub fn get_tools() -> Vec<crate::bridge::mcp::McpTool> {
     TOOL_REGISTRY
         .get()
         .map(|r| r.blocking_read().tools.clone())

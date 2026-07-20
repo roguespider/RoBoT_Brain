@@ -88,7 +88,7 @@ pub fn get_memory(conn: &Connection, id: Uuid) -> Result<Option<MemoryCard>> {
     }
 }
 
-pub fn search_memory(conn: &Connection, text: &str) -> Result<Vec<MemoryCard>> {
+pub fn search_memory(conn: &Connection, text: &str, limit: usize) -> Result<Vec<MemoryCard>> {
     let pattern = format!("%{}%", text);
 
     let mut stmt = conn.prepare(
@@ -106,11 +106,13 @@ pub fn search_memory(conn: &Connection, text: &str) -> Result<Vec<MemoryCard>> {
 
         WHERE content LIKE ?1
 
-        LIMIT 100
+        ORDER BY updated_at DESC
+
+        LIMIT ?2
         ",
     )?;
 
-    let rows = stmt.query_map([pattern], |row| {
+    let rows = stmt.query_map(params![pattern, limit as i64], |row| {
         let uuid_str: String = row.get(0)?;
         Ok(MemoryCard {
             id: Uuid::parse_str(&uuid_str).map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
@@ -130,6 +132,46 @@ pub fn search_memory(conn: &Connection, text: &str) -> Result<Vec<MemoryCard>> {
     })?;
 
     Ok(rows.collect::<Result<Vec<_>, _>>()?)
+}
+
+pub fn list_memories(conn: &Connection, memory_type: Option<&str>, limit: usize) -> Result<Vec<MemoryCard>> {
+    let rows = if let Some(mem_type) = memory_type {
+        let mut stmt = conn.prepare(
+            "SELECT id, content, memory_type, confidence, importance, created_at, updated_at
+             FROM memories WHERE memory_type = ?1 ORDER BY updated_at DESC LIMIT ?2"
+        )?;
+        stmt.query_map(params![mem_type, limit as i64], |row| {
+            let uuid_str: String = row.get(0)?;
+            Ok(MemoryCard {
+                id: Uuid::parse_str(&uuid_str).map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
+                content: row.get(1)?,
+                memory_type: parse_memory_type(&row.get::<_, String>(2)?),
+                confidence: row.get(3)?,
+                importance: row.get(4)?,
+                created_at: parse_time(&row.get::<_, String>(5)?),
+                updated_at: parse_time(&row.get::<_, String>(6)?),
+            })
+        })?.collect::<Result<Vec<_>, _>>()?
+    } else {
+        let mut stmt = conn.prepare(
+            "SELECT id, content, memory_type, confidence, importance, created_at, updated_at
+             FROM memories ORDER BY updated_at DESC LIMIT ?1"
+        )?;
+        stmt.query_map([limit as i64], |row| {
+            let uuid_str: String = row.get(0)?;
+            Ok(MemoryCard {
+                id: Uuid::parse_str(&uuid_str).map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
+                content: row.get(1)?,
+                memory_type: parse_memory_type(&row.get::<_, String>(2)?),
+                confidence: row.get(3)?,
+                importance: row.get(4)?,
+                created_at: parse_time(&row.get::<_, String>(5)?),
+                updated_at: parse_time(&row.get::<_, String>(6)?),
+            })
+        })?.collect::<Result<Vec<_>, _>>()?
+    };
+
+    Ok(rows)
 }
 
 // ==========================================================
