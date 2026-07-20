@@ -5,7 +5,8 @@ mod logging;
 
 mod database;
 mod experience;
-mod mcp_bridge;
+
+mod bridge;
 
 use app::App;
 use logging::init_logging;

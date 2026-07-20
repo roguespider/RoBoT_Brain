@@ -11,9 +11,3 @@
 pub mod hypothesis;
 pub mod evidence;
 pub mod evaluator;
-pub mod lifecycle;
-
-pub use hypothesis::*;
-pub use evidence::*;
-pub use evaluator::*;
-pub use lifecycle::*;

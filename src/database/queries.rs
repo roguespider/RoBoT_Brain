@@ -61,8 +61,9 @@ pub fn get_memory(conn: &Connection, id: Uuid) -> Result<Option<MemoryCard>> {
     )?;
 
     let result = stmt.query_row([id.to_string()], |row| {
+        let uuid_str: String = row.get(0)?;
         Ok(MemoryCard {
-            id: Uuid::parse_str(&row.get::<_, String>(0)?)?,
+            id: Uuid::parse_str(&uuid_str).map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
 
             content: row.get(1)?,
 
@@ -110,8 +111,9 @@ pub fn search_memory(conn: &Connection, text: &str) -> Result<Vec<MemoryCard>> {
     )?;
 
     let rows = stmt.query_map([pattern], |row| {
+        let uuid_str: String = row.get(0)?;
         Ok(MemoryCard {
-            id: Uuid::parse_str(&row.get::<_, String>(0)?)?,
+            id: Uuid::parse_str(&uuid_str).map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
 
             content: row.get(1)?,
 

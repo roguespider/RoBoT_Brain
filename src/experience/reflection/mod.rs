@@ -1,7 +1,3 @@
-// \src\experience\reflection.rs
-
-// robot/src/experience/reflection.rs
-
 //! ============================================================================
 //! Reflection System
 //! ============================================================================
@@ -37,28 +33,14 @@
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
-pub mod analytics;
 pub mod insight;
 pub mod pattern;
-/// ============================================================================
-/// Modules
-/// ============================================================================
 pub mod reflection;
-pub mod repository;
 pub mod review;
-
 pub mod services;
-pub mod support;
 
-/// ============================================================================
-/// Public Exports
-/// ============================================================================
-pub use analytics::*;
-pub use insight::*;
-pub use pattern::*;
-pub use reflection::*;
-pub use repository::*;
-pub use review::*;
+// Re-export from submodules
+pub use reflection::{Reflection, Lesson, ReflectionInsight, ReflectionEvidence};
 
 /// ============================================================================
 /// Reflection Types
@@ -144,12 +126,15 @@ pub trait InsightProducer {
 /// Common metadata shared by reflection records.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReflectionMetadata {
+    /// Creation timestamp.
     pub created_at: DateTime<Utc>,
 
+    /// Last update timestamp.
     pub updated_at: DateTime<Utc>,
 
+    /// Source of the reflection.
     pub source: String,
 
+    /// Version number.
     pub version: u32,
 }
-

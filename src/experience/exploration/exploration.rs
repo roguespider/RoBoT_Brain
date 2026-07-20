@@ -3,6 +3,35 @@ use serde::{Deserialize, Serialize};
 
 use crate::experience::types::ExperienceContext;
 
+/// Represents an exploration attempt
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExplorationAttempt {
+    /// What was attempted
+    pub description: String,
+    /// When it happened
+    pub timestamp: DateTime<Utc>,
+    /// Whether it succeeded
+    pub success: bool,
+}
+
+/// Represents an exploration finding
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExplorationFinding {
+    /// What was discovered
+    pub description: String,
+    /// How confident we are (0.0 - 1.0)
+    pub confidence: f32,
+}
+
+/// Represents an exploration hypothesis
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct Hypothesis {
+    /// The hypothesis statement
+    pub statement: String,
+    /// Initial confidence (0.0 - 1.0)
+    pub initial_confidence: f32,
+}
+
 /// Represents an intentional investigation performed by the system.
 ///
 /// Exploration is not a decision.

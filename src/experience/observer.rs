@@ -46,5 +46,3 @@ pub trait ExperienceObserver: Send + Sync {
     /// Process an event.
     fn observe(&self, event: &ExperienceEvent) -> Result<()>;
 }
-
-fn observe(&self, encounter: &Encounter);

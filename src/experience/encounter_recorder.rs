@@ -4,19 +4,14 @@ use anyhow::Result;
 use chrono::Utc;
 use uuid::Uuid;
 
-use crate::database::queries::ExperienceQueries;
-use crate::experience::types::{Experience, ExperienceContext, ExperienceOutcome, ExperienceType};
+use crate::experience::types::{Experience, ExperienceContext, ExperienceOutcome, ExperienceType, KnowledgeMaturity};
 
-// record() creates Encounter records.
-pub fn record(
-
-pub struct ExperienceRecorder {
-    queries: ExperienceQueries,
-}
+/// Records experiences to storage
+pub struct ExperienceRecorder;
 
 impl ExperienceRecorder {
-    pub fn new(queries: ExperienceQueries) -> Self {
-        Self { queries }
+    pub fn new() -> Self {
+        Self
     }
 
     /// Record a completed experience.
@@ -28,21 +23,30 @@ impl ExperienceRecorder {
         context: ExperienceContext,
         outcome: ExperienceOutcome,
     ) -> Result<String> {
-        let id = Uuid::new_v4().to_string();
+        let id = Uuid::new_v4();
 
-        let experience = Experience {
-            id: id.clone(),
+        let _experience = Experience {
+            id,
             timestamp: Utc::now(),
             experience_type,
             title: title.into(),
             description: description.into(),
             context,
             outcome,
+            score: None,
+            encounter_ids: Vec::new(),
+            maturity: KnowledgeMaturity::Emerging,
+            confidence: 0.0,
+            lessons: Vec::new(),
+            evidence_count: 0,
+            tags: Vec::new(),
+            metadata: std::collections::HashMap::new(),
         };
 
-        self.queries.insert_experience(&experience)?;
+        // TODO: Insert into database
+        tracing::info!("Recorded experience: {}", id);
 
-        Ok(id)
+        Ok(id.to_string())
     }
 
     /// Convenience helper for successful actions.

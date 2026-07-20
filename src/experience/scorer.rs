@@ -4,6 +4,7 @@ use anyhow::Result;
 
 use crate::experience::{
     observer::ExperienceObserver,
+    events::ExperienceEvent,
     types::{Experience, ExperienceScore, OutcomeKind},
 };
 
@@ -14,20 +15,17 @@ use crate::experience::{
 /// of recorded experiences.
 pub struct ExperienceScorer;
 
+/// Scores individual encounters.
+pub struct EncounterScore {
+    pub success: f32,
+    pub quality: f32,
+    pub reliability: f32,
+}
+
 impl ExperienceScorer {
     pub fn new() -> Self {
         Self
     }
-
-    // Scores individual encounters.
-    pub struct EncounterScore {
-
-    pub success: f32,
-
-    pub quality: f32,
-
-    pub reliability: f32,
-}
 
     /// Generate a score for an experience.
     pub fn score(&self, experience: &Experience) -> ExperienceScore {
@@ -40,7 +38,7 @@ impl ExperienceScorer {
     }
 
     fn calculate_importance(&self, experience: &Experience) -> f32 {
-        let mut score = 0.5;
+        let mut score: f32 = 0.5;
 
         // Errors and failures are valuable learning events.
         match experience.outcome.kind {
@@ -67,7 +65,7 @@ impl ExperienceScorer {
     }
 
     fn calculate_confidence(&self, experience: &Experience) -> f32 {
-        let mut score = 0.5;
+        let mut score: f32 = 0.5;
 
         if experience.context.tool.is_some() {
             score += 0.1;
@@ -105,14 +103,13 @@ impl ExperienceScorer {
 }
 
 impl ExperienceObserver for ExperienceScorer {
-    fn observe(&self, experience: &Experience) -> Result<()> {
-        let score = self.score(experience);
+    fn name(&self) -> &'static str {
+        "ExperienceScorer"
+    }
 
-        println!(
-            "Experience scored [{}]: importance {:.2}, confidence {:.2}, novelty {:.2}, reliability {:.2}",
-            experience.title, score.importance, score.confidence, score.novelty, score.reliability
-        );
-
+    fn observe(&self, event: &ExperienceEvent) -> Result<()> {
+        // For now, just log the event
+        println!("Scorer received event: {:?}", event);
         Ok(())
     }
 }

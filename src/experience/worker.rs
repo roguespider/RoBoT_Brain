@@ -5,12 +5,13 @@ use std::sync::Arc;
 use tokio::sync::mpsc;
 
 use crate::experience::{
-    events::ExperienceEvent, observer::ExperienceObserver, queue::ObserverJob,
+    events::ExperienceEvent, observer::ExperienceObserver,
 };
 
-Encounter
-
-
+/// A job for the worker to process
+pub struct ObserverJob {
+    pub event: ExperienceEvent,
+}
 
 pub struct ExperienceWorker {
     observer: Arc<dyn ExperienceObserver>,

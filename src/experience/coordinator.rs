@@ -1,10 +1,6 @@
 // /src/experience/coordinator.rs
 
-use anyhow::Result;
-
 use crate::experience::{
-    evolution::EvolutionEngine, exploration::ExplorationEngine, hypothesis::HypothesisEngine,
-    recorder::ExperienceRecorder, reflection::ReflectionEngine, reputation::ReputationManager,
     scorer::ExperienceScorer, types::*,
 };
 
@@ -16,7 +12,6 @@ pub enum ExperienceEvent {
     ReflectionCompleted(String),
     HypothesisGenerated(String),
     ExplorationCompleted(String),
-    EvolutionCompleted(String),
 }
 
 /// Coordinates the experience system.
@@ -24,54 +19,20 @@ pub enum ExperienceEvent {
 /// The manager does not contain business logic.
 /// Instead it orchestrates the specialized components.
 pub struct ExperienceCoordinator {
-    recorder: ExperienceRecorder,
     scorer: ExperienceScorer,
-    reputation: ReputationManager,
-    reflection: ReflectionEngine,
-    exploration: ExplorationEngine,
-    hypothesis: HypothesisEngine,
-    evolution: EvolutionEngine,
 }
 
 impl ExperienceCoordinator {
-    pub fn new(
-        recorder: ExperienceRecorder,
-        scorer: ExperienceScorer,
-        reputation: ReputationManager,
-        reflection: ReflectionEngine,
-        exploration: ExplorationEngine,
-        hypothesis: HypothesisEngine,
-        evolution: EvolutionEngine,
-    ) -> Self {
-        Self {
-            recorder,
-            scorer,
-            reputation,
-            reflection,
-            exploration,
-            hypothesis,
-            evolution,
-        }
+    pub fn new(scorer: ExperienceScorer) -> Self {
+        Self { scorer }
     }
 
     /// Process a completed experience through the learning pipeline.
-    pub fn process(&self, mut experience: Experience) -> Result<Experience> {
-        // Store the raw experience.
-        self.recorder.record(&experience)?;
-
+    pub fn process(&self, mut experience: Experience) -> Experience {
         // Score it.
-        let score = self.scorer.score(&experience)?;
+        let score = self.scorer.score(&experience);
         experience.score = Some(score);
 
-        // Update long-term reputation.
-        self.reputation.update(&experience)?;
-
-        // Notify learning systems.
-        self.hypothesis.observe(&experience)?;
-        self.exploration.observe(&experience)?;
-        self.reflection.observe(&experience)?;
-        self.evolution.observe(&experience)?;
-
-        Ok(experience)
+        experience
     }
 }

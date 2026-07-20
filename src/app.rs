@@ -6,7 +6,8 @@ use anyhow::Result;
 
 use crate::database::sqlite::SqliteDatabase;
 use crate::experience::coordinator::ExperienceCoordinator;
-use crate::mcp_bridge::McpBridge;
+use crate::experience::scorer::ExperienceScorer;
+use crate::bridge::rmcp::run_stdio_server;
 
 
 /// Root application container.
@@ -18,9 +19,6 @@ pub struct App {
 
     /// Experience system coordinator.
     _coordinator: Arc<ExperienceCoordinator>,
-
-    /// MCP communication server.
-    bridge: McpBridge,
 }
 
 
@@ -35,33 +33,22 @@ impl App {
             );
 
 
+        let scorer = ExperienceScorer::new();
         let coordinator =
             Arc::new(
-                ExperienceCoordinator::new(
-                    database.clone()
-                )
+                ExperienceCoordinator::new(scorer)
             );
-
-
-        let bridge =
-            McpBridge::new(
-                coordinator.clone()
-            )
-            .await?;
-
 
         Ok(Self {
             _database: database,
             _coordinator: coordinator,
-            bridge,
         })
     }
 
 
     /// Start the runtime.
     pub async fn run(self) -> Result<()> {
-
-        self.bridge.run().await
-
+        // Run the MCP server with stdio transport
+        run_stdio_server(env!("CARGO_PKG_NAME"), env!("CARGO_PKG_VERSION")).await
     }
 }

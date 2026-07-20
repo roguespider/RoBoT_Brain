@@ -49,10 +49,10 @@ pub struct Hypothesis {
     pub tags: Vec<String>,
 
     /// Supporting evidence IDs.
-    pub supporting_evidence: Vec<EvidenceId>,
+    pub supporting_evidence: Vec<String>,
 
     /// Contradicting evidence IDs.
-    pub contradicting_evidence: Vec<EvidenceId>,
+    pub contradicting_evidence: Vec<String>,
 
     /// Number of evaluations performed.
     pub evaluations: u32,

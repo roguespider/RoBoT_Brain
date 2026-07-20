@@ -1,5 +1,9 @@
 // /src/experience/exploration/store.rs
 
+use anyhow::Result;
+
+use super::Exploration;
+
 pub trait ExplorationRepository {
     fn create(&self, exploration: &Exploration) -> Result<()>;
 

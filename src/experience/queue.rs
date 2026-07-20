@@ -1,7 +1,37 @@
 // /src/experience/queue.rs
 
-use super::types::{Job, JobStatus};
 use std::collections::HashMap;
+
+/// Job status enum
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum JobStatus {
+    Pending,
+    Running,
+    Completed,
+    Failed,
+}
+
+/// A job in the queue
+#[derive(Debug, Clone)]
+pub struct Job {
+    pub id: String,
+    pub observer_name: String,
+    pub status: JobStatus,
+    pub last_error: Option<String>,
+    pub attempts: u32,
+}
+
+impl Job {
+    pub fn new(experience_id: &str, observer_name: &str) -> Self {
+        Self {
+            id: experience_id.to_string(),
+            observer_name: observer_name.to_string(),
+            status: JobStatus::Pending,
+            last_error: None,
+            attempts: 0,
+        }
+    }
+}
 
 /// A simple in-memory job queue.
 /// In a production system, this could be backed by SQLite or Redis.
@@ -63,17 +93,4 @@ impl JobQueue {
             job.status = JobStatus::Running;
         }
     }
-}
-
-pub enum Job {
-    ProcessEncounter(String),
-    GenerateReflection(Vec<String>),
-    UpdateExperience(String),
-}
-
-pub enum JobStatus {
-    Pending,
-    Running,
-    Complete,
-    Failed,
 }

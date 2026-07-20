@@ -10,12 +10,19 @@
 //    ├── status
 //    └── lifecycle methods
 
-use chrono::{DateTime, Utc};
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use crate::experience::{
-    ExperienceId, ReflectionConfidence, ReflectionMetadata, ReflectionStatus, ReflectionType,
-};
+use super::{ReflectionConfidence, ReflectionMetadata, ReflectionStatus, ReflectionType};
+
+/// Type alias for experience ID
+pub type ExperienceId = String;
+
+/// Type alias for evidence ID  
+pub type EvidenceId = String;
+
+/// Type alias for insight ID
+pub type InsightId = String;
 
 /// ============================================================================
 /// Reflection
@@ -61,15 +68,6 @@ pub struct Reflection {
     /// Experiences examined.
     pub experience_ids: Vec<ExperienceId>,
 
-    /// Lesson IDs extracted.
-    pub lesson_ids: Vec<LessonId>,
-
-    /// Insight IDs generated.
-    pub insight_ids: Vec<InsightId>,
-
-    /// Evidence IDs supporting the reflection.
-    pub evidence_ids: Vec<EvidenceId>,
-
     /// Related reflections.
     pub related_reflections: Vec<String>,
 
@@ -109,13 +107,7 @@ impl Reflection {
 
             description: String::new(),
 
-            encounter_ids: Vec::new(),
-
-            lesson_ids: Vec::new(),
-
-            insight_ids: Vec::new(),
-
-            evidence_ids: Vec::new(),
+            experience_ids: Vec::new(),
 
             related_reflections: Vec::new(),
 
@@ -132,21 +124,6 @@ impl Reflection {
     /// Attach an experience.
     pub fn add_experience(&mut self, experience_id: ExperienceId) {
         self.experience_ids.push(experience_id);
-    }
-
-    /// Add a lesson.
-    pub fn add_lesson(&mut self, lesson: Lesson) {
-        self.lessons.push(lesson);
-    }
-
-    /// Add evidence.
-    pub fn add_evidence(&mut self, evidence: ReflectionEvidence) {
-        self.evidence.push(evidence);
-    }
-
-    /// Add an insight.
-    pub fn add_insight(&mut self, insight: ReflectionInsight) {
-        self.insights.push(insight);
     }
 
     /// Mark as validated.
@@ -169,17 +146,12 @@ impl Reflection {
 
     /// Has enough evidence to be useful?
     pub fn is_actionable(&self) -> bool {
-        self.confidence.score >= 0.70 && !self.lessons.is_empty() && !self.evidence.is_empty()
+        self.confidence.score >= 0.70
     }
 
     /// Number of experiences involved.
     pub fn experience_count(&self) -> usize {
         self.experience_ids.len()
-    }
-
-    /// Number of lessons.
-    pub fn lesson_count(&self) -> usize {
-        self.lessons.len()
     }
 }
 

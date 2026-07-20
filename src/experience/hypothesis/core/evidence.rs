@@ -13,6 +13,11 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use super::hypothesis::HypothesisId;
+
+/// Type alias for experience ID
+pub type ExperienceId = String;
+
 /// ============================================================================
 /// EVIDENCE
 /// ============================================================================

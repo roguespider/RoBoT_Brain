@@ -10,6 +10,7 @@ impl ExperienceEvent {
     pub fn recorded(experience_id: Uuid) -> Self {
         Self {
             id: Uuid::new_v4(),
+            experience_id,
             timestamp: Utc::now(),
             event_type: ExperienceEventType::Recorded,
             payload: EventPayload::Experience { experience_id },
@@ -20,6 +21,7 @@ impl ExperienceEvent {
     pub fn scored(experience_id: Uuid, score: f32) -> Self {
         Self {
             id: Uuid::new_v4(),
+            experience_id,
             timestamp: Utc::now(),
             event_type: ExperienceEventType::Scored,
             payload: EventPayload::Score {
@@ -30,9 +32,10 @@ impl ExperienceEvent {
     }
 
     /// Create an event when reputation changes.
-    pub fn reputation_updated(target_id: String, change: f32) -> Self {
+    pub fn reputation_updated(experience_id: Uuid, target_id: String, change: f32) -> Self {
         Self {
             id: Uuid::new_v4(),
+            experience_id,
             timestamp: Utc::now(),
             event_type: ExperienceEventType::ReputationUpdated,
             payload: EventPayload::Reputation {
@@ -43,9 +46,10 @@ impl ExperienceEvent {
     }
 
     /// Create an event when reflection completes.
-    pub fn reflection_completed(reflection_id: Uuid) -> Self {
+    pub fn reflection_completed(experience_id: Uuid, reflection_id: Uuid) -> Self {
         Self {
             id: Uuid::new_v4(),
+            experience_id,
             timestamp: Utc::now(),
             event_type: ExperienceEventType::ReflectionCompleted,
             payload: EventPayload::Reflection { reflection_id },
@@ -53,9 +57,10 @@ impl ExperienceEvent {
     }
 
     /// Create an event when a hypothesis is generated.
-    pub fn hypothesis_generated(hypothesis_id: Uuid) -> Self {
+    pub fn hypothesis_generated(experience_id: Uuid, hypothesis_id: Uuid) -> Self {
         Self {
             id: Uuid::new_v4(),
+            experience_id,
             timestamp: Utc::now(),
             event_type: ExperienceEventType::HypothesisGenerated,
             payload: EventPayload::Hypothesis { hypothesis_id },
@@ -63,9 +68,10 @@ impl ExperienceEvent {
     }
 
     /// Create an event when exploration finishes.
-    pub fn exploration_completed(exploration_id: Uuid) -> Self {
+    pub fn exploration_completed(experience_id: Uuid, exploration_id: Uuid) -> Self {
         Self {
             id: Uuid::new_v4(),
+            experience_id,
             timestamp: Utc::now(),
             event_type: ExperienceEventType::ExplorationCompleted,
             payload: EventPayload::Exploration { exploration_id },
