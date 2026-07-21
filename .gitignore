@@ -3,3 +3,5 @@
 
 # Block heavy, unstable Rust build folders and ghost files
 target/
+
+LLModel/
