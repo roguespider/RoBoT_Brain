@@ -1,0 +1,10 @@
+{
+  "mcpServers": {
+    "robot_brain": {
+      "command": "cargo",
+      "args": ["run", "--", "server"],
+      "cwd": "/workspace/project",
+      "env": {}
+    }
+  }
+}
