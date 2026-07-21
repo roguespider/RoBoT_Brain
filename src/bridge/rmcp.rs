@@ -40,6 +40,14 @@ pub async fn run_stdio_server(
         version: version.to_string(),
     };
     
+    // Debug: Log the tools that will be exposed
+    let router = McpServerHandler::tool_router();
+    let tools = router.list_all();
+    tracing::info!("MCP tools exposed via rmcp: {} tools", tools.len());
+    for tool in &tools {
+        tracing::debug!("  - {}: {:?}", tool.name, tool.description);
+    }
+    
     let (stdin, stdout) = (tokio::io::stdin(), tokio::io::stdout());
     
     serve_server(handler, (stdin, stdout)).await?;
