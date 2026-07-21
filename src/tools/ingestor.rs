@@ -735,7 +735,17 @@ pub fn ingest_file(
     }
 }
 
-/// Ingest an archive file - extracts and ingests contents one by one
+/// Create a unique temp folder for archive extraction
+fn create_archive_temp_dir(archive_name: &str) -> PathBuf {
+    let timestamp = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let safe_name = archive_name.replace(|c: char| !c.is_alphanumeric() && c != '.' && c != '_', "_");
+    std::env::temp_dir().join(format!("robot_brain_extract_{}_{}", safe_name, timestamp))
+}
+
+/// Ingest an archive file - extracts to temp folder, asks for ZIP deletion
 fn ingest_archive(
     path: &Path,
     database: &Arc<SqliteDatabase>,
@@ -750,8 +760,8 @@ fn ingest_archive(
         .unwrap_or("unknown")
         .to_string();
 
-    // Create temp directory for extraction
-    let temp_dir = get_archive_temp_dir();
+    // Create unique temp directory for this archive
+    let temp_dir = create_archive_temp_dir(&filename);
     if let Err(e) = fs::create_dir_all(&temp_dir) {
         return Err(anyhow::anyhow!("Failed to create temp directory: {}", e));
     }
@@ -760,6 +770,8 @@ fn ingest_archive(
     let extracted_files = process_archive(&archive_path, &temp_dir)?;
     
     if extracted_files.is_empty() {
+        // Clean up empty temp folder
+        let _ = fs::remove_dir_all(&temp_dir);
         return Err(anyhow::anyhow!("Archive is empty or contains no readable files"));
     }
 
@@ -768,16 +780,6 @@ fn ingest_archive(
     
     // Recursively ingest the extracted file
     let result = ingest_single_file(first_file, database, chunk_size, overlap, memory_type)?;
-    
-    // Clean up temp directory
-    let _ = fs::remove_dir_all(&temp_dir);
-
-    // Delete the ZIP file after successful ingestion
-    if result.success {
-        if let Err(e) = fs::remove_file(&archive_path) {
-            tracing::warn!("Failed to delete archive {:?}: {}", archive_path, e);
-        }
-    }
 
     Ok(IngestResult {
         filename: format!("{}/{}", filename, result.filename),
@@ -1038,9 +1040,9 @@ pub async fn execute_ingest_files(
     Ok(ToolOutput::success(serde_json::json!({
         "summary": summary,
         "successfully_ingested": successfully_ingested,
-        "note": "ZIP/archive files are automatically deleted after successful ingestion",
-        "files_to_delete": successfully_ingested.iter().filter(|f| !f.contains(".zip") && !f.ends_with(".tar") && !f.ends_with(".gz")).collect::<Vec<_>>(),
-        "next_action": "Use delete_ingested_files for remaining regular files"
+        "note": "ZIP files are NOT auto-deleted. Use delete_ingested_files to delete the ZIP after confirming.",
+        "files_to_delete": successfully_ingested,
+        "workflow": "1. Ingest first file from ZIP\n2. Call delete_ingested_files to delete the ZIP\n3. Use list_importable with folder='/tmp/robot_brain_extract_*' to see remaining files\n4. Ingest remaining files one by one"
     })))
 }
 
