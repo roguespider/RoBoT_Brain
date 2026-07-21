@@ -63,6 +63,20 @@ impl McpServerHandler {
 
 #[tool_router(server_handler)]
 impl McpServerHandler {
+    /// Ping handler for connection verification
+    #[tool(name = "ping", description = "Ping the MCP server to verify connection")]
+    async fn ping(
+        &self,
+        Parameters(input): Parameters<tools::agent::PingInput>,
+    ) -> Json<serde_json::Value> {
+        match tools::agent::execute_ping(input).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(serde_json::json!({
+                "error": e.to_string()
+            })),
+        }
+    }
+
     #[tool(name = "store_memory", description = "Store a new memory in the knowledge base")]
     async fn store_memory(
         &self,
@@ -320,6 +334,32 @@ impl McpServerHandler {
         Parameters(input): Parameters<tools::ingestor::DeleteIngestedFilesInput>,
     ) -> Json<serde_json::Value> {
         match tools::ingestor::execute_delete_ingested_files(input).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(serde_json::json!({
+                "error": e.to_string()
+            })),
+        }
+    }
+
+    #[tool(name = "list_tools", description = "List all available MCP tools with optional filter")]
+    async fn list_tools(
+        &self,
+        Parameters(input): Parameters<tools::agent::ListToolsInput>,
+    ) -> Json<serde_json::Value> {
+        match tools::agent::execute_list_tools(input).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(serde_json::json!({
+                "error": e.to_string()
+            })),
+        }
+    }
+
+    #[tool(name = "get_tool", description = "Get detailed information about a specific tool")]
+    async fn get_tool(
+        &self,
+        Parameters(input): Parameters<tools::agent::GetToolInput>,
+    ) -> Json<serde_json::Value> {
+        match tools::agent::execute_get_tool(input).await {
             Ok(result) => Json(result),
             Err(e) => Json(serde_json::json!({
                 "error": e.to_string()
