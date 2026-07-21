@@ -455,6 +455,7 @@ impl WorkflowEngine {
             "ingest_files" => {
                 let input = tools::ingestor::IngestFilesInput {
                     folder: params.get("folder").cloned(),
+                    file_path: params.get("file_path").cloned(),
                     limit: params.get("limit").and_then(|s| s.parse().ok()),
                     chunk_size: params.get("chunk_size").and_then(|s| s.parse().ok()),
                     memory_type: params.get("memory_type").cloned(),

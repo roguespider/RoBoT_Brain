@@ -39,7 +39,9 @@ const AUDIO_EXTENSIONS: &[&str] = &["mp3", "wav", "m4a", "flac", "ogg", "aac"];
 pub struct IngestFilesInput {
     /// Path to the folder containing files to import (defaults to 'files_to_import')
     pub folder: Option<String>,
-    /// Maximum number of files to process
+    /// Ingest a specific file by path (ingests only this file)
+    pub file_path: Option<String>,
+    /// Maximum number of files to process (ignored if file_path is set)
     pub limit: Option<usize>,
     /// Chunk size for text splitting
     pub chunk_size: Option<usize>,
@@ -52,6 +54,8 @@ pub struct IngestFilesInput {
 pub struct ListImportableInput {
     /// Path to the folder to check (defaults to 'files_to_import')
     pub folder: Option<String>,
+    /// Maximum number of files to return (default: 5)
+    pub limit: Option<usize>,
 }
 
 /// Tool: Transcribe an audio file
@@ -123,25 +127,29 @@ pub mod definitions {
         vec![
             crate::bridge::mcp::McpTool {
                 name: INGEST_FILES.to_string(),
-                description: "Ingest files from a folder into short-term memory. Handles zip, tar, pdf, txt, json, and audio files. Returns list of files that can be safely deleted after confirmation.".to_string(),
+                description: "Ingest files into short-term memory. Use file_path to ingest ONE specific file. Without file_path, use folder+limit to ingest multiple.".to_string(),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
                         "folder": {
                             "type": "string",
-                            "description": "Path to folder containing files to import. Relative to exe location, or absolute path. Defaults to 'files_to_import' folder next to the executable"
+                            "description": "Path to folder containing files. Relative to exe location, or absolute path. Defaults to 'files_to_import'"
+                        },
+                        "file_path": {
+                            "type": "string",
+                            "description": "INGEST ONE FILE - path to specific file to ingest (full path or relative to folder)"
                         },
                         "limit": {
                             "type": "number",
-                            "description": "Maximum number of files to process"
+                            "description": "Max files to ingest if no file_path specified (default: 1)"
                         },
                         "chunk_size": {
                             "type": "number",
-                            "description": "Size of text chunks in characters (default: 1000, recommended: 500 for large files)"
+                            "description": "Size of text chunks (default: 1000, use 500 for large files)"
                         },
                         "memory_type": {
                             "type": "string",
-                            "description": "Memory type for ingested content: note, file, conversation, code",
+                            "description": "Memory type: note, file, conversation, code",
                             "enum": ["note", "file", "conversation", "code"]
                         }
                     }
@@ -149,13 +157,17 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: LIST_IMPORTABLE.to_string(),
-                description: "List all files ready for import in the import folder".to_string(),
+                description: "List files ready for import. Use limit to control how many files to show (default 5)".to_string(),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
                         "folder": {
                             "type": "string",
-                            "description": "Path to folder to check. Relative to exe location, or absolute path. Defaults to 'files_to_import'"
+                            "description": "Path to folder. Relative to exe location, or absolute path. Defaults to 'files_to_import'"
+                        },
+                        "limit": {
+                            "type": "number",
+                            "description": "Max files to return (default: 5)"
                         }
                     }
                 }),
@@ -717,28 +729,36 @@ pub async fn execute_ingest_files(
     let chunk_size = input.chunk_size.unwrap_or(DEFAULT_CHUNK_SIZE);
     let overlap = DEFAULT_CHUNK_OVERLAP;
     let memory_type = input.memory_type.unwrap_or_else(|| "file".to_string());
-    let limit = input.limit;
 
     tracing::info!("Starting file ingestion from {:?}", folder);
 
-    // Collect all importable files
-    let files = collect_importable_files(&folder)?;
-    let files_to_process: Vec<_> = if let Some(lim) = limit {
-        files.into_iter().take(lim).collect()
-    } else {
-        files
-    };
-
-    let total_files = files_to_process.len();
     let mut results = Vec::new();
     let mut total_chunks = 0;
     let mut successful = 0;
     let mut failed = 0;
 
-    for file_info in files_to_process {
-        let path = Path::new(&file_info.path);
-        
-        match ingest_file(path, database, chunk_size, overlap, &memory_type) {
+    // If file_path is specified, ingest ONLY that one file
+    if let Some(ref file_path) = input.file_path {
+        let path = if Path::new(file_path).is_absolute() {
+            PathBuf::from(file_path)
+        } else {
+            folder.join(file_path)
+        };
+
+        if !path.exists() {
+            return Ok(ToolOutput::success(serde_json::json!({
+                "success": false,
+                "error": format!("File not found: {:?}", path),
+                "summary": {
+                    "total_files": 1,
+                    "successful": 0,
+                    "failed": 1,
+                    "total_chunks": 0
+                }
+            })));
+        }
+
+        match ingest_file(&path, database, chunk_size, overlap, &memory_type) {
             Ok(result) => {
                 total_chunks += result.chunks_created;
                 successful += 1;
@@ -747,8 +767,8 @@ pub async fn execute_ingest_files(
             Err(e) => {
                 failed += 1;
                 results.push(IngestResult {
-                    filename: file_info.filename.clone(),
-                    file_path: file_info.path.clone(),
+                    filename: path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown").to_string(),
+                    file_path: path.to_string_lossy().to_string(),
                     success: false,
                     chunks_created: 0,
                     memory_ids: vec![],
@@ -756,7 +776,37 @@ pub async fn execute_ingest_files(
                 });
             }
         }
+    } else {
+        // Collect files from folder with limit (default 1 for safety)
+        let files = collect_importable_files(&folder)?;
+        let limit = input.limit.unwrap_or(1);
+        let files_to_process: Vec<_> = files.into_iter().take(limit).collect();
+
+        for file_info in files_to_process {
+            let path = Path::new(&file_info.path);
+
+            match ingest_file(path, database, chunk_size, overlap, &memory_type) {
+                Ok(result) => {
+                    total_chunks += result.chunks_created;
+                    successful += 1;
+                    results.push(result);
+                }
+                Err(e) => {
+                    failed += 1;
+                    results.push(IngestResult {
+                        filename: file_info.filename.clone(),
+                        file_path: file_info.path.clone(),
+                        success: false,
+                        chunks_created: 0,
+                        memory_ids: vec![],
+                        error: Some(e.to_string()),
+                    });
+                }
+            }
+        }
     }
+
+    let total_files = results.len();
 
     // Collect successfully ingested file paths for deletion
     let successfully_ingested: Vec<String> = results
@@ -776,11 +826,11 @@ pub async fn execute_ingest_files(
     Ok(ToolOutput::success(serde_json::json!({
         "summary": summary,
         "successfully_ingested": successfully_ingested,
+        "next_action": "Use delete_ingested_files to delete the ingested file(s)",
         "files_to_delete": format!(
-            "Files have been ingested. To delete them, call delete_ingested_files with the 'files' parameter. \
-            Example: {{\"files\": [\"path/to/file1\", \"path/to/file2\"], \"confirmation\": \"yes\"}}"
-        ),
-        "user_action_required": "Confirm file deletion by calling delete_ingested_files tool"
+            "Example: {{\"files\": {:?}, \"confirmation\": \"yes\"}}",
+            successfully_ingested
+        )
     })))
 }
 
@@ -791,11 +841,28 @@ pub async fn execute_list_importable(
     let folder = get_import_folder(input.folder.as_deref());
     
     let files = collect_importable_files(&folder)?;
+    let total_count = files.len();
+    
+    // Limit files returned to avoid token overflow
+    let limit = input.limit.unwrap_or(5);
+    let limited_files: Vec<_> = files.into_iter().take(limit).collect();
+    let returned_count = limited_files.len();
+    
+    // Get first file path for easy ingestion
+    let first_file = limited_files.first().map(|f| &f.path);
     
     Ok(ToolOutput::success(serde_json::json!({
         "folder": folder.to_string_lossy(),
-        "count": files.len(),
-        "files": files
+        "total_files": total_count,
+        "returned_files": returned_count,
+        "has_more": total_count > returned_count,
+        "files": limited_files,
+        "next_file_path": first_file,
+        "workflow_tip": if total_count > returned_count {
+            format!("Showing {} of {} files. Use ingest_files with file_path parameter to ingest a specific file, or use limit to see more.", returned_count, total_count)
+        } else {
+            format!("All {} files listed. Use ingest_files with file_path to ingest one at a time.", total_count)
+        }
     })))
 }
 
