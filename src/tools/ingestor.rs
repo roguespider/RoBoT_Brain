@@ -129,7 +129,7 @@ pub mod definitions {
                     "properties": {
                         "folder": {
                             "type": "string",
-                            "description": "Path to folder containing files to import (defaults to 'files_to_import')"
+                            "description": "Path to folder containing files to import. Relative to exe location, or absolute path. Defaults to 'files_to_import' folder next to the executable"
                         },
                         "limit": {
                             "type": "number",
@@ -137,7 +137,7 @@ pub mod definitions {
                         },
                         "chunk_size": {
                             "type": "number",
-                            "description": "Size of text chunks (default: 1000 characters)"
+                            "description": "Size of text chunks in characters (default: 1000, recommended: 500 for large files)"
                         },
                         "memory_type": {
                             "type": "string",
@@ -155,7 +155,7 @@ pub mod definitions {
                     "properties": {
                         "folder": {
                             "type": "string",
-                            "description": "Path to folder to check (defaults to 'files_to_import')"
+                            "description": "Path to folder to check. Relative to exe location, or absolute path. Defaults to 'files_to_import'"
                         }
                     }
                 }),
@@ -603,9 +603,32 @@ fn parse_memory_type(s: &str) -> MemoryType {
 
 /// Get the import folder path
 fn get_import_folder(folder: Option<&str>) -> PathBuf {
-    folder
-        .map(PathBuf::from)
-        .unwrap_or_else(|| PathBuf::from(DEFAULT_IMPORT_FOLDER))
+    match folder {
+        Some(f) => {
+            let path = PathBuf::from(f);
+            // If path is absolute or exe_dir exists, use it
+            if path.is_absolute() {
+                path
+            } else if let Some(exe_dir) = std::env::current_exe().ok().and_then(|p| p.parent().map(|p| p.to_path_buf())) {
+                let absolute_path = exe_dir.join(&path);
+                if absolute_path.exists() {
+                    absolute_path
+                } else {
+                    // Fall back to current dir
+                    path
+                }
+            } else {
+                path
+            }
+        }
+        None => {
+            // Default to files_to_import in exe directory
+            std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|p| p.join(DEFAULT_IMPORT_FOLDER)))
+                .unwrap_or_else(|| PathBuf::from(DEFAULT_IMPORT_FOLDER))
+        }
+    }
 }
 
 /// Collect all files from import folder (including from archives)
