@@ -103,6 +103,7 @@ pub struct IngestResult {
     pub chunks_created: usize,
     pub memory_ids: Vec<String>,
     pub error: Option<String>,
+    pub remaining_count: usize,  // For archives: how many files remain
 }
 
 /// Summary of ingestion operation
@@ -742,10 +743,83 @@ fn create_archive_temp_dir(archive_name: &str) -> PathBuf {
         .map(|d| d.as_secs())
         .unwrap_or(0);
     let safe_name = archive_name.replace(|c: char| !c.is_alphanumeric() && c != '.' && c != '_', "_");
-    std::env::temp_dir().join(format!("robot_brain_extract_{}_{}", safe_name, timestamp))
+    let temp_dir = std::env::temp_dir().join(format!("robot_brain_extract_{}_{}", safe_name, timestamp));
+    temp_dir
 }
 
-/// Ingest an archive file - extracts to temp folder, asks for ZIP deletion
+/// Get the most recent archive temp folder (for continuing ingestion)
+pub fn get_recent_archive_temp_folder() -> Option<PathBuf> {
+    let temp_base = std::env::temp_dir();
+    let mut newest: Option<(std::time::SystemTime, PathBuf)> = None;
+    
+    if let Ok(entries) = fs::read_dir(&temp_base) {
+        for entry in entries.filter_map(|e| e.ok()) {
+            let path = entry.path();
+            let name = path.file_name().and_then(|n| n.to_str()).unwrap_or("");
+            if name.starts_with("robot_brain_extract_") && path.is_dir() {
+                if let Ok(modified) = entry.metadata().and_then(|m| m.modified()) {
+                    match &newest {
+                        None => newest = Some((modified, path)),
+                        Some((t, _)) if modified > *t => newest = Some((modified, path)),
+                        _ => {}
+                    }
+                }
+            }
+        }
+    }
+    
+    newest.map(|(_, p)| p)
+}
+
+/// Recursively collect all files from a directory (including subfolders)
+fn collect_all_files_recursive(dir: &Path) -> Result<Vec<PathBuf>> {
+    let mut files = Vec::new();
+    
+    if !dir.exists() {
+        return Ok(files);
+    }
+    
+    for entry in fs::read_dir(dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        
+        if path.is_dir() {
+            // Recursively collect from subdirectory
+            let sub_files = collect_all_files_recursive(&path)?;
+            files.extend(sub_files);
+        } else if path.is_file() {
+            files.push(path);
+        }
+    }
+    
+    Ok(files)
+}
+
+/// Delete empty folders recursively
+fn delete_empty_folders(dir: &Path) {
+    if !dir.exists() || !dir.is_dir() {
+        return;
+    }
+    
+    // First, process all subdirectories
+    if let Ok(entries) = fs::read_dir(dir) {
+        for entry in entries.filter_map(|e| e.ok()) {
+            let path = entry.path();
+            if path.is_dir() {
+                delete_empty_folders(&path);
+            }
+        }
+    }
+    
+    // Now check if this directory is empty and delete it
+    if let Ok(mut entries) = fs::read_dir(dir) {
+        if entries.next().is_none() {
+            let _ = fs::remove_dir(dir);
+        }
+    }
+}
+
+/// Ingest an archive file - extracts to temp folder, ingests all files, cleans up
 fn ingest_archive(
     path: &Path,
     database: &Arc<SqliteDatabase>,
@@ -775,19 +849,37 @@ fn ingest_archive(
         return Err(anyhow::anyhow!("Archive is empty or contains no readable files"));
     }
 
-    // Ingest only the first file from archive (to avoid token overflow)
-    let first_file = &extracted_files[0];
+    // Collect all files recursively (including subfolders)
+    let all_files = collect_all_files_recursive(&temp_dir)?;
+    let total_files = all_files.len();
     
-    // Recursively ingest the extracted file
-    let result = ingest_single_file(first_file, database, chunk_size, overlap, memory_type)?;
+    if total_files == 0 {
+        let _ = fs::remove_dir_all(&temp_dir);
+        return Err(anyhow::anyhow!("Archive contains no readable files"));
+    }
 
+    // Ingest first file
+    let first_file = &all_files[0];
+    let result = ingest_single_file(first_file, database, chunk_size, overlap, memory_type)?;
+    
+    // Delete the source file we just ingested
+    let _ = fs::remove_file(first_file);
+    
+    // Clean up empty subfolders
+    delete_empty_folders(&temp_dir);
+    
+    // Check if temp dir is now empty (all files ingested)
+    let remaining_files = collect_all_files_recursive(&temp_dir)?;
+    let remaining_count = remaining_files.len();
+    
     Ok(IngestResult {
-        filename: format!("{}/{}", filename, result.filename),
+        filename: filename.clone(),
         file_path: path.to_string_lossy().to_string(),
         success: result.success,
         chunks_created: result.chunks_created,
         memory_ids: result.memory_ids,
-        error: result.error,
+        error: None,
+    remaining_count,
     })
 }
 
@@ -848,6 +940,7 @@ fn ingest_single_file(
         chunks_created: chunks.len(),
         memory_ids,
         error: None,
+        remaining_count: 0,
     })
 }
 
@@ -987,6 +1080,7 @@ pub async fn execute_ingest_files(
                     chunks_created: 0,
                     memory_ids: vec![],
                     error: Some(e.to_string()),
+                    remaining_count: 0,
                 });
             }
         }
@@ -1014,6 +1108,7 @@ pub async fn execute_ingest_files(
                         chunks_created: 0,
                         memory_ids: vec![],
                         error: Some(e.to_string()),
+                        remaining_count: 0,
                     });
                 }
             }
@@ -1029,6 +1124,8 @@ pub async fn execute_ingest_files(
         .map(|r| r.file_path.clone())
         .collect();
 
+    // Get remaining count from archive ingestion (if any)
+    let remaining_count: usize = results.iter().map(|r| r.remaining_count).sum();
     let summary = IngestSummary {
         total_files,
         successful,
@@ -1037,12 +1134,19 @@ pub async fn execute_ingest_files(
         results,
     };
 
+    
     Ok(ToolOutput::success(serde_json::json!({
         "summary": summary,
         "successfully_ingested": successfully_ingested,
-        "note": "ZIP files are NOT auto-deleted. Use delete_ingested_files to delete the ZIP after confirming.",
+        "temp_folder": get_recent_archive_temp_folder().map(|p| p.to_string_lossy().to_string()),
+        "remaining_in_temp": remaining_count,
+        "note": if remaining_count > 0 {
+            format!("{0} file(s) remaining in temp folder. Call ingest again with temp_folder path.", remaining_count)
+        } else {
+            "All files from archive ingested.".to_string()
+        },
         "files_to_delete": successfully_ingested,
-        "workflow": "1. Ingest first file from ZIP\n2. Call delete_ingested_files to delete the ZIP\n3. Use list_importable with folder='/tmp/robot_brain_extract_*' to see remaining files\n4. Ingest remaining files one by one"
+        "workflow": "1. Files extracted to temp folder\n2. Call ingest_files with file_path from temp_folder\n3. Repeat until remaining_in_temp is 0\n4. Temp folder auto-deletes when empty"
     })))
 }
 
