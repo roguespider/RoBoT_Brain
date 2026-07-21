@@ -639,16 +639,21 @@ fn collect_importable_files(folder: &Path) -> Result<Vec<ImportableFile>> {
         return Ok(files);
     }
 
-    // Create temp directory for archive extraction
-    let temp_dir = folder.join(".temp_extract");
-    fs::create_dir_all(&temp_dir)?;
+    // Use system temp directory for archive extraction (writable location)
+    let temp_dir = std::env::temp_dir().join(format!("robot_brain_{}", std::process::id()));
+    
+    // Try to create temp dir, skip archives if we can't write to temp
+    if let Err(e) = fs::create_dir_all(&temp_dir) {
+        tracing::debug!("Could not create temp dir {:?}: {}", temp_dir, e);
+    }
 
     for entry in fs::read_dir(folder)? {
         let entry = entry?;
         let path = entry.path();
         
-        // Skip temp directory
-        if path.to_string_lossy().contains(".temp_extract") {
+        // Skip temp directories
+        if path.to_string_lossy().contains(".temp_extract") 
+            || path.to_string_lossy().contains("robot_brain_") {
             continue;
         }
 
