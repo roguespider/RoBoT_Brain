@@ -341,8 +341,8 @@ impl McpServerHandler {
         }
     }
 
-    #[tool(name = "list_tools", description = "List all available MCP tools with optional filter")]
-    async fn list_tools(
+    #[tool(name = "mcp_list_tools", description = "List all available MCP tools with optional filter")]
+    async fn mcp_list_tools(
         &self,
         Parameters(input): Parameters<tools::agent::ListToolsInput>,
     ) -> Json<serde_json::Value> {
