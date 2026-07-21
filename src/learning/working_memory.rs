@@ -324,7 +324,7 @@ impl WorkingMemory {
             items.values().cloned().collect()
         };
         
-        items.sort_by(|a, b| b.accessed_at.cmp(&a.accessed_at));
+        items.sort_by_key(|b| std::cmp::Reverse(b.accessed_at));
         items.truncate(limit);
         items
     }
@@ -377,15 +377,14 @@ impl WorkingMemory {
     /// Promote an item to long-term memory (returns the item if successful)
     pub async fn promote(&self, key: &str) -> Option<WorkingMemoryItem> {
         let mut items = self.items.write().await;
-        if let Some(item) = items.get_mut(key) {
-            if item.transition(StateTransition::Promote, Some("Manual promotion".to_string())) {
+        if let Some(item) = items.get_mut(key)
+            && item.transition(StateTransition::Promote, Some("Manual promotion".to_string())) {
                 item.confidence = self.policy.calculate_confidence(
                     item.access_count,
                     item.confirmation_count,
                 );
                 return Some(item.clone());
             }
-        }
         None
     }
     
@@ -459,25 +458,23 @@ impl WorkingMemory {
             // Check TTL expiration
             if let Some(ttl) = item.ttl_seconds {
                 let age = now - item.created_at;
-                if age > Duration::seconds(ttl as i64) {
-                    if item.transition(StateTransition::Timeout, Some("TTL expired".to_string())) {
+                if age > Duration::seconds(ttl as i64)
+                    && item.transition(StateTransition::Timeout, Some("TTL expired".to_string())) {
                         transitioned += 1;
                     }
-                }
             }
             
             // Apply promotion policy evaluation
             let eval = self.policy.evaluate(item);
             
-            if eval.should_promote {
-                if item.transition(StateTransition::Promote, Some("Policy promotion".to_string())) {
+            if eval.should_promote
+                && item.transition(StateTransition::Promote, Some("Policy promotion".to_string())) {
                     item.confidence = self.policy.calculate_confidence(
                         item.access_count,
                         item.confirmation_count,
                     );
                     transitioned += 1;
                 }
-            }
         }
         
         transitioned

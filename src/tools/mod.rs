@@ -4,9 +4,47 @@
 #![allow(dead_code)]
 
 use std::sync::Arc;
+use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
 use crate::bridge::mcp::McpContext;
+
+/// Standard output type for MCP tool executions
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct ToolOutput {
+    /// Whether the tool execution was successful
+    pub success: bool,
+    /// The result data from the tool
+    pub data: serde_json::Value,
+    /// Optional error message if execution failed
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub error: Option<String>,
+}
+
+impl ToolOutput {
+    /// Create a successful tool output
+    pub fn success(data: serde_json::Value) -> Self {
+        Self {
+            success: true,
+            data,
+            error: None,
+        }
+    }
+
+    /// Create a failed tool output
+    pub fn error<E: std::fmt::Display>(msg: E) -> Self {
+        Self {
+            success: false,
+            data: serde_json::Value::Null,
+            error: Some(msg.to_string()),
+        }
+    }
+
+    /// Create a successful output from a value that can be converted to JSON
+    pub fn from_value<T: Serialize>(value: T) -> Result<Self, serde_json::Error> {
+        Ok(Self::success(serde_json::to_value(value)?))
+    }
+}
 
 pub mod memory;
 pub mod experience;

@@ -8,8 +8,9 @@ use uuid::Uuid;
 // MEMORY TYPES
 // ==========================================================
 
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum MemoryType {
+    #[default]
     Note,
     Fact,
     Task,
@@ -22,12 +23,7 @@ pub enum MemoryType {
     Experience,
 }
 
-impl Default for MemoryType {
-    fn default() -> Self {
-        MemoryType::Note
-    }
-}
-
+#[allow(clippy::to_string_trait_impl)]
 impl ToString for MemoryType {
     fn to_string(&self) -> String {
         match self {

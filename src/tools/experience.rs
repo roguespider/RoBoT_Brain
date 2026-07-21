@@ -12,6 +12,7 @@ use crate::database::queries;
 use crate::database::sqlite::SqliteDatabase;
 use crate::experience::coordinator::ExperienceCoordinator;
 use crate::experience::types::{Experience, ExperienceContext, ExperienceOutcome, ExperienceType};
+use crate::tools::ToolOutput;
 
 /// Tool: Record an experience
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -168,7 +169,7 @@ pub async fn execute_record_experience(
     input: RecordExperienceInput,
     coordinator: &Arc<ExperienceCoordinator>,
     database: &Arc<SqliteDatabase>,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     let experience = Experience {
         id: Uuid::new_v4(),
         timestamp: Utc::now(),
@@ -195,19 +196,19 @@ pub async fn execute_record_experience(
     let memory = crate::database::models::MemoryCard::from_experience(&processed);
     queries::insert_memory(&conn, &memory)?;
 
-    Ok(serde_json::json!({
+    Ok(ToolOutput::success(serde_json::json!({
         "success": true,
         "message": "Experience recorded successfully",
         "id": processed.id.to_string(),
         "title": processed.title
-    }))
+    })))
 }
 
 /// Execute get experience stats tool
 pub async fn execute_get_experience_stats(
     _input: GetExperienceStatsInput,
     database: &Arc<SqliteDatabase>,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     let conn = database.connection()?;
     let memories = queries::search_memory(&conn, "Experience:", 1000)?;
     
@@ -234,18 +235,18 @@ pub async fn execute_get_experience_stats(
         "failure": failure
     });
 
-    Ok(serde_json::json!({
+    Ok(ToolOutput::success(serde_json::json!({
         "total": total,
         "by_type": by_type,
         "by_outcome": by_outcome
-    }))
+    })))
 }
 
 /// Execute list experiences tool
 pub async fn execute_list_experiences(
     input: ListExperiencesInput,
     database: &Arc<SqliteDatabase>,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     let limit = input.limit.unwrap_or(20);
     let conn = database.connection()?;
     let memories = queries::search_memory(&conn, "Experience:", limit)?;
@@ -263,17 +264,17 @@ pub async fn execute_list_experiences(
         })
         .collect();
 
-    Ok(serde_json::json!({
+    Ok(ToolOutput::success(serde_json::json!({
         "experiences": experiences,
         "count": experiences.len()
-    }))
+    })))
 }
 
 /// Execute get experience tool
 pub async fn execute_get_experience(
     input: GetExperienceInput,
     database: &Arc<SqliteDatabase>,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     let uuid = Uuid::parse_str(&input.id)
         .map_err(|e| anyhow::anyhow!("Invalid UUID: {}", e))?;
     
@@ -281,7 +282,7 @@ pub async fn execute_get_experience(
     let memory = queries::get_memory(&conn, uuid)?;
 
     match memory {
-        Some(m) => Ok(serde_json::json!({
+        Some(m) => Ok(ToolOutput::success(serde_json::json!({
             "found": true,
             "experience": {
                 "id": m.id.to_string(),
@@ -291,10 +292,10 @@ pub async fn execute_get_experience(
                 "created_at": m.created_at.to_rfc3339(),
                 "updated_at": m.updated_at.to_rfc3339()
             }
-        })),
-        None => Ok(serde_json::json!({
+        }))),
+        None => Ok(ToolOutput::success(serde_json::json!({
             "found": false,
-            "experience": null
-        })),
+            "experience": serde_json::Value::Null
+        }))),
     }
 }

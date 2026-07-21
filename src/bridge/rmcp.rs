@@ -12,7 +12,7 @@ use rmcp::{
 };
 
 use super::mcp::McpContext;
-use crate::tools;
+use crate::tools::{self, ToolOutput};
 
 /// RMCP server wrapper for MCP bridge
 pub struct RmcpServer {
@@ -76,12 +76,10 @@ impl McpServerHandler {
     async fn ping(
         &self,
         Parameters(input): Parameters<tools::agent::PingInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::agent::execute_ping(input).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -89,12 +87,10 @@ impl McpServerHandler {
     async fn store_memory(
         &self,
         Parameters(input): Parameters<tools::memory::StoreMemoryInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::memory::execute_store_memory(input, &self.context.database).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -102,12 +98,10 @@ impl McpServerHandler {
     async fn search_memory(
         &self,
         Parameters(input): Parameters<tools::memory::SearchMemoryInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::memory::execute_search_memory(input, &self.context.database).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -115,12 +109,10 @@ impl McpServerHandler {
     async fn get_memory(
         &self,
         Parameters(input): Parameters<tools::memory::GetMemoryInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::memory::execute_get_memory(input, &self.context.database).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -128,12 +120,10 @@ impl McpServerHandler {
     async fn list_memories(
         &self,
         Parameters(input): Parameters<tools::memory::ListMemoriesInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::memory::execute_list_memories(input, &self.context.database).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -141,16 +131,14 @@ impl McpServerHandler {
     async fn record_experience(
         &self,
         Parameters(input): Parameters<tools::experience::RecordExperienceInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::experience::execute_record_experience(
             input,
             &self.context.coordinator,
             &self.context.database,
         ).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -158,12 +146,10 @@ impl McpServerHandler {
     async fn get_experience_stats(
         &self,
         Parameters(input): Parameters<tools::experience::GetExperienceStatsInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::experience::execute_get_experience_stats(input, &self.context.database).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -171,12 +157,10 @@ impl McpServerHandler {
     async fn list_experiences(
         &self,
         Parameters(input): Parameters<tools::experience::ListExperiencesInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::experience::execute_list_experiences(input, &self.context.database).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -184,12 +168,10 @@ impl McpServerHandler {
     async fn get_experience(
         &self,
         Parameters(input): Parameters<tools::experience::GetExperienceInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::experience::execute_get_experience(input, &self.context.database).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -197,12 +179,10 @@ impl McpServerHandler {
     async fn get_insights(
         &self,
         Parameters(input): Parameters<tools::reflection::GetInsightsInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::reflection::execute_get_insights(input, &self.context.reflection).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -210,12 +190,10 @@ impl McpServerHandler {
     async fn create_reflection(
         &self,
         Parameters(input): Parameters<tools::reflection::CreateReflectionInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::reflection::execute_create_reflection(input, &self.context.reflection).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -223,12 +201,10 @@ impl McpServerHandler {
     async fn analyze_patterns(
         &self,
         Parameters(input): Parameters<tools::reflection::AnalyzePatternsInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::reflection::execute_analyze_patterns(input, &self.context.reflection).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -236,12 +212,10 @@ impl McpServerHandler {
     async fn get_patterns(
         &self,
         Parameters(input): Parameters<tools::reflection::GetPatternsInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::reflection::execute_get_patterns(input, &self.context.reflection).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -249,12 +223,10 @@ impl McpServerHandler {
     async fn global_search(
         &self,
         Parameters(input): Parameters<tools::search::GlobalSearchInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::search::execute_global_search(input, &self.context.database).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -262,12 +234,10 @@ impl McpServerHandler {
     async fn get_recommendations(
         &self,
         Parameters(input): Parameters<tools::search::GetRecommendationsInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::search::execute_get_recommendations(input, &self.context.database).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -275,12 +245,10 @@ impl McpServerHandler {
     async fn get_reputation(
         &self,
         Parameters(input): Parameters<tools::search::GetReputationInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::search::execute_get_reputation(input, &self.context.database).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -288,12 +256,10 @@ impl McpServerHandler {
     async fn ingest_files(
         &self,
         Parameters(input): Parameters<tools::ingestor::IngestFilesInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::ingestor::execute_ingest_files(input, &self.context.database).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -301,12 +267,10 @@ impl McpServerHandler {
     async fn list_importable(
         &self,
         Parameters(input): Parameters<tools::ingestor::ListImportableInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::ingestor::execute_list_importable(input).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -314,12 +278,10 @@ impl McpServerHandler {
     async fn transcribe_audio(
         &self,
         Parameters(input): Parameters<tools::ingestor::TranscribeAudioInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::ingestor::execute_transcribe_audio(input).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -327,12 +289,10 @@ impl McpServerHandler {
     async fn list_ingested_files(
         &self,
         Parameters(input): Parameters<tools::ingestor::ListIngestedFilesInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::ingestor::execute_list_ingested_files(input).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -340,12 +300,10 @@ impl McpServerHandler {
     async fn delete_ingested_files(
         &self,
         Parameters(input): Parameters<tools::ingestor::DeleteIngestedFilesInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::ingestor::execute_delete_ingested_files(input).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -353,12 +311,10 @@ impl McpServerHandler {
     async fn mcp_list_tools(
         &self,
         Parameters(input): Parameters<tools::agent::ListToolsInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::agent::execute_list_tools(input).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -366,12 +322,10 @@ impl McpServerHandler {
     async fn get_tool(
         &self,
         Parameters(input): Parameters<tools::agent::GetToolInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::agent::execute_get_tool(input).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -379,12 +333,10 @@ impl McpServerHandler {
     async fn connect_mcp_server(
         &self,
         Parameters(input): Parameters<tools::agent::ConnectMcpServerInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::agent::execute_connect_mcp_server(input).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 
@@ -392,12 +344,10 @@ impl McpServerHandler {
     async fn call_mcp_tool(
         &self,
         Parameters(input): Parameters<tools::agent::CallMcpToolInput>,
-    ) -> Json<serde_json::Value> {
+    ) -> Json<ToolOutput> {
         match tools::agent::execute_call_mcp_tool(input).await {
             Ok(result) => Json(result),
-            Err(e) => Json(serde_json::json!({
-                "error": e.to_string()
-            })),
+            Err(e) => Json(ToolOutput::error(e)),
         }
     }
 }

@@ -74,7 +74,7 @@ impl PolicyEngine {
     pub async fn add_rule(&self, rule: PolicyRule) {
         let mut rules = self.rules.write().await;
         rules.push(rule);
-        rules.sort_by(|a, b| b.priority.cmp(&a.priority));
+        rules.sort_by_key(|b| std::cmp::Reverse(b.priority));
     }
 
     /// Remove a rule by ID
@@ -129,17 +129,17 @@ impl PolicyEngine {
             PolicyCondition::IfConfidenceBelow(threshold) => context.confidence < *threshold,
             PolicyCondition::IfReputationAbove { target, threshold } => {
                 // For now, use context-based reputation check
-                context.target.as_ref().map_or(false, |t| t == target) && context.confidence > *threshold
+                (context.target.as_ref() == Some(target)) && context.confidence > *threshold
             }
             PolicyCondition::IfReputationBelow { target, threshold } => {
                 // For now, use context-based reputation check
-                context.target.as_ref().map_or(false, |t| t == target) && context.confidence < *threshold
+                (context.target.as_ref() == Some(target)) && context.confidence < *threshold
             }
             PolicyCondition::IfExperienceCountAbove { experience_type: _, count } => {
                 context.experience_count > *count
             }
             PolicyCondition::IfTaskType(task_type) => {
-                context.task_type.as_ref().map_or(false, |t| t == task_type)
+                context.task_type.as_ref() == Some(task_type)
             }
             PolicyCondition::IfErrorCountAbove(threshold) => context.error_count > *threshold,
             PolicyCondition::Custom(_) => false,

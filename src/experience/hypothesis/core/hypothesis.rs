@@ -20,7 +20,6 @@ use uuid::Uuid;
 /// ============================================================================
 /// HYPOTHESIS
 /// ============================================================================
-
 /// A belief formed from one or more experiences.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Hypothesis {
@@ -97,7 +96,9 @@ impl Default for HypothesisId {
 /// ============================================================================
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Default)]
 pub enum HypothesisStatus {
+    #[default]
     Draft,
     Active,
     Supported,
@@ -105,17 +106,13 @@ pub enum HypothesisStatus {
     Archived,
 }
 
-impl Default for HypothesisStatus {
-    fn default() -> Self {
-        Self::Draft
-    }
-}
 
 /// ============================================================================
 /// CATEGORY
 /// ============================================================================
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Default)]
 pub enum HypothesisCategory {
     Behavioral,
     Preference,
@@ -126,32 +123,25 @@ pub enum HypothesisCategory {
     Knowledge,
     Technical,
     Prediction,
+    #[default]
     Other,
 }
 
-impl Default for HypothesisCategory {
-    fn default() -> Self {
-        Self::Other
-    }
-}
 
 /// ============================================================================
 /// PRIORITY
 /// ============================================================================
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Default)]
 pub enum HypothesisPriority {
     Low,
+    #[default]
     Normal,
     High,
     Critical,
 }
 
-impl Default for HypothesisPriority {
-    fn default() -> Self {
-        Self::Normal
-    }
-}
 
 /// ============================================================================
 /// CONFIDENCE
@@ -212,7 +202,6 @@ pub struct HypothesisMetadata {
 /// ============================================================================
 /// IMPLEMENTATION
 /// ============================================================================
-
 impl Hypothesis {
     /// Create a new hypothesis.
     pub fn new(title: impl Into<String>, description: impl Into<String>) -> Self {

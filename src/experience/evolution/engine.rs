@@ -136,7 +136,7 @@ impl EvolutionEngine {
             .filter(|b| b.status == BehaviorStatus::Active || b.status == BehaviorStatus::Practicing)
             .cloned()
             .collect();
-        active.sort_by(|a, b| b.priority.cmp(&a.priority));
+        active.sort_by_key(|b| std::cmp::Reverse(b.priority));
         active
     }
 
@@ -231,12 +231,11 @@ impl EvolutionEngine {
 
         for behavior in behaviors.values_mut() {
             // Check deprecation conditions
-            if behavior.should_deprecate(self.config.failure_threshold, self.config.unused_threshold_days) {
-                if behavior.status != BehaviorStatus::Deprecated {
+            if behavior.should_deprecate(self.config.failure_threshold, self.config.unused_threshold_days)
+                && behavior.status != BehaviorStatus::Deprecated {
                     behavior.deprecate();
                     summary.deprecated += 1;
                 }
-            }
 
             // Check promotion conditions
             if behavior.status == BehaviorStatus::Candidate 
@@ -363,8 +362,8 @@ impl EvolutionEngine {
         let mut behaviors = self.behaviors.write().await;
         
         let source = behaviors.remove(source_id);
-        if let Some(source) = source {
-            if let Some(target) = behaviors.get_mut(target_id) {
+        if let Some(source) = source
+            && let Some(target) = behaviors.get_mut(target_id) {
                 // Transfer evidence from source to target
                 if let Some(evidence) = self.evidence.read().await.get(source_id) {
                     let mut evidence_store = self.evidence.write().await;
@@ -386,7 +385,6 @@ impl EvolutionEngine {
                 
                 tracing::info!("Merged behavior {} into {}", source_id, target_id);
             }
-        }
         
         Ok(())
     }

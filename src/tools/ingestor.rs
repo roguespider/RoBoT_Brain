@@ -16,6 +16,7 @@ use zip::ZipArchive;
 use crate::database::models::{MemoryCard, MemoryType};
 use crate::database::queries;
 use crate::database::sqlite::SqliteDatabase;
+use crate::tools::ToolOutput;
 
 /// Default folder name for files to import
 pub const DEFAULT_IMPORT_FOLDER: &str = "files_to_import";
@@ -281,7 +282,7 @@ fn extract_pdf_text(path: &Path) -> Result<String> {
         }
         // Extract printable ASCII characters from PDF
         for &byte in &buffer[..n] {
-            if byte >= 32 && byte <= 126 || byte == b'\n' || byte == b'\r' || byte == b'\t' {
+            if (32..=126).contains(&byte) || byte == b'\n' || byte == b'\r' || byte == b'\t' {
                 content.push(byte as char);
             }
         }
@@ -502,10 +503,9 @@ fn get_audio_file_info(path: &Path) -> Result<std::collections::HashMap<String, 
         .args(["-v", "quiet", "-print_format", "json", "-show_format", "-show_streams"])
         .arg(path.to_string_lossy().as_ref())
         .output()
-    {
-        if output.status.success() {
-            if let Ok(json_str) = String::from_utf8(output.stdout) {
-                if let Ok(json) = serde_json::from_str::<serde_json::Value>(&json_str) {
+        && output.status.success()
+            && let Ok(json_str) = String::from_utf8(output.stdout)
+                && let Ok(json) = serde_json::from_str::<serde_json::Value>(&json_str) {
                     if let Some(format) = json.get("format") {
                         if let Some(duration) = format.get("duration").and_then(|v| v.as_str()) {
                             info.insert("duration".to_string(), format!("{:.1}", duration.parse::<f64>().unwrap_or(0.0)));
@@ -516,17 +516,13 @@ fn get_audio_file_info(path: &Path) -> Result<std::collections::HashMap<String, 
                     }
                     if let Some(streams) = json.get("streams").and_then(|s| s.as_array()) {
                         for stream in streams {
-                            if stream.get("codec_type").and_then(|v| v.as_str()) == Some("audio") {
-                                if let Some(codec) = stream.get("codec_name").and_then(|v| v.as_str()) {
+                            if stream.get("codec_type").and_then(|v| v.as_str()) == Some("audio")
+                                && let Some(codec) = stream.get("codec_name").and_then(|v| v.as_str()) {
                                     info.insert("codec".to_string(), codec.to_string());
                                 }
-                            }
                         }
                     }
                 }
-            }
-        }
-    }
     
     info.entry("duration".to_string()).or_insert_with(|| "unknown".to_string());
     info.entry("format".to_string()).or_insert_with(|| "audio".to_string());
@@ -688,7 +684,7 @@ fn collect_importable_files(folder: &Path) -> Result<Vec<ImportableFile>> {
 pub async fn execute_ingest_files(
     input: IngestFilesInput,
     database: &Arc<SqliteDatabase>,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     let folder = get_import_folder(input.folder.as_deref());
     let chunk_size = input.chunk_size.unwrap_or(DEFAULT_CHUNK_SIZE);
     let overlap = DEFAULT_CHUNK_OVERLAP;
@@ -749,7 +745,7 @@ pub async fn execute_ingest_files(
         results,
     };
 
-    Ok(serde_json::json!({
+    Ok(ToolOutput::success(serde_json::json!({
         "summary": summary,
         "successfully_ingested": successfully_ingested,
         "files_to_delete": format!(
@@ -757,28 +753,28 @@ pub async fn execute_ingest_files(
             Example: {{\"files\": [\"path/to/file1\", \"path/to/file2\"], \"confirmation\": \"yes\"}}"
         ),
         "user_action_required": "Confirm file deletion by calling delete_ingested_files tool"
-    }))
+    })))
 }
 
 /// Execute list importable tool
 pub async fn execute_list_importable(
     input: ListImportableInput,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     let folder = get_import_folder(input.folder.as_deref());
     
     let files = collect_importable_files(&folder)?;
     
-    Ok(serde_json::json!({
+    Ok(ToolOutput::success(serde_json::json!({
         "folder": folder.to_string_lossy(),
         "count": files.len(),
         "files": files
-    }))
+    })))
 }
 
 /// Execute transcribe audio tool
 pub async fn execute_transcribe_audio(
     input: TranscribeAudioInput,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     let audio_path = Path::new(&input.path);
     
     if !audio_path.exists() {
@@ -797,19 +793,19 @@ pub async fn execute_transcribe_audio(
     
     let text = extract_audio_text(audio_path, Some(&output_path))?;
     
-    Ok(serde_json::json!({
+    Ok(ToolOutput::success(serde_json::json!({
         "success": true,
         "audio_file": input.path,
         "transcription_file": output_path.to_string_lossy(),
         "transcription": text,
         "note": "Whisper CLI integration enabled. Set WHISPER_PATH env var or local model for actual transcription."
-    }))
+    })))
 }
 
 /// Execute list ingested files tool
 pub async fn execute_list_ingested_files(
     input: ListIngestedFilesInput,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     let folder = get_import_folder(input.folder.as_deref());
     let limit = input.limit.unwrap_or(100);
     
@@ -830,7 +826,7 @@ pub async fn execute_list_ingested_files(
         .map(|f| f.path.clone())
         .collect();
     
-    Ok(serde_json::json!({
+    Ok(ToolOutput::success(serde_json::json!({
         "folder": folder.to_string_lossy(),
         "count": total_count,
         "files": file_paths,
@@ -841,23 +837,23 @@ pub async fn execute_list_ingested_files(
                 "confirmation": "yes"
             }
         }
-    }))
+    })))
 }
 
 /// Execute delete ingested files tool
 pub async fn execute_delete_ingested_files(
     input: DeleteIngestedFilesInput,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     let confirmed = input.confirmation.to_lowercase() == "yes" 
         || input.confirmation.to_lowercase() == "confirm";
     
     if input.files.is_empty() {
-        return Ok(serde_json::json!({
+        return Ok(ToolOutput::success(serde_json::json!({
             "success": false,
             "message": "No files specified for deletion",
-            "deleted": [],
-            "failed": []
-        }));
+            "deleted": Vec::<()>::new(),
+            "failed": Vec::<()>::new()
+        })));
     }
     
     if !confirmed {
@@ -880,15 +876,15 @@ pub async fn execute_delete_ingested_files(
             }
         }
         
-        return Ok(serde_json::json!({
+        return Ok(ToolOutput::success(serde_json::json!({
             "success": true,
             "simulation": true,
             "message": "This is a SIMULATION. Files were NOT deleted.",
             "confirmation_required": "Set 'confirmation' to 'yes' or 'confirm' to actually delete",
             "would_delete": would_delete,
-            "deleted": [],
-            "failed": []
-        }));
+            "deleted": Vec::<String>::new(),
+            "failed": Vec::<()>::new()
+        })));
     }
     
     // Actually delete the files
@@ -921,7 +917,7 @@ pub async fn execute_delete_ingested_files(
         }
     }
     
-    Ok(serde_json::json!({
+    Ok(ToolOutput::success(serde_json::json!({
         "success": failed.is_empty(),
         "simulation": false,
         "deleted": deleted,
@@ -931,7 +927,7 @@ pub async fn execute_delete_ingested_files(
             "deleted_count": deleted.len(),
             "failed_count": failed.len()
         }
-    }))
+    })))
 }
 
 #[cfg(test)]

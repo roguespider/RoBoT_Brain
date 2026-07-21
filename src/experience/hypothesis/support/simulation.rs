@@ -15,7 +15,6 @@ use crate::experience::hypothesis::core::hypothesis::{HypothesisId, Hypothesis, 
 /// ============================================================================
 /// HYPOTHESIS SIMULATOR
 /// ============================================================================
-
 /// Simulator for exploring hypothesis implications
 #[derive(Debug, Clone, Default)]
 pub struct HypothesisSimulator {

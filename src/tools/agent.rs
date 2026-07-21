@@ -4,8 +4,8 @@
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-use crate::bridge::mcp_client::McpClient;
-use crate::tools::get_tools;
+use crate::bridge::mcp::McpClient;
+use crate::tools::{get_tools, ToolOutput};
 
 /// Global MCP client instance
 static MCP_CLIENT: std::sync::OnceLock<Arc<McpClient>> = std::sync::OnceLock::new();
@@ -142,7 +142,7 @@ pub mod definitions {
 }
 
 /// Execute list_tools tool
-pub async fn execute_list_tools(input: ListToolsInput) -> Result<serde_json::Value, anyhow::Error> {
+pub async fn execute_list_tools(input: ListToolsInput) -> Result<ToolOutput, anyhow::Error> {
     let all_tools = get_tools();
     let total_count = all_tools.len();
     
@@ -166,15 +166,15 @@ pub async fn execute_list_tools(input: ListToolsInput) -> Result<serde_json::Val
         })
         .collect();
 
-    Ok(serde_json::json!({
+    Ok(ToolOutput::success(serde_json::json!({
         "tools": filtered_tools,
         "count": filtered_tools.len(),
         "total_available": total_count
-    }))
+    })))
 }
 
 /// Execute get_tool tool
-pub async fn execute_get_tool(input: GetToolInput) -> Result<serde_json::Value, anyhow::Error> {
+pub async fn execute_get_tool(input: GetToolInput) -> Result<ToolOutput, anyhow::Error> {
     let all_tools = get_tools();
     
     let tool = all_tools
@@ -182,76 +182,76 @@ pub async fn execute_get_tool(input: GetToolInput) -> Result<serde_json::Value, 
         .find(|t| t.name == input.name);
 
     match tool {
-        Some(t) => Ok(serde_json::json!({
+        Some(t) => Ok(ToolOutput::success(serde_json::json!({
             "found": true,
             "tool": {
                 "name": t.name,
                 "description": t.description,
                 "input_schema": t.input_schema
             }
-        })),
-        None => Ok(serde_json::json!({
+        }))),
+        None => Ok(ToolOutput::success(serde_json::json!({
             "found": false,
-            "tool": null,
+            "tool": serde_json::Value::Null,
             "error": format!("Tool '{}' not found", input.name)
-        })),
+        }))),
     }
 }
 
 /// Execute ping tool - verifies connection to the MCP server
-pub async fn execute_ping(_input: PingInput) -> Result<serde_json::Value, anyhow::Error> {
-    Ok(serde_json::json!({
+pub async fn execute_ping(_input: PingInput) -> Result<ToolOutput, anyhow::Error> {
+    Ok(ToolOutput::success(serde_json::json!({
         "status": "ok",
         "message": "MCP server is running",
         "timestamp": chrono::Utc::now().to_rfc3339(),
         "available_tools": get_tools().len()
-    }))
+    })))
 }
 
 /// Execute connect_mcp_server tool - connect to an external MCP server
-pub async fn execute_connect_mcp_server(input: ConnectMcpServerInput) -> Result<serde_json::Value, anyhow::Error> {
+pub async fn execute_connect_mcp_server(input: ConnectMcpServerInput) -> Result<ToolOutput, anyhow::Error> {
     let client = match get_mcp_client() {
         Some(c) => c,
-        None => return Ok(serde_json::json!({
+        None => return Ok(ToolOutput::success(serde_json::json!({
             "success": false,
             "error": "MCP client not initialized"
-        })),
+        }))),
     };
 
     let args_vec = input.args.unwrap_or_default();
     let args: Vec<&str> = args_vec.iter().map(|s| s.as_str()).collect();
 
     match client.connect(&input.name, &input.command, &args).await {
-        Ok(()) => Ok(serde_json::json!({
+        Ok(()) => Ok(ToolOutput::success(serde_json::json!({
             "success": true,
             "server": input.name,
             "tools": client.list_all_tools().await.len()
-        })),
-        Err(e) => Ok(serde_json::json!({
+        }))),
+        Err(e) => Ok(ToolOutput::success(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        })),
+        }))),
     }
 }
 
 /// Execute call_mcp_tool tool - call a tool on a connected MCP server
-pub async fn execute_call_mcp_tool(input: CallMcpToolInput) -> Result<serde_json::Value, anyhow::Error> {
+pub async fn execute_call_mcp_tool(input: CallMcpToolInput) -> Result<ToolOutput, anyhow::Error> {
     let client = match get_mcp_client() {
         Some(c) => c,
-        None => return Ok(serde_json::json!({
+        None => return Ok(ToolOutput::success(serde_json::json!({
             "success": false,
             "error": "MCP client not initialized"
-        })),
+        }))),
     };
 
     match client.call_tool(&input.tool_name, input.arguments).await {
-        Ok(result) => Ok(serde_json::json!({
+        Ok(result) => Ok(ToolOutput::success(serde_json::json!({
             "success": true,
             "result": result
-        })),
-        Err(e) => Ok(serde_json::json!({
+        }))),
+        Err(e) => Ok(ToolOutput::success(serde_json::json!({
             "success": false,
             "error": e.to_string()
-        })),
+        }))),
     }
 }
