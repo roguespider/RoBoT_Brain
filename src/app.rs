@@ -14,7 +14,7 @@ use crate::experience::scheduler::{Scheduler, TaskSchedule, TaskType};
 use crate::experience::scorer::ExperienceScorer;
 use crate::learning::{WorkingMemory, LineageTracker};
 use crate::bridge::mcp::McpContext;
-use crate::bridge::mcp_client::McpClient;
+use crate::bridge::mcp::McpClient;
 use crate::bridge::rmcp::run_stdio_server;
 use crate::tools;
 

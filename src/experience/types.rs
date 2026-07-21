@@ -14,7 +14,6 @@ use uuid::Uuid;
 /// ============================================================================
 /// EXPERIENCE
 /// ============================================================================
-
 /// A single recorded experience within the system.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Experience {

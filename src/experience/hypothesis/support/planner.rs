@@ -18,7 +18,6 @@ use crate::experience::hypothesis::core::hypothesis::{
 /// ============================================================================
 /// HYPOTHESIS PLANNER
 /// ============================================================================
-
 /// Planner that converts hypotheses into actionable plans
 #[derive(Debug, Clone, Default)]
 pub struct HypothesisPlanner {
@@ -199,6 +198,7 @@ pub struct PlanningResult {
 
 /// Planning status
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Default)]
 pub enum PlanningStatus {
     /// Plan is ready to execute
     Ready,
@@ -207,14 +207,10 @@ pub enum PlanningStatus {
     /// Hypothesis was rejected
     Rejected,
     /// No actions possible
+    #[default]
     NoActions,
 }
 
-impl Default for PlanningStatus {
-    fn default() -> Self {
-        Self::NoActions
-    }
-}
 
 /// ============================================================================
 /// PLANNED ACTION

@@ -10,6 +10,7 @@ use uuid::Uuid;
 use crate::database::models::{MemoryCard, MemoryType};
 use crate::database::queries;
 use crate::database::sqlite::SqliteDatabase;
+use crate::tools::ToolOutput;
 
 /// Tool: Store a new memory
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -160,7 +161,7 @@ fn parse_memory_type(s: &str) -> MemoryType {
 pub async fn execute_store_memory(
     input: StoreMemoryInput,
     database: &Arc<SqliteDatabase>,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     let memory = MemoryCard {
         id: Uuid::new_v4(),
         content: input.content,
@@ -174,18 +175,18 @@ pub async fn execute_store_memory(
     let conn = database.connection()?;
     queries::insert_memory(&conn, &memory)?;
 
-    Ok(serde_json::json!({
+    Ok(ToolOutput::success(serde_json::json!({
         "success": true,
         "message": "Memory stored successfully",
         "id": memory.id.to_string()
-    }))
+    })))
 }
 
 /// Execute search memory tool
 pub async fn execute_search_memory(
     input: SearchMemoryInput,
     database: &Arc<SqliteDatabase>,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     let limit = input.limit.unwrap_or(10);
     let conn = database.connection()?;
     let results = queries::search_memory(&conn, &input.query, limit)?;
@@ -205,17 +206,17 @@ pub async fn execute_search_memory(
         })
         .collect();
 
-    Ok(serde_json::json!({
+    Ok(ToolOutput::success(serde_json::json!({
         "results": memories,
         "count": memories.len()
-    }))
+    })))
 }
 
 /// Execute get memory tool
 pub async fn execute_get_memory(
     input: GetMemoryInput,
     database: &Arc<SqliteDatabase>,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     let uuid = Uuid::parse_str(&input.id)
         .map_err(|e| anyhow::anyhow!("Invalid UUID: {}", e))?;
     
@@ -223,7 +224,7 @@ pub async fn execute_get_memory(
     let memory = queries::get_memory(&conn, uuid)?;
 
     match memory {
-        Some(m) => Ok(serde_json::json!({
+        Some(m) => Ok(ToolOutput::success(serde_json::json!({
             "found": true,
             "memory": {
                 "id": m.id.to_string(),
@@ -234,11 +235,11 @@ pub async fn execute_get_memory(
                 "created_at": m.created_at.to_rfc3339(),
                 "updated_at": m.updated_at.to_rfc3339()
             }
-        })),
-        None => Ok(serde_json::json!({
+        }))),
+        None => Ok(ToolOutput::success(serde_json::json!({
             "found": false,
-            "memory": null
-        })),
+            "memory": serde_json::Value::Null
+        }))),
     }
 }
 
@@ -246,7 +247,7 @@ pub async fn execute_get_memory(
 pub async fn execute_list_memories(
     input: ListMemoriesInput,
     database: &Arc<SqliteDatabase>,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     let limit = input.limit.unwrap_or(20);
     let conn = database.connection()?;
     let memories = queries::list_memories(&conn, input.memory_type.as_deref(), limit)?;
@@ -266,8 +267,8 @@ pub async fn execute_list_memories(
         })
         .collect();
 
-    Ok(serde_json::json!({
+    Ok(ToolOutput::success(serde_json::json!({
         "memories": result,
         "count": result.len()
-    }))
+    })))
 }

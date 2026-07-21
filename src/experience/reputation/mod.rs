@@ -1,3 +1,4 @@
+#![allow(clippy::module_inception)]
 // /src/experience/reputation/mod.rs
 pub mod analytics;
 pub mod decay;

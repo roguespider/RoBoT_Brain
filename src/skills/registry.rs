@@ -198,7 +198,7 @@ impl SkillRegistry {
     /// Get most used skills
     pub async fn get_most_used(&self, limit: usize) -> Vec<Skill> {
         let mut skills = self.skills.read().await.clone();
-        skills.sort_by(|a, b| b.usage_count.cmp(&a.usage_count));
+        skills.sort_by_key(|b| std::cmp::Reverse(b.usage_count));
         skills.truncate(limit);
         skills
     }

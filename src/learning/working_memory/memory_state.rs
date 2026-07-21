@@ -7,8 +7,10 @@ use std::hash::{Hash, Hasher};
 
 /// States a memory item can be in
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub enum MemoryState {
     /// Currently active and being used
+    #[default]
     Active,
     
     /// Has been accessed multiple times
@@ -24,11 +26,6 @@ pub enum MemoryState {
     Discarded,
 }
 
-impl Default for MemoryState {
-    fn default() -> Self {
-        Self::Active
-    }
-}
 
 /// Valid state transitions
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
@@ -64,22 +61,22 @@ pub enum StateTransition {
 impl StateTransition {
     /// Check if a transition is valid from a given state
     pub fn is_valid_from(&self, from: MemoryState) -> bool {
-        match (self, from) {
-            (StateTransition::Access, MemoryState::Active) => true,
-            (StateTransition::Access, MemoryState::Dormant) => true,
-            (StateTransition::Observe, MemoryState::Active) => true,
-            (StateTransition::Observe, MemoryState::Repeated) => true,
-            (StateTransition::Confirm, MemoryState::Repeated) => true,
-            (StateTransition::Confirm, MemoryState::Confirmed) => true,
-            (StateTransition::Contradict, _) => true,
-            (StateTransition::Reject, _) => true,
-            (StateTransition::Promote, MemoryState::Confirmed) => true,
-            (StateTransition::Demote, MemoryState::Active) => true,
-            (StateTransition::Demote, MemoryState::Repeated) => true,
-            (StateTransition::Discard, _) => true,
-            (StateTransition::Timeout, _) => true,
-            _ => false,
-        }
+        matches!(
+            (self, from),
+            (StateTransition::Access, MemoryState::Active)
+                | (StateTransition::Access, MemoryState::Dormant)
+                | (StateTransition::Observe, MemoryState::Active)
+                | (StateTransition::Observe, MemoryState::Repeated)
+                | (StateTransition::Confirm, MemoryState::Repeated)
+                | (StateTransition::Confirm, MemoryState::Confirmed)
+                | (StateTransition::Contradict, _)
+                | (StateTransition::Reject, _)
+                | (StateTransition::Promote, MemoryState::Confirmed)
+                | (StateTransition::Demote, MemoryState::Active)
+                | (StateTransition::Demote, MemoryState::Repeated)
+                | (StateTransition::Discard, _)
+                | (StateTransition::Timeout, _)
+        )
     }
     
     /// Get the resulting state after this transition

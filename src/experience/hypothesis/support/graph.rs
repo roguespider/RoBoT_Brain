@@ -18,7 +18,6 @@ use crate::experience::hypothesis::core::hypothesis::HypothesisId;
 /// ============================================================================
 /// HYPOTHESIS GRAPH
 /// ============================================================================
-
 /// A directed graph representing relationships between hypotheses.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct HypothesisGraph {
@@ -631,7 +630,6 @@ impl HypothesisRelationship {
 /// ============================================================================
 /// GRAPH BUILDER
 /// ============================================================================
-
 /// Builder for creating hypothesis graphs
 #[derive(Debug, Clone, Default)]
 pub struct GraphBuilder {

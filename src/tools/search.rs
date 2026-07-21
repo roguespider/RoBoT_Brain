@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::database::queries;
 use crate::database::sqlite::SqliteDatabase;
+use crate::tools::ToolOutput;
 
 /// Tool: Full-text search across all data
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -102,7 +103,7 @@ pub mod definitions {
 pub async fn execute_global_search(
     input: GlobalSearchInput,
     database: &Arc<SqliteDatabase>,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     let limit = input.limit.unwrap_or(20);
     let conn = database.connection()?;
     
@@ -131,7 +132,7 @@ pub async fn execute_global_search(
     
     let total = memory_results.len() + experience_results.len();
 
-    Ok(serde_json::json!({
+    Ok(ToolOutput::success(serde_json::json!({
         "results": {
             "memories": memory_results,
             "experiences": experience_results,
@@ -139,14 +140,14 @@ pub async fn execute_global_search(
         },
         "total": total,
         "query": input.query
-    }))
+    })))
 }
 
 /// Execute get recommendations tool
 pub async fn execute_get_recommendations(
     input: GetRecommendationsInput,
     database: &Arc<SqliteDatabase>,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     let limit = input.limit.unwrap_or(5);
     let conn = database.connection()?;
     
@@ -168,17 +169,17 @@ pub async fn execute_get_recommendations(
         })
         .collect();
 
-    Ok(serde_json::json!({
+    Ok(ToolOutput::success(serde_json::json!({
         "recommendations": recommendations,
         "based_on": input.context.unwrap_or_else(|| "recent_high_confidence_experiences".to_string())
-    }))
+    })))
 }
 
 /// Execute get reputation tool
 pub async fn execute_get_reputation(
     input: GetReputationInput,
     database: &Arc<SqliteDatabase>,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     let conn = database.connection()?;
     
     // Search for mentions of the target
@@ -193,11 +194,11 @@ pub async fn execute_get_reputation(
         0.5
     };
 
-    Ok(serde_json::json!({
+    Ok(ToolOutput::success(serde_json::json!({
         "target": input.target,
         "score": score,
         "success_count": high_confidence,
         "failure_count": total_uses - high_confidence,
         "total_uses": total_uses
-    }))
+    })))
 }

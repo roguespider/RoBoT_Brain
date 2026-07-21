@@ -9,7 +9,6 @@ use super::payload::EventPayload;
 /// ============================================================================
 /// EXPERIENCE EVENT
 /// ============================================================================
-
 /// A signal emitted by the experience system.
 ///
 /// Events are not memories themselves.
@@ -35,7 +34,6 @@ pub struct ExperienceEvent {
 /// ============================================================================
 /// EXPERIENCE EVENT TYPES
 /// ============================================================================
-
 /// Types of signals flowing through the experience system.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ExperienceEventType {

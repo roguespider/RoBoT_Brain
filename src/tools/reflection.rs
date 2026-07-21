@@ -7,6 +7,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 use crate::experience::reflection::ReflectionEngine;
+use crate::tools::ToolOutput;
 
 /// Tool: Get insights
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -136,10 +137,10 @@ pub mod definitions {
 pub async fn execute_get_insights(
     input: GetInsightsInput,
     reflection_engine: &Arc<ReflectionEngine>,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     let insights = reflection_engine.get_all_insights().await;
     let min_confidence = input.min_confidence.unwrap_or(0.0);
-    let limit = input.limit.unwrap_or(10) as usize;
+    let limit = input.limit.unwrap_or(10);
     
     let filtered: Vec<serde_json::Value> = insights
         .into_iter()
@@ -158,37 +159,37 @@ pub async fn execute_get_insights(
         })
         .collect();
 
-    Ok(serde_json::json!({
+    Ok(ToolOutput::success(serde_json::json!({
         "insights": filtered,
         "count": filtered.len()
-    }))
+    })))
 }
 
 /// Execute create reflection tool
 pub async fn execute_create_reflection(
     input: CreateReflectionInput,
     reflection_engine: &Arc<ReflectionEngine>,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     let result = reflection_engine.generate_reflection(
         vec![].as_slice(),
         input.description.clone(),
     ).await;
 
     match result {
-        Ok(Some(r)) => Ok(serde_json::json!({
+        Ok(Some(r)) => Ok(ToolOutput::success(serde_json::json!({
             "success": true,
             "reflection_id": r.id.to_string(),
             "title": r.title,
             "reflection_type": format!("{:?}", r.reflection_type)
-        })),
-        Ok(None) => Ok(serde_json::json!({
+        }))),
+        Ok(None) => Ok(ToolOutput::success(serde_json::json!({
             "success": false,
             "message": "No reflection generated"
-        })),
-        Err(_) => Ok(serde_json::json!({
+        }))),
+        Err(_) => Ok(ToolOutput::success(serde_json::json!({
             "success": false,
             "message": "Failed to create reflection"
-        })),
+        }))),
     }
 }
 
@@ -196,7 +197,7 @@ pub async fn execute_create_reflection(
 pub async fn execute_analyze_patterns(
     input: AnalyzePatternsInput,
     reflection_engine: &Arc<ReflectionEngine>,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     // Get patterns from reflection engine
     let patterns = reflection_engine.get_all_patterns().await;
     
@@ -215,19 +216,19 @@ pub async fn execute_analyze_patterns(
         })
         .collect();
 
-    Ok(serde_json::json!({
+    Ok(ToolOutput::success(serde_json::json!({
         "patterns": relevant_patterns,
-        "themes": [],
-        "recommendations": [],
+        "themes": Vec::<()>::new(),
+        "recommendations": Vec::<()>::new(),
         "analyzed_count": input.experience_ids.len()
-    }))
+    })))
 }
 
 /// Execute get patterns tool
 pub async fn execute_get_patterns(
     input: GetPatternsInput,
     reflection_engine: &Arc<ReflectionEngine>,
-) -> Result<serde_json::Value> {
+) -> Result<ToolOutput> {
     let patterns = reflection_engine.get_all_patterns().await;
     let min_confidence = input.min_confidence.unwrap_or(0.0);
     
@@ -245,8 +246,8 @@ pub async fn execute_get_patterns(
         })
         .collect();
 
-    Ok(serde_json::json!({
+    Ok(ToolOutput::success(serde_json::json!({
         "patterns": filtered,
         "count": filtered.len()
-    }))
+    })))
 }

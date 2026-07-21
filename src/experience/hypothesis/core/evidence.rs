@@ -110,9 +110,11 @@ pub enum EvidenceRelationship {
 /// ============================================================================
 
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum EvidenceStrength {
     VeryWeak,
     Weak,
+    #[default]
     Moderate,
     Strong,
     VeryStrong,
@@ -130,11 +132,6 @@ impl EvidenceStrength {
     }
 }
 
-impl Default for EvidenceStrength {
-    fn default() -> Self {
-        Self::Moderate
-    }
-}
 
 /// ============================================================================
 /// METADATA
@@ -155,7 +152,6 @@ pub struct EvidenceMetadata {
 /// ============================================================================
 /// IMPLEMENTATION
 /// ============================================================================
-
 impl Evidence {
     pub fn new(title: impl Into<String>, relationship: EvidenceRelationship) -> Self {
         Self {

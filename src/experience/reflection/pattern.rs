@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Represents a detected pattern from analyzing experiences
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialOrd, PartialEq)]
 pub struct Pattern {
     /// Unique identifier
     pub id: String,
@@ -37,7 +37,7 @@ pub struct Pattern {
 }
 
 /// Types of patterns that can be detected
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum PatternType {
     /// Sequential pattern (A always follows B)
     Sequential,
@@ -185,21 +185,10 @@ impl Pattern {
 }
 
 /// Compares patterns by confidence for sorting
-impl PartialOrd for Pattern {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        Some(self.confidence.partial_cmp(&other.confidence).unwrap_or(std::cmp::Ordering::Equal))
-    }
-}
-
-impl PartialEq for Pattern {
-    fn eq(&self, other: &Self) -> bool {
-        self.id == other.id
-    }
-}
-
+#[allow(clippy::derive_ord_xor_partial_ord)]
 impl Ord for Pattern {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
-        self.partial_cmp(other).unwrap_or(std::cmp::Ordering::Equal)
+        self.confidence.partial_cmp(&other.confidence).unwrap_or(std::cmp::Ordering::Equal)
     }
 }
 

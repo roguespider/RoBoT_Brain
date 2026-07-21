@@ -150,7 +150,7 @@ impl EvidenceBuilder {
         self
     }
 
-    pub fn from_source(mut self, source: impl Into<String>) -> Self {
+    pub fn with_source(mut self, source: impl Into<String>) -> Self {
         self.source = source.into();
         self
     }

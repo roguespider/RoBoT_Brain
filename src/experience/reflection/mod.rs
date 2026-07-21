@@ -1,3 +1,4 @@
+#![allow(clippy::module_inception)]
 //! ============================================================================
 //! Reflection System
 //! ============================================================================
@@ -47,7 +48,6 @@ pub use engine::ReflectionEngine;
 /// ============================================================================
 /// Reflection Types
 /// ============================================================================
-
 /// High-level category describing the purpose of a reflection.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum ReflectionType {
@@ -98,7 +98,6 @@ pub struct ReflectionConfidence {
 /// ============================================================================
 /// Traits
 /// ============================================================================
-
 /// Produces reflections from one or more experiences.
 pub trait Reflector {
     type Input;
@@ -124,7 +123,6 @@ pub trait InsightProducer {
 /// ============================================================================
 /// Metadata
 /// ============================================================================
-
 /// Common metadata shared by reflection records.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReflectionMetadata {

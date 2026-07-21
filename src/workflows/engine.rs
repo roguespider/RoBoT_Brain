@@ -11,7 +11,7 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::experience::metrics::MetricsCollector;
-use crate::tools;
+use crate::tools::{self, ToolOutput};
 
 /// A workflow definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -177,16 +177,14 @@ impl WorkflowEngine {
             
             // Check step references are valid
             for step in &workflow.steps {
-                if let Some(ref on_success) = step.on_success {
-                    if !workflow.steps.iter().any(|s| &s.id == on_success) {
+                if let Some(ref on_success) = step.on_success
+                    && !workflow.steps.iter().any(|s| &s.id == on_success) {
                         anyhow::bail!("Step {} references non-existent success target: {}", step.id, on_success);
                     }
-                }
-                if let Some(ref on_failure) = step.on_failure {
-                    if !workflow.steps.iter().any(|s| &s.id == on_failure) {
+                if let Some(ref on_failure) = step.on_failure
+                    && !workflow.steps.iter().any(|s| &s.id == on_failure) {
                         anyhow::bail!("Step {} references non-existent failure target: {}", step.id, on_failure);
                     }
-                }
             }
 
             return Ok(true);
@@ -252,7 +250,7 @@ impl WorkflowEngine {
             return Ok(());
         };
 
-        let mut step_results: HashMap<String, serde_json::Value> = HashMap::new();
+        let mut step_results: HashMap<String, ToolOutput> = HashMap::new();
 
         for step in &steps {
             tracing::info!("Executing workflow {} step: {} (action: {})", workflow_id, step.name, step.action);
@@ -271,7 +269,7 @@ impl WorkflowEngine {
                     
                     // Handle on_success: store result in variable if specified
                     if let Some(var_name) = &step.on_success {
-                        variables.insert(var_name.clone(), serde_json::to_string(&output).unwrap_or_default());
+                        variables.insert(var_name.clone(), serde_json::to_string(&output.data).unwrap_or_default());
                     }
                 }
                 Err(e) => {
@@ -321,10 +319,10 @@ impl WorkflowEngine {
     fn replace_variables(
         params: &HashMap<String, String>,
         workflow_vars: &HashMap<String, String>,
-        step_results: &HashMap<String, serde_json::Value>,
+        step_results: &HashMap<String, ToolOutput>,
     ) -> HashMap<String, String> {
         let mut resolved = params.clone();
-        for (_key, value) in resolved.iter_mut() {
+        for value in resolved.values_mut() {
             // Replace workflow variables ${var_name}
             for (var_name, var_value) in workflow_vars {
                 let placeholder = format!("${{{}}}", var_name);
@@ -332,7 +330,8 @@ impl WorkflowEngine {
             }
             // Replace step result references ${step_id.output_field}
             for (step_id, result) in step_results {
-                if let Some(obj) = result.as_object() {
+                // Use the data field from ToolOutput
+                if let Some(obj) = result.data.as_object() {
                     for (field, field_value) in obj {
                         let placeholder = format!("${{{}.{}}}", step_id, field);
                         *value = value.replace(&placeholder, &field_value.to_string());
@@ -344,7 +343,7 @@ impl WorkflowEngine {
     }
 
     /// Execute a step action by name with actual tool execution
-    async fn execute_step_action(&self, action: &str, params: &HashMap<String, String>) -> Result<serde_json::Value> {
+    async fn execute_step_action(&self, action: &str, params: &HashMap<String, String>) -> Result<ToolOutput> {
         // Helper to get param as string
         let get_param = |key: &str| params.get(key).cloned().unwrap_or_default();
         
@@ -363,11 +362,11 @@ impl WorkflowEngine {
                     let result = tools::memory::execute_store_memory(input, db).await?;
                     Ok(result)
                 } else {
-                    Ok(serde_json::json!({
+                    Ok(ToolOutput::success(serde_json::json!({
                         "status": "no_database",
                         "message": "Workflow engine created without database access",
                         "action": action
-                    }))
+                    })))
                 }
             }
             "search_memory" => {
@@ -380,11 +379,11 @@ impl WorkflowEngine {
                     let result = tools::memory::execute_search_memory(input, db).await?;
                     Ok(result)
                 } else {
-                    Ok(serde_json::json!({
+                    Ok(ToolOutput::success(serde_json::json!({
                         "status": "no_database",
                         "message": "Workflow engine created without database access",
                         "action": action
-                    }))
+                    })))
                 }
             }
             "list_memories" => {
@@ -397,11 +396,11 @@ impl WorkflowEngine {
                     let result = tools::memory::execute_list_memories(input, db).await?;
                     Ok(result)
                 } else {
-                    Ok(serde_json::json!({
+                    Ok(ToolOutput::success(serde_json::json!({
                         "status": "no_database",
                         "message": "Workflow engine created without database access",
                         "action": action
-                    }))
+                    })))
                 }
             }
             
@@ -428,11 +427,11 @@ impl WorkflowEngine {
                     ).await?;
                     Ok(result)
                 } else {
-                    Ok(serde_json::json!({
+                    Ok(ToolOutput::success(serde_json::json!({
                         "status": "no_database",
                         "message": "Workflow engine created without database access",
                         "action": action
-                    }))
+                    })))
                 }
             }
             
@@ -464,21 +463,21 @@ impl WorkflowEngine {
                     let result = tools::ingestor::execute_ingest_files(input, db).await?;
                     Ok(result)
                 } else {
-                    Ok(serde_json::json!({
+                    Ok(ToolOutput::success(serde_json::json!({
                         "status": "no_database",
                         "message": "Workflow engine created without database access",
                         "action": action
-                    }))
+                    })))
                 }
             }
             
             // Generic tool call - returns params as result
             _ => {
-                Ok(serde_json::json!({
+                Ok(ToolOutput::success(serde_json::json!({
                     "status": "executed",
                     "action": action,
                     "parameters": params
-                }))
+                })))
             }
         }
     }
@@ -486,24 +485,22 @@ impl WorkflowEngine {
     /// Pause workflow execution
     pub async fn pause(&self, workflow_id: &str) -> Result<()> {
         let mut workflows = self.workflows.write().await;
-        if let Some(workflow) = workflows.get_mut(workflow_id) {
-            if workflow.status == WorkflowStatus::Running {
+        if let Some(workflow) = workflows.get_mut(workflow_id)
+            && workflow.status == WorkflowStatus::Running {
                 workflow.status = WorkflowStatus::Paused;
                 self.metrics.increment("workflows.paused").await;
             }
-        }
         Ok(())
     }
 
     /// Resume paused workflow
     pub async fn resume(&self, workflow_id: &str) -> Result<()> {
         let mut workflows = self.workflows.write().await;
-        if let Some(workflow) = workflows.get_mut(workflow_id) {
-            if workflow.status == WorkflowStatus::Paused {
+        if let Some(workflow) = workflows.get_mut(workflow_id)
+            && workflow.status == WorkflowStatus::Paused {
                 workflow.status = WorkflowStatus::Running;
                 self.metrics.increment("workflows.resumed").await;
             }
-        }
         Ok(())
     }
 
