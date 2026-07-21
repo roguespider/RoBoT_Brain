@@ -712,8 +712,77 @@ fn get_audio_file_info(path: &Path) -> Result<std::collections::HashMap<String, 
     Ok(info)
 }
 
-/// Ingest a single file into memory
-fn ingest_file(
+/// Get system temp directory for archive extraction
+fn get_archive_temp_dir() -> PathBuf {
+    std::env::temp_dir().join(format!("robot_brain_{}", std::process::id()))
+}
+
+/// Public wrapper that handles all file types including archives
+pub fn ingest_file(
+    path: &Path,
+    database: &Arc<SqliteDatabase>,
+    chunk_size: usize,
+    overlap: usize,
+    memory_type: &str,
+) -> Result<IngestResult> {
+    let file_type = detect_file_type(path);
+
+    // Handle archives by extracting and ingesting contents
+    if file_type == "archive" {
+        ingest_archive(path, database, chunk_size, overlap, memory_type)
+    } else {
+        ingest_single_file(path, database, chunk_size, overlap, memory_type)
+    }
+}
+
+/// Ingest an archive file - extracts and ingests contents one by one
+fn ingest_archive(
+    path: &Path,
+    database: &Arc<SqliteDatabase>,
+    chunk_size: usize,
+    overlap: usize,
+    memory_type: &str,
+) -> Result<IngestResult> {
+    let filename = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+
+    // Create temp directory for extraction
+    let temp_dir = get_archive_temp_dir();
+    if let Err(e) = fs::create_dir_all(&temp_dir) {
+        return Err(anyhow::anyhow!("Failed to create temp directory: {}", e));
+    }
+
+    // Extract archive
+    let extracted_files = process_archive(path, &temp_dir)?;
+    
+    if extracted_files.is_empty() {
+        return Err(anyhow::anyhow!("Archive is empty or contains no readable files"));
+    }
+
+    // Ingest only the first file from archive (to avoid token overflow)
+    let first_file = &extracted_files[0];
+    
+    // Recursively ingest the extracted file
+    let result = ingest_single_file(first_file, database, chunk_size, overlap, memory_type)?;
+    
+    // Clean up temp directory
+    let _ = fs::remove_dir_all(&temp_dir);
+
+    Ok(IngestResult {
+        filename: format!("{}/{}", filename, result.filename),
+        file_path: path.to_string_lossy().to_string(),
+        success: result.success,
+        chunks_created: result.chunks_created,
+        memory_ids: result.memory_ids,
+        error: result.error,
+    })
+}
+
+/// Ingest a single file into memory (no archive handling)
+fn ingest_single_file(
     path: &Path,
     database: &Arc<SqliteDatabase>,
     chunk_size: usize,
@@ -727,7 +796,7 @@ fn ingest_file(
         .to_string();
 
     let file_type = detect_file_type(path);
-    
+
     // Extract text content
     let text = match file_type.as_str() {
         "audio" => extract_audio_text(path, None)?,
@@ -820,51 +889,20 @@ fn collect_importable_files(folder: &Path) -> Result<Vec<ImportableFile>> {
         return Ok(files);
     }
 
-    // Use system temp directory for archive extraction (writable location)
-    let temp_dir = std::env::temp_dir().join(format!("robot_brain_{}", std::process::id()));
-    
-    // Try to create temp dir, skip archives if we can't write to temp
-    if let Err(e) = fs::create_dir_all(&temp_dir) {
-        tracing::debug!("Could not create temp dir {:?}: {}", temp_dir, e);
-    }
-
     for entry in fs::read_dir(folder)? {
         let entry = entry?;
         let path = entry.path();
-        
+
         // Skip temp directories
-        if path.to_string_lossy().contains(".temp_extract") 
-            || path.to_string_lossy().contains("robot_brain_") {
+        if path.to_string_lossy().contains("robot_brain_") {
             continue;
         }
 
-        let file_type = detect_file_type(&path);
-        
-        if file_type == "archive" {
-            // Process archive and add contained files
-            match process_archive(&path, &temp_dir) {
-                Ok(extracted) => {
-                    for extracted_path in extracted {
-                        if extracted_path.is_file() {
-                            let metadata = fs::metadata(&extracted_path)?;
-                            files.push(ImportableFile {
-                                path: extracted_path.to_string_lossy().to_string(),
-                                filename: extracted_path
-                                    .file_name()
-                                    .and_then(|n| n.to_str())
-                                    .unwrap_or("unknown")
-                                    .to_string(),
-                                size: metadata.len(),
-                                file_type: detect_file_type(&extracted_path),
-                            });
-                        }
-                    }
-                }
-                Err(e) => {
-                    tracing::warn!("Failed to extract archive {:?}: {}", path, e);
-                }
-            }
-        } else if path.is_file() {
+        if path.is_file() {
+            let file_type = detect_file_type(&path);
+
+            // For archives, just list the archive itself - user ingests the archive directly
+            // The ingest process will extract it
             let metadata = fs::metadata(&path)?;
             files.push(ImportableFile {
                 path: path.to_string_lossy().to_string(),
@@ -878,9 +916,6 @@ fn collect_importable_files(folder: &Path) -> Result<Vec<ImportableFile>> {
             });
         }
     }
-
-    // Clean up temp directory
-    let _ = fs::remove_dir_all(&temp_dir);
 
     Ok(files)
 }
