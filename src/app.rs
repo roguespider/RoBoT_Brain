@@ -14,6 +14,7 @@ use crate::experience::scheduler::{Scheduler, TaskSchedule, TaskType};
 use crate::experience::scorer::ExperienceScorer;
 use crate::learning::{WorkingMemory, LineageTracker};
 use crate::bridge::mcp::McpContext;
+use crate::bridge::mcp_client::McpClient;
 use crate::bridge::rmcp::run_stdio_server;
 use crate::tools;
 
@@ -50,6 +51,9 @@ pub struct App {
 
     /// MCP context shared with bridge.
     mcp_context: Arc<McpContext>,
+
+    /// MCP client for connecting to external MCP servers.
+    mcp_client: Arc<McpClient>,
 
     /// Working memory for short-term memory items.
     #[allow(dead_code)]
@@ -101,6 +105,9 @@ impl App {
         // Register MCP tools
         tools::register_tools(&mcp_context);
 
+        // Create MCP client for external connections
+        let mcp_client = Arc::new(McpClient::new());
+
         tracing::info!("RoBoT initialized successfully");
 
         Ok(Self {
@@ -112,6 +119,7 @@ impl App {
             scheduler,
             metrics,
             mcp_context,
+            mcp_client,
             working_memory,
             lineage_tracker,
         })
