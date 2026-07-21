@@ -374,4 +374,30 @@ impl McpServerHandler {
             })),
         }
     }
+
+    #[tool(name = "connect_mcp_server", description = "Connect to an external MCP server via child process")]
+    async fn connect_mcp_server(
+        &self,
+        Parameters(input): Parameters<tools::agent::ConnectMcpServerInput>,
+    ) -> Json<serde_json::Value> {
+        match tools::agent::execute_connect_mcp_server(input).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(serde_json::json!({
+                "error": e.to_string()
+            })),
+        }
+    }
+
+    #[tool(name = "call_mcp_tool", description = "Call a tool on a connected MCP server")]
+    async fn call_mcp_tool(
+        &self,
+        Parameters(input): Parameters<tools::agent::CallMcpToolInput>,
+    ) -> Json<serde_json::Value> {
+        match tools::agent::execute_call_mcp_tool(input).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(serde_json::json!({
+                "error": e.to_string()
+            })),
+        }
+    }
 }

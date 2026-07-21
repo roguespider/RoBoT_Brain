@@ -107,6 +107,9 @@ impl App {
 
         // Create MCP client for external connections
         let mcp_client = Arc::new(McpClient::new());
+        
+        // Initialize the global MCP client for tools
+        crate::tools::agent::init_mcp_client(mcp_client.clone());
 
         tracing::info!("RoBoT initialized successfully");
 
