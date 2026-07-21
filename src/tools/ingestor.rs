@@ -28,11 +28,20 @@ pub const DEFAULT_CHUNK_SIZE: usize = 1000;
 pub const DEFAULT_CHUNK_OVERLAP: usize = 100;
 
 /// Supported file extensions
-const TEXT_EXTENSIONS: &[&str] = &["txt", "md", "rst", "csv", "log", "xml", "html", "htm"];
-const JSON_EXTENSIONS: &[&str] = &["json", "jsonl"];
-const PDF_EXTENSIONS: &[&str] = &["pdf"];
-const ARCHIVE_EXTENSIONS: &[&str] = &["zip", "tar", "gz", "tgz", "tar.gz"];
-const AUDIO_EXTENSIONS: &[&str] = &["mp3", "wav", "m4a", "flac", "ogg", "aac"];
+const TEXT_EXTENSIONS: &[&str] = &[
+    "txt", "md", "rst", "csv", "log", "xml", "html", "htm",  // Standard text
+    "rs", "toml", "yaml", "yml", "env", "gitignore", "dockerfile",  // Code & config
+    "py", "js", "ts", "java", "c", "cpp", "h", "hpp", "go", "rb", "php",  // Code
+    "sql", "sh", "bash", "zsh", "ps1", "bat", "cmd",  // Scripts
+    "css", "scss", "sass", "less", "json", "jsonl",  // Web & data
+    "properties", "conf", "cfg", "ini", "lock",  // Config
+    "srt", "vtt", "ass",  // Subtitles
+];
+const ARCHIVE_EXTENSIONS: &[&str] = &["zip", "tar", "gz", "tgz", "tar.gz", "bz2", "xz", "7z", "rar"];
+const AUDIO_EXTENSIONS: &[&str] = &["mp3", "wav", "m4a", "flac", "ogg", "aac", "wma", "opus"];
+const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "gif", "bmp", "webp", "ico", "tiff", "svg"];
+const VIDEO_EXTENSIONS: &[&str] = &["mp4", "avi", "mkv", "mov", "wmv", "flv", "webm", "m4v", "mpeg", "mpg"];
+const DOC_EXTENSIONS: &[&str] = &["pdf", "doc", "docx", "odt", "rtf", "epub"];
 
 /// Tool: Ingest files from import folder
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -240,14 +249,16 @@ fn detect_file_type(path: &Path) -> String {
 
     if TEXT_EXTENSIONS.contains(&ext.as_str()) {
         "text".to_string()
-    } else if JSON_EXTENSIONS.contains(&ext.as_str()) {
-        "json".to_string()
-    } else if PDF_EXTENSIONS.contains(&ext.as_str()) {
-        "pdf".to_string()
     } else if ARCHIVE_EXTENSIONS.contains(&ext.as_str()) {
         "archive".to_string()
     } else if AUDIO_EXTENSIONS.contains(&ext.as_str()) {
         "audio".to_string()
+    } else if IMAGE_EXTENSIONS.contains(&ext.as_str()) {
+        "image".to_string()
+    } else if VIDEO_EXTENSIONS.contains(&ext.as_str()) {
+        "video".to_string()
+    } else if DOC_EXTENSIONS.contains(&ext.as_str()) {
+        "document".to_string()
     } else {
         "unknown".to_string()
     }
@@ -261,21 +272,75 @@ fn extract_text(path: &Path) -> Result<String> {
         .unwrap_or("")
         .to_lowercase();
 
-    match ext.as_str() {
-        "txt" | "md" | "rst" | "csv" | "log" | "xml" | "html" | "htm" => {
-            fs::read_to_string(path).context("Failed to read text file")
-        }
-        "json" | "jsonl" => {
-            let content = fs::read_to_string(path).context("Failed to read JSON file")?;
-            // Pretty print JSON for better searchability
+    // All text/code extensions
+    if TEXT_EXTENSIONS.contains(&ext.as_str()) {
+        let content = fs::read_to_string(path).context("Failed to read file")?;
+        // Pretty print JSON/YAML for better searchability
+        if ext == "json" || ext == "jsonl" {
             match serde_json::from_str::<serde_json::Value>(&content) {
-                Ok(v) => Ok(serde_json::to_string_pretty(&v).unwrap_or(content)),
-                Err(_) => Ok(content), // Return raw content if not valid JSON
+                Ok(v) => return Ok(serde_json::to_string_pretty(&v).unwrap_or(content)),
+                Err(_) => {}
             }
         }
-        "pdf" => extract_pdf_text(path),
-        _ => Err(anyhow::anyhow!("Unsupported file type: {}", ext)),
+        return Ok(content);
     }
+    
+    // Document formats
+    if DOC_EXTENSIONS.contains(&ext.as_str()) {
+        return match ext.as_str() {
+            "pdf" => extract_pdf_text(path),
+            "docx" => extract_docx_text(path),
+            "epub" => extract_epub_text(path),
+            _ => Err(anyhow::anyhow!("Document type '{}' requires external tool for extraction", ext)),
+        };
+    }
+    
+    // Image - needs OCR (note in output)
+    if IMAGE_EXTENSIONS.contains(&ext.as_str()) {
+        return Ok(format!(
+            "[IMAGE FILE: {}]\n\
+            File: {}\n\
+            Size: {} bytes\n\
+            \n\
+            NOTE: This is an image file. For full text extraction, use OCR tools like Tesseract.\n\
+            The agent can analyze this image if vision capabilities are available.\n",
+            ext,
+            path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown"),
+            fs::metadata(path).map(|m| m.len()).unwrap_or(0)
+        ));
+    }
+    
+    // Video - needs transcription
+    if VIDEO_EXTENSIONS.contains(&ext.as_str()) {
+        return Ok(format!(
+            "[VIDEO FILE: {}]\n\
+            File: {}\n\
+            Size: {} bytes\n\
+            \n\
+            NOTE: This is a video file. For full text extraction, use transcription tools.\n\
+            Video content cannot be directly ingested without audio extraction.\n",
+            ext,
+            path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown"),
+            fs::metadata(path).map(|m| m.len()).unwrap_or(0)
+        ));
+    }
+    
+    // Audio - needs transcription  
+    if AUDIO_EXTENSIONS.contains(&ext.as_str()) {
+        return Ok(format!(
+            "[AUDIO FILE: {}]\n\
+            File: {}\n\
+            Size: {} bytes\n\
+            \n\
+            NOTE: This is an audio file. Use whisper or similar for transcription.\n\
+            Audio content cannot be directly ingested as text.\n",
+            ext,
+            path.file_name().and_then(|n| n.to_str()).unwrap_or("unknown"),
+            fs::metadata(path).map(|m| m.len()).unwrap_or(0)
+        ));
+    }
+    
+    Err(anyhow::anyhow!("Unsupported file type: {}", ext))
 }
 
 /// Extract text from PDF file (basic implementation)
@@ -317,6 +382,110 @@ fn extract_pdf_text(path: &Path) -> Result<String> {
     } else {
         Ok(cleaned)
     }
+}
+
+/// Extract text from DOCX file (ZIP-based extraction)
+fn extract_docx_text(path: &Path) -> Result<String> {
+    let file = File::open(path).context("Failed to open DOCX file")?;
+    let mut archive = zip::ZipArchive::new(BufReader::new(file))?;
+    
+    let mut content = String::new();
+    
+    // DOCX files have document.xml in word/ folder
+    if let Ok(mut xml_file) = archive.by_name("word/document.xml") {
+        let mut xml_content = String::new();
+        xml_file.read_to_string(&mut xml_content)?;
+        
+        // Simple XML text extraction - strip tags
+        content = strip_xml_tags(&xml_content);
+    }
+    
+    if content.trim().is_empty() {
+        Err(anyhow::anyhow!("No readable text found in DOCX file"))
+    } else {
+        Ok(content)
+    }
+}
+
+/// Extract text from EPUB file (ZIP-based extraction)
+fn extract_epub_text(path: &Path) -> Result<String> {
+    let file = File::open(path).context("Failed to open EPUB file")?;
+    let mut archive = zip::ZipArchive::new(BufReader::new(file))?;
+    
+    let mut all_content = String::new();
+    
+    // EPUB files have XHTML content in OEBPS/content folder
+    for i in 0..archive.len() {
+        if let Ok(mut file) = archive.by_index(i) {
+            let name = file.name().to_string();
+            // Look for .xhtml, .html, .htm files
+            if name.ends_with(".xhtml") || name.ends_with(".html") || name.ends_with(".htm") {
+                let mut html_content = String::new();
+                file.read_to_string(&mut html_content)?;
+                
+                // Strip HTML tags
+                let text = strip_html_tags(&html_content);
+                if !text.trim().is_empty() {
+                    all_content.push_str(&text);
+                    all_content.push_str("\n\n");
+                }
+            }
+        }
+    }
+    
+    if all_content.trim().is_empty() {
+        Err(anyhow::anyhow!("No readable text found in EPUB file"))
+    } else {
+        Ok(all_content)
+    }
+}
+
+/// Strip XML/HTML tags from content
+fn strip_xml_tags(xml: &str) -> String {
+    let mut result = String::new();
+    let mut in_tag = false;
+    
+    // Simple XML parser to extract text content
+    for ch in xml.chars() {
+        match ch {
+            '<' => in_tag = true,
+            '>' => {
+                in_tag = false;
+                if !result.ends_with(' ') && !result.is_empty() {
+                    result.push(' ');
+                }
+            }
+            _ if !in_tag => result.push(ch),
+            _ => {}
+        }
+    }
+    
+    // Clean up whitespace
+    result
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
+/// Strip HTML tags from content
+fn strip_html_tags(html: &str) -> String {
+    let mut result = String::new();
+    let mut in_tag = false;
+    
+    for ch in html.chars() {
+        match ch {
+            '<' => in_tag = true,
+            '>' => in_tag = false,
+            _ if !in_tag => result.push(ch),
+            _ => {}
+        }
+    }
+    
+    // Clean up whitespace
+    result
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// Chunk text into smaller pieces with overlap
