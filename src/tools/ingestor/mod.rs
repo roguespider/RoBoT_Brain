@@ -10,6 +10,7 @@ pub mod text_extractor;
 pub mod workflow;
 
 // Re-export main types and functions
+#[allow(unused_imports)]
 pub use core::{
     execute_delete_ingested_files, execute_list_importable,
     execute_list_ingested_files, execute_transcribe_audio, ingest_file,
