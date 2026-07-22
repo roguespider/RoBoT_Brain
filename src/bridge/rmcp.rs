@@ -347,8 +347,8 @@ impl McpServerHandler {
         }
     }
 
-    #[tool(name = "call_mcp_tool", description = "Call a tool on a connected MCP server")]
-    async fn call_mcp_tool(
+    #[tool(name = "call_tool", description = "Call a tool on a connected MCP server")]
+    async fn call_tool(
         &self,
         Parameters(input): Parameters<tools::agent::CallMcpToolInput>,
     ) -> Json<ToolOutput> {

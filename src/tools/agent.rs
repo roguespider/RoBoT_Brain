@@ -62,8 +62,8 @@ pub mod definitions {
     pub const LIST_TOOLS: &str = "list_tools";
     pub const GET_TOOL: &str = "get_tool";
     pub const CONNECT_MCP_SERVER: &str = "connect_mcp_server";
-    pub const CALL_MCP_TOOL: &str = "call_mcp_tool";
-    pub const MCP_LIST_TOOLS: &str = "list_tools"; // Alias for backward compatibility
+    pub const CALL_TOOL: &str = "call_tool";
+    pub const CALL_MCP_TOOL: &str = "call_tool"; // Alias
 
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         vec![
