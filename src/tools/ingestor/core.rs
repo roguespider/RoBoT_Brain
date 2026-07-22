@@ -336,6 +336,12 @@ pub async fn ingest_file(
         record_ingested_files(successfully_ingested.clone()).await;
     }
 
+    // CLEANUP WAL FILES after batch operations
+    // This checkpoints the WAL and cleans up the -wal and -shm files
+    if let Err(e) = db.cleanup_wal_files() {
+        tracing::warn!("Failed to cleanup WAL files: {}", e);
+    }
+
     // Get folder path for reference
     let folder_display = folder.to_string_lossy().to_string();
     let exe_dir = std::env::current_exe()

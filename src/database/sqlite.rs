@@ -81,6 +81,59 @@ impl SqliteDatabase {
         Ok(conn)
     }
 
+    /// Checkpoint the WAL file to clean up temporary files.
+    /// This writes pending changes to the main database and truncates the WAL file.
+    pub fn checkpoint(&self) -> Result<()> {
+        let conn = Connection::open(&self.db_path)?;
+        
+        // TRUNCATE checkpoint - writes all WAL content to db and truncates WAL file
+        conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE)")?;
+        
+        tracing::debug!("WAL checkpoint completed, temporary files cleaned up");
+        Ok(())
+    }
+
+    /// Get the current WAL file size (for debugging).
+    pub fn wal_size(&self) -> Result<u64> {
+        let wal_path = self.db_path.with_extension("db-wal");
+        if wal_path.exists() {
+            Ok(std::fs::metadata(&wal_path)?.len())
+        } else {
+            Ok(0)
+        }
+    }
+
+    /// Get the current SHM file size (for debugging).
+    pub fn shm_size(&self) -> Result<u64> {
+        let shm_path = self.db_path.with_extension("db-shm");
+        if shm_path.exists() {
+            Ok(std::fs::metadata(&shm_path)?.len())
+        } else {
+            Ok(0)
+        }
+    }
+
+    /// Cleanup WAL and SHM files by running a checkpoint.
+    /// Call this periodically or after batch operations to clean up.
+    pub fn cleanup_wal_files(&self) -> Result<()> {
+        let wal_size_before = self.wal_size().unwrap_or(0);
+        let shm_size_before = self.shm_size().unwrap_or(0);
+        
+        self.checkpoint()?;
+        
+        let wal_size_after = self.wal_size().unwrap_or(0);
+        let shm_size_after = self.shm_size().unwrap_or(0);
+        
+        if wal_size_before > 0 || shm_size_before > 0 {
+            tracing::info!(
+                "WAL cleanup: WAL {} -> {} bytes, SHM {} -> {} bytes",
+                wal_size_before, wal_size_after, shm_size_before, shm_size_after
+            );
+        }
+        
+        Ok(())
+    }
+
     /// Database file path.
     pub fn path(&self) -> &Path {
         &self.db_path
