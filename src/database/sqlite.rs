@@ -39,6 +39,9 @@ impl SqliteDatabase {
 
         database.run_migrations()?;
 
+        // Configure the database for optimal concurrency
+        database.configure_connection()?;
+
         Ok(database)
     }
 
@@ -47,9 +50,35 @@ impl SqliteDatabase {
         crate::database::migrations::run(self)
     }
 
-    /// Open a fresh SQLite connection.
+    /// Configure SQLite for better concurrency with WAL mode.
+    fn configure_connection(&self) -> Result<()> {
+        let conn = Connection::open(&self.db_path)?;
+        
+        // Enable WAL mode for better concurrency (allows concurrent reads during writes)
+        conn.execute_batch(
+            "PRAGMA journal_mode=WAL;
+             PRAGMA synchronous=NORMAL;
+             PRAGMA busy_timeout=30000;
+             PRAGMA cache_size=-64000;
+             PRAGMA temp_store=MEMORY;
+             PRAGMA mmap_size=268435456;"
+        )?;
+        
+        tracing::info!("SQLite configured with WAL mode for improved concurrency");
+        Ok(())
+    }
+
+    /// Open a fresh SQLite connection with optimized settings.
     pub fn connection(&self) -> Result<Connection> {
-        Ok(Connection::open(&self.db_path)?)
+        let conn = Connection::open(&self.db_path)?;
+        
+        // Ensure WAL mode is enabled on each connection
+        conn.execute_batch(
+            "PRAGMA journal_mode=WAL;
+             PRAGMA busy_timeout=30000;"
+        )?;
+        
+        Ok(conn)
     }
 
     /// Database file path.

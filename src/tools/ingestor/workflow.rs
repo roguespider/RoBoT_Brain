@@ -72,23 +72,62 @@ pub async fn execute_list_ingested_files(
 pub async fn execute_delete_ingested_files(
     input: DeleteIngestedFilesInput,
 ) -> Result<ToolOutput> {
-    // Verify confirmation
-    if input.confirmation.to_lowercase() != "yes" && input.confirmation.to_lowercase() != "confirm" {
+    // Strict confirmation verification - must be exactly "yes" or "confirm"
+    let confirmation = input.confirmation.trim().to_lowercase();
+    
+    if confirmation != "yes" && confirmation != "confirm" {
         return Ok(ToolOutput::error(
-            "Deletion cancelled. Must confirm with 'yes' or 'confirm'.".to_string()
+            format!(
+                "DELETION CANCELLED: Missing or invalid confirmation.\n\
+                Files requested for deletion: {}\n\
+                To delete, you MUST provide confirmation='yes' (exactly, case-insensitive).\n\
+                No files were deleted.",
+                input.files.len()
+            )
         ));
     }
     
+    // Double-check: if empty files list, warn
+    if input.files.is_empty() {
+        return Ok(ToolOutput::success(serde_json::json!({
+            "deleted": Vec::<String>::new(),
+            "deleted_count": 0,
+            "failed": Vec::<String>::new(),
+            "failed_count": 0,
+            "message": "No files specified for deletion."
+        })));
+    }
+    
+    // Track deleted and failed files
     let mut deleted = Vec::new();
     let mut failed = Vec::new();
+    let mut parent_folders: std::collections::HashSet<String> = std::collections::HashSet::new();
+    
+    // Log what we're about to delete for transparency
+    tracing::info!("Delete operation starting for {} file(s)", input.files.len());
     
     for file_path in &input.files {
         let path = Path::new(file_path);
         
+        // Track parent folder for potential cleanup
+        if let Some(parent) = path.parent() {
+            parent_folders.insert(parent.to_string_lossy().to_string());
+        }
+        
         if !path.exists() {
+            tracing::warn!("File not found, skipping: {:?}", path);
             failed.push(serde_json::json!({
                 "path": file_path,
                 "error": "File not found"
+            }));
+            continue;
+        }
+        
+        if !path.is_file() {
+            tracing::warn!("Path is not a file, skipping: {:?}", path);
+            failed.push(serde_json::json!({
+                "path": file_path,
+                "error": "Path is not a file"
             }));
             continue;
         }
@@ -108,15 +147,25 @@ pub async fn execute_delete_ingested_files(
         }
     }
     
+    // Note: Folder deletion is intentionally NOT done automatically
+    // The folder (files_to_import) should remain for future use
+    // Manual folder cleanup should be done by the user if desired
+    
+    let success = deleted.len();
+    let failed_count = failed.len();
+    
     Ok(ToolOutput::success(serde_json::json!({
         "deleted": deleted,
-        "deleted_count": deleted.len(),
+        "deleted_count": success,
         "failed": failed,
-        "failed_count": failed.len(),
-        "message": if deleted.is_empty() {
-            "No files were deleted".to_string()
+        "failed_count": failed_count,
+        "message": if success > 0 && failed_count == 0 {
+            format!("SUCCESS: Deleted {} file(s). Original files have been removed.", success)
+        } else if success > 0 && failed_count > 0 {
+            format!("PARTIAL: Deleted {} file(s), {} failed. Check failed list.", success, failed_count)
         } else {
-            format!("Successfully deleted {} file(s)", deleted.len())
-        }
+            "No files were deleted.".to_string()
+        },
+        "note": "The files_to_import folder was NOT deleted. It remains for future imports."
     })))
 }

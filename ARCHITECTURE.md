@@ -2500,3 +2500,151 @@ RULE
 
 Optimize for completing the entire project, not minimizing code changes.
 Think like the project's CTO, not a code assistant.
+
+=========================================================
+MCP WORKFLOW RULES (MANDATORY)
+===
+
+This section defines the REQUIRED workflow for any AI agent using RoBoT's MCP interface.
+
+# 1. CONSULT MCP BEFORE ANY ACTION
+
+**CRITICAL**: Before taking ANY action, the agent MUST:
+
+1. Call `list_tools` to see available MCP tools
+2. Consult relevant memory using `search_memory` or `global_search`
+3. Review any stored patterns using `get_patterns` or `analyze_patterns`
+4. Only then proceed with actions
+
+**NEVER** skip the memory consultation step.
+
+---
+
+# 2. FILE INGESTION WORKFLOW
+
+When ingesting files, follow this EXACT sequence:
+
+## Step 1: Check Available Files
+```
+Call: list_importable
+This returns: files in files_to_import/ (in exe directory)
+```
+
+## Step 2: Ingest ONE File at a Time
+```
+Call: ingest_files with:
+  - folder: "files_to_import" (or omit - it's the default)
+  - limit: 1 (REQUIRED for single file mode)
+  OR
+  - file_path: "exact/path/to/file.txt"
+```
+
+**IMPORTANT**:
+- Always use `limit=1` for single file ingestion
+- NEVER batch ingest multiple files without explicit user instruction
+- Each file should be ingested, processed, and verified before the next
+
+## Step 3: Verify Ingestion Success
+```
+Check the response for:
+  - success: true
+  - chunks_created: > 0
+  - remaining_in_temp: should be 0 or handled
+```
+
+## Step 4: Ask User Before Deletion
+```
+NEVER delete files without explicit user confirmation.
+Ask: "Can I delete the original file X? It has been successfully ingested."
+```
+
+## Step 5: Delete Only After Confirmation
+```
+Call: delete_ingested_files with:
+  - files: [list of file paths to delete]
+  - confirmation: "yes" (EXACTLY this value)
+```
+
+---
+
+# 3. DIRECTORY STRUCTURE
+
+The following files MUST be in the SAME directory as the executable:
+
+```
+robot_brain/          (or wherever exe is located)
+├── robot_brain.exe   (or robot_brain on Linux)
+├── robot_brain.db    (SQLite database)
+└── files_to_import/  (import folder)
+    ├── file1.txt
+    ├── file2.md
+    └── ...
+```
+
+**The MCP will report `files_to_import` as the default import location.**
+
+---
+
+# 4. DELETE VERIFICATION RULES
+
+**ABSOLUTE RULES**:
+
+1. NEVER delete files without user confirmation
+2. ALWAYS show what files will be deleted before calling delete_ingested_files
+3. The confirmation parameter MUST be exactly "yes" (case-insensitive)
+4. If confirmation is missing or wrong, deletion will NOT proceed
+5. Original folders are NOT deleted automatically - only files
+
+---
+
+# 5. PATTERN ANALYSIS WORKFLOW
+
+Before making repetitive decisions:
+
+```
+1. Call: analyze_patterns
+2. Review returned patterns, themes, and recommendations
+3. Consider pattern confidence scores
+4. Apply learned patterns to current situation
+```
+
+---
+
+# 6. DATABASE CONCURRENCY
+
+RoBoT uses SQLite with WAL mode for better concurrency:
+- Multiple readers can run simultaneously with one writer
+- Busy timeout is set to 30 seconds
+- If you encounter "database is locked", wait and retry
+
+---
+
+# 7. ERROR HANDLING
+
+When operations fail:
+
+1. Check the `error` field in the response
+2. Log the error for debugging
+3. Report the error clearly to the user
+4. Do NOT silently skip errors
+5. Do NOT retry indefinitely without user input
+
+---
+
+# QUICK REFERENCE: MCP TOOL USAGE
+
+| Tool | When to Use | Key Parameters |
+|------|-------------|----------------|
+| list_importable | Before ingestion, check available files | folder, limit |
+| ingest_files | Ingest files into memory | folder, file_path, limit=1 |
+| list_ingested_files | List files that can be deleted | folder, limit |
+| delete_ingested_files | Delete originals (NEEDS CONFIRMATION) | files, confirmation="yes" |
+| search_memory | Search stored memories | query, types, limit |
+| global_search | Search all data types | query, limit |
+| analyze_patterns | Detect patterns in experiences | experience_ids |
+| get_patterns | Get stored patterns | min_confidence, pattern_type |
+| get_insights | Get actionable insights | min_confidence, limit |
+
+---
+
+This MCP workflow section is MANDATORY for all agents using RoBoT.
