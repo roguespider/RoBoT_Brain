@@ -22,6 +22,12 @@ fn get_mcp_client() -> Option<Arc<McpClient>> {
     MCP_CLIENT.get().cloned()
 }
 
+/// Tool input for getting workflow rules (MUST be called first)
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct GetWorkflowInput {
+    pub purpose: Option<String>,
+}
+
 /// Tool input for listing available tools
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct ListToolsInput {
@@ -52,6 +58,7 @@ pub struct CallMcpToolInput {
 
 /// Agent tool definitions
 pub mod definitions {
+    pub const GET_WORKFLOW: &str = "get_workflow";
     pub const LIST_TOOLS: &str = "list_tools";
     pub const GET_TOOL: &str = "get_tool";
     pub const CONNECT_MCP_SERVER: &str = "connect_mcp_server";
@@ -59,6 +66,19 @@ pub mod definitions {
 
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         vec![
+            crate::bridge::mcp::McpTool {
+                name: GET_WORKFLOW.to_string(),
+                description: "MANDATORY: Get workflow rules. MUST be called before any other tool. Returns the required workflow for this MCP server.".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "purpose": {
+                            "type": "string",
+                            "description": "Context for why you need the workflow (e.g., 'file_ingestion', 'memory_search', 'general')"
+                        }
+                    }
+                }),
+            },
             crate::bridge::mcp::McpTool {
                 name: LIST_TOOLS.to_string(),
                 description: "List all available MCP tools with optional filter".to_string(),
@@ -129,6 +149,179 @@ pub mod definitions {
             },
         ]
     }
+}
+
+/// Execute get_workflow tool - MUST be called before any other tool
+pub async fn execute_get_workflow(input: GetWorkflowInput) -> Result<ToolOutput, anyhow::Error> {
+    let purpose = input.purpose.unwrap_or_else(|| "general".to_string());
+    
+    let workflow = match purpose.to_lowercase().as_str() {
+        "file_ingestion" | "ingest" | "import" => serde_json::json!({
+            "workflow_name": "File Ingestion Workflow",
+            "mandatory_steps": [
+                {
+                    "step": 1,
+                    "tool": "get_workflow",
+                    "action": "Review workflow rules",
+                    "description": "You called get_workflow - good start!"
+                },
+                {
+                    "step": 2,
+                    "tool": "list_importable",
+                    "action": "Check available files in files_to_import folder",
+                    "description": "Lists files ready for ingestion. Default folder is 'files_to_import' in exe directory."
+                },
+                {
+                    "step": 3,
+                    "tool": "ingest_files",
+                    "action": "Ingest ONE file at a time",
+                    "parameters": {"limit": 1},
+                    "description": "Use limit=1 for single file. NEVER batch ingest without explicit instruction."
+                },
+                {
+                    "step": 4,
+                    "tool": "search_memory",
+                    "action": "Verify ingestion in memory",
+                    "description": "Search to confirm file was stored correctly."
+                },
+                {
+                    "step": 5,
+                    "tool": "ASK USER",
+                    "action": "Ask for confirmation before deletion",
+                    "description": "NEVER delete without explicit user confirmation!"
+                },
+                {
+                    "step": 6,
+                    "tool": "delete_ingested_files",
+                    "action": "Delete original file only after confirmation",
+                    "parameters": {"confirmation": "yes"},
+                    "description": "confirmation MUST be 'yes' (exactly). Folder is NOT deleted automatically."
+                }
+            ],
+            "critical_rules": [
+                "ALWAYS use limit=1 for single file ingestion",
+                "NEVER batch ingest without explicit user instruction",
+                "ALWAYS ask user before calling delete_ingested_files",
+                "confirmation parameter MUST be exactly 'yes'",
+                "Folders are NOT deleted - only files",
+                "files_to_import is relative to executable location"
+            ],
+            "common_mistakes_to_avoid": [
+                "Calling ingest_files without limit=1 (causes batch ingest)",
+                "Calling delete_ingested_files without asking user first",
+                "Using confirmation values other than 'yes'",
+                "Trying to delete folders instead of files",
+                "Forgetting to verify ingestion with search_memory"
+            ]
+        }),
+        
+        "memory_search" | "search" | "memory" => serde_json::json!({
+            "workflow_name": "Memory Search Workflow",
+            "mandatory_steps": [
+                {
+                    "step": 1,
+                    "tool": "get_workflow",
+                    "action": "Review workflow rules",
+                    "description": "You called get_workflow - good start!"
+                },
+                {
+                    "step": 2,
+                    "tool": "global_search",
+                    "action": "Search across all memories",
+                    "description": "Use query parameter to find relevant memories."
+                },
+                {
+                    "step": 3,
+                    "tool": "get_patterns",
+                    "action": "Check for relevant patterns",
+                    "description": "Patterns may contain learned knowledge."
+                },
+                {
+                    "step": 4,
+                    "tool": "get_insights",
+                    "action": "Review actionable insights",
+                    "description": "Insights with high confidence can guide decisions."
+                }
+            ],
+            "critical_rules": [
+                "Use global_search for comprehensive results",
+                "Review patterns before making repetitive decisions",
+                "Consider insight confidence levels when making decisions"
+            ]
+        }),
+        
+        _ => serde_json::json!({
+            "workflow_name": "General MCP Workflow",
+            "mandatory_steps": [
+                {
+                    "step": 1,
+                    "tool": "get_workflow",
+                    "action": "Review workflow rules",
+                    "description": "You called get_workflow - good start! Always call this first."
+                },
+                {
+                    "step": 2,
+                    "tool": "list_tools",
+                    "action": "See all available tools",
+                    "description": "Get full list of MCP tools."
+                },
+                {
+                    "step": 3,
+                    "tool": "search_memory",
+                    "action": "Check existing memory for relevant context",
+                    "description": "Always check memory before taking action."
+                },
+                {
+                    "step": 4,
+                    "tool": "get_patterns",
+                    "action": "Review learned patterns",
+                    "description": "Patterns may inform your approach."
+                },
+                {
+                    "step": 5,
+                    "tool": "PROCEED",
+                    "action": "Take action based on gathered context",
+                    "description": "Now you have context - proceed with your task."
+                }
+            ],
+            "critical_rules": [
+                "MUST call get_workflow first before ANY other tool",
+                "MUST check memory (search_memory) before taking action",
+                "MUST review patterns (get_patterns) for repetitive decisions",
+                "ALWAYS ask user before destructive operations (delete_ingested_files)"
+            ],
+            "destructive_operations": {
+                "delete_ingested_files": {
+                    "requires_confirmation": true,
+                    "confirmation_value": "yes",
+                    "warning": "This deletes files permanently!"
+                }
+            },
+            "directory_structure": {
+                "exe_location": "robot_brain.exe or robot_brain",
+                "db_location": "robot_brain.db (in same directory as exe)",
+                "import_folder": "files_to_import/ (in same directory as exe)",
+                "note": "All paths are relative to executable location"
+            },
+            "quick_reference": {
+                "list_importable": "Check files available for import",
+                "ingest_files": "Ingest files (use limit=1 for single file)",
+                "delete_ingested_files": "Delete files (MUST have confirmation='yes')",
+                "search_memory": "Search stored memories",
+                "global_search": "Search all data types",
+                "analyze_patterns": "Detect patterns in experiences",
+                "get_patterns": "Get stored patterns",
+                "get_insights": "Get actionable insights"
+            }
+        })
+    };
+
+    Ok(ToolOutput::success(serde_json::json!({
+        "status": "workflow_retrieved",
+        "workflow": workflow,
+        "reminder": "You MUST follow this workflow. Call get_workflow again anytime you need a reminder.",
+        "version": "1.0"
+    })))
 }
 
 /// Execute list_tools tool

@@ -79,6 +79,17 @@ impl McpServerHandler {
 
 #[tool_router(server_handler)]
 impl McpServerHandler {
+    #[tool(name = "get_workflow", description = "MANDATORY: Get workflow rules. MUST be called before any other tool. Returns the required workflow for this MCP server.")]
+    async fn get_workflow(
+        &self,
+        Parameters(input): Parameters<tools::agent::GetWorkflowInput>,
+    ) -> Json<ToolOutput> {
+        match tools::agent::execute_get_workflow(input).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(ToolOutput::error(e)),
+        }
+    }
+
     #[tool(name = "store_memory", description = "Store a new memory in the knowledge base")]
     async fn store_memory(
         &self,
