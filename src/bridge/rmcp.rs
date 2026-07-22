@@ -79,18 +79,6 @@ impl McpServerHandler {
 
 #[tool_router(server_handler)]
 impl McpServerHandler {
-    /// Ping handler for connection verification
-    #[tool(name = "ping", description = "Ping the MCP server to verify connection")]
-    async fn ping(
-        &self,
-        Parameters(input): Parameters<tools::agent::PingInput>,
-    ) -> Json<ToolOutput> {
-        match tools::agent::execute_ping(input).await {
-            Ok(result) => Json(result),
-            Err(e) => Json(ToolOutput::error(e)),
-        }
-    }
-
     #[tool(name = "store_memory", description = "Store a new memory in the knowledge base")]
     async fn store_memory(
         &self,

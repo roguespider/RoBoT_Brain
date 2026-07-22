@@ -22,10 +22,6 @@ fn get_mcp_client() -> Option<Arc<McpClient>> {
     MCP_CLIENT.get().cloned()
 }
 
-/// Tool input for ping (no parameters needed)
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-pub struct PingInput {}
-
 /// Tool input for listing available tools
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct ListToolsInput {
@@ -56,7 +52,6 @@ pub struct CallMcpToolInput {
 
 /// Agent tool definitions
 pub mod definitions {
-    pub const PING: &str = "ping";
     pub const LIST_TOOLS: &str = "list_tools";
     pub const GET_TOOL: &str = "get_tool";
     pub const CONNECT_MCP_SERVER: &str = "connect_mcp_server";
@@ -64,15 +59,6 @@ pub mod definitions {
 
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         vec![
-            crate::bridge::mcp::McpTool {
-                name: PING.to_string(),
-                description: "Ping the MCP server to verify connection".to_string(),
-                input_schema: serde_json::json!({
-                    "type": "object",
-                    "properties": {},
-                    "additionalProperties": false
-                }),
-            },
             crate::bridge::mcp::McpTool {
                 name: LIST_TOOLS.to_string(),
                 description: "List all available MCP tools with optional filter".to_string(),
@@ -200,16 +186,6 @@ pub async fn execute_get_tool(input: GetToolInput) -> Result<ToolOutput, anyhow:
             "error": format!("Tool '{}' not found", input.name)
         }))),
     }
-}
-
-/// Execute ping tool - verifies connection to the MCP server
-pub async fn execute_ping(_input: PingInput) -> Result<ToolOutput, anyhow::Error> {
-    Ok(ToolOutput::success(serde_json::json!({
-        "status": "ok",
-        "message": "MCP server is running",
-        "timestamp": chrono::Utc::now().to_rfc3339(),
-        "available_tools": get_tools_async().await.len()
-    })))
 }
 
 /// Execute connect_mcp_server tool - connect to an external MCP server
