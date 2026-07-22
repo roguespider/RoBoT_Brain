@@ -19,7 +19,7 @@ fn run_migrations(conn: &Connection) -> Result<()> {
     let mut version = current_version(conn)?;
 
     // Run all pending migrations sequentially
-    while version < 7 {
+    while version < 8 {
         match version {
             0 => {
                 migration_001_initial_memory(conn)?;
@@ -48,6 +48,10 @@ fn run_migrations(conn: &Connection) -> Result<()> {
             6 => {
                 migration_007_add_lineage(conn)?;
                 version = 7;
+            }
+            7 => {
+                migration_008_add_hypothesis_engine(conn)?;
+                version = 8;
             }
             _ => break,
         }
@@ -326,6 +330,86 @@ fn migration_006_add_scheduled_tasks(conn: &Connection) -> Result<()> {
         ON scheduled_tasks(next_run);
 
 
+        ",
+    )?;
+
+    Ok(())
+}
+
+// ==========================================================
+// Migration 008
+// Hypothesis Engine
+// Observation -> Hypothesis -> Test -> Evidence -> Knowledge
+// ==========================================================
+
+fn migration_008_add_hypothesis_engine(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        "
+        -- Hypotheses table
+        CREATE TABLE IF NOT EXISTS hypotheses (
+            id TEXT PRIMARY KEY,
+            statement TEXT NOT NULL,
+            domain TEXT NOT NULL,
+            status TEXT NOT NULL DEFAULT 'testing',
+            confidence REAL DEFAULT 0.5,
+            supporting_count INTEGER DEFAULT 0,
+            contradicting_count INTEGER DEFAULT 0,
+            source_observations TEXT NOT NULL,
+            related_memories TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            updated_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_hypothesis_domain ON hypotheses(domain);
+        CREATE INDEX IF NOT EXISTS idx_hypothesis_status ON hypotheses(status);
+        CREATE INDEX IF NOT EXISTS idx_hypothesis_confidence ON hypotheses(confidence);
+
+        -- Observations table
+        CREATE TABLE IF NOT EXISTS observations (
+            id TEXT PRIMARY KEY,
+            content TEXT NOT NULL,
+            context TEXT NOT NULL,
+            observation_type TEXT NOT NULL,
+            related_experiences TEXT NOT NULL,
+            triggered_hypothesis TEXT,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_observation_type ON observations(observation_type);
+        CREATE INDEX IF NOT EXISTS idx_observation_triggered ON observations(triggered_hypothesis);
+
+        -- Evidence table
+        CREATE TABLE IF NOT EXISTS evidence (
+            id TEXT PRIMARY KEY,
+            hypothesis_id TEXT NOT NULL,
+            content TEXT NOT NULL,
+            evidence_type TEXT NOT NULL,
+            direction TEXT NOT NULL,
+            strength REAL DEFAULT 0.5,
+            experience_id TEXT,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (hypothesis_id) REFERENCES hypotheses(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_evidence_hypothesis ON evidence(hypothesis_id);
+        CREATE INDEX IF NOT EXISTS idx_evidence_direction ON evidence(direction);
+
+        -- Knowledge table (extracted from validated hypotheses)
+        CREATE TABLE IF NOT EXISTS learned_knowledge (
+            id TEXT PRIMARY KEY,
+            content TEXT NOT NULL,
+            source_hypothesis TEXT,
+            confidence REAL DEFAULT 0.5,
+            domain TEXT NOT NULL,
+            derivation TEXT NOT NULL,
+            active INTEGER DEFAULT 1,
+            created_at TEXT NOT NULL,
+            FOREIGN KEY (source_hypothesis) REFERENCES hypotheses(id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_knowledge_domain ON learned_knowledge(domain);
+        CREATE INDEX IF NOT EXISTS idx_knowledge_confidence ON learned_knowledge(confidence);
+        CREATE INDEX IF NOT EXISTS idx_knowledge_active ON learned_knowledge(active);
         ",
     )?;
 

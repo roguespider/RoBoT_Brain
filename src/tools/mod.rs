@@ -52,6 +52,7 @@ pub mod reflection;
 pub mod search;
 pub mod ingestor;
 pub mod agent;
+pub mod hypothesis;
 
 /// Global tool registry (lazily initialized)
 static TOOL_REGISTRY: std::sync::OnceLock<Arc<RwLock<ToolRegistry>>> = std::sync::OnceLock::new();
@@ -96,6 +97,10 @@ pub fn register_tools(context: &Arc<McpContext>) {
     let tools = agent::definitions::all();
     tracing::info!("Registered {} agent tools", tools.len());
     
+    // Register hypothesis tools
+    let tools = hypothesis::definitions::all();
+    tracing::info!("Registered {} hypothesis tools", tools.len());
+    
     // Collect all tools
     let all_tools = memory::definitions::all()
         .into_iter()
@@ -104,6 +109,7 @@ pub fn register_tools(context: &Arc<McpContext>) {
         .chain(search::definitions::all())
         .chain(ingestor::definitions::all())
         .chain(agent::definitions::all())
+        .chain(hypothesis::definitions::all())
         .collect();
     
     // Update registry using blocking write (safe since we have the OnceLock guard)

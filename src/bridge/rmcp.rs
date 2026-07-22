@@ -357,4 +357,108 @@ impl McpServerHandler {
             Err(e) => Json(ToolOutput::error(e)),
         }
     }
+
+    // ========================================================================
+    // HYPOTHESIS ENGINE TOOLS
+    // Observation -> Hypothesis -> Test -> Evidence -> Knowledge
+    // ========================================================================
+
+    #[tool(name = "record_observation", description = "Record an observation. Observations are the starting point for learning - record successes, failures, patterns, or anomalies.")]
+    async fn record_observation(
+        &self,
+        Parameters(input): Parameters<tools::hypothesis::RecordObservationInput>,
+    ) -> Json<ToolOutput> {
+        match tools::hypothesis::execute_record_observation(input, &self.context.database).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(ToolOutput::error(e)),
+        }
+    }
+
+    #[tool(name = "create_hypothesis", description = "Create a testable hypothesis from observations.")]
+    async fn create_hypothesis(
+        &self,
+        Parameters(input): Parameters<tools::hypothesis::CreateHypothesisInput>,
+    ) -> Json<ToolOutput> {
+        match tools::hypothesis::execute_create_hypothesis(input, &self.context.database).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(ToolOutput::error(e)),
+        }
+    }
+
+    #[tool(name = "add_evidence", description = "Add evidence to a hypothesis. Evidence can support or contradict.")]
+    async fn add_evidence(
+        &self,
+        Parameters(input): Parameters<tools::hypothesis::AddEvidenceInput>,
+    ) -> Json<ToolOutput> {
+        match tools::hypothesis::execute_add_evidence(input, &self.context.database).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(ToolOutput::error(e)),
+        }
+    }
+
+    #[tool(name = "get_hypothesis", description = "Get details of a specific hypothesis including all its evidence.")]
+    async fn get_hypothesis(
+        &self,
+        Parameters(input): Parameters<tools::hypothesis::GetHypothesisInput>,
+    ) -> Json<ToolOutput> {
+        match tools::hypothesis::execute_get_hypothesis(input, &self.context.database).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(ToolOutput::error(e)),
+        }
+    }
+
+    #[tool(name = "list_hypotheses", description = "List all hypotheses with optional filters.")]
+    async fn list_hypotheses(
+        &self,
+        Parameters(input): Parameters<tools::hypothesis::ListHypothesesInput>,
+    ) -> Json<ToolOutput> {
+        match tools::hypothesis::execute_list_hypotheses(input, &self.context.database).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(ToolOutput::error(e)),
+        }
+    }
+
+    #[tool(name = "list_observations", description = "List recorded observations.")]
+    async fn list_observations(
+        &self,
+        Parameters(input): Parameters<tools::hypothesis::ListObservationsInput>,
+    ) -> Json<ToolOutput> {
+        match tools::hypothesis::execute_list_observations(input, &self.context.database).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(ToolOutput::error(e)),
+        }
+    }
+
+    #[tool(name = "evaluate_hypothesis", description = "Evaluate a hypothesis based on its evidence and update its status.")]
+    async fn evaluate_hypothesis(
+        &self,
+        Parameters(input): Parameters<tools::hypothesis::EvaluateHypothesisInput>,
+    ) -> Json<ToolOutput> {
+        match tools::hypothesis::execute_evaluate_hypothesis(input, &self.context.database).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(ToolOutput::error(e)),
+        }
+    }
+
+    #[tool(name = "get_knowledge", description = "Get learned knowledge extracted from validated hypotheses.")]
+    async fn get_knowledge(
+        &self,
+        Parameters(input): Parameters<tools::hypothesis::GetKnowledgeInput>,
+    ) -> Json<ToolOutput> {
+        match tools::hypothesis::execute_get_knowledge(input, &self.context.database).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(ToolOutput::error(e)),
+        }
+    }
+
+    #[tool(name = "extract_knowledge", description = "Extract knowledge from a validated hypothesis into reusable knowledge.")]
+    async fn extract_knowledge(
+        &self,
+        Parameters(input): Parameters<tools::hypothesis::ExtractKnowledgeInput>,
+    ) -> Json<ToolOutput> {
+        match tools::hypothesis::execute_extract_knowledge(input, &self.context.database).await {
+            Ok(result) => Json(result),
+            Err(e) => Json(ToolOutput::error(e)),
+        }
+    }
 }
