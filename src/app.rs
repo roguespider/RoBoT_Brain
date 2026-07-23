@@ -68,14 +68,19 @@ pub struct App {
     knowledge_store: Arc<KnowledgeStore>,
 
     /// Memory system - Working and Permanent Memory (Architecture §4.08, §6.3).
+    #[allow(dead_code)]
     working_memory_core: Arc<MemWorkingMemory>,
+    #[allow(dead_code)]
     permanent_memory: Arc<PermanentMemory>,
+    #[allow(dead_code)]
     memory_retrieval: Arc<MemoryRetrieval>,
 
     /// Planning system - task decomposition and execution (Architecture §4.03.5, §10)
+    #[allow(dead_code)]
     planner: Arc<Planner>,
 
     /// Policy engine - decision-making rules (Architecture §4.03.5)
+    #[allow(dead_code)]
     policy_engine: Arc<PolicyEngine>,
 }
 
@@ -124,7 +129,7 @@ impl App {
         policy_engine.load_defaults().await;
         tracing::info!("Policy engine loaded with default rules");
 
-        // Create MCP context with knowledge store
+        // Create MCP context with all systems
         let mcp_context = Arc::new(McpContext::new(
             database.clone(),
             bus.clone(),
@@ -134,6 +139,11 @@ impl App {
             scheduler.clone(),
             metrics.clone(),
             knowledge_store.clone(),
+            planner.clone(),
+            policy_engine.clone(),
+            working_memory_core.clone(),
+            permanent_memory.clone(),
+            memory_retrieval.clone(),
         ));
 
         // Register MCP tools

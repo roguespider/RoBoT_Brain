@@ -3,9 +3,8 @@
 
 #![allow(dead_code)]
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
 
 use crate::bridge::mcp::McpContext;
 
@@ -54,9 +53,10 @@ pub mod ingestor;
 pub mod agent;
 pub mod hypothesis;
 pub mod knowledge;
+pub mod planner;
 
-/// Global tool registry (lazily initialized)
-static TOOL_REGISTRY: std::sync::OnceLock<Arc<RwLock<ToolRegistry>>> = std::sync::OnceLock::new();
+/// Global tool registry (lazily initialized, using Mutex since only written once at startup)
+static TOOL_REGISTRY: std::sync::OnceLock<Arc<Mutex<ToolRegistry>>> = std::sync::OnceLock::new();
 
 /// Tool registry for MCP tools
 pub struct ToolRegistry {
@@ -72,7 +72,7 @@ impl ToolRegistry {
 /// Register all MCP tools with the given context
 pub fn register_tools(context: &Arc<McpContext>) {
     let _ = context; // suppress unused warning
-    let registry = TOOL_REGISTRY.get_or_init(|| Arc::new(RwLock::new(ToolRegistry::new())));
+    let registry = TOOL_REGISTRY.get_or_init(|| Arc::new(Mutex::new(ToolRegistry::new())));
     
     // Register memory tools
     let tools = memory::definitions::all();
@@ -106,6 +106,10 @@ pub fn register_tools(context: &Arc<McpContext>) {
     let tools = knowledge::definitions::all();
     tracing::info!("Registered {} knowledge tools", tools.len());
     
+    // Register planner tools
+    let tools = planner::definitions::all();
+    tracing::info!("Registered {} planner tools", tools.len());
+    
     // Collect all tools
     let all_tools = memory::definitions::all()
         .into_iter()
@@ -116,10 +120,11 @@ pub fn register_tools(context: &Arc<McpContext>) {
         .chain(agent::definitions::all())
         .chain(hypothesis::definitions::all())
         .chain(knowledge::definitions::all())
+        .chain(planner::definitions::all())
         .collect();
     
-    // Update registry using blocking write (fails loudly if lock is contended)
-    let mut reg = registry.blocking_write();
+    // Update registry using mutex lock
+    let mut reg = registry.lock().unwrap();
     reg.tools = all_tools;
     tracing::info!("Total MCP tools registered: {}", reg.tools.len());
 }
@@ -129,16 +134,16 @@ pub fn register_tools(context: &Arc<McpContext>) {
 pub fn get_tools() -> Vec<crate::bridge::mcp::McpTool> {
     TOOL_REGISTRY
         .get()
-        .map(|r| r.blocking_read().tools.clone())
+        .map(|r| r.lock().unwrap().tools.clone())
         .unwrap_or_default()
 }
 
 /// Get all registered tools (async version for use inside async context)
 #[allow(dead_code)]
 pub async fn get_tools_async() -> Vec<crate::bridge::mcp::McpTool> {
-    tokio::sync::RwLock::read(TOOL_REGISTRY.get().expect("Tool registry should be initialized by register_tools()"))
-        .await
-        .tools
-        .clone()
+    // Use blocking lock inside async context (safe since it's only read)
+    let registry = TOOL_REGISTRY.get().expect("Tool registry should be initialized by register_tools()");
+    let tools = registry.lock().unwrap().tools.clone();
+    tools
 }
 
