@@ -34,9 +34,11 @@ impl ExperienceBus {
 
     /// Subscribe to events, returns a receiver
     pub fn subscribe(&self) -> broadcast::Receiver<ExperienceEvent> {
+        // Create receiver BEFORE incrementing counter to avoid race
+        let receiver = self.sender.subscribe();
         self.subscriber_count.fetch_add(1, Ordering::SeqCst);
         tracing::info!("New subscriber registered, total: {}", self.subscriber_count.load(Ordering::SeqCst));
-        self.sender.subscribe()
+        receiver
     }
 
     /// Unsubscribe (caller should drop their receiver)

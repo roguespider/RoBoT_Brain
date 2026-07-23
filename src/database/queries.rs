@@ -42,6 +42,48 @@ pub fn insert_memory(conn: &Connection, memory: &MemoryCard) -> Result<()> {
     Ok(())
 }
 
+/// Insert multiple memories in a single transaction for performance.
+/// This is much faster than inserting one at a time when dealing with large files.
+pub fn insert_memories_batch(conn: &Connection, memories: &[MemoryCard]) -> Result<usize> {
+    if memories.is_empty() {
+        return Ok(0);
+    }
+
+    let tx = conn.unchecked_transaction()?;
+    
+    let mut inserted = 0;
+    for memory in memories {
+        tx.execute(
+            "
+            INSERT OR REPLACE INTO memories
+            (
+                id,
+                content,
+                memory_type,
+                confidence,
+                importance,
+                created_at,
+                updated_at
+            )
+            VALUES (?1,?2,?3,?4,?5,?6,?7)
+            ",
+            params![
+                memory.id.to_string(),
+                memory.content,
+                memory.memory_type.to_string(),
+                memory.confidence,
+                memory.importance,
+                memory.created_at.to_rfc3339(),
+                memory.updated_at.to_rfc3339()
+            ],
+        )?;
+        inserted += 1;
+    }
+    
+    tx.commit()?;
+    Ok(inserted)
+}
+
 pub fn get_memory(conn: &Connection, id: Uuid) -> Result<Option<MemoryCard>> {
     let mut stmt = conn.prepare(
         "

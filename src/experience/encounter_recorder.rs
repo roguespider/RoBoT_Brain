@@ -1,15 +1,15 @@
 // \src\experience\encounter_recorder.rs
+//! Experience recording with observation tracking per Architecture §07
 
 use std::sync::Arc;
 
 use anyhow::Result;
-use chrono::Utc;
 use uuid::Uuid;
 
 use crate::database::models::MemoryCard;
 use crate::database::queries;
 use crate::database::sqlite::SqliteDatabase;
-use crate::experience::types::{Experience, ExperienceContext, ExperienceOutcome, ExperienceType, KnowledgeMaturity};
+use crate::experience::types::{Experience, ExperienceContext, ExperienceOutcome, ExperienceType};
 
 /// Records experiences to storage
 pub struct ExperienceRecorder {
@@ -21,7 +21,7 @@ impl ExperienceRecorder {
         Self { database }
     }
 
-    /// Record a completed experience.
+    /// Record a completed experience with observation origins (Architecture §07)
     pub fn record(
         &self,
         experience_type: ExperienceType,
@@ -29,26 +29,19 @@ impl ExperienceRecorder {
         description: impl Into<String>,
         context: ExperienceContext,
         outcome: ExperienceOutcome,
+        observation_ids: Vec<Uuid>, // Required per Architecture §07 invariant
     ) -> Result<String> {
-        let id = Uuid::new_v4();
-
-        let experience = Experience {
-            id,
-            timestamp: Utc::now(),
+        // Create experience with observation origins (Architecture §07 invariant)
+        let mut experience = Experience::new(
+            title.into(),
+            description.into(),
             experience_type,
-            title: title.into(),
-            description: description.into(),
-            context,
-            outcome,
-            score: None,
-            encounter_ids: Vec::new(),
-            maturity: KnowledgeMaturity::Emerging,
-            confidence: 0.5,
-            lessons: Vec::new(),
-            evidence_count: 0,
-            tags: Vec::new(),
-            metadata: std::collections::HashMap::new(),
-        };
+            observation_ids,
+        );
+        experience.context = context;
+        experience.outcome = outcome;
+
+        let id = experience.id;
 
         // Store in database
         let conn = self.database.connection()?;
@@ -73,6 +66,7 @@ impl ExperienceRecorder {
             description,
             ExperienceContext::default(),
             ExperienceOutcome::success(),
+            vec![], // No observations tracked by default
         )
     }
 
@@ -90,6 +84,7 @@ impl ExperienceRecorder {
             description,
             ExperienceContext::default(),
             ExperienceOutcome::failure(reason),
+            vec![],
         )
     }
 }

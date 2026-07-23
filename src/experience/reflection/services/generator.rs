@@ -151,32 +151,25 @@ impl Default for ReflectionGenerator {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::experience::types::{ExperienceOutcome, OutcomeKind};
-    use chrono::Utc;
+    use crate::experience::types::{ExperienceOutcome, OutcomeKind, ExperienceType};
 
     fn create_test_experience(outcome_kind: OutcomeKind) -> Experience {
-        Experience {
-            id: Uuid::new_v4(),
-            timestamp: Utc::now(),
-            experience_type: crate::experience::types::ExperienceType::ToolExecution,
-            title: "Test experience".to_string(),
-            description: "Test description".to_string(),
-            context: Default::default(),
-            outcome: ExperienceOutcome { 
-                kind: outcome_kind, 
-                message: None, 
-                error: None, 
-                duration_ms: None 
-            },
-            score: None,
-            encounter_ids: Vec::new(),
-            maturity: crate::experience::types::KnowledgeMaturity::Emerging,
-            confidence: 0.8,
-            lessons: Vec::new(),
-            evidence_count: 1,
-            tags: vec!["test".to_string()],
-            metadata: Default::default(),
-        }
+        let mut exp = Experience::new(
+            "Test experience".to_string(),
+            "Test description".to_string(),
+            ExperienceType::ToolExecution,
+            vec![], // observations
+        );
+        exp.outcome = ExperienceOutcome { 
+            kind: outcome_kind, 
+            message: None, 
+            error: None, 
+            duration_ms: None 
+        };
+        exp.confidence = 0.8;
+        exp.evidence_count = 1;
+        exp.tags = vec!["test".to_string()];
+        exp
     }
 
     #[test]

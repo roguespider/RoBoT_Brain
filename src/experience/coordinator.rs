@@ -1,10 +1,12 @@
 // /src/experience/coordinator.rs
 
 use crate::experience::{
+    events::types::ExperienceEventType,
     scorer::ExperienceScorer, types::*,
 };
 
 /// Events emitted by the experience system.
+#[derive(Debug, Clone)]
 pub enum ExperienceEvent {
     Recorded(String),
     Scored(String),
@@ -12,6 +14,19 @@ pub enum ExperienceEvent {
     ReflectionCompleted(String),
     HypothesisGenerated(String),
     ExplorationCompleted(String),
+}
+
+impl ExperienceEvent {
+    pub fn event_type(&self) -> ExperienceEventType {
+        match self {
+            ExperienceEvent::Recorded(_) => ExperienceEventType::ExperienceRecorded,
+            ExperienceEvent::Scored(_) => ExperienceEventType::Scored,
+            ExperienceEvent::ReputationUpdated(_) => ExperienceEventType::ReputationUpdated,
+            ExperienceEvent::ReflectionCompleted(_) => ExperienceEventType::ReflectionCompleted,
+            ExperienceEvent::HypothesisGenerated(_) => ExperienceEventType::HypothesisGenerated,
+            ExperienceEvent::ExplorationCompleted(_) => ExperienceEventType::ExplorationCompleted,
+        }
+    }
 }
 
 /// Coordinates the experience system.
