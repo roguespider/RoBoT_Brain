@@ -11,7 +11,7 @@ use rmcp::{
     tool_handler,
     handler::server::wrapper::Parameters,
     handler::server::ServerHandler,
-    model::{ServerInfo, Implementation, ContentBlock, TextContent},
+    model::{ServerInfo, Implementation, ContentBlock, TextContent, ServerCapabilities, ToolsCapability},
 };
 
 use super::mcp::McpContext;
@@ -605,7 +605,23 @@ impl McpServerHandler {
 #[tool_handler]
 impl ServerHandler for McpServerHandler {
     fn get_info(&self) -> ServerInfo {
-        ServerInfo::default()
+        // Create server capabilities using builder - MUST include tools to be recognized by MCP clients
+        use rmcp::model::ServerCapabilitiesBuilder;
+
+        // Builder order matters: each enable_ requires previous ones to be enabled
+        let capabilities = ServerCapabilitiesBuilder::default()
+            .enable_experimental()
+            .enable_extensions()
+            .enable_logging()
+            .enable_completions()
+            .enable_prompts()
+            .enable_resources()
+            .enable_tasks()
+            .enable_tools()
+            .enable_tool_list_changed()
+            .build();
+
+        ServerInfo::new(capabilities)
             .with_server_info(Implementation::new(&self.name, &self.version))
     }
 }
