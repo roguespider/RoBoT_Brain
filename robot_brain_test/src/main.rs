@@ -234,6 +234,28 @@ async fn main() -> anyhow::Result<()> {
                     println!("  ✗ FAIL: Missing protocolVersion");
                     failed += 1;
                 }
+
+                // CRITICAL: capabilities MUST include tools for MCP clients to recognize tools
+                if let Some(capabilities) = result.get("capabilities") {
+                    if let Some(tools) = capabilities.get("tools") {
+                        if !tools.is_null() {
+                            println!("  ✓ PASS: Server advertises 'tools' capability");
+                            passed += 1;
+                        } else {
+                            println!("  ✗ FAIL: capabilities.tools is null");
+                            println!("    ❌ This is why OpenHands/Zed/LM Studio says 'no MCP tools connected'!");
+                            failed += 1;
+                        }
+                    } else {
+                        println!("  ✗ FAIL: capabilities.tools is missing");
+                        println!("    ❌ This is why OpenHands/Zed/LM Studio says 'no MCP tools connected'!");
+                        failed += 1;
+                    }
+                } else {
+                    println!("  ✗ FAIL: capabilities object is missing or empty");
+                    println!("    ❌ This is why OpenHands/Zed/LM Studio says 'no MCP tools connected'!");
+                    failed += 1;
+                }
             } else {
                 println!("  ✗ FAIL: Missing 'result' field");
                 failed += 1;
