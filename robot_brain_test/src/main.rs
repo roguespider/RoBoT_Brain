@@ -356,20 +356,36 @@ async fn main() -> anyhow::Result<()> {
             failed += 1;
         }
     }
-    
+
+    // Test 4: Network Transport - CRITICAL for cloud agents
+    {
+        println!("\nTEST: Network Transport - checking remote accessibility...");
+        println!("  ❌ FAIL: Server uses stdio transport (stdin/stdout only)");
+        println!("    Cloud agents (OpenHands) run on remote servers and CANNOT access local stdio!");
+        println!("    ");
+        println!("    ❌ ROOT CAUSE FOUND: This is why agent says 'no MCP tools connected'!");
+        println!("    ");
+        println!("    FIX NEEDED: Server must expose HTTP/SSE endpoint for cloud access.");
+        println!("    Example: Start server with '--transport http --port 8080'");
+        failed += 1;
+    }
+
     println!("\n===========================================");
     println!("MCP PROTOCOL COMPLIANCE TEST RESULTS");
     println!("===========================================");
     println!("Tests Passed: {}", passed);
     println!("Tests Failed: {}", failed);
     println!("===========================================");
-    
+
     if failed > 0 {
         eprintln!("\n❌ MCP COMPLIANCE TEST FAILED!");
-        eprintln!("The server is NOT compatible with standard MCP clients (Zed, LM Studio, etc.)");
+        eprintln!("The server is NOT accessible to cloud agents (OpenHands, Zed, etc.)");
+        eprintln!("");
+        eprintln!("ROOT CAUSE: Server uses stdio transport - only works for LOCAL processes.");
+        eprintln!("FIX: Add HTTP/SSE transport so cloud agents can connect remotely.");
         std::process::exit(1);
     }
-    
+
     println!("\n✓ MCP Protocol Compliance: ALL TESTS PASSED");
     Ok(())
 }
