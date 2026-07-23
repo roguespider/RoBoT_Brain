@@ -452,7 +452,7 @@ src/
 │   ├── compression/            ✅ Experience pattern compression
 │   │   ├── mod.rs              ✅ Compression module root
 │   │   ├── compressor.rs       ✅ Core compression algorithm
-│   │   ├── pattern.rs         ✅ Pattern detection
+│   │   ├── pattern.rs          ✅ Pattern detection
 │   │   └── exceptions.rs       ✅ Exception tracking
 │   ├── metrics.rs              ✅ Metrics collection with counters, gauges, aggregation
 │   ├── scheduler.rs            ✅ Background task scheduler with interval/daily/weekly schedules
@@ -489,9 +489,203 @@ src/
 
 **Legend:** ✅ Implemented | ⚠️ Stubbed/partial | ❌ Placeholder code only | 🟡 Partially done | 📋 Planned but not started
 
---- 
-Upgrades to add
+================================================================================
+Upgrades to Add
+---
 
+1. Context System
+
+Context Engine
+│
+├── ContextManager
+│
+├── WorkingContext
+│
+├── ActiveTaskContext
+│
+├── RetrievalPlanner
+│
+├── MemoryRetriever
+│
+├── ContextCompressor
+│
+├── PromptAssembler
+│
+├── TokenBudget
+│
+├── SlidingWindow
+│
+├── TopicTracker
+│
+└── RetrievalCache
+
+WorkingMemory is really just WorkingContext.
+Memory belongs to the Memory Engine.
+Context belongs to the Context Engine.
+That separation will keep the architecture cleaner.
+
+Question
+   ↓
+Context Manager
+   ↓
+Relevant Context
+   ↓
+LLM
+
+Context Management should bea first-class subsystem alongside Memory and Experience. 
+Each turn starts mostly fresh
+Memory search returns references
+Only top relevant compressed snippets are loaded
+The model answers
+The interaction is saved
+Working context is discarded
+Only ActiveTaskContext persists during a coding session
+
+It would own:
+WorkingContext
+Current prompt only
+ActiveTaskContext
+Current coding task
+Current files
+Current decisions
+Current constraints
+RetrievalPlanner
+
+Question
+↓
+RetrievalPlanner
+↓
+Which memories are worth loading?
+↓
+MemoryRetriever
+↓
+Fetch them
+↓
+ContextCompressor
+↓
+PromptAssembler
+
+The planner decides what to retrieve.
+The retriever retrieves it.
+
+Returns IDs first
+Loads compressed summaries
+Enforces token budget
+MemoryCompressor
+Creates 50 to 150 token summaries
+Creates retrieval snippets
+PromptAssembler
+Builds final prompt under a hard budget of 2048 tokens
+
+TokenBudget is its own component
+
+TokenBudget
+2048 max
+System prompt
+ 220
+User prompt
+ 180
+Code
+ 850
+Memory
+ 300
+Tools
+ 250
+Reserve
+ 248
+
+Drops least important context first
+Sliding Window Pruning - Sliding window pruning acts like a First-In, First-Out (FIFO) queue for your chat logs
+Continuous Compaction - a of collapses the oldest block of messages into a single, high-density rolling summary 
+paragraph. saving it to memory. This summary is then injected back into the prompt buffer as a "Memory Context." for next question
+
+Conversation
+│
+├── Messages 1-20
+│      ↓
+│  Summary #1 (frozen)
+│
+├── Messages 21-40
+│      ↓
+│  Summary #2 (frozen)
+│
+├── Messages 41-60
+│      ↓
+│  Summary #3 (frozen)
+│
+└── Active Messages (last 10-20)
+
+Then create one small working summary that references those checkpoints.
+Question
+↓
+Search summaries
+↓
+Find Summary #12
+↓
+Expand only that summary
+↓
+Maybe load 2 original conversations
+↓
+Answer
+
+four memory levels
+Level 0
+──────────────
+Live Context
+(Current prompt)
+↓
+Level 1
+──────────────
+Working Summary
+(~200 tokens)
+↓
+Level 2
+──────────────
+Conversation Checkpoints
+(~300-500 tokens each)
+↓
+Level 3
+──────────────
+Raw Memory Database
+(Unlimited)
+Only Level 0 and Level 1 should be in every prompt.
+Levels 2 and 3 are retrieved on demand.
+
+add "memory aging"
+
+Context Lifecycle
+
+Sliding Window
+↓
+Compaction
+↓
+Checkpoint Creation
+↓
+Memory Aging
+↓
+Archive
+
+final workflow looks like this:
+
+Question
+↓
+Task Detection
+↓
+Context Planning
+↓
+Memory Retrieval
+↓
+Prompt Assembly
+↓
+LLM
+↓
+Experience Extraction
+↓
+Memory Update
+↓
+Checkpoint Evaluation
+
+---
 3. Confidence Graph
 
 One thing we've discussed but haven't fully designed:
