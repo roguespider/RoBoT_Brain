@@ -1,7 +1,6 @@
 // src/knowledge/types.rs
 //! Core types for the Knowledge System
 
-#![allow(dead_code)]
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

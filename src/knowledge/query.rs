@@ -1,7 +1,6 @@
 // src/knowledge/query.rs
 //! Knowledge querying for reasoning and planning
 
-#![allow(dead_code)]
 
 use super::types::{KnowledgeItem, KnowledgeStatus, KnowledgeType};
 use serde::{Deserialize, Serialize};

@@ -8,7 +8,6 @@
 //! - High volatility
 //! - Context focused
 
-#![allow(dead_code)]
 
 use std::collections::HashMap;
 use std::sync::Arc;

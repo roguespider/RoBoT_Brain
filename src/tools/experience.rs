@@ -1,19 +1,17 @@
 // src/bridge/tools/experience.rs
 // Experience-related MCP tools
 
-#![allow(unused)]
 
 use std::sync::Arc;
 
 use anyhow::Result;
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::database::queries;
 use crate::database::sqlite::SqliteDatabase;
 use crate::experience::coordinator::ExperienceCoordinator;
-use crate::experience::types::{Experience, ExperienceContext, ExperienceOutcome, ExperienceType, OutcomeKind};
+use crate::experience::types::{Experience, ExperienceOutcome, ExperienceType, OutcomeKind};
 use crate::tools::ToolOutput;
 
 /// Tool: Record an experience

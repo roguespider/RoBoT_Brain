@@ -1,7 +1,6 @@
 // src/tools/agent.rs
 // Agent-related MCP tools
 
-#![allow(unused)]
 
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;

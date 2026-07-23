@@ -1,7 +1,6 @@
 // src/tools/mod.rs
 // MCP tools for Zed Editor integration
 
-#![allow(dead_code)]
 
 use std::sync::{Arc, Mutex};
 use serde::{Deserialize, Serialize};
@@ -130,7 +129,6 @@ pub fn register_tools(context: &Arc<McpContext>) {
 }
 
 /// Get all registered tools (sync version for use outside async context)
-#[allow(dead_code)]
 pub fn get_tools() -> Vec<crate::bridge::mcp::McpTool> {
     TOOL_REGISTRY
         .get()
@@ -139,7 +137,6 @@ pub fn get_tools() -> Vec<crate::bridge::mcp::McpTool> {
 }
 
 /// Get all registered tools (async version for use inside async context)
-#[allow(dead_code)]
 pub async fn get_tools_async() -> Vec<crate::bridge::mcp::McpTool> {
     // Use blocking lock inside async context (safe since it's only read)
     let registry = TOOL_REGISTRY.get().expect("Tool registry should be initialized by register_tools()");

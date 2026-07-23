@@ -8,7 +8,10 @@ use rmcp::{
     serve_server,
     tool_router,
     tool,
+    tool_handler,
     handler::server::wrapper::{Parameters, Json},
+    handler::server::ServerHandler,
+    model::{ServerInfo, Implementation},
 };
 
 use super::mcp::McpContext;
@@ -77,7 +80,7 @@ impl McpServerHandler {
     }
 }
 
-#[tool_router(server_handler)]
+#[tool_router]
 impl McpServerHandler {
     #[tool(name = "get_workflow", description = "MANDATORY: Get workflow rules. MUST be called before any other tool. Returns the required workflow for this MCP server.")]
     async fn get_workflow(
@@ -574,5 +577,14 @@ impl McpServerHandler {
         Parameters(input): Parameters<tools::planner::CancelPlanInput>,
     ) -> Json<ToolOutput> {
         Json(tools::planner::execute_cancel_plan(input, &self.context.planner).await)
+    }
+}
+
+// Manual ServerHandler impl with custom server info
+#[tool_handler]
+impl ServerHandler for McpServerHandler {
+    fn get_info(&self) -> ServerInfo {
+        ServerInfo::default()
+            .with_server_info(Implementation::new(&self.name, &self.version))
     }
 }

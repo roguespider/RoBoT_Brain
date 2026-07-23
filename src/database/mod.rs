@@ -1,5 +1,4 @@
 // /src/database/mod.rs
-#![allow(dead_code)]
 
 pub mod migrations;
 pub mod models;

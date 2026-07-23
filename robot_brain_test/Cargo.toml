@@ -1,0 +1,23 @@
+[package]
+name = "robot_brain_test"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "robot_brain_test"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+[dev-dependencies]
+tempfile = "3"
+
+[lib]
+name = "robot_brain_test_lib"
+path = "src/lib.rs"

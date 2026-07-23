@@ -4,9 +4,13 @@ use std::sync::Arc;
 
 use anyhow::Result;
 
+use crate::bridge::mcp::McpContext;
+use crate::bridge::mcp::McpClient;
+use crate::bridge::rmcp::run_stdio_server;
 use crate::database::sqlite::SqliteDatabase;
 use crate::experience::bus::ExperienceBus;
 use crate::experience::coordinator::ExperienceCoordinator;
+use crate::experience::event_handler::EventHandler;
 use crate::experience::evolution::EvolutionEngine;
 use crate::experience::metrics::MetricsCollector;
 use crate::experience::reflection::ReflectionEngine;
@@ -16,9 +20,6 @@ use crate::knowledge::KnowledgeStore;
 use crate::learning::{WorkingMemory, LineageTracker};
 use crate::memory::{MemoryRetrieval, WorkingMemory as MemWorkingMemory, PermanentMemory};
 use crate::planner::{Planner, PolicyEngine};
-use crate::bridge::mcp::McpContext;
-use crate::bridge::mcp::McpClient;
-use crate::bridge::rmcp::run_stdio_server;
 use crate::tools;
 
 
@@ -30,58 +31,16 @@ pub struct App {
     _database: Arc<SqliteDatabase>,
 
     /// Event bus for pub/sub.
-    #[allow(dead_code)]
     bus: Arc<ExperienceBus>,
 
     /// Experience system coordinator.
-    #[allow(dead_code)]
     coordinator: Arc<ExperienceCoordinator>,
-
-    /// Reflection engine for learning from experiences.
-    #[allow(dead_code)]
-    reflection_engine: Arc<ReflectionEngine>,
-
-    /// Evolution engine for behavior management.
-    #[allow(dead_code)]
-    evolution_engine: Arc<EvolutionEngine>,
 
     /// Background task scheduler.
     scheduler: Arc<Scheduler>,
 
-    /// Metrics collector.
-    #[allow(dead_code)]
-    metrics: Arc<MetricsCollector>,
-
-    /// MCP context shared with bridge.
+    /// MCP context shared with bridge - owns all subsystems.
     mcp_context: Arc<McpContext>,
-
-    /// Working memory for short-term memory items (Architecture §6.3).
-    #[allow(dead_code)]
-    working_memory: Arc<WorkingMemory>,
-
-    /// Lineage tracker for memory relationships.
-    #[allow(dead_code)]
-    lineage_tracker: Arc<LineageTracker>,
-
-    /// Knowledge system - manages validated knowledge.
-    #[allow(dead_code)]
-    knowledge_store: Arc<KnowledgeStore>,
-
-    /// Memory system - Working and Permanent Memory (Architecture §4.08, §6.3).
-    #[allow(dead_code)]
-    working_memory_core: Arc<MemWorkingMemory>,
-    #[allow(dead_code)]
-    permanent_memory: Arc<PermanentMemory>,
-    #[allow(dead_code)]
-    memory_retrieval: Arc<MemoryRetrieval>,
-
-    /// Planning system - task decomposition and execution (Architecture §4.03.5, §10)
-    #[allow(dead_code)]
-    planner: Arc<Planner>,
-
-    /// Policy engine - decision-making rules (Architecture §4.03.5)
-    #[allow(dead_code)]
-    policy_engine: Arc<PolicyEngine>,
 }
 
 
@@ -95,15 +54,20 @@ impl App {
         // Create core systems
         let bus = Arc::new(ExperienceBus::new());
         let scorer = ExperienceScorer::new();
-        let coordinator = Arc::new(ExperienceCoordinator::new(scorer));
+        let coordinator = Arc::new(ExperienceCoordinator::new(scorer, bus.clone()));
+
+        // Start event handler to process events from the bus
+        let event_handler = EventHandler::new(bus.clone());
+        event_handler.start();
+        tracing::info!("Event handler started");
         
         // Create learning engines
         let reflection_engine = Arc::new(ReflectionEngine::new());
         let evolution_engine = Arc::new(EvolutionEngine::new());
         
         // Create working memory, lineage tracker, and knowledge store
-        let working_memory = Arc::new(WorkingMemory::new(1000));
-        let lineage_tracker = Arc::new(LineageTracker::new());
+        let _working_memory = Arc::new(WorkingMemory::new(1000));
+        let _lineage_tracker = Arc::new(LineageTracker::new());
         let knowledge_store = Arc::new(KnowledgeStore::new(10000));
         
         // Create memory system - Working and Permanent Memory (Architecture §6.3)
@@ -117,6 +81,18 @@ impl App {
         
         // Create scheduler with background tasks
         let scheduler = Self::setup_scheduler(database.clone()).await?;
+
+        // Register task handlers
+        Self::register_task_handlers(scheduler.clone()).await;
+
+        // Start scheduler background loop
+        let scheduler_clone = scheduler.clone();
+        tokio::spawn(async move {
+            if let Err(e) = scheduler_clone.run().await {
+                tracing::error!("Scheduler error: {}", e);
+            }
+        });
+        tracing::info!("Scheduler background loop started");
         
         // Create metrics collector
         let metrics = Arc::new(MetricsCollector::new());
@@ -158,19 +134,8 @@ impl App {
             _database: database,
             bus,
             coordinator,
-            reflection_engine,
-            evolution_engine,
             scheduler,
-            metrics,
             mcp_context,
-            working_memory,
-            lineage_tracker,
-            knowledge_store,
-            working_memory_core,
-            permanent_memory,
-            memory_retrieval,
-            planner,
-            policy_engine,
         })
     }
 
@@ -207,6 +172,69 @@ impl App {
         ).await?;
 
         Ok(scheduler)
+    }
+
+    /// Register task handlers for the scheduler
+    async fn register_task_handlers(scheduler: Arc<Scheduler>) {
+        use crate::experience::scheduler::TaskType;
+
+        // Reflection task handler
+        scheduler.register_handler(TaskType::Reflection, Box::new(|| {
+            Box::pin(async move {
+                tracing::info!("Executing scheduled reflection task");
+                Ok(())
+            })
+        })).await;
+
+        // Hypothesis evaluation handler
+        scheduler.register_handler(TaskType::HypothesisEvaluation, Box::new(|| {
+            Box::pin(async move {
+                tracing::info!("Executing scheduled hypothesis evaluation");
+                Ok(())
+            })
+        })).await;
+
+        // Metrics collection handler
+        scheduler.register_handler(TaskType::MetricsCollection, Box::new(|| {
+            Box::pin(async move {
+                tracing::debug!("Executing scheduled metrics collection");
+                Ok(())
+            })
+        })).await;
+
+        // Evolution maintenance handler
+        scheduler.register_handler(TaskType::EvolutionMaintenance, Box::new(|| {
+            Box::pin(async move {
+                tracing::info!("Executing scheduled evolution maintenance");
+                Ok(())
+            })
+        })).await;
+
+        // Exploration analysis handler
+        scheduler.register_handler(TaskType::ExplorationAnalysis, Box::new(|| {
+            Box::pin(async move {
+                tracing::debug!("Executing scheduled exploration analysis");
+                Ok(())
+            })
+        })).await;
+
+        // Cleanup handler
+        scheduler.register_handler(TaskType::Cleanup, Box::new(|| {
+            Box::pin(async move {
+                tracing::info!("Executing scheduled cleanup");
+                Ok(())
+            })
+        })).await;
+
+        // Reputation decay handler
+        scheduler.register_handler(TaskType::ReputationDecay, Box::new(|| {
+            Box::pin(async move {
+                tracing::debug!("Executing scheduled reputation decay");
+                Ok(())
+            })
+        })).await;
+
+        tracing::info!("Registered {} task handlers", 7);
     }
 
     /// Start the runtime.

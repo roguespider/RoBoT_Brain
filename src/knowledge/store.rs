@@ -1,7 +1,6 @@
 // src/knowledge/store.rs
 //! Knowledge store - repository for managing knowledge items
 
-#![allow(dead_code)]
 
 use std::collections::HashMap;
 use std::sync::Arc;

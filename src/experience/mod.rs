@@ -1,9 +1,9 @@
 // src/experience/mod.rs
-#![allow(dead_code)]
 
 pub mod bus;
 pub mod coordinator;
 pub mod encounter_recorder;
+pub mod event_handler;
 
 pub mod compression;
 pub mod events;
