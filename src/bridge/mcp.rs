@@ -136,7 +136,8 @@ pub struct McpServerInfo {
     pub version: String,
 }
 
-/// Trait for MCP protocol handlers
+/// Trait for MCP protocol handlers (reserved for future use)
+#[allow(dead_code)]
 pub trait McpHandler: Send + Sync {
     /// Handle an MCP request
     fn handle_request(&self, request: McpRequest) -> Result<McpResponse>;
@@ -157,45 +158,59 @@ pub struct McpContext {
     pub database: Arc<SqliteDatabase>,
     
     /// Event bus
+    #[allow(dead_code)]
     pub bus: Arc<ExperienceBus>,
     
     /// Experience coordinator
+    #[allow(dead_code)]
     pub coordinator: Arc<ExperienceCoordinator>,
     
     /// Reflection engine
+    #[allow(dead_code)]
     pub reflection: Arc<ReflectionEngine>,
     
     /// Evolution engine
+    #[allow(dead_code)]
     pub evolution: Arc<EvolutionEngine>,
     
     /// Background scheduler
+    #[allow(dead_code)]
     pub scheduler: Arc<Scheduler>,
     
     /// Metrics collector
+    #[allow(dead_code)]
     pub metrics: Arc<MetricsCollector>,
     
     /// Knowledge system - manages validated knowledge
+    #[allow(dead_code)]
     pub knowledge: Arc<crate::knowledge::KnowledgeStore>,
     
     /// Planner - task decomposition and execution
+    #[allow(dead_code)]
     pub planner: Arc<crate::planner::Planner>,
     
     /// Policy engine - decision-making rules
+    #[allow(dead_code)]
     pub policy: Arc<crate::planner::PolicyEngine>,
     
     /// Working memory - short-term memory layer
+    #[allow(dead_code)]
     pub working_memory: Arc<crate::memory::WorkingMemory>,
     
     /// Permanent memory - long-term memory layer  
+    #[allow(dead_code)]
     pub permanent_memory: Arc<crate::memory::PermanentMemory>,
     
     /// Memory retrieval - unified retrieval across layers
+    #[allow(dead_code)]
     pub memory_retrieval: Arc<crate::memory::MemoryRetrieval>,
     
     /// Server info
+    #[allow(dead_code)]
     pub server_info: McpServerInfo,
     
     /// Server capabilities
+    #[allow(dead_code)]
     pub capabilities: McpCapabilities,
 }
 

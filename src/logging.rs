@@ -1,8 +1,6 @@
 pub fn init_logging() {
     // For MCP stdio transport, we must NOT log to stdout
     // Use a null writer that discards all output but still allows manual stderr writes
-    use tracing_subscriber::fmt::writer::MakeWriterExt;
-    
     tracing_subscriber::fmt()
         .with_max_level(tracing::Level::INFO)
         .with_target(false)

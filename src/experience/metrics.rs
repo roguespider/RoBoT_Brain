@@ -1,6 +1,8 @@
 // /src/experience/metrics.rs
 // Metrics collection for performance and learning tracking
 
+#![allow(dead_code)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

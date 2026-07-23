@@ -15,6 +15,10 @@
 //!
 //! This module acts as the public interface for the entire hypothesis subsystem.
 
+//! NOTE: This module is implemented but not yet fully integrated.
+
+#![allow(dead_code)]
+
 pub mod core;
 pub mod support;
 

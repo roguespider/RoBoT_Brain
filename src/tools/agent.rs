@@ -61,6 +61,7 @@ pub mod definitions {
     pub const LIST_TOOLS: &str = "list_tools";
     pub const GET_TOOL: &str = "get_tool";
     pub const CONNECT_MCP_SERVER: &str = "connect_mcp_server";
+    #[allow(dead_code)]
     pub const CALL_TOOL: &str = "call_tool";
     pub const CALL_MCP_TOOL: &str = "call_tool"; // Alias
 

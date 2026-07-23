@@ -1,5 +1,11 @@
 // src/experience/compression/compressor.rs
 //! Core experience compression logic
+//!
+//! NOTE: This module is implemented but not yet integrated into the experience system.
+//! It provides functionality to compress multiple similar experiences into a single
+//! representation with aggregated confidence and exception tracking.
+
+#![allow(dead_code)]
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

@@ -1,3 +1,9 @@
+//! Exploration system types
+//!
+//! NOTE: This module is implemented but not yet integrated.
+
+#![allow(dead_code)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 

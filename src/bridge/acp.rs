@@ -1,5 +1,10 @@
 // src/bridge/acp.rs
 // ACP (Agent Communication Protocol) for agent-to-agent communication
+// 
+// NOTE: This module is a placeholder for future multi-agent communication.
+// Currently unused but kept for future expansion.
+
+#![allow(dead_code)]
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};

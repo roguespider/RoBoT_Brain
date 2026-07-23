@@ -1,6 +1,8 @@
 // /src/experience/bus.rs
 // Event bus for pub/sub communication between subsystems
 
+#![allow(dead_code)]
+
 use crate::experience::events::ExperienceEvent;
 use anyhow::Result;
 use std::sync::atomic::{AtomicUsize, Ordering};

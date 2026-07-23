@@ -1,4 +1,7 @@
 // /src/experience/coordinator.rs
+// Experience system coordinator per Architecture §07
+
+#![allow(dead_code)]
 
 use crate::experience::{
     bus::ExperienceBus,

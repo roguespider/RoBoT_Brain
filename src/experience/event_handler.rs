@@ -1,6 +1,8 @@
 // src/experience/event_handler.rs
 // Event handler that processes events from the bus
 
+#![allow(dead_code)]
+
 use crate::experience::bus::ExperienceBus;
 use crate::experience::events::types::ExperienceEvent;
 use std::sync::Arc;

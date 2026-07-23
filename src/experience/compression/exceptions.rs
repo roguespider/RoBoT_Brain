@@ -1,6 +1,8 @@
 // src/experience/compression/exceptions.rs
 //! Exception tracking for experiences that deviate from patterns
 
+#![allow(dead_code)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

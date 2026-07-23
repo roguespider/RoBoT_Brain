@@ -9,6 +9,8 @@
 //! - Confidence weighted
 //! - Relationship aware
 
+#![allow(dead_code)]
+
 
 use std::collections::HashMap;
 use std::sync::Arc;

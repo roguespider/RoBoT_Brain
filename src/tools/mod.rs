@@ -39,6 +39,7 @@ impl ToolOutput {
     }
 
     /// Create a successful output from a value that can be converted to JSON
+    #[allow(dead_code)]
     pub fn from_value<T: Serialize>(value: T) -> Result<Self, serde_json::Error> {
         Ok(Self::success(serde_json::to_value(value)?))
     }
@@ -129,6 +130,7 @@ pub fn register_tools(context: &Arc<McpContext>) {
 }
 
 /// Get all registered tools (sync version for use outside async context)
+#[allow(dead_code)]
 pub fn get_tools() -> Vec<crate::bridge::mcp::McpTool> {
     TOOL_REGISTRY
         .get()

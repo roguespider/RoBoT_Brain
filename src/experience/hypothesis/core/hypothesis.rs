@@ -13,6 +13,8 @@
 //! This module intentionally contains no persistence or evaluation logic.
 //! Those responsibilities belong to the repository and evaluator services.
 
+#![allow(dead_code)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
