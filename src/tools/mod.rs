@@ -53,6 +53,7 @@ pub mod search;
 pub mod ingestor;
 pub mod agent;
 pub mod hypothesis;
+pub mod knowledge;
 
 /// Global tool registry (lazily initialized)
 static TOOL_REGISTRY: std::sync::OnceLock<Arc<RwLock<ToolRegistry>>> = std::sync::OnceLock::new();
@@ -101,6 +102,10 @@ pub fn register_tools(context: &Arc<McpContext>) {
     let tools = hypothesis::definitions::all();
     tracing::info!("Registered {} hypothesis tools", tools.len());
     
+    // Register knowledge tools
+    let tools = knowledge::definitions::all();
+    tracing::info!("Registered {} knowledge tools", tools.len());
+    
     // Collect all tools
     let all_tools = memory::definitions::all()
         .into_iter()
@@ -110,15 +115,13 @@ pub fn register_tools(context: &Arc<McpContext>) {
         .chain(ingestor::definitions::all())
         .chain(agent::definitions::all())
         .chain(hypothesis::definitions::all())
+        .chain(knowledge::definitions::all())
         .collect();
     
-    // Update registry using blocking write (safe since we have the OnceLock guard)
-    if let Ok(mut reg) = registry.try_write() {
-        reg.tools = all_tools;
-        tracing::info!("Total MCP tools registered: {}", reg.tools.len());
-    } else {
-        tracing::warn!("Could not acquire write lock on tool registry");
-    }
+    // Update registry using blocking write (fails loudly if lock is contended)
+    let mut reg = registry.blocking_write();
+    reg.tools = all_tools;
+    tracing::info!("Total MCP tools registered: {}", reg.tools.len());
 }
 
 /// Get all registered tools (sync version for use outside async context)

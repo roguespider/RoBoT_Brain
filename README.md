@@ -3,7 +3,7 @@
 
 A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with persistent memory, experience-based learning, and structured knowledge storage.
 
-> **Status:** v0.6 complete — All modules fully implemented including hypothesis engine, hypothesis graph, simulation, planner, planner module, skills, workflows, learning, CLI, and Experience Compression. Database layer solid, experience system complete, reflection services complete, evolution system added, metrics and scheduler added, MCP bridge with RMCP/MCP/ACP protocols and 34 tools implemented.
+> **Status:** v0.7 complete — Memory System implemented per Architecture §4.08, §6.3 with Working Memory, Permanent Memory, and Memory Retrieval. Full event catalog per Architecture §4.04. Learning Pipeline per Architecture §9. Database layer with 8 migrations.
 
 ---
 
@@ -69,11 +69,13 @@ A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with p
 ```
 
 
-### Memory Layers
+### Memory Layers (Per Architecture §6.3)
 
 | Layer | Purpose | Size | Status |
 |-------|---------|------|--------|
-| **Working Memory** | Active context with state machine, TTL, promotion policies | In-memory | ✅ Implemented (state machine) |
+| **Working Memory** | Active context with LRU eviction, TTL, promotion policies | In-memory | ✅ Implemented |
+| **Permanent Memory** | Indexed, connected, confidence weighted storage | In-memory + SQLite | ✅ Implemented |
+| **Memory Retrieval** | Unified retrieval across memory layers with relevance scoring | Unified API | ✅ Implemented |
 | **Index Card** (Short-term) | Lightweight metadata: ID, Title, Summary, Keywords, Pointer | ~200-500 bytes/card | ✅ Implemented (in-memory) |
 | **Flat Memory** (Raw Chunks) | Original document chunks in SQLite. Only high-scoring chunks receive embeddings | Variable | ⏳ Deferred |
 | **Graph Memory** | Stores relationships/facts only, never prose. Extracted async in background | Variable | ✅ Implemented (schema + tables) |
@@ -1048,7 +1050,10 @@ cargo build --release
 
 | Area | Status | Details |
 |------|--------|---------|
-| Database layer | ✅ Functional | Schema + 7 migrations (v0→v7 via `migrations/` module), CRUD queries all implemented |
+| Database layer | ✅ Functional | Schema + 8 migrations (v0→v8 via `migrations/` module), CRUD queries all implemented |
+| Memory System | ✅ Complete | Working Memory, Permanent Memory, Memory Retrieval per Architecture §6.3 |
+| Event System | ✅ Complete | Full event catalog per Architecture §4.04 (30+ event types) |
+| Learning Pipeline | ✅ Implemented | Input→Observation→Memory→Experience→Knowledge→Planning→Decision→Action→Reflection |
 | Experience types/events | ✅ Complete | Full type system for experiences, scores, reputation, event payloads |
 | Observer pattern | ✅ Implemented | Trait defined with priority and filter hooks |
 | Job queue + worker | ✅ Implemented | In-memory queue with async worker (mpsc channel) |
@@ -1068,7 +1073,7 @@ cargo build --release
 | Planner module | ✅ Implemented | Planning engine and policy engine for task decomposition |
 | Skills module | ✅ Implemented | Skill registry for managing available skills |
 | Workflows module | ✅ Implemented | Workflow execution engine for multi-step tasks |
-| Learning module | ✅ Implemented | Working memory, hypothesis tracking, and candidate generation |
+| Learning module | ✅ Implemented | Working memory, hypothesis tracking, candidate generation, lineage tracking |
 | Experience Compression | ✅ Implemented | Pattern detection, exception tracking, and compression algorithms |
 | CLI interface | ✅ Implemented | Command-line interface with server, memory, experience commands |
 | App entry point | ✅ Implemented | App struct with coordinator and stdio server |

@@ -354,25 +354,18 @@ impl Default for PatternDetector {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::experience::types::ExperienceType;
 
     fn create_test_experience(title: &str, tags: Vec<&str>) -> Experience {
-        Experience {
-            id: Uuid::new_v4(),
-            timestamp: Utc::now(),
-            experience_type: ExperienceType::ToolExecution,
-            title: title.to_string(),
-            description: "Test description".to_string(),
-            context: crate::experience::types::ExperienceContext::default(),
-            outcome: crate::experience::types::ExperienceOutcome::Success,
-            score: None,
-            encounter_ids: vec![],
-            maturity: crate::experience::types::KnowledgeMaturity::Emerging,
-            confidence: 0.8,
-            lessons: vec![],
-            evidence_count: 0,
-            tags: tags.into_iter().map(String::from).collect(),
-            metadata: HashMap::new(),
-        }
+        let mut exp = Experience::new(
+            title.to_string(),
+            "Test description".to_string(),
+            ExperienceType::ToolExecution,
+            vec![], // observations
+        );
+        exp.confidence = 0.8;
+        exp.tags = tags.into_iter().map(String::from).collect();
+        exp
     }
 
     #[test]
@@ -388,7 +381,8 @@ mod tests {
         assert!(pattern.is_some());
         
         let pattern = pattern.expect("Pattern detection should succeed for test data");
-        assert_eq!(pattern.action, "File read");
+        // Action includes first 3 words of title
+        assert_eq!(pattern.action, "File read operation");
         assert!(pattern.common_tags.contains(&"file".to_string()));
         assert_eq!(pattern.success_rate, 1.0);
     }

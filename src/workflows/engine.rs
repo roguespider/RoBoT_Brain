@@ -11,7 +11,30 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::experience::metrics::MetricsCollector;
+use crate::experience::types::OutcomeKind;
 use crate::tools::{self, ToolOutput};
+
+/// Parse a string to OutcomeKind enum
+fn parse_outcome_kind(s: &str) -> OutcomeKind {
+    match s.to_lowercase().as_str() {
+        "success" => OutcomeKind::Success,
+        "failure" => OutcomeKind::Failure,
+        "partial" => OutcomeKind::Partial,
+        "timeout" => OutcomeKind::Timeout,
+        "interrupted" => OutcomeKind::Interrupted,
+        _ => OutcomeKind::Success,
+    }
+}
+
+/// Actions that should skip memory read (already do their own lookup)
+const SKIP_MEMORY_READ: &[&str] = &[
+    "search_memory",
+    "list_memories",
+    "get_memory",
+    "get_experience",
+    "list_experiences",
+    "get_experience_stats",
+];
 
 /// A workflow definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -260,6 +283,21 @@ impl WorkflowEngine {
             // Replace variables in parameters
             let params = Self::replace_variables(&step.parameters, &variables, &step_results);
 
+            // ============================================================
+            // AUTOMATIC MEMORY READ BEFORE ACTION
+            // ============================================================
+            let memory_context = self.read_memory_before_action(&step.action, &params).await;
+            
+            // If we got relevant memories, include them in the context for the action
+            // (The action implementation would need to check for context, but we log it)
+            if let Some(ref ctx) = memory_context {
+                if let Some(memories) = ctx.data.get("memories").and_then(|v| v.as_array()) {
+                    if !memories.is_empty() {
+                        tracing::info!("Found {} relevant memories before action '{}'", memories.len(), step.action);
+                    }
+                }
+            }
+
             // Execute the step action
             let result = self.execute_step_action(&step.action, &params).await;
             
@@ -268,6 +306,13 @@ impl WorkflowEngine {
                     tracing::info!("Step {} completed successfully", step.name);
                     step_results.insert(step.id.clone(), output.clone());
                     self.metrics.increment("workflows.steps.executed").await;
+                    
+                    // ============================================================
+                    // RECORD EXPERIENCE FOR LATER REFLECTION/CURATION
+                    // Following architecture #9: Not direct permanent storage
+                    // Experiences are recorded for the reflection system to curate
+                    // ============================================================
+                    self.record_experience_after_action(&step.action, &params, &output).await;
                     
                     // Handle on_success: store result in variable if specified
                     if let Some(var_name) = &step.on_success {
@@ -416,7 +461,7 @@ impl WorkflowEngine {
                     title: get_param("title"),
                     description: get_param("description"),
                     experience_type: params.get("experience_type").cloned().unwrap_or_else(|| "general".to_string()),
-                    outcome: params.get("outcome").cloned().unwrap_or_else(|| "success".to_string()),
+                    outcome: parse_outcome_kind(params.get("outcome").map(|s| s.as_str()).unwrap_or("success")),
                     context: context_value,
                 };
                 
@@ -536,6 +581,307 @@ impl WorkflowEngine {
         let mut workflows = self.workflows.write().await;
         workflows.remove(workflow_id);
         Ok(())
+    }
+
+    // ============================================================
+    // AUTOMATIC MEMORY MIDDLEWARE
+    // ============================================================
+
+    /// Check if action should skip memory read
+    fn should_skip_memory_read(action: &str) -> bool {
+        SKIP_MEMORY_READ.iter().any(|&s| s == action)
+    }
+
+    /// Automatically read relevant memories before executing an action
+    /// Following architecture #8: Working memory is temporary context for active tasks
+    async fn read_memory_before_action(
+        &self,
+        action: &str,
+        params: &HashMap<String, String>,
+    ) -> Option<ToolOutput> {
+        // Skip for read-only actions
+        if Self::should_skip_memory_read(action) {
+            return None;
+        }
+
+        let db = self.database.as_ref()?;
+        
+        // Build a query from the action and parameters
+        let query = build_search_query(action, params);
+        
+        tracing::info!("[Working Memory] Searching for context before action '{}': '{}'", action, query);
+        
+        let input = tools::memory::SearchMemoryInput {
+            query: query.clone(),
+            limit: Some(5),
+        };
+        
+        match tools::memory::execute_search_memory(input, db).await {
+            Ok(result) => {
+                if !result.data.get("memories").map(|v| v.as_array().map(|a| !a.is_empty()).unwrap_or(false)).unwrap_or(false) {
+                    tracing::debug!("[Working Memory] No relevant context found for action '{}'", action);
+                } else {
+                    let count = result.data.get("memories").and_then(|v| v.as_array()).map(|a| a.len()).unwrap_or(0);
+                    tracing::info!("[Working Memory] Found {} relevant context items for action '{}'", count, action);
+                }
+                Some(result)
+            }
+            Err(e) => {
+                tracing::warn!("[Working Memory] Failed to search context before action '{}': {}", action, e);
+                None
+            }
+        }
+    }
+
+    /// Record an experience after action completion
+    /// Following architecture #9: Information moves to permanent ONLY after evaluation via reflection
+    /// This records to working storage for later curation, NOT direct permanent storage
+    async fn record_experience_after_action(
+        &self,
+        action: &str,
+        params: &HashMap<String, String>,
+        result: &ToolOutput,
+    ) {
+        // Skip for read-only actions
+        if Self::should_skip_memory_read(action) {
+            return;
+        }
+
+        let db = match &self.database {
+            Some(db) => db,
+            None => return,
+        };
+
+        // Determine outcome based on result
+        let outcome_kind = if result.success {
+            OutcomeKind::Success
+        } else {
+            OutcomeKind::Failure
+        };
+
+        // Build experience title and description
+        let title = build_experience_title(action, params);
+        let description = build_experience_description(action, params, result);
+        
+        tracing::info!("[Experience] Recording: {} - Outcome: {:?}", title, outcome_kind);
+        
+        let input = tools::experience::RecordExperienceInput {
+            title,
+            description,
+            experience_type: map_action_to_experience_type(action),
+            outcome: outcome_kind,
+            context: None,
+        };
+        
+        let scorer = crate::experience::scorer::ExperienceScorer::new();
+        let coordinator = Arc::new(crate::experience::coordinator::ExperienceCoordinator::new(scorer));
+        
+        match tools::experience::execute_record_experience(input, &coordinator, db).await {
+            Ok(_) => {
+                tracing::debug!("[Experience] Recorded for future reflection/curation: action='{}'", action);
+            }
+            Err(e) => {
+                tracing::warn!("[Experience] Failed to record: {}", e);
+            }
+        }
+    }
+}
+
+/// Build search query from action and parameters
+fn build_search_query(action: &str, params: &HashMap<String, String>) -> String {
+    let mut parts = vec![action.replace('_', " ")];
+    
+    // Add relevant parameters to the query
+    for (_key, value) in params.iter() {
+        if !value.is_empty() && value.len() < 100 {
+            let normalized_value = value.replace(['[', ']', '{', '}'], "").trim().to_string();
+            if !normalized_value.is_empty() {
+                parts.push(normalized_value);
+            }
+        }
+    }
+    
+    // Limit query length
+    let query = parts.join(" ");
+    if query.len() > 200 {
+        query[..200].to_string()
+    } else {
+        query
+    }
+}
+
+/// Build experience title from action and parameters
+fn build_experience_title(action: &str, params: &HashMap<String, String>) -> String {
+    let subject = params.get("title")
+        .or(params.get("name"))
+        .or(params.get("path"))
+        .or(params.get("file_path"))
+        .or(params.get("command"))
+        .cloned()
+        .unwrap_or_else(|| action.replace('_', " "));
+    
+    format!("Workflow: {}", subject)
+}
+
+/// Build experience description following architecture #5, #10
+/// Architecture #5: Separate Observation From Interpretation
+/// Architecture #10: Reflection asks what happened, why, expected, what changes
+#[derive(Debug, Clone)]
+pub struct ExperienceRecord {
+    /// Raw observation - what actually happened (fact, observable)
+    pub observation: String,
+    /// Raw result - the objective outcome
+    pub outcome: String,
+    /// Interpretation placeholder - what this might mean (hypothesis)
+    pub interpretation: Option<String>,
+    /// Reflection questions
+    pub reflection_questions: Vec<String>,
+}
+
+impl ExperienceRecord {
+    /// Create a new experience record with separated observation/interpretation
+    pub fn new(
+        action: &str,
+        params: &HashMap<String, String>,
+        result: &ToolOutput,
+    ) -> Self {
+        // OBSERVATION: Raw, observable facts (architecture #5)
+        let observation = Self::build_observation(action, params);
+        
+        // OUTCOME: Objective result
+        let outcome = Self::build_outcome(result);
+        
+        // REFLECTION QUESTIONS (architecture #10)
+        let reflection_questions = vec![
+            "Why did this happen?".to_string(),
+            "Was the outcome expected?".to_string(),
+            "What should change?".to_string(),
+            "What should be attempted next?".to_string(),
+        ];
+        
+        Self {
+            observation,
+            outcome,
+            interpretation: None, // Interpretation is added by Reflection system, not here
+            reflection_questions,
+        }
+    }
+    
+    /// Build raw observation - observable facts only
+    fn build_observation(action: &str, _params: &HashMap<String, String>) -> String {
+        match action {
+            "create_file" | "write_file" => 
+                format!("File operation: create/write"),
+            "edit_file" => 
+                format!("File operation: edit"),
+            "delete_file" => 
+                format!("File operation: delete"),
+            "run_command" | "execute_command" | "bash" => 
+                format!("Command executed"),
+            "create_reflection" => 
+                format!("Reflection created"),
+            "ingest_files" | "import_files" => 
+                format!("Files ingested"),
+            "record_experience" => 
+                format!("Experience recorded"),
+            "search_memory" | "get_memory" => 
+                format!("Memory accessed"),
+            "add_knowledge" => 
+                format!("Knowledge added"),
+            _ => 
+                format!("Action: {}", action),
+        }
+    }
+    
+    /// Build outcome description
+    fn build_outcome(result: &ToolOutput) -> String {
+        let status = if result.success { "success" } else { "failure" };
+        let summary = extract_result_summary(result);
+        format!("{}: {}", status, summary)
+    }
+    
+    /// Convert to description string for storage
+    /// Separates observation from interpretation for architecture #5
+    pub fn to_description(&self) -> String {
+        let mut parts = Vec::new();
+        
+        // OBSERVATION (what happened - fact)
+        parts.push(format!("[OBSERVATION] {}", self.observation));
+        
+        // OUTCOME (what was result)
+        parts.push(format!("[OUTCOME] {}", self.outcome));
+        
+        // INTERPRETATION (what it might mean - placeholder for Reflection)
+        if let Some(ref interp) = self.interpretation {
+            parts.push(format!("[INTERPRETATION] {}", interp));
+        } else {
+            parts.push("[INTERPRETATION] Pending reflection".to_string());
+        }
+        
+        // REFLECTION QUESTIONS
+        parts.push("[REFLECTION QUESTIONS]".to_string());
+        for q in &self.reflection_questions {
+            parts.push(format!("  - {}", q));
+        }
+        
+        parts.join("\n")
+    }
+}
+
+/// Build experience description (legacy compatibility)
+/// Now properly separates observation from interpretation per architecture #5
+fn build_experience_description(
+    action: &str,
+    params: &HashMap<String, String>,
+    result: &ToolOutput,
+) -> String {
+    let record = ExperienceRecord::new(action, params, result);
+    record.to_description()
+}
+
+/// Extract a brief summary from the result
+fn extract_result_summary(result: &ToolOutput) -> String {
+    result.data.get("message")
+        .or_else(|| result.data.get("summary"))
+        .or_else(|| result.data.get("content"))
+        .and_then(|v| v.as_str())
+        .map(|s| {
+            if s.len() > 100 {
+                format!("{}...", &s[..100])
+            } else {
+                s.to_string()
+            }
+        })
+        .unwrap_or_else(|| "No details".to_string())
+}
+
+/// Map workflow action names to ExperienceType
+fn map_action_to_experience_type(action: &str) -> String {
+    match action {
+        // File operations
+        "create_file" | "write_file" | "edit_file" | "delete_file" => "tool_execution".to_string(),
+        
+        // Command execution
+        "run_command" | "execute_command" | "bash" => "tool_execution".to_string(),
+        
+        // Memory operations
+        "store_memory" | "write_memory" => "memory_store".to_string(),
+        "search_memory" | "read_memory" | "get_memory" => "memory_lookup".to_string(),
+        
+        // Workflow operations
+        "create_workflow" | "start_workflow" | "execute_workflow" => "workflow".to_string(),
+        
+        // Reflection
+        "create_reflection" | "reflect" => "reflection".to_string(),
+        
+        // File ingestion
+        "ingest_files" | "import_files" => "tool_execution".to_string(),
+        
+        // Experience recording
+        "record_experience" => "learning".to_string(),
+        
+        // Generic fallback
+        _ => "system".to_string(),
     }
 }
 

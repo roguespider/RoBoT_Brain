@@ -13,7 +13,7 @@ use uuid::Uuid;
 use crate::database::queries;
 use crate::database::sqlite::SqliteDatabase;
 use crate::experience::coordinator::ExperienceCoordinator;
-use crate::experience::types::{Experience, ExperienceContext, ExperienceOutcome, ExperienceType};
+use crate::experience::types::{Experience, ExperienceContext, ExperienceOutcome, ExperienceType, OutcomeKind};
 use crate::tools::ToolOutput;
 
 /// Tool: Record an experience
@@ -22,7 +22,7 @@ pub struct RecordExperienceInput {
     pub title: String,
     pub description: String,
     pub experience_type: String,
-    pub outcome: String,
+    pub outcome: OutcomeKind,
     /// JSON-encoded context as a string (e.g., "{\"key\": \"value\"}")
     pub context: Option<String>,
 }
@@ -156,14 +156,13 @@ fn parse_experience_type(s: &str) -> ExperienceType {
     }
 }
 
-fn parse_outcome(s: &str) -> ExperienceOutcome {
-    match s.to_lowercase().as_str() {
-        "success" => ExperienceOutcome::success(),
-        "failure" => ExperienceOutcome::failure("Recorded via MCP tool"),
-        "partial" => ExperienceOutcome::partial("Partial success"),
-        "timeout" => ExperienceOutcome::timeout(),
-        "interrupted" => ExperienceOutcome::interrupted(),
-        _ => ExperienceOutcome::success(),
+fn outcome_kind_to_experience_outcome(kind: OutcomeKind) -> ExperienceOutcome {
+    match kind {
+        OutcomeKind::Success => ExperienceOutcome::success(),
+        OutcomeKind::Failure => ExperienceOutcome::failure("Recorded via MCP tool"),
+        OutcomeKind::Partial => ExperienceOutcome::partial("Partial success"),
+        OutcomeKind::Timeout => ExperienceOutcome::timeout(),
+        OutcomeKind::Interrupted => ExperienceOutcome::interrupted(),
     }
 }
 
@@ -179,23 +178,16 @@ pub async fn execute_record_experience(
             .map_err(|e| anyhow::anyhow!("Invalid JSON in context: {}", e))?;
     }
 
-    let experience = Experience {
-        id: Uuid::new_v4(),
-        timestamp: Utc::now(),
-        experience_type: parse_experience_type(&input.experience_type),
-        title: input.title.clone(),
-        description: input.description.clone(),
-        context: ExperienceContext::default(),
-        outcome: parse_outcome(&input.outcome),
-        score: None,
-        encounter_ids: vec![],
-        maturity: crate::experience::types::KnowledgeMaturity::Emerging,
-        confidence: 0.5,
-        lessons: vec![],
-        evidence_count: 0,
-        tags: vec![],
-        metadata: Default::default(),
-    };
+    // Create experience with observation origins (Architecture §07 invariant)
+    let mut experience = Experience::new(
+        input.title.clone(),
+        input.description.clone(),
+        parse_experience_type(&input.experience_type),
+        vec![], // observation_ids populated by observer
+    );
+    
+    // Set outcome
+    experience.outcome = outcome_kind_to_experience_outcome(input.outcome);
 
     // Process through coordinator for scoring
     let processed = coordinator.process(experience.clone());

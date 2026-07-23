@@ -105,10 +105,16 @@ impl MemoryCard {
     }
 
     /// Convert an Experience into a MemoryCard for storage
+    /// Per Architecture §07: Experiences are stored with their metadata
     pub fn from_experience(experience: &Experience) -> Self {
+        // Include key experience metadata in content
         let content = format!(
-            "Experience: {} - {} (outcome: {:?})",
-            experience.title, experience.description, experience.outcome.kind
+            "Experience: {} - {} (outcome: {:?}, committed: {}, archived: {})",
+            experience.title, 
+            experience.description, 
+            experience.outcome.kind,
+            experience.committed,
+            experience.archived
         );
 
         Self {

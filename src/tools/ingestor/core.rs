@@ -467,15 +467,23 @@ async fn ingest_single_file(
     // Chunk the text
     let chunks = chunk_text(&text, chunk_size, DEFAULT_CHUNK_OVERLAP);
 
-    // Store each chunk as a memory card
+    // Store each chunk as a memory card using batch inserts for performance
     let mut memory_ids = Vec::new();
+    let batch_size = 100; // Insert 100 chunks per transaction
 
-    for chunk in &chunks {
-        let memory = MemoryCard::new(chunk.clone(), memory_type.clone());
+    for batch in chunks.chunks(batch_size) {
+        let memories: Vec<MemoryCard> = batch
+            .iter()
+            .map(|chunk| MemoryCard::new(chunk.clone(), memory_type.clone()))
+            .collect();
 
         let conn = db.connection()?;
-        queries::insert_memory(&conn, &memory)?;
-        memory_ids.push(memory.id.to_string());
+        queries::insert_memories_batch(&conn, &memories)?;
+        
+        // Collect the IDs from this batch
+        for memory in &memories {
+            memory_ids.push(memory.id.to_string());
+        }
     }
 
     Ok(IngestResult {

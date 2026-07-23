@@ -29,16 +29,16 @@ impl Default for HypothesisStatus {
     }
 }
 
-impl ToString for HypothesisStatus {
-    fn to_string(&self) -> String {
-        match self {
+impl std::fmt::Display for HypothesisStatus {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
             HypothesisStatus::Testing => "testing",
             HypothesisStatus::Supported => "supported",
             HypothesisStatus::Refuted => "refuted",
             HypothesisStatus::Inconclusive => "inconclusive",
             HypothesisStatus::Superseded => "superseded",
-        }
-        .to_string()
+        };
+        write!(f, "{}", s)
     }
 }
 
@@ -211,10 +211,9 @@ pub enum MemoryType {
     Experience,
 }
 
-#[allow(clippy::to_string_trait_impl)]
-impl ToString for MemoryType {
-    fn to_string(&self) -> String {
-        match self {
+impl std::fmt::Display for MemoryType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
             MemoryType::Note => "note",
             MemoryType::Fact => "fact",
             MemoryType::Task => "task",
@@ -225,8 +224,8 @@ impl ToString for MemoryType {
             MemoryType::Event => "event",
             MemoryType::Encounter => "encounter",
             MemoryType::Experience => "experience",
-        }
-        .to_string()
+        };
+        write!(f, "{}", s)
     }
 }
 

@@ -175,6 +175,9 @@ pub struct McpContext {
     /// Metrics collector
     pub metrics: Arc<MetricsCollector>,
     
+    /// Knowledge system - manages validated knowledge
+    pub knowledge: Arc<crate::knowledge::KnowledgeStore>,
+    
     /// Server info
     pub server_info: McpServerInfo,
     
@@ -191,6 +194,7 @@ impl McpContext {
         evolution: Arc<EvolutionEngine>,
         scheduler: Arc<Scheduler>,
         metrics: Arc<MetricsCollector>,
+        knowledge: Arc<crate::knowledge::KnowledgeStore>,
     ) -> Self {
         Self {
             database,
@@ -200,6 +204,7 @@ impl McpContext {
             evolution,
             scheduler,
             metrics,
+            knowledge,
             server_info: McpServerInfo {
                 name: env!("CARGO_PKG_NAME").to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),
@@ -233,7 +238,7 @@ use tokio::process::Command;
 struct ConnectedServer {
     name: String,
     /// The running service - kept alive to maintain the connection
-    _running: RunningService<RoleClient, SimpleClientHandler>,
+    running: RunningService<RoleClient, SimpleClientHandler>,
     /// Cached tools from this server
     tools: Vec<Tool>,
 }
@@ -307,7 +312,7 @@ impl McpClient {
         // Store the server connection
         let server = ConnectedServer {
             name: name.to_string(),
-            _running: running,
+            running,
             tools,
         };
 
@@ -364,7 +369,7 @@ impl McpClient {
             let servers = self.servers.read().await;
             let server = servers.iter().find(|s| s.name == server_name)
                 .expect("Server should exist - name was validated above");
-            server._running.peer().clone()
+            server.running.peer().clone()
         };
 
         // Call the tool via the server's peer

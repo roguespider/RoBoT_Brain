@@ -12,7 +12,7 @@ impl ExperienceEvent {
             id: Uuid::new_v4(),
             experience_id,
             timestamp: Utc::now(),
-            event_type: ExperienceEventType::Recorded,
+            event_type: ExperienceEventType::ExperienceRecorded,
             payload: EventPayload::Experience { experience_id },
         }
     }

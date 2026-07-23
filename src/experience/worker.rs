@@ -48,7 +48,7 @@ impl ExperienceWorker {
                     // failure event
                     // persistence update
 
-                    eprintln!("Observer {} failed: {}", self.observer.name(), err);
+                    tracing::error!("Observer {} failed: {}", self.observer.name(), err);
                 }
             }
         }
