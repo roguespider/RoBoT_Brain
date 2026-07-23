@@ -72,10 +72,18 @@ pub async fn run_stdio_server(
         tracing::debug!("  - {}: {:?}", tool.name, tool.description);
     }
     
+    // Use tokio's stdin/stdout - this should work on all platforms
+    // On Windows, tokio handles the complexity of async IO with subprocess pipes
     let (stdin, stdout) = (tokio::io::stdin(), tokio::io::stdout());
     
-    // Start the server and wait for it to complete
+    // For debugging: print a marker to stderr so we can see startup
+    eprintln!("DEBUG: About to call serve_server");
+    
+    // Start the server - this will block waiting for MCP messages
     let running = serve_server(handler, (stdin, stdout)).await?;
+    
+    eprintln!("DEBUG: serve_server returned");
+    eprintln!("DEBUG: Server is now listening for messages...");
     
     tracing::info!("Server started, waiting for connections...");
     
