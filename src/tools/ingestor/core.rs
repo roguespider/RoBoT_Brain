@@ -6,6 +6,8 @@ use std::path::Path;
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
+use tokio::time;
+
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
@@ -86,6 +88,7 @@ impl IngestTracker {
     }
     
     /// Check if we can verify deletion (means a recent ingest happened)
+    #[allow(dead_code)]
     pub fn can_verify_deletion(&self) -> bool {
         match self.last_ingest_time {
             Some(time) => time.elapsed() < Duration::from_secs(300), // 5 minute window
@@ -147,6 +150,9 @@ pub async fn clear_ingest_tracker() {
 // INPUT/OUTPUT TYPES
 // ============================================================================
 
+/// Default timeout for ingestion operations (60 seconds)
+pub const DEFAULT_INGEST_TIMEOUT_SECS: u64 = 60;
+
 /// Tool: Ingest files from import folder
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct IngestFilesInput {
@@ -155,6 +161,9 @@ pub struct IngestFilesInput {
     pub limit: Option<usize>,
     pub chunk_size: Option<usize>,
     pub memory_type: Option<String>,
+    /// Timeout in seconds for the entire ingestion operation (default: 60)
+    /// Increase this value for large files or slow storage
+    pub timeout_seconds: Option<u64>,
 }
 
 /// Tool: List files ready for import
@@ -220,165 +229,280 @@ pub async fn ingest_file(
     let limit = input.limit.unwrap_or(1);
     let chunk_size = input.chunk_size.unwrap_or(DEFAULT_CHUNK_SIZE);
     let memory_type = parse_memory_type(input.memory_type.as_deref().unwrap_or("file"));
+    let timeout_secs = input.timeout_seconds.unwrap_or(DEFAULT_INGEST_TIMEOUT_SECS);
+
+    tracing::info!("Starting file ingestion: limit={}, chunk_size={}, timeout={}s", 
+                   limit, chunk_size, timeout_secs);
 
     // Check if ingesting a specific file or from folder
     if let Some(file_path) = file_path {
         let path = Path::new(file_path);
         if path.exists() {
-            return Ok(ToolOutput::success(serde_json::to_value(ingest_single_file(path, chunk_size, memory_type, db).await?)?));
+            let result = time::timeout(
+                Duration::from_secs(timeout_secs),
+                ingest_single_file(path, chunk_size, memory_type, db)
+            ).await;
+            
+            match result {
+                Ok(Ok(ingest_result)) => {
+                    tracing::info!("Ingested file successfully: {} chunks", ingest_result.chunks_created);
+                    Ok(ToolOutput::success(serde_json::to_value(ingest_result)?))
+                }
+                Ok(Err(e)) => {
+                    tracing::error!("Failed to ingest file: {}", e);
+                    Ok(ToolOutput::error(format!("Failed to ingest file: {}", e)))
+                }
+                Err(_) => {
+                    tracing::error!("Ingestion timed out after {} seconds", timeout_secs);
+                    Ok(ToolOutput::error(format!(
+                        "Ingestion timed out after {} seconds. Try increasing timeout_seconds for large files.",
+                        timeout_secs
+                    )))
+                }
+            }
+        } else {
+            // Try relative to folder
+            let path = folder.join(file_path);
+            if path.exists() {
+                let result = time::timeout(
+                    Duration::from_secs(timeout_secs),
+                    ingest_single_file(&path, chunk_size, memory_type, db)
+                ).await;
+                
+                match result {
+                    Ok(Ok(ingest_result)) => {
+                        tracing::info!("Ingested file successfully: {} chunks", ingest_result.chunks_created);
+                        Ok(ToolOutput::success(serde_json::to_value(ingest_result)?))
+                    }
+                    Ok(Err(e)) => {
+                        tracing::error!("Failed to ingest file: {}", e);
+                        Ok(ToolOutput::error(format!("Failed to ingest file: {}", e)))
+                    }
+                    Err(_) => {
+                        tracing::error!("Ingestion timed out after {} seconds", timeout_secs);
+                        Ok(ToolOutput::error(format!(
+                            "Ingestion timed out after {} seconds. Try increasing timeout_seconds for large files.",
+                            timeout_secs
+                        )))
+                    }
+                }
+            } else {
+                Ok(ToolOutput::error(format!("File not found: {}", file_path)))
+            }
+        }
+    } else {
+        // Ingest from folder
+        if !folder.exists() {
+            let exe_dir = std::env::current_exe()
+                .ok()
+                .and_then(|p| p.parent().map(|p| p.to_string_lossy().to_string()))
+                .unwrap_or_else(|| "robot_brain.exe directory".to_string());
+            
+            return Ok(ToolOutput::error(format!(
+                "Import folder does not exist: {}\n\
+                \n\
+                The 'files_to_import' folder should be in: {}\n\
+                \n\
+                Create the folder and add files there, or put files_to_import next to robot_brain.exe",
+                folder.display(),
+                exe_dir
+            )));
         }
 
-        // Try relative to folder
-        let path = folder.join(file_path);
-        if path.exists() {
-            return Ok(ToolOutput::success(serde_json::to_value(ingest_single_file(&path, chunk_size, memory_type, db).await?)?));
+        // If folder is a file, ingest it directly
+        if folder.is_file() {
+            let result = time::timeout(
+                Duration::from_secs(timeout_secs),
+                ingest_single_file(&folder, chunk_size, memory_type, db)
+            ).await;
+            
+            return match result {
+                Ok(Ok(ingest_result)) => {
+                    tracing::info!("Ingested file successfully: {} chunks", ingest_result.chunks_created);
+                    Ok(ToolOutput::success(serde_json::to_value(ingest_result)?))
+                }
+                Ok(Err(e)) => {
+                    tracing::error!("Failed to ingest file: {}", e);
+                    Ok(ToolOutput::error(format!("Failed to ingest file: {}", e)))
+                }
+                Err(_) => {
+                    tracing::error!("Ingestion timed out after {} seconds", timeout_secs);
+                    Ok(ToolOutput::error(format!(
+                        "Ingestion timed out after {} seconds. Try increasing timeout_seconds for large files.",
+                        timeout_secs
+                    )))
+                }
+            };
         }
 
-        return Ok(ToolOutput::error(format!("File not found: {}", file_path)));
-    }
+        // Collect files from folder
+        let files = collect_importable_files(&folder)?;
+        let files_to_process: Vec<_> = files.into_iter().take(limit).collect();
 
-    // Ingest from folder
-    if !folder.exists() {
+        let mut results = Vec::new();
+        let mut successful = 0;
+        let mut failed = 0;
+        let mut total_chunks = 0;
+        let mut timeout_occurred = false;
+
+        for file_info in files_to_process {
+            let path = Path::new(&file_info.path);
+            let filename = file_info.filename.clone();
+
+            // Check if it's an archive
+            if file_info.file_type == "archive" {
+                let result = time::timeout(
+                    Duration::from_secs(timeout_secs),
+                    ingest_archive(path, chunk_size, memory_type.clone(), db.clone())
+                ).await;
+                
+                match result {
+                    Ok(Ok(result)) => {
+                        results.push(result);
+                        successful += 1;
+                    }
+                    Ok(Err(e)) => {
+                        failed += 1;
+                        results.push(IngestResult {
+                            filename,
+                            file_path: file_info.path.clone(),
+                            success: false,
+                            chunks_created: 0,
+                            memory_ids: vec![],
+                            error: Some(e.to_string()),
+                            remaining_count: 0,
+                        });
+                    }
+                    Err(_) => {
+                        timeout_occurred = true;
+                        failed += 1;
+                        tracing::error!("Archive ingestion timed out for: {}", file_info.filename);
+                        results.push(IngestResult {
+                            filename,
+                            file_path: file_info.path.clone(),
+                            success: false,
+                            chunks_created: 0,
+                            memory_ids: vec![],
+                            error: Some(format!("Ingestion timed out after {} seconds. Try increasing timeout_seconds.", timeout_secs)),
+                            remaining_count: 0,
+                        });
+                        break; // Stop processing on timeout
+                    }
+                }
+            } else {
+                let result = time::timeout(
+                    Duration::from_secs(timeout_secs),
+                    ingest_single_file(path, chunk_size, memory_type.clone(), db.clone())
+                ).await;
+                
+                match result {
+                    Ok(Ok(result)) => {
+                        let chunks = result.chunks_created;
+                        let success = result.success;
+                        results.push(result);
+                        if success {
+                            successful += 1;
+                            total_chunks += chunks;
+                        } else {
+                            failed += 1;
+                        }
+                    }
+                    Ok(Err(e)) => {
+                        failed += 1;
+                        results.push(IngestResult {
+                            filename,
+                            file_path: file_info.path.clone(),
+                            success: false,
+                            chunks_created: 0,
+                            memory_ids: vec![],
+                            error: Some(e.to_string()),
+                            remaining_count: 0,
+                        });
+                    }
+                    Err(_) => {
+                        timeout_occurred = true;
+                        failed += 1;
+                        tracing::error!("File ingestion timed out for: {}", file_info.filename);
+                        results.push(IngestResult {
+                            filename,
+                            file_path: file_info.path.clone(),
+                            success: false,
+                            chunks_created: 0,
+                            memory_ids: vec![],
+                            error: Some(format!("Ingestion timed out after {} seconds. Try increasing timeout_seconds.", timeout_secs)),
+                            remaining_count: 0,
+                        });
+                        break; // Stop processing on timeout
+                    }
+                }
+            }
+        }
+
+        let total_files = results.len();
+        let successfully_ingested: Vec<String> = results
+            .iter()
+            .filter(|r| r.success)
+            .map(|r| r.file_path.clone())
+            .collect();
+
+        let remaining_count: usize = results.iter().map(|r| r.remaining_count).sum();
+
+        // RECORD INGESTED FILES for deletion tracking
+        // This enables the delete_ingested_files tool to verify files were actually ingested
+        if !successfully_ingested.is_empty() {
+            record_ingested_files(successfully_ingested.clone()).await;
+        }
+
+        // CLEANUP WAL FILES after batch operations
+        // This checkpoints the WAL and cleans up the -wal and -shm files
+        if let Err(e) = db.cleanup_wal_files() {
+            tracing::warn!("Failed to cleanup WAL files: {}", e);
+        }
+
+        // Get folder path for reference
+        let folder_display = folder.to_string_lossy().to_string();
         let exe_dir = std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|p| p.to_string_lossy().to_string()))
-            .unwrap_or_else(|| "robot_brain.exe directory".to_string());
-        
-        return Ok(ToolOutput::error(format!(
-            "Import folder does not exist: {}\n\
-            \n\
-            The 'files_to_import' folder should be in: {}\n\
-            \n\
-            Create the folder and add files there, or put files_to_import next to robot_brain.exe",
-            folder.display(),
-            exe_dir
-        )));
+            .unwrap_or_else(|| "unknown".to_string());
+
+        let summary = IngestSummary {
+            total_files,
+            successful,
+            failed,
+            total_chunks,
+            results,
+        };
+
+        Ok(ToolOutput::success(serde_json::json!({
+            "summary": summary,
+            "successfully_ingested": successfully_ingested,
+            "import_folder": folder_display,
+            "exe_directory": exe_dir,
+            "temp_folder": get_recent_archive_temp_folder().map(|p| p.to_string_lossy().to_string()),
+            "remaining_in_temp": remaining_count,
+            "files_stored_in": format!("robot_brain.db in {}", exe_dir),
+            "files_ready_for_deletion": successfully_ingested.clone(),
+            "note": if remaining_count > 0 {
+                format!("{} file(s) remaining in temp folder. Call ingest again with temp_folder path.", remaining_count)
+            } else {
+                "All files ingested.".to_string()
+            },
+            "deletion_workflow": {
+                "step_1": "ASK USER: 'Can I delete the original file(s)?'",
+                "step_2": "Only after user says YES, call delete_ingested_files",
+                "step_3": "Must provide confirmation='yes'",
+                "files_pending_deletion": successfully_ingested.len()
+            },
+            "timeout_occurred": timeout_occurred,
+            "timeout_help": if timeout_occurred {
+                serde_json::json!("A timeout occurred. To fix this, call ingest_files again with a higher timeout_seconds value (e.g., 300 for 5 minutes).")
+            } else {
+                serde_json::Value::Null
+            },
+            "warning": "You MUST ask the user before calling delete_ingested_files. Do NOT delete without asking."
+        })))
     }
-
-    // If folder is a file, ingest it directly
-    if folder.is_file() {
-        return Ok(ToolOutput::success(serde_json::to_value(ingest_single_file(&folder, chunk_size, memory_type, db).await?)?));
-    }
-
-    // Collect files from folder
-    let files = collect_importable_files(&folder)?;
-    let files_to_process: Vec<_> = files.into_iter().take(limit).collect();
-
-    let mut results = Vec::new();
-    let mut successful = 0;
-    let mut failed = 0;
-    let mut total_chunks = 0;
-
-    for file_info in files_to_process {
-        let path = Path::new(&file_info.path);
-
-        // Check if it's an archive
-        if file_info.file_type == "archive" {
-            match ingest_archive(path, chunk_size, memory_type.clone(), db.clone()).await {
-                Ok(result) => {
-                    results.push(result);
-                    successful += 1;
-                }
-                Err(e) => {
-                    failed += 1;
-                    results.push(IngestResult {
-                        filename: file_info.filename.clone(),
-                        file_path: file_info.path.clone(),
-                        success: false,
-                        chunks_created: 0,
-                        memory_ids: vec![],
-                        error: Some(e.to_string()),
-                        remaining_count: 0,
-                    });
-                }
-            }
-        } else {
-            match ingest_single_file(path, chunk_size, memory_type.clone(), db.clone()).await {
-                Ok(result) => {
-                    let chunks = result.chunks_created;
-                    let success = result.success;
-                    results.push(result);
-                    if success {
-                        successful += 1;
-                        total_chunks += chunks;
-                    } else {
-                        failed += 1;
-                    }
-                }
-                Err(e) => {
-                    failed += 1;
-                    results.push(IngestResult {
-                        filename: file_info.filename.clone(),
-                        file_path: file_info.path.clone(),
-                        success: false,
-                        chunks_created: 0,
-                        memory_ids: vec![],
-                        error: Some(e.to_string()),
-                        remaining_count: 0,
-                    });
-                }
-            }
-        }
-    }
-
-    let total_files = results.len();
-    let successfully_ingested: Vec<String> = results
-        .iter()
-        .filter(|r| r.success)
-        .map(|r| r.file_path.clone())
-        .collect();
-
-    let remaining_count: usize = results.iter().map(|r| r.remaining_count).sum();
-
-    // RECORD INGESTED FILES for deletion tracking
-    // This enables the delete_ingested_files tool to verify files were actually ingested
-    if !successfully_ingested.is_empty() {
-        record_ingested_files(successfully_ingested.clone()).await;
-    }
-
-    // CLEANUP WAL FILES after batch operations
-    // This checkpoints the WAL and cleans up the -wal and -shm files
-    if let Err(e) = db.cleanup_wal_files() {
-        tracing::warn!("Failed to cleanup WAL files: {}", e);
-    }
-
-    // Get folder path for reference
-    let folder_display = folder.to_string_lossy().to_string();
-    let exe_dir = std::env::current_exe()
-        .ok()
-        .and_then(|p| p.parent().map(|p| p.to_string_lossy().to_string()))
-        .unwrap_or_else(|| "unknown".to_string());
-
-    let summary = IngestSummary {
-        total_files,
-        successful,
-        failed,
-        total_chunks,
-        results,
-    };
-
-    Ok(ToolOutput::success(serde_json::json!({
-        "summary": summary,
-        "successfully_ingested": successfully_ingested,
-        "import_folder": folder_display,
-        "exe_directory": exe_dir,
-        "temp_folder": get_recent_archive_temp_folder().map(|p| p.to_string_lossy().to_string()),
-        "remaining_in_temp": remaining_count,
-        "files_stored_in": format!("robot_brain.db in {}", exe_dir),
-        "files_ready_for_deletion": successfully_ingested.clone(),
-        "note": if remaining_count > 0 {
-            format!("{} file(s) remaining in temp folder. Call ingest again with temp_folder path.", remaining_count)
-        } else {
-            "All files ingested.".to_string()
-        },
-        "deletion_workflow": {
-            "step_1": "ASK USER: 'Can I delete the original file(s)?'",
-            "step_2": "Only after user says YES, call delete_ingested_files",
-            "step_3": "Must provide confirmation='yes'",
-            "files_pending_deletion": successfully_ingested.len()
-        },
-        "warning": "You MUST ask the user before calling delete_ingested_files. Do NOT delete without asking."
-    })))
 }
 
 /// Ingest an archive file

@@ -1,6 +1,8 @@
 // /src/experience/scheduler.rs
 // Background job scheduler for learning tasks
 
+#![allow(dead_code)]
+
 use std::pin::Pin;
 use std::sync::Arc;
 

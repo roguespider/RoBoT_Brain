@@ -9,6 +9,10 @@
 //! - Promotion to Knowledge requires validation.
 //! - Historical data is never destroyed, only archived.
 
+//! NOTE: This module is implemented but not yet fully integrated.
+
+#![allow(dead_code)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

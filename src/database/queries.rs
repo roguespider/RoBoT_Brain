@@ -5,9 +5,7 @@ use chrono::{DateTime, Utc};
 use rusqlite::{Connection, params};
 use uuid::Uuid;
 
-use crate::database::models::{
-    DecisionRecord, MemoryCard, MemoryEvent, MemorySource, MemoryType, Relationship,
-};
+use crate::database::models::{MemoryCard, MemoryType};
 
 // ==========================================================
 // MEMORY OPERATIONS
@@ -217,138 +215,6 @@ pub fn list_memories(conn: &Connection, memory_type: Option<&str>, limit: usize)
 }
 
 // ==========================================================
-// DECISION MEMORY
-// ==========================================================
-
-pub fn insert_decision(conn: &Connection, decision: &DecisionRecord) -> Result<()> {
-    conn.execute(
-        "
-        INSERT INTO decisions
-        (
-            id,
-            task,
-            chosen_workflow,
-            alternatives,
-            reasoning,
-            result,
-            success,
-            confidence,
-            created_at
-        )
-
-        VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9)
-        ",
-        params![
-            decision.id.to_string(),
-            decision.task,
-            decision.chosen_workflow,
-            serde_json::to_string(&decision.alternatives)?,
-            decision.reasoning,
-            decision.result,
-            decision.success,
-            decision.confidence,
-            decision.created_at.to_rfc3339()
-        ],
-    )?;
-
-    Ok(())
-}
-
-// ==========================================================
-// MEMORY SOURCES
-// ==========================================================
-
-pub fn insert_source(conn: &Connection, source: &MemorySource) -> Result<()> {
-    conn.execute(
-        "
-        INSERT INTO memory_sources
-        (
-            id,
-            memory_id,
-            source_type,
-            source_name,
-            source_location,
-            created_at
-        )
-
-        VALUES (?1,?2,?3,?4,?5,?6)
-        ",
-        params![
-            source.id.to_string(),
-            source.memory_id.to_string(),
-            source.source_type,
-            source.source_name,
-            source.source_location,
-            source.created_at.to_rfc3339()
-        ],
-    )?;
-
-    Ok(())
-}
-
-// ==========================================================
-// RELATIONSHIPS
-// ==========================================================
-
-pub fn insert_relationship(conn: &Connection, relation: &Relationship) -> Result<()> {
-    conn.execute(
-        "
-        INSERT INTO relationships
-        (
-            id,
-            source_id,
-            target_id,
-            relationship,
-            strength,
-            created_at
-        )
-
-        VALUES (?1,?2,?3,?4,?5,?6)
-        ",
-        params![
-            relation.id.to_string(),
-            relation.source_id.to_string(),
-            relation.target_id.to_string(),
-            relation.relationship,
-            relation.strength,
-            relation.created_at.to_rfc3339()
-        ],
-    )?;
-
-    Ok(())
-}
-
-// ==========================================================
-// EVENT LOG
-// ==========================================================
-
-pub fn record_event(conn: &Connection, event: &MemoryEvent) -> Result<()> {
-    conn.execute(
-        "
-        INSERT INTO events
-        (
-            id,
-            event_type,
-            description,
-            related_id,
-            created_at
-        )
-
-        VALUES (?1,?2,?3,?4,?5)
-        ",
-        params![
-            event.id.to_string(),
-            event.event_type,
-            event.description,
-            event.related_id.map(|id| id.to_string()),
-            event.created_at.to_rfc3339()
-        ],
-    )?;
-
-    Ok(())
-}
-
-// ==========================================================
 // HELPERS
 // ==========================================================
 
@@ -487,6 +353,8 @@ pub fn list_scheduled_tasks(conn: &Connection) -> Result<Vec<ScheduledTask>> {
     Ok(tasks)
 }
 
+/// Delete a scheduled task by ID
+#[allow(dead_code)]
 pub fn delete_scheduled_task(conn: &Connection, id: &str) -> Result<()> {
     conn.execute("DELETE FROM scheduled_tasks WHERE id = ?1", params![id])?;
     Ok(())

@@ -1,6 +1,8 @@
 // /src/experience/exploration/store.rs
 // Repository for persisting and retrieving explorations
 
+#![allow(dead_code)]
+
 use anyhow::Result;
 use std::collections::HashMap;
 use std::sync::RwLock;

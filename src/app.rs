@@ -1,4 +1,5 @@
 // src/app.rs
+// Root application container per Architecture §03
 
 use std::sync::Arc;
 
@@ -31,9 +32,11 @@ pub struct App {
     _database: Arc<SqliteDatabase>,
 
     /// Event bus for pub/sub.
+    #[allow(dead_code)]
     bus: Arc<ExperienceBus>,
 
     /// Experience system coordinator.
+    #[allow(dead_code)]
     coordinator: Arc<ExperienceCoordinator>,
 
     /// Background task scheduler.

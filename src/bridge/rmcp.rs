@@ -11,7 +11,7 @@ use rmcp::{
     tool_handler,
     handler::server::wrapper::Parameters,
     handler::server::ServerHandler,
-    model::{ServerInfo, Implementation, ContentBlock, TextContent, ServerCapabilities, ToolsCapability},
+    model::{ServerInfo, Implementation, ContentBlock, TextContent},
 };
 
 use super::mcp::McpContext;
@@ -38,11 +38,13 @@ fn tool_output_to_content(output: ToolOutput) -> ContentBlock {
     ContentBlock::Text(TextContent::new(text))
 }
 
-/// RMCP server wrapper for MCP bridge
+/// RMCP server wrapper for MCP bridge (reserved for future use)
+#[allow(dead_code)]
 pub struct RmcpServer {
     context: Arc<McpContext>,
 }
 
+#[allow(dead_code)]
 impl RmcpServer {
     /// Get the shared context
     pub fn context(&self) -> Arc<McpContext> {
@@ -104,6 +106,7 @@ struct McpServerHandler {
 }
 
 impl McpServerHandler {
+    #[allow(dead_code)]
     fn new(context: Arc<McpContext>, name: String, version: String) -> Self {
         Self { context, name, version }
     }
@@ -617,6 +620,7 @@ impl ServerHandler for McpServerHandler {
         use rmcp::model::ServerCapabilitiesBuilder;
 
         // Builder order matters: each enable_ requires previous ones to be enabled
+        #[allow(deprecated)]
         let capabilities = ServerCapabilitiesBuilder::default()
             .enable_experimental()
             .enable_extensions()

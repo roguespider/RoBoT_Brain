@@ -18,11 +18,22 @@ mod memory;
 
 mod cli;
 
+#[cfg(target_os = "windows")]
+mod windows_console;
+
 use app::App;
 use logging::init_logging;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // On Windows, attach to parent console if running without one
+    // This fixes issues with GUI applications (like Zed Editor) that spawn
+    // subprocesses without a console, causing stdio to fail
+    #[cfg(target_os = "windows")]
+    {
+        windows_console::attach_console();
+    }
+    
     init_logging();
 
     // Check if CLI mode is requested
