@@ -17,7 +17,7 @@ pub fn attach_console() {
         let stdout: *mut std::ffi::c_void = GetStdHandle(STD_OUTPUT_HANDLE);
         
         // If stdout is invalid or null, we need to attach to parent console
-        if stdout.is_null() || stdout as isize == INVALID_HANDLE_VALUE {
+        if stdout.is_null() || stdout == INVALID_HANDLE_VALUE {
             // Try to attach to parent console
             let result = AttachConsole(ATTACH_PARENT_PROCESS);
             
