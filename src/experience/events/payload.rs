@@ -3,6 +3,8 @@
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::experience::types::ExperienceScore;
+
 /// The specific event that occurred.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EventPayload {
@@ -76,7 +78,7 @@ pub enum EventPayload {
     Experience { experience_id: Uuid },
 
     /// Score tied to an experience.
-    Score { experience_id: Uuid, score: f32 },
+    Score { experience_id: Uuid, score: ExperienceScore },
 
     /// Reputation change tied to an entity.
     Reputation { entity_id: String, change: f32 },

@@ -1,11 +1,10 @@
 // /src/experience/events/builders.rs
 
-#![allow(dead_code)]
-
 use chrono::Utc;
 use uuid::Uuid;
 
 use super::{EventPayload, ExperienceEvent, ExperienceEventType};
+use crate::experience::types::ExperienceScore;
 
 impl ExperienceEvent {
     /// Create an event indicating a new experience was recorded.
@@ -20,7 +19,7 @@ impl ExperienceEvent {
     }
 
     /// Create an event after an experience has been scored.
-    pub fn scored(experience_id: Uuid, score: f32) -> Self {
+    pub fn scored(experience_id: Uuid, score: ExperienceScore) -> Self {
         Self {
             id: Uuid::new_v4(),
             experience_id,

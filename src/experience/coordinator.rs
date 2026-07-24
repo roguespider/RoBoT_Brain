@@ -1,14 +1,11 @@
 // /src/experience/coordinator.rs
 // Experience system coordinator per Architecture §07
 
-#![allow(dead_code)]
-
 use crate::experience::{
     bus::ExperienceBus,
-    events::{types::{ExperienceEvent, ExperienceEventType}, payload::EventPayload},
+    events::ExperienceEvent,
     scorer::ExperienceScorer, types::*,
 };
-use chrono::Utc;
 use std::sync::Arc;
 use uuid::Uuid;
 
@@ -30,16 +27,10 @@ impl ExperienceCoordinator {
     pub fn process(&self, mut experience: Experience) -> Experience {
         // Score it.
         let score = self.scorer.score(&experience);
-        experience.score = Some(score);
+        experience.score = Some(score.clone());
 
-        // Publish scored event
-        let event = ExperienceEvent {
-            id: Uuid::new_v4(),
-            experience_id: experience.id,
-            timestamp: Utc::now(),
-            event_type: ExperienceEventType::Scored,
-            payload: EventPayload::Experience { experience_id: experience.id },
-        };
+        // Publish scored event using builder
+        let event = ExperienceEvent::scored(experience.id, score);
         let _ = self.bus.publish(event);
 
         experience
@@ -47,49 +38,28 @@ impl ExperienceCoordinator {
 
     /// Record that an experience was created
     pub fn record_experience(&self, id: Uuid) {
-        let event = ExperienceEvent {
-            id: Uuid::new_v4(),
-            experience_id: id,
-            timestamp: Utc::now(),
-            event_type: ExperienceEventType::ExperienceRecorded,
-            payload: EventPayload::Experience { experience_id: id },
-        };
+        let event = ExperienceEvent::recorded(id);
         let _ = self.bus.publish(event);
     }
 
     /// Record that reflection was completed
     pub fn complete_reflection(&self, id: Uuid) {
-        let event = ExperienceEvent {
-            id: Uuid::new_v4(),
-            experience_id: id,
-            timestamp: Utc::now(),
-            event_type: ExperienceEventType::ReflectionCompleted,
-            payload: EventPayload::Reflection { reflection_id: Uuid::new_v4() },
-        };
+        let reflection_id = Uuid::new_v4();
+        let event = ExperienceEvent::reflection_completed(id, reflection_id);
         let _ = self.bus.publish(event);
     }
 
     /// Record that a hypothesis was generated
     pub fn generate_hypothesis(&self, id: Uuid) {
-        let event = ExperienceEvent {
-            id: Uuid::new_v4(),
-            experience_id: id,
-            timestamp: Utc::now(),
-            event_type: ExperienceEventType::HypothesisGenerated,
-            payload: EventPayload::Hypothesis { hypothesis_id: Uuid::new_v4() },
-        };
+        let hypothesis_id = Uuid::new_v4();
+        let event = ExperienceEvent::hypothesis_generated(id, hypothesis_id);
         let _ = self.bus.publish(event);
     }
 
     /// Record that exploration was completed
     pub fn complete_exploration(&self, id: Uuid) {
-        let event = ExperienceEvent {
-            id: Uuid::new_v4(),
-            experience_id: id,
-            timestamp: Utc::now(),
-            event_type: ExperienceEventType::ExplorationCompleted,
-            payload: EventPayload::Exploration { exploration_id: Uuid::new_v4() },
-        };
+        let exploration_id = Uuid::new_v4();
+        let event = ExperienceEvent::exploration_completed(id, exploration_id);
         let _ = self.bus.publish(event);
     }
 }

@@ -31,10 +31,6 @@
 //!
 //! The reflection system acts as the robot's "thinking after doing."
 
-//! NOTE: This module is implemented but not yet fully integrated.
-
-#![allow(dead_code)]
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 

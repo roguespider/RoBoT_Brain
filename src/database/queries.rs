@@ -354,7 +354,6 @@ pub fn list_scheduled_tasks(conn: &Connection) -> Result<Vec<ScheduledTask>> {
 }
 
 /// Delete a scheduled task by ID
-#[allow(dead_code)]
 pub fn delete_scheduled_task(conn: &Connection, id: &str) -> Result<()> {
     conn.execute("DELETE FROM scheduled_tasks WHERE id = ?1", params![id])?;
     Ok(())
