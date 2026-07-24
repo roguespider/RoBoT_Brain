@@ -15,7 +15,7 @@ jobs:
             os: ubuntu-latest
             artifact_name: robot_brain-linux-x86_64
           - target: x86_64-pc-windows-gnu
-            os: windows-latest
+            os: windows-2019
             artifact_name: robot_brain-windows-x86_64.exe
 
     runs-on: ${{ matrix.os }}
@@ -23,6 +23,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+
+      - name: Install mingw-w64 on Windows
+        if: matrix.os == 'windows-2019'
+        run: |
+          choco install mingw -y
 
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
@@ -32,11 +37,16 @@ jobs:
       - name: Build release
         run: cargo build --release --target ${{ matrix.target }}
 
+      - name: Rename artifact for Windows
+        if: matrix.target == 'x86_64-pc-windows-gnu'
+        shell: bash
+        run: mv target/${{ matrix.target }}/release/robot_brain.exe target/${{ matrix.target }}/release/robot_brain-windows-x86_64.exe 2>/dev/null || true
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact_name }}
-          path: target/${{ matrix.target }}/release/robot_brain.exe
+          path: target/${{ matrix.target }}/release/robot_brain-windows-x86_64.exe
           if-no-files-found: warn
 
   release:
