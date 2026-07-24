@@ -161,12 +161,10 @@ pub struct McpContext {
     #[allow(dead_code)]
     pub bus: Arc<ExperienceBus>,
     
-    /// Experience coordinator
-    #[allow(dead_code)]
+    /// Experience coordinator (used by experience tools)
     pub coordinator: Arc<ExperienceCoordinator>,
     
-    /// Reflection engine
-    #[allow(dead_code)]
+    /// Reflection engine (used by reflection tools)
     pub reflection: Arc<ReflectionEngine>,
     
     /// Evolution engine
@@ -181,12 +179,10 @@ pub struct McpContext {
     #[allow(dead_code)]
     pub metrics: Arc<MetricsCollector>,
     
-    /// Knowledge system - manages validated knowledge
-    #[allow(dead_code)]
+    /// Knowledge system - manages validated knowledge (used by knowledge tools)
     pub knowledge: Arc<crate::knowledge::KnowledgeStore>,
     
-    /// Planner - task decomposition and execution
-    #[allow(dead_code)]
+    /// Planner - task decomposition and execution (used by planner tools)
     pub planner: Arc<crate::planner::Planner>,
     
     /// Policy engine - decision-making rules
