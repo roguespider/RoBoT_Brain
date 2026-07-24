@@ -19,7 +19,7 @@ use crate::tools::ingestor::archive_handler::{
     create_archive_temp_dir, delete_empty_folders,
     get_recent_archive_temp_folder, process_archive,
 };
-use crate::tools::ingestor::file_collector::{collect_all_files_recursive, collect_importable_files, collect_importable_files_with_recursive, get_import_folder, is_supported_extension, JSON_EXTENSIONS};
+use crate::tools::ingestor::file_collector::{collect_all_files_recursive, collect_importable_files, collect_importable_files_with_recursive, get_import_folder, is_supported_extension, JSON_EXTENSIONS, ARCHIVE_EXTENSIONS};
 use crate::tools::ingestor::text_extractor::{chunk_text, extract_text};
 
 // Re-export for convenience (via parent module)
@@ -36,6 +36,11 @@ pub const DEFAULT_CHUNK_OVERLAP: usize = 100;
 
 /// Larger chunk size for JSON files (better for structured data)
 pub const JSON_CHUNK_SIZE: usize = 16384;
+
+/// Check if a file is an archive based on its extension
+fn is_archive_file(path: &Path) -> bool {
+    is_supported_extension(path, ARCHIVE_EXTENSIONS)
+}
 
 /// Tracks recently ingested files for deletion verification
 /// This prevents agents from deleting files without proper ingestion
@@ -167,7 +172,7 @@ pub struct IngestFilesInput {
     /// Timeout in seconds for the entire ingestion operation (default: 60)
     /// Increase this value for large files or slow storage
     pub timeout_seconds: Option<u64>,
-    /// Search subfolders recursively (default: false)
+    /// Search subfolders recursively (default: true)
     pub recursive: Option<bool>,
     /// Force re-ingestion of already-ingested files (default: false)
     /// Use this when user confirms they want to add a file again
@@ -179,7 +184,7 @@ pub struct IngestFilesInput {
 pub struct ListImportableInput {
     pub folder: Option<String>,
     pub limit: Option<usize>,
-    /// Search subfolders recursively (default: false)
+    /// Search subfolders recursively (default: true)
     pub recursive: Option<bool>,
 }
 
@@ -241,11 +246,25 @@ pub async fn ingest_file(
     let chunk_size = input.chunk_size.unwrap_or(DEFAULT_CHUNK_SIZE);
     let memory_type = parse_memory_type(input.memory_type.as_deref().unwrap_or("file"));
     let timeout_secs = input.timeout_seconds.unwrap_or(DEFAULT_INGEST_TIMEOUT_SECS);
-    let recursive = input.recursive.unwrap_or(false);
+    let recursive = input.recursive.unwrap_or(true);
     let force = input.force.unwrap_or(false);
 
     tracing::info!("Starting file ingestion: limit={}, chunk_size={}, timeout={}s, recursive={}, force={}", 
                    limit, chunk_size, timeout_secs, recursive, force);
+
+    // Helper function to ingest a single file (handles both regular and archive files)
+    async fn ingest_path(
+        path: &Path,
+        chunk_size: usize,
+        memory_type: MemoryType,
+        db: Arc<SqliteDatabase>,
+    ) -> Result<IngestResult> {
+        if is_archive_file(path) {
+            ingest_archive(path, chunk_size, memory_type, db).await
+        } else {
+            ingest_single_file(path, chunk_size, memory_type, db).await
+        }
+    }
 
     // Check if ingesting a specific file or from folder
     if let Some(file_path) = file_path {
@@ -253,7 +272,7 @@ pub async fn ingest_file(
         if path.exists() {
             let result = time::timeout(
                 Duration::from_secs(timeout_secs),
-                ingest_single_file(path, chunk_size, memory_type, db)
+                ingest_path(path, chunk_size, memory_type, db)
             ).await;
             
             match result {
@@ -279,7 +298,7 @@ pub async fn ingest_file(
             if path.exists() {
                 let result = time::timeout(
                     Duration::from_secs(timeout_secs),
-                    ingest_single_file(&path, chunk_size, memory_type, db)
+                    ingest_path(&path, chunk_size, memory_type, db)
                 ).await;
                 
                 match result {
@@ -326,7 +345,7 @@ pub async fn ingest_file(
         if folder.is_file() {
             let result = time::timeout(
                 Duration::from_secs(timeout_secs),
-                ingest_single_file(&folder, chunk_size, memory_type, db)
+                ingest_path(&folder, chunk_size, memory_type, db)
             ).await;
             
             return match result {
@@ -518,8 +537,32 @@ pub async fn ingest_file(
         // Format already ingested files for display
         let already_ingested_filenames: Vec<String> = already_ingested.iter().map(|f| f.filename.clone()).collect();
         
+        // Generate user-facing message based on what happened
+        let user_message = if !already_ingested.is_empty() && successfully_ingested.is_empty() {
+            // All files were already ingested - ask user if they want to re-ingest
+            format!(
+                "These files have already been added to memory: {:?}.\nDo you want to add them again?",
+                already_ingested_filenames
+            )
+        } else if successfully_ingested.is_empty() && already_ingested.is_empty() {
+            "No files were ingested. Files may have been skipped (size limits, embedding patterns, or unsupported format).".to_string()
+        } else if successfully_ingested.is_empty() {
+            "No new files were ingested.".to_string()
+        } else if successfully_ingested.len() == 1 {
+            format!(
+                "Successfully ingested: {}\nCan I delete the original file to save space?",
+                successfully_ingested[0].rsplit('/').last().unwrap_or(&successfully_ingested[0]).rsplit('\\').last().unwrap_or(&successfully_ingested[0])
+            )
+        } else {
+            format!(
+                "Successfully ingested {} files.\nCan I delete the original files to save space?",
+                successfully_ingested.len()
+            )
+        };
+        
         Ok(ToolOutput::success(serde_json::json!({
             "summary": summary,
+            "user_message": user_message,
             "successfully_ingested": successfully_ingested,
             "import_folder": folder_display,
             "exe_directory": exe_dir,

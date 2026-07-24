@@ -84,7 +84,7 @@ pub async fn execute_list_importable(
 ) -> Result<ToolOutput> {
     let folder = get_import_folder(input.folder.as_deref());
     let limit = input.limit.unwrap_or(5);
-    let recursive = input.recursive.unwrap_or(false);
+    let recursive = input.recursive.unwrap_or(true);
     
     // Get exe directory for reference (canonicalize for absolute path)
     let exe_dir = std::env::current_exe()
@@ -289,6 +289,21 @@ pub async fn execute_delete_ingested_files(
         p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| p.to_string_lossy().to_string())
     }).collect();
     
+    // Generate user-facing message
+    let user_message = if !empty_folders.is_empty() && success > 0 && failed_count == 0 {
+        format!(
+            "Successfully deleted {} file(s).\nThe following folders are now empty: {:?}\nDo you want to delete these empty folders too?",
+            success,
+            empty_folders_display
+        )
+    } else if success > 0 && failed_count == 0 {
+        format!("Successfully deleted {} file(s).", success)
+    } else if success > 0 && failed_count > 0 {
+        format!("Deleted {} file(s), {} failed.", success, failed_count)
+    } else {
+        "No files were deleted.".to_string()
+    };
+    
     // Build the response
     let response_json = if empty_folders.is_empty() {
         serde_json::json!({
@@ -296,6 +311,7 @@ pub async fn execute_delete_ingested_files(
             "deleted_count": success,
             "failed": failed,
             "failed_count": failed_count,
+            "user_message": user_message,
             "message": if success > 0 && failed_count == 0 {
                 format!("SUCCESS: Deleted {} file(s). Original files have been removed.", success)
             } else if success > 0 && failed_count > 0 {
@@ -325,6 +341,7 @@ pub async fn execute_delete_ingested_files(
             "deleted_count": success,
             "failed": failed,
             "failed_count": failed_count,
+            "user_message": user_message,
             "message": if success > 0 && failed_count == 0 {
                 format!("SUCCESS: Deleted {} file(s). {} EMPTY folder(s) (no files remaining) now available for deletion.", success, empty_folders.len())
             } else if success > 0 && failed_count > 0 {
