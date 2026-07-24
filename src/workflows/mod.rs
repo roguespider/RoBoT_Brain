@@ -1,7 +1,8 @@
 // src/workflows/mod.rs
 //! Workflow execution engine
 
-#![allow(dead_code, unused_imports)]
+//! Scaffolding module - workflow execution for multi-step tasks
+#![allow(dead_code)]
 
 pub mod engine;
 
