@@ -39,7 +39,7 @@ pub fn all() -> Vec<McpTool> {
                     },
                     "recursive": {
                         "type": "boolean",
-                        "description": "Search subfolders recursively (default: false). Set to true to include files in subdirectories."
+                        "description": "Search subfolders recursively (default: true). Set to false to only look in the root folder."
                     },
                     "force": {
                         "type": "boolean",
@@ -64,7 +64,7 @@ pub fn all() -> Vec<McpTool> {
                     },
                     "recursive": {
                         "type": "boolean",
-                        "description": "Search subfolders recursively (default: false). Set to true to include files in subdirectories."
+                        "description": "Search subfolders recursively (default: true). Set to false to only look in the root folder."
                     }
                 }
             }),
