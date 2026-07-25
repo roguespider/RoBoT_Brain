@@ -1,6 +1,5 @@
 // src/memory/working.rs
 //! Working Memory - Per Architecture §6.3
-#![allow(dead_code)]
 //!
 //! Working Memory contains temporary information used during active tasks.
 //!
@@ -17,7 +16,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use super::types::{MemoryItem, MemoryStatus, MemoryType};
+use super::types::{MemoryItem, MemoryLayer, MemoryStatus, MemoryType};
 
 /// Working memory statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -53,10 +52,28 @@ impl WorkingMemory {
         }
     }
 
+    /// Create with custom TTL
+    pub fn with_ttl(max_items: usize, ttl: Duration) -> Self {
+        Self {
+            items: Arc::new(RwLock::new(HashMap::new())),
+            max_items,
+            default_ttl: ttl,
+        }
+    }
+
+    /// Get the items reference
+    pub fn items(&self) -> Arc<RwLock<HashMap<Uuid, MemoryItem>>> {
+        self.items.clone()
+    }
+
     /// Store an item in working memory
     pub async fn store(&self, item: MemoryItem) -> Uuid {
         let id = item.id;
         let mut items = self.items.write().await;
+
+        // Ensure the item is marked as Working layer
+        let mut item = item;
+        item.layer = MemoryLayer::Working;
 
         // Evict old items if at capacity
         if items.len() >= self.max_items {
@@ -100,6 +117,47 @@ impl WorkingMemory {
             })
             .cloned()
             .collect()
+    }
+
+    /// Search with fuzzy matching (simple implementation)
+    pub async fn fuzzy_search(&self, query: &str, threshold: f32) -> Vec<(MemoryItem, f32)> {
+        let query_lower = query.to_lowercase();
+        let items = self.items.read().await;
+        
+        items
+            .values()
+            .filter(|item| item.status == MemoryStatus::Active)
+            .filter_map(|item| {
+                let score = self.calculate_similarity(&query_lower, &item.content.to_lowercase());
+                if score >= threshold {
+                    Some((item.clone(), score))
+                } else {
+                    None
+                }
+            })
+            .collect()
+    }
+
+    /// Calculate simple similarity score between query and content
+    fn calculate_similarity(&self, query: &str, content: &str) -> f32 {
+        let query_words: Vec<&str> = query.split_whitespace().collect();
+        let content_words: Vec<&str> = content.split_whitespace().collect();
+        
+        if query_words.is_empty() {
+            return 0.0;
+        }
+
+        let mut matches = 0;
+        for qw in &query_words {
+            for cw in &content_words {
+                if cw.contains(qw) || qw.contains(cw) {
+                    matches += 1;
+                    break;
+                }
+            }
+        }
+
+        matches as f32 / query_words.len() as f32
     }
 
     /// Get all active items
@@ -191,6 +249,11 @@ impl WorkingMemory {
     pub async fn clear(&self) {
         let mut items = self.items.write().await;
         items.clear();
+    }
+
+    /// Get default TTL
+    pub fn default_ttl(&self) -> Duration {
+        self.default_ttl
     }
 }
 

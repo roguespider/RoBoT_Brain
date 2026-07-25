@@ -15,7 +15,11 @@ pub mod types;
 pub mod working;
 pub mod permanent;
 pub mod retrieval;
+pub mod repository;
+pub mod events;
 
 pub use working::WorkingMemory;
 pub use permanent::PermanentMemory;
 pub use retrieval::MemoryRetrieval;
+pub use repository::{MemoryRepository, SqliteMemoryRepository, MemoryStats};
+pub use events::MemoryEventBus;
