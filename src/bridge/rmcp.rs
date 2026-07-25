@@ -2,6 +2,7 @@
 // RMCP (Rust MCP) server implementation using the rmcp crate
 
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 
 use anyhow::Result;
 use rmcp::{
@@ -13,6 +14,7 @@ use rmcp::{
 
 use super::mcp::McpContext;
 use crate::tools::{self, ToolOutput};
+use crate::workflows::enforcement::{WorkflowEnforcer, WorkflowEnforcementError};
 
 /// Convert ToolOutput to MCP-compliant ContentBlock
 ///
@@ -62,10 +64,16 @@ pub async fn run_stdio_server(name: &str, version: &str, context: Arc<McpContext
         version
     );
 
+    let enforcer = Arc::new(WorkflowEnforcer::new());
+    let session_counter = Arc::new(AtomicU64::new(1));
+
     let handler = McpServerHandler {
         context,
         name: name.to_string(),
         version: version.to_string(),
+        enforcer,
+        session_counter,
+        session_id: "default".to_string(),
     };
 
     // Log the tools that will be exposed
@@ -99,12 +107,32 @@ pub async fn run_stdio_server(name: &str, version: &str, context: Arc<McpContext
     Ok(())
 }
 
+/// Helper function to convert enforcement error to ContentBlock
+fn enforcement_error_to_content(error: WorkflowEnforcementError) -> ContentBlock {
+    let text = serde_json::to_string_pretty(&serde_json::json!({
+        "success": false,
+        "error": {
+            "code": error.error_code,
+            "message": error.message,
+            "required_action": error.required_action,
+            "blocked_tools": error.tools_blocked
+        },
+        "hint": "Call get_workflow first, then search_memory before using other tools."
+    }))
+    .unwrap_or_else(|_| r#"{"success": false, "error": "Enforcement error"}"#.to_string());
+
+    ContentBlock::Text(TextContent::new(text))
+}
+
 /// MCP Server handler using the rmcp derive macros
 #[derive(Clone)]
 struct McpServerHandler {
     context: Arc<McpContext>,
     name: String,
     version: String,
+    enforcer: Arc<WorkflowEnforcer>,
+    session_counter: Arc<AtomicU64>,
+    session_id: String,
 }
 
 impl McpServerHandler {
@@ -114,7 +142,26 @@ impl McpServerHandler {
             context,
             name,
             version,
+            enforcer: Arc::new(WorkflowEnforcer::new()),
+            session_counter: Arc::new(AtomicU64::new(1)),
+            session_id: "default".to_string(),
         }
+    }
+
+    /// Generate a new session ID
+    fn new_session(&self) -> String {
+        let id = self.session_counter.fetch_add(1, Ordering::SeqCst);
+        format!("session-{}", id)
+    }
+
+    /// Check workflow enforcement before executing a tool
+    async fn check_workflow_enforcement(&self, tool_name: &str) -> Result<(), WorkflowEnforcementError> {
+        self.enforcer.check_enforcement(&self.session_id, tool_name).await
+    }
+
+    /// Record successful tool execution
+    async fn record_tool_execution(&self, tool_name: &str, query: Option<String>) {
+        self.enforcer.record_tool_execution(&self.session_id, tool_name, query).await;
     }
 }
 
@@ -128,8 +175,14 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::agent::GetWorkflowInput>,
     ) -> ContentBlock {
+        // Record workflow retrieval
+        self.enforcer.record_workflow_retrieved(&self.session_id, input.purpose.clone()).await;
+        
         match tools::agent::execute_get_workflow(input).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("get_workflow", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -142,8 +195,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::memory::StoreMemoryInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("store_memory").await {
+            tracing::warn!("Workflow enforcement blocked store_memory: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::memory::execute_store_memory(input, &self.context.database).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("store_memory", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -153,8 +215,18 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::memory::SearchMemoryInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first (but search_memory is allowed after get_workflow)
+        if let Err(e) = self.check_workflow_enforcement("search_memory").await {
+            tracing::warn!("Workflow enforcement blocked search_memory: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let query = Some(input.query.clone());
         match tools::memory::execute_search_memory(input, &self.context.database).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("search_memory", query).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -164,8 +236,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::memory::GetMemoryInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("get_memory").await {
+            tracing::warn!("Workflow enforcement blocked get_memory: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::memory::execute_get_memory(input, &self.context.database).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("get_memory", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -175,8 +256,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::memory::ListMemoriesInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("list_memories").await {
+            tracing::warn!("Workflow enforcement blocked list_memories: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::memory::execute_list_memories(input, &self.context.database).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("list_memories", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -186,6 +276,12 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::experience::RecordExperienceInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("record_experience").await {
+            tracing::warn!("Workflow enforcement blocked record_experience: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::experience::execute_record_experience(
             input,
             &self.context.coordinator,
@@ -193,7 +289,10 @@ impl McpServerHandler {
         )
         .await
         {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("record_experience", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -206,8 +305,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::experience::GetExperienceStatsInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("get_experience_stats").await {
+            tracing::warn!("Workflow enforcement blocked get_experience_stats: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::experience::execute_get_experience_stats(input, &self.context.database).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("get_experience_stats", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -217,8 +325,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::experience::ListExperiencesInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("list_experiences").await {
+            tracing::warn!("Workflow enforcement blocked list_experiences: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::experience::execute_list_experiences(input, &self.context.database).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("list_experiences", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -231,8 +348,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::experience::GetExperienceInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("get_experience").await {
+            tracing::warn!("Workflow enforcement blocked get_experience: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::experience::execute_get_experience(input, &self.context.database).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("get_experience", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -245,8 +371,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::reflection::GetInsightsInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first (but get_insights is allowed as memory search step)
+        if let Err(e) = self.check_workflow_enforcement("get_insights").await {
+            tracing::warn!("Workflow enforcement blocked get_insights: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::reflection::execute_get_insights(input, &self.context.reflection).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("get_insights", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -256,8 +391,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::reflection::CreateReflectionInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("create_reflection").await {
+            tracing::warn!("Workflow enforcement blocked create_reflection: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::reflection::execute_create_reflection(input, &self.context.reflection).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("create_reflection", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -270,8 +414,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::reflection::AnalyzePatternsInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first (but analyze_patterns counts as memory search)
+        if let Err(e) = self.check_workflow_enforcement("analyze_patterns").await {
+            tracing::warn!("Workflow enforcement blocked analyze_patterns: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::reflection::execute_analyze_patterns(input, &self.context.reflection).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("analyze_patterns", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -281,8 +434,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::reflection::GetPatternsInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first (but get_patterns counts as memory search)
+        if let Err(e) = self.check_workflow_enforcement("get_patterns").await {
+            tracing::warn!("Workflow enforcement blocked get_patterns: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::reflection::execute_get_patterns(input, &self.context.reflection).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("get_patterns", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -295,8 +457,18 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::search::GlobalSearchInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first (but global_search counts as memory search)
+        if let Err(e) = self.check_workflow_enforcement("global_search").await {
+            tracing::warn!("Workflow enforcement blocked global_search: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let query = Some(input.query.clone());
         match tools::search::execute_global_search(input, &self.context.database).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("global_search", query).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -309,8 +481,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::search::GetRecommendationsInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("get_recommendations").await {
+            tracing::warn!("Workflow enforcement blocked get_recommendations: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::search::execute_get_recommendations(input, &self.context.database).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("get_recommendations", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -323,8 +504,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::search::GetReputationInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("get_reputation").await {
+            tracing::warn!("Workflow enforcement blocked get_reputation: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::search::execute_get_reputation(input, &self.context.database).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("get_reputation", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -337,8 +527,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::ingestor::IngestFilesInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("ingest_files").await {
+            tracing::warn!("Workflow enforcement blocked ingest_files: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::ingestor::ingest_file(input, Arc::clone(&self.context.database)).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("ingest_files", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -351,8 +550,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::ingestor::ListImportableInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("list_importable").await {
+            tracing::warn!("Workflow enforcement blocked list_importable: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::ingestor::execute_list_importable(input).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("list_importable", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -365,8 +573,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::ingestor::TranscribeAudioInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("transcribe_audio").await {
+            tracing::warn!("Workflow enforcement blocked transcribe_audio: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::ingestor::execute_transcribe_audio(input).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("transcribe_audio", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -379,8 +596,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::ingestor::ListIngestedFilesInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("list_ingested_files").await {
+            tracing::warn!("Workflow enforcement blocked list_ingested_files: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::ingestor::execute_list_ingested_files(input).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("list_ingested_files", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -393,8 +619,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::ingestor::DeleteIngestedFilesInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first (destructive operation - requires full workflow)
+        if let Err(e) = self.check_workflow_enforcement("delete_ingested_files").await {
+            tracing::warn!("Workflow enforcement blocked delete_ingested_files: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::ingestor::execute_delete_ingested_files(input).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("delete_ingested_files", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -468,8 +703,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::hypothesis::RecordObservationInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("record_observation").await {
+            tracing::warn!("Workflow enforcement blocked record_observation: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::hypothesis::execute_record_observation(input, &self.context.database).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("record_observation", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -482,8 +726,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::hypothesis::CreateHypothesisInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("create_hypothesis").await {
+            tracing::warn!("Workflow enforcement blocked create_hypothesis: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::hypothesis::execute_create_hypothesis(input, &self.context.database).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("create_hypothesis", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -496,8 +749,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::hypothesis::AddEvidenceInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("add_evidence").await {
+            tracing::warn!("Workflow enforcement blocked add_evidence: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::hypothesis::execute_add_evidence(input, &self.context.database).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("add_evidence", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -510,8 +772,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::hypothesis::GetHypothesisInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("get_hypothesis").await {
+            tracing::warn!("Workflow enforcement blocked get_hypothesis: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::hypothesis::execute_get_hypothesis(input, &self.context.database).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("get_hypothesis", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -524,8 +795,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::hypothesis::ListHypothesesInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("list_hypotheses").await {
+            tracing::warn!("Workflow enforcement blocked list_hypotheses: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::hypothesis::execute_list_hypotheses(input, &self.context.database).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("list_hypotheses", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -538,8 +818,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::hypothesis::ListObservationsInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("list_observations").await {
+            tracing::warn!("Workflow enforcement blocked list_observations: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::hypothesis::execute_list_observations(input, &self.context.database).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("list_observations", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -552,8 +841,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::hypothesis::EvaluateHypothesisInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("evaluate_hypothesis").await {
+            tracing::warn!("Workflow enforcement blocked evaluate_hypothesis: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::hypothesis::execute_evaluate_hypothesis(input, &self.context.database).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("evaluate_hypothesis", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -566,8 +864,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::hypothesis::GetKnowledgeInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("get_knowledge").await {
+            tracing::warn!("Workflow enforcement blocked get_knowledge: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::hypothesis::execute_get_knowledge(input, &self.context.database).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("get_knowledge", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -580,8 +887,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::hypothesis::ExtractKnowledgeInput>,
     ) -> ContentBlock {
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("extract_knowledge").await {
+            tracing::warn!("Workflow enforcement blocked extract_knowledge: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
         match tools::hypothesis::execute_extract_knowledge(input, &self.context.database).await {
-            Ok(result) => tool_output_to_content(result),
+            Ok(result) => {
+                self.record_tool_execution("extract_knowledge", None).await;
+                tool_output_to_content(result)
+            }
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
@@ -595,9 +911,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::knowledge::AddKnowledgeInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::knowledge::execute_add_knowledge(input, &self.context.knowledge).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("add_knowledge").await {
+            tracing::warn!("Workflow enforcement blocked add_knowledge: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::knowledge::execute_add_knowledge(input, &self.context.knowledge).await;
+        if result.success {
+            self.record_tool_execution("add_knowledge", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(
@@ -608,9 +932,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::knowledge::QueryKnowledgeInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::knowledge::execute_query_knowledge(input, &self.context.knowledge).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("query_knowledge").await {
+            tracing::warn!("Workflow enforcement blocked query_knowledge: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::knowledge::execute_query_knowledge(input, &self.context.knowledge).await;
+        if result.success {
+            self.record_tool_execution("query_knowledge", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(
@@ -621,10 +953,18 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::knowledge::RecordKnowledgeApplicationInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::knowledge::execute_record_knowledge_application(input, &self.context.knowledge)
-                .await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("record_knowledge_application").await {
+            tracing::warn!("Workflow enforcement blocked record_knowledge_application: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::knowledge::execute_record_knowledge_application(input, &self.context.knowledge)
+            .await;
+        if result.success {
+            self.record_tool_execution("record_knowledge_application", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(
@@ -635,9 +975,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::knowledge::GetKnowledgeStatsInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::knowledge::execute_get_knowledge_stats(input, &self.context.knowledge).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("get_knowledge_stats").await {
+            tracing::warn!("Workflow enforcement blocked get_knowledge_stats: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::knowledge::execute_get_knowledge_stats(input, &self.context.knowledge).await;
+        if result.success {
+            self.record_tool_execution("get_knowledge_stats", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(
@@ -648,9 +996,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::knowledge::GetMatureKnowledgeInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::knowledge::execute_get_mature_knowledge(input, &self.context.knowledge).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("get_mature_knowledge").await {
+            tracing::warn!("Workflow enforcement blocked get_mature_knowledge: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::knowledge::execute_get_mature_knowledge(input, &self.context.knowledge).await;
+        if result.success {
+            self.record_tool_execution("get_mature_knowledge", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     // Planner tools
@@ -659,9 +1015,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::planner::CreatePlanInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::planner::execute_create_plan(input, &self.context.planner).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("create_plan").await {
+            tracing::warn!("Workflow enforcement blocked create_plan: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::planner::execute_create_plan(input, &self.context.planner).await;
+        if result.success {
+            self.record_tool_execution("create_plan", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(name = "add_plan_step", description = "Add a step to an existing plan")]
@@ -669,9 +1033,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::planner::AddPlanStepInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::planner::execute_add_plan_step(input, &self.context.planner).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("add_plan_step").await {
+            tracing::warn!("Workflow enforcement blocked add_plan_step: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::planner::execute_add_plan_step(input, &self.context.planner).await;
+        if result.success {
+            self.record_tool_execution("add_plan_step", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(
@@ -682,9 +1054,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::planner::AddStepDependencyInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::planner::execute_add_step_dependency(input, &self.context.planner).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("add_step_dependency").await {
+            tracing::warn!("Workflow enforcement blocked add_step_dependency: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::planner::execute_add_step_dependency(input, &self.context.planner).await;
+        if result.success {
+            self.record_tool_execution("add_step_dependency", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(name = "get_plan", description = "Get a plan by ID")]
@@ -692,7 +1072,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::planner::GetPlanInput>,
     ) -> ContentBlock {
-        tool_output_to_content(tools::planner::execute_get_plan(input, &self.context.planner).await)
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("get_plan").await {
+            tracing::warn!("Workflow enforcement blocked get_plan: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::planner::execute_get_plan(input, &self.context.planner).await;
+        if result.success {
+            self.record_tool_execution("get_plan", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(name = "list_plans", description = "List all active plans")]
@@ -700,9 +1090,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::planner::ListPlansInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::planner::execute_list_plans(input, &self.context.planner).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("list_plans").await {
+            tracing::warn!("Workflow enforcement blocked list_plans: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::planner::execute_list_plans(input, &self.context.planner).await;
+        if result.success {
+            self.record_tool_execution("list_plans", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(name = "start_plan", description = "Start executing a plan")]
@@ -710,9 +1108,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::planner::StartPlanInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::planner::execute_start_plan(input, &self.context.planner).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("start_plan").await {
+            tracing::warn!("Workflow enforcement blocked start_plan: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::planner::execute_start_plan(input, &self.context.planner).await;
+        if result.success {
+            self.record_tool_execution("start_plan", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(name = "complete_step", description = "Mark a step as completed")]
@@ -720,9 +1126,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::planner::CompleteStepInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::planner::execute_complete_step(input, &self.context.planner).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("complete_step").await {
+            tracing::warn!("Workflow enforcement blocked complete_step: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::planner::execute_complete_step(input, &self.context.planner).await;
+        if result.success {
+            self.record_tool_execution("complete_step", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(name = "fail_step", description = "Mark a step as failed")]
@@ -730,9 +1144,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::planner::FailStepInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::planner::execute_fail_step(input, &self.context.planner).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("fail_step").await {
+            tracing::warn!("Workflow enforcement blocked fail_step: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::planner::execute_fail_step(input, &self.context.planner).await;
+        if result.success {
+            self.record_tool_execution("fail_step", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(name = "cancel_plan", description = "Cancel a plan")]
@@ -740,9 +1162,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::planner::CancelPlanInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::planner::execute_cancel_plan(input, &self.context.planner).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("cancel_plan").await {
+            tracing::warn!("Workflow enforcement blocked cancel_plan: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::planner::execute_cancel_plan(input, &self.context.planner).await;
+        if result.success {
+            self.record_tool_execution("cancel_plan", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     // ========================================================================
@@ -757,9 +1187,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::workflow::CreateWorkflowInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::workflow::execute_create_workflow(input, &self.context.workflow_engine).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("create_workflow").await {
+            tracing::warn!("Workflow enforcement blocked create_workflow: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::workflow::execute_create_workflow(input, &self.context.workflow_engine).await;
+        if result.success {
+            self.record_tool_execution("create_workflow", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(
@@ -770,9 +1208,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::workflow::AddWorkflowStepInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::workflow::execute_add_workflow_step(input, &self.context.workflow_engine).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("add_workflow_step").await {
+            tracing::warn!("Workflow enforcement blocked add_workflow_step: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::workflow::execute_add_workflow_step(input, &self.context.workflow_engine).await;
+        if result.success {
+            self.record_tool_execution("add_workflow_step", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(
@@ -783,10 +1229,18 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::workflow::GetWorkflowStatusInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::workflow::execute_get_workflow_status(input, &self.context.workflow_engine)
-                .await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("get_workflow_status").await {
+            tracing::warn!("Workflow enforcement blocked get_workflow_status: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::workflow::execute_get_workflow_status(input, &self.context.workflow_engine)
+            .await;
+        if result.success {
+            self.record_tool_execution("get_workflow_status", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(
@@ -797,9 +1251,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::workflow::ListWorkflowsInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::workflow::execute_list_workflows(input, &self.context.workflow_engine).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("list_workflows").await {
+            tracing::warn!("Workflow enforcement blocked list_workflows: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::workflow::execute_list_workflows(input, &self.context.workflow_engine).await;
+        if result.success {
+            self.record_tool_execution("list_workflows", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(
@@ -810,9 +1272,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::workflow::StartWorkflowInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::workflow::execute_start_workflow(input, &self.context.workflow_engine).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("start_workflow").await {
+            tracing::warn!("Workflow enforcement blocked start_workflow: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::workflow::execute_start_workflow(input, &self.context.workflow_engine).await;
+        if result.success {
+            self.record_tool_execution("start_workflow", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(name = "pause_workflow", description = "Pause a running workflow")]
@@ -820,9 +1290,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::workflow::PauseWorkflowInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::workflow::execute_pause_workflow(input, &self.context.workflow_engine).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("pause_workflow").await {
+            tracing::warn!("Workflow enforcement blocked pause_workflow: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::workflow::execute_pause_workflow(input, &self.context.workflow_engine).await;
+        if result.success {
+            self.record_tool_execution("pause_workflow", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(name = "resume_workflow", description = "Resume a paused workflow")]
@@ -830,9 +1308,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::workflow::ResumeWorkflowInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::workflow::execute_resume_workflow(input, &self.context.workflow_engine).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("resume_workflow").await {
+            tracing::warn!("Workflow enforcement blocked resume_workflow: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::workflow::execute_resume_workflow(input, &self.context.workflow_engine).await;
+        if result.success {
+            self.record_tool_execution("resume_workflow", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(
@@ -843,9 +1329,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::workflow::CancelWorkflowInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::workflow::execute_cancel_workflow(input, &self.context.workflow_engine).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("cancel_workflow").await {
+            tracing::warn!("Workflow enforcement blocked cancel_workflow: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::workflow::execute_cancel_workflow(input, &self.context.workflow_engine).await;
+        if result.success {
+            self.record_tool_execution("cancel_workflow", None).await;
+        }
+        tool_output_to_content(result)
     }
 
     #[tool(
@@ -856,9 +1350,17 @@ impl McpServerHandler {
         &self,
         Parameters(input): Parameters<tools::workflow::DeleteWorkflowInput>,
     ) -> ContentBlock {
-        tool_output_to_content(
-            tools::workflow::execute_delete_workflow(input, &self.context.workflow_engine).await,
-        )
+        // Check workflow enforcement first
+        if let Err(e) = self.check_workflow_enforcement("delete_workflow").await {
+            tracing::warn!("Workflow enforcement blocked delete_workflow: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        
+        let result = tools::workflow::execute_delete_workflow(input, &self.context.workflow_engine).await;
+        if result.success {
+            self.record_tool_execution("delete_workflow", None).await;
+        }
+        tool_output_to_content(result)
     }
 }
 

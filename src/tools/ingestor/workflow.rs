@@ -170,13 +170,20 @@ pub async fn execute_list_ingested_files(
 ) -> Result<ToolOutput> {
     let folder = get_import_folder(input.folder.as_deref());
     let limit = input.limit.unwrap_or(50);
+    let recursive = input.recursive.unwrap_or(true); // Default true for consistency with ingest_files
     
-    let files = collect_importable_files(&folder)?;
+    // Get all files based on recursive setting
+    let files = if recursive {
+        collect_importable_files_with_recursive(&folder, true)?
+    } else {
+        collect_importable_files(&folder)?
+    };
     let files: Vec<_> = files.into_iter().take(limit).collect();
     
     Ok(ToolOutput::success(serde_json::json!({
         "files": files,
         "count": files.len(),
+        "recursive": recursive,
         "warning": "These files have been ingested into memory. Delete originals if no longer needed."
     })))
 }
@@ -204,20 +211,23 @@ pub async fn execute_delete_ingested_files(
     if confirmation != "yes" && confirmation != "confirm" {
         return Ok(ToolOutput::error(
             format!(
-                "DELETION BLOCKED: Missing or invalid confirmation.\n\
+                "🚫 DELETION BLOCKED - Missing or invalid confirmation.\n\
                 \n\
                 Required: confirmation='yes' (exactly, case-insensitive)\n\
                 Received: confirmation='{}'\n\
                 \n\
-                Files requested: {}\n\
+                Files requested for deletion: {}\n\
                 \n\
-                IMPORTANT: You MUST ask the user before calling this tool!\n\
-                Do NOT call delete_ingested_files without explicit user permission.\n\
+                ╔══════════════════════════════════════════════════════════════╗\n\
+                ║  ⚠️  REQUIRED WORKFLOW - MUST FOLLOW EXACTLY:               ║\n\
+                ║  1. Call ingest_files (limit=1) for ONE file                ║\n\
+                ║  2. SUMMARIZE what was ingested (filename, size, chunks)   ║\n\
+                ║  3. ASK USER: 'Can I delete the original file?'            ║\n\
+                ║  4. ONLY if user says YES → call delete_ingested_files      ║\n\
+                ║  5. After deletion, check empty_folders and ASK about those ║\n\
+                ╚══════════════════════════════════════════════════════════════╝\n\
                 \n\
-                Workflow:\n\
-                1. Call ingest_files first\n\
-                2. ASK user: 'Can I delete the original file(s)?'\n\
-                3. Only if user says YES, call this tool with confirmation='yes'",
+                Do NOT auto-delete. Do NOT delete without asking user first.",
                 input.confirmation,
                 input.files.len()
             )
@@ -327,13 +337,24 @@ pub async fn execute_delete_ingested_files(
             "empty_folder_count": 0,
             "note": "The files_to_import folder was NOT deleted. It remains for future imports.",
             "tracker_cleared": success > 0,
-            "NEXT_ACTION": if success > 0 && failed_count == 0 {
-                "Files deleted successfully. No empty folders to clean up."
-            } else if success > 0 {
-                "Files deleted. Some operations failed - check the failed list."
-            } else {
-                "No files were deleted."
-            }
+            "EMPTY_FOLDERS_WORKFLOW": {
+                "status": "COMPLETE",
+                "empty_folders_found": false,
+                "message": "No empty folders to clean up."
+            },
+            "NEXT_ACTION": {
+                "type": "CONTINUE_OR_FINISH",
+                "if_more_files": "Call ingest_files again with limit=1 for the next file",
+                "if_done": "ASK USER: 'All files ingested. Do you want me to do anything else?'",
+                "template": if success > 0 && failed_count == 0 {
+                    "✅ File ingestion workflow complete. To continue: call ingest_files again for next file. Or ask user if done."
+                } else if success > 0 {
+                    "Some files deleted. Check failed list for errors."
+                } else {
+                    "No files were deleted."
+                }
+            },
+            "WORKFLOW_COMPLETE": success > 0 && failed_count == 0
         })
     } else {
         serde_json::json!({
@@ -356,17 +377,55 @@ pub async fn execute_delete_ingested_files(
             "empty_folders": empty_folders_str,
             "empty_folder_names": empty_folders_display,
             "empty_folder_count": empty_folders.len(),
-            "note": "Empty folders (with no files remaining) can be deleted to clean up. ASK USER first!",
+            "note": "Empty folders (with no files remaining) can be deleted to clean up.",
             "tracker_cleared": success > 0,
-            "NEXT_ACTION": format!("ASK USER: 'I deleted the last file(s) from these folders: {:?}. These folders are now COMPLETELY EMPTY (no files inside). Do you want to delete the empty folder(s) as well?'", empty_folders_display),
-            "folder_deletion_workflow": {
-                "safety_check": "Folders are ONLY offered if completely empty (no files, no subdirectories)",
-                "scenario": "User wants to delete empty folders",
-                "step_1": "Use file_editor or bash to remove empty folders",
-                "step_2": "Note: Only delete folders INSIDE files_to_import, never the files_to_import folder itself",
-                "step_3": "Example: use std::fs::remove_dir() for each empty folder path",
-                "folders_pending_deletion": empty_folders_display
-            }
+            // =============================================================================
+            // WARNING: EMPTY FOLDERS FOUND - REQUIRED NEXT STEP
+            // =============================================================================
+            "EMPTY_FOLDERS_WORKFLOW": {
+                "status": "REQUIRED_STEP",
+                "IMPORTANT": "You MUST ask the user about these empty folders. Do NOT skip this step.",
+                "empty_folders_found": empty_folders_display.clone(),
+                "MANDATORY_STEPS": [
+                    {
+                        "step": 1,
+                        "action": "SUMMARIZE",
+                        "instruction": format!("TELL THE USER: 'I deleted the file(s). The following folders are now COMPLETELY EMPTY: {:?}'", empty_folders_display)
+                    },
+                    {
+                        "step": 2,
+                        "action": "ASK THE USER",
+                        "instruction": format!("ASK EXPLICITLY: 'Do you want to delete these empty folders: {:?}?'", empty_folders_display),
+                        "required": true,
+                        "WARNING_DO_NOT_PROCEED_WITHOUT_ASKING": true
+                    },
+                    {
+                        "step": 3,
+                        "action": "DELETE ONLY IF YES",
+                        "instruction": "If user says YES - delete the empty folders using bash or terminal",
+                        "instruction_no": "If user says NO - keep the folders, ingestion workflow is complete"
+                    }
+                ],
+                "how_to_delete_folders": {
+                    "note": "Use terminal or bash to delete folders",
+                    "bash_example": format!("rmdir \"{:?}\" (or rmdir on Windows: rmdir \"folder_name\")", empty_folders_display),
+                    "safety_check": "These folders are confirmed empty (no files, no subdirectories)"
+                },
+                "safety_rules": [
+                    "Only delete folders INSIDE files_to_import",
+                    "NEVER delete the files_to_import folder itself",
+                    "Only delete if user explicitly says YES"
+                ]
+            },
+            "NEXT_ACTION": {
+                "type": "ASK_USER_ABOUT_EMPTY_FOLDERS",
+                "required": true,
+                "must_ask": true,
+                "speak_to_user": format!("I deleted the file(s). Folders {:?} are now empty. Do you want me to delete these empty folders?", empty_folders_display),
+                "do_not_skip": "You MUST ask the user about empty folders before considering this task complete"
+            },
+            "WORKFLOW_COMPLETE": success > 0 && failed_count == 0,
+            "WARNING_REMEMBER": "Ask user about empty folders before finishing"
         })
     };
     
