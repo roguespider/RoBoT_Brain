@@ -161,6 +161,7 @@ pub async fn execute_get_workflow(input: GetWorkflowInput) -> Result<ToolOutput,
             "workflow_name": "File Ingestion Workflow",
             "SCOPING_RULES": {
                 "IMPORTANT": "ALWAYS look in the robot_brain directory, NOT the current project folder",
+                "NEVER_explore_project": "DO NOT explore the project directory structure. Only look in files_to_import folder via list_importable tool.",
                 "where_to_look": "Use import_folder path from list_importable response - this is the files_to_import location",
                 "do_NOT_look_here": ["current project folder", "source code directories like src/", "anywhere except import_folder"],
                 "reason": "robot_brain.exe, robot_brain.db, and files_to_import are ALL in the robot_brain directory",
@@ -178,45 +179,58 @@ pub async fn execute_get_workflow(input: GetWorkflowInput) -> Result<ToolOutput,
                     "tool": "list_importable",
                     "action": "Check available files in files_to_import folder",
                     "parameters": {"recursive": true},
-                    "description": "Lists files ready for ingestion. Use recursive=true to include subfolders. Look at IMPORTANT_SCOPING.this_folder for the exact path."
+                    "description": "Lists files ready for ingestion."
                 },
                 {
                     "step": 3,
                     "tool": "ingest_files",
-                    "action": "Ingest ONE file at a time",
+                    "action": "Ingest ONE file",
                     "parameters": {"limit": 1, "recursive": true},
-                    "description": "Use limit=1 for single file. NEVER batch ingest without explicit instruction."
+                    "description": "Use limit=1 for single file."
                 },
                 {
                     "step": 4,
-                    "tool": "check response.NEXT_ACTION",
-                    "action": "Follow the NEXT_ACTION in the response",
-                    "description": "The ingest response includes a 'NEXT_ACTION' field telling you what to do next. If already_ingested_count > 0, ASK USER if they want to re-ingest."
+                    "tool": "check NEXT_ACTION",
+                    "action": "Follow the NEXT_ACTION in ingest response",
+                    "description": "If already_ingested_count > 0, ask user if they want to re-ingest."
                 },
                 {
                     "step": 5,
-                    "tool": "search_memory",
-                    "action": "Verify ingestion in memory",
-                    "description": "Search to confirm file was stored correctly."
+                    "tool": "SUMMARIZE",
+                    "action": "Summarize what was ingested and will be added to memory",
+                    "description": "MANDATORY: Tell user what was added. Include: filename, file_size, chunk_count, content_preview, memory_ids. Example: 'Ingested notes.pdf (2.5MB) - 10 chunks will be added to memory with IDs: abc123, def456...'",
+                    "include_in_summary": ["filename", "file_size", "chunk_count", "memory_ids", "content_preview"]
                 },
                 {
                     "step": 6,
                     "tool": "ASK USER",
-                    "action": "Follow the NEXT_ACTION guidance - typically ask for deletion permission",
-                    "description": "NEVER delete without explicit user confirmation!"
+                    "action": "Ask for deletion permission",
+                    "description": "Example: 'Delete the original file to save space?'"
                 },
                 {
                     "step": 7,
                     "tool": "delete_ingested_files",
-                    "action": "Delete original file only after user confirmation",
+                    "action": "Delete original file after user confirms",
                     "parameters": {"confirmation": "yes"},
-                    "description": "Use files from 'files_ready_for_deletion' in the ingest response. confirmation MUST be 'yes' (exactly)."
+                    "description": "Only if user says yes. confirmation MUST be 'yes'."
                 },
                 {
                     "step": 8,
-                    "tool": "check response.empty_folders",
-                    "action": "After file deletion, check if any folders are now empty",
-                    "description": "If empty_folder_count > 0, ASK USER: 'Do you want to delete the empty folder(s)?'"
+                    "tool": "check empty_folders",
+                    "action": "Check for empty folders",
+                    "description": "Look at response.empty_folders."
+                },
+                {
+                    "step": 9,
+                    "tool": "ASK USER",
+                    "action": "Ask for permission to delete empty folders",
+                    "description": "Example: 'Folders X, Y are empty. Delete them?'"
+                },
+                {
+                    "step": 10,
+                    "tool": "list_importable",
+                    "action": "Check if more files to ingest",
+                    "description": "If more files exist, repeat steps 3-9. If folder is empty, ingestion is complete."
                 }
             ],
             "re_ingestion_workflow": {
@@ -235,16 +249,17 @@ pub async fn execute_get_workflow(input: GetWorkflowInput) -> Result<ToolOutput,
                 "NEVER batch ingest without explicit user instruction",
                 "ALWAYS look in import_folder path, NEVER in current project",
                 "ALWAYS follow the NEXT_ACTION in ingest response",
+                "ALWAYS SUMMARIZE what was ingested at step 5 (filename, size, chunks, memory_ids)",
                 "ALWAYS ask user before calling delete_ingested_files",
-                "ALWAYS ask user if files have already been ingested (use force=true if they confirm)",
-                "ALWAYS check for empty_folders after file deletion - ASK USER about folder cleanup",
+                "ALWAYS check for empty_folders after file deletion - ASK USER about deleting empty folders",
                 "confirmation parameter MUST be exactly 'yes'",
-                "NEVER delete the files_to_import folder itself, only subfolders inside it"
+                "NEVER delete the files_to_import folder itself, only subfolders inside it",
+                "After each file, ALWAYS check for more files - continue until files_to_import is empty"
             ],
             "files_that_are_skipped": [
                 "JSON files >10MB (embedding/metadata files don't chunk well)",
                 "Text files >50MB (size limit to prevent timeouts)",
-                "Files matching patterns: embeddings, vectors, chroma, pinecone, faiss, metadata, etc.",
+                "Files matching patterns: embeddings, vectors, pinecone, faiss, metadata, etc.",
                 "Files already ingested (tracked in memory, shown with already_ingested_count)"
             ],
             "chunk_sizes": [
@@ -252,14 +267,16 @@ pub async fn execute_get_workflow(input: GetWorkflowInput) -> Result<ToolOutput,
                 "JSON files: 16384 characters per chunk (better for structured data)"
             ],
             "common_mistakes_to_avoid": [
+                "Exploring the project directory structure (NEVER do this - only use files_to_import)",
                 "Looking for files_to_import in current project folder instead of robot_brain directory",
                 "Calling ingest_files without limit=1 (causes batch ingest)",
+                "Asking about deletion WITHOUT first summarizing what was ingested",
                 "Calling delete_ingested_files without asking user first",
                 "Using confirmation values other than 'yes'",
                 "Trying to delete folders instead of files",
-                "Forgetting to verify ingestion with search_memory",
                 "Forgetting to ask about re-ingestion when already_ingested_count > 0",
                 "Forgetting to ask about folder cleanup when empty_folders > 0",
+                "Forgetting to check for more files after completing one",
                 "Deleting the files_to_import folder itself (only delete subfolders)"
             ]
         }),
@@ -318,7 +335,7 @@ pub async fn execute_get_workflow(input: GetWorkflowInput) -> Result<ToolOutput,
                     "step": 3,
                     "tool": "search_memory",
                     "action": "Check existing memory for relevant context",
-                    "description": "Always check memory before taking action."
+                    "description": "Always check memory before taking any action of any kind."
                 },
                 {
                     "step": 4,
@@ -335,7 +352,7 @@ pub async fn execute_get_workflow(input: GetWorkflowInput) -> Result<ToolOutput,
             ],
             "critical_rules": [
                 "MUST call get_workflow first before ANY other tool",
-                "MUST check memory (search_memory) before taking action",
+                "MUST check memory (search_memory) before taking any action of any kind",
                 "MUST review patterns (get_patterns) for repetitive decisions",
                 "ALWAYS ask user before destructive operations (delete_ingested_files)"
             ],

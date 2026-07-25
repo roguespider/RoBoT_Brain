@@ -35,7 +35,6 @@ pub const SKIP_PATTERNS: &[&str] = &[
     "embedding",
     "vector",
     "vectors",
-    "chroma",
     "pinecone",
     "qdrant",
     "metadata",

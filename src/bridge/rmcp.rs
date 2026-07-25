@@ -27,12 +27,14 @@ use crate::tools::{self, ToolOutput};
 fn tool_output_to_content(output: ToolOutput) -> ContentBlock {
     let text = if output.success {
         serde_json::to_string_pretty(&output.data)
-            .unwrap_or_else(|_| "{\"success\": true}".to_string())
+            .unwrap_or_else(|_| r#"{"success": true}"#.to_string())
     } else {
-        format!(
-            "Error: {}",
-            output.error.unwrap_or_else(|| "Unknown error".to_string())
-        )
+        // Always return JSON for errors - MCP clients need to parse the response
+        serde_json::to_string_pretty(&serde_json::json!({
+            "success": false,
+            "error": output.error.unwrap_or_else(|| "Unknown error".to_string())
+        }))
+        .unwrap_or_else(|_| r#"{"success": false, "error": "Failed to serialize error"}"#.to_string())
     };
 
     ContentBlock::Text(TextContent::new(text))
