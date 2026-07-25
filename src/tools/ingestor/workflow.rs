@@ -204,6 +204,7 @@ pub async fn execute_delete_ingested_files(
     
     // Step 1: Check if files were recently ingested
     let (all_verified, unverified_files) = crate::tools::ingestor::can_delete_files(&input.files).await;
+    let can_verify = crate::tools::ingestor::can_verify_deletion().await;
     
     // Step 2: Verify confirmation is EXACTLY "yes" or "confirm"
     let confirmation = input.confirmation.trim().to_lowercase();
@@ -331,7 +332,8 @@ pub async fn execute_delete_ingested_files(
             },
             "verification": {
                 "files_were_ingested": all_verified,
-                "unverified_files": unverified_files.len()
+                "unverified_files": unverified_files.len(),
+                "can_verify_deletion": can_verify
             },
             "empty_folders": empty_folders_str,
             "empty_folder_count": 0,
@@ -372,7 +374,8 @@ pub async fn execute_delete_ingested_files(
             },
             "verification": {
                 "files_were_ingested": all_verified,
-                "unverified_files": unverified_files.len()
+                "unverified_files": unverified_files.len(),
+                "can_verify_deletion": can_verify
             },
             "empty_folders": empty_folders_str,
             "empty_folder_names": empty_folders_display,

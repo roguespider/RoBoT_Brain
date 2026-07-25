@@ -114,7 +114,6 @@ impl IngestTracker {
     }
     
     /// Check if we can verify deletion (means a recent ingest happened)
-    #[allow(dead_code)]
     pub fn can_verify_deletion(&self) -> bool {
         match self.last_ingest_time {
             Some(time) => time.elapsed() < Duration::from_secs(300), // 5 minute window
@@ -169,6 +168,15 @@ pub async fn can_delete_files(file_paths: &[String]) -> (bool, Vec<String>) {
 pub async fn clear_ingest_tracker() {
     if let Ok(mut tracker) = get_ingest_tracker().try_lock() {
         tracker.clear();
+    }
+}
+
+/// Check if we can verify deletions (recent ingest happened)
+pub async fn can_verify_deletion() -> bool {
+    if let Ok(tracker) = get_ingest_tracker().try_lock() {
+        tracker.can_verify_deletion()
+    } else {
+        false
     }
 }
 
