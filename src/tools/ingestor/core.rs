@@ -42,6 +42,24 @@ fn is_archive_file(path: &Path) -> bool {
     is_supported_extension(path, ARCHIVE_EXTENSIONS)
 }
 
+/// Get file size as a human-readable string
+fn file_info_size(path: &str) -> String {
+    std::fs::metadata(path)
+        .map(|m| {
+            let bytes = m.len();
+            if bytes < 1024 {
+                format!("{} B", bytes)
+            } else if bytes < 1024 * 1024 {
+                format!("{:.1} KB", bytes as f64 / 1024.0)
+            } else if bytes < 1024 * 1024 * 1024 {
+                format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0))
+            } else {
+                format!("{:.1} GB", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
+            }
+        })
+        .unwrap_or_else(|_| "unknown size".to_string())
+}
+
 /// Tracks recently ingested files for deletion verification
 /// This prevents agents from deleting files without proper ingestion
 pub struct IngestTracker {
@@ -207,6 +225,8 @@ pub struct DeleteIngestedFilesInput {
 pub struct ListIngestedFilesInput {
     pub folder: Option<String>,
     pub limit: Option<usize>,
+    /// Search subfolders recursively (default: true) - matches ingest_files behavior
+    pub recursive: Option<bool>,
 }
 
 /// Result of ingesting a single file
@@ -519,12 +539,30 @@ pub async fn ingest_file(
             tracing::warn!("Failed to cleanup WAL files: {}", e);
         }
 
-        // Get folder path for reference
+        	        // Get folder path for reference
         let folder_display = folder.to_string_lossy().to_string();
         let exe_dir = std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|p| p.to_string_lossy().to_string()))
             .unwrap_or_else(|| "unknown".to_string());
+
+        // Build detailed file info for the summary BEFORE moving results
+        let ingested_file_details: Vec<serde_json::Value> = results
+            .iter()
+            .filter(|r| r.success)
+            .map(|r| {
+                let filename = r.filename.clone();
+                let file_size = file_info_size(&r.file_path);
+                serde_json::json!({
+                    "filename": filename,
+                    "file_path": r.file_path,
+                    "file_size": file_size,
+                    "chunks": r.chunks_created,
+                    "memory_ids": r.memory_ids,
+                    "content_preview": format!("{} chunks added to memory", r.chunks_created)
+                })
+            })
+            .collect();
 
         let summary = IngestSummary {
             total_files,
@@ -536,6 +574,13 @@ pub async fn ingest_file(
 
         // Format already ingested files for display
         let already_ingested_filenames: Vec<String> = already_ingested.iter().map(|f| f.filename.clone()).collect();
+        
+        // Check if batch mode was used (limit > 1)
+        let batch_mode_warning = if limit > 1 {
+            "WARNING: Batch mode detected (limit > 1). Per workflow rules, you should use limit=1 for one file at a time."
+        } else {
+            ""
+        };
         
         // Generate user-facing message based on what happened
         let user_message = if !already_ingested.is_empty() && successfully_ingested.is_empty() {
@@ -549,9 +594,10 @@ pub async fn ingest_file(
         } else if successfully_ingested.is_empty() {
             "No new files were ingested.".to_string()
         } else if successfully_ingested.len() == 1 {
+            let filename = successfully_ingested[0].rsplit('/').last().unwrap_or(&successfully_ingested[0]).rsplit('\\').last().unwrap_or(&successfully_ingested[0]);
             format!(
                 "Successfully ingested: {}\nCan I delete the original file to save space?",
-                successfully_ingested[0].rsplit('/').last().unwrap_or(&successfully_ingested[0]).rsplit('\\').last().unwrap_or(&successfully_ingested[0])
+                filename
             )
         } else {
             format!(
@@ -564,6 +610,7 @@ pub async fn ingest_file(
             "summary": summary,
             "user_message": user_message,
             "successfully_ingested": successfully_ingested,
+            "ingested_file_details": ingested_file_details,
             "import_folder": folder_display,
             "exe_directory": exe_dir,
             "temp_folder": get_recent_archive_temp_folder().map(|p| p.to_string_lossy().to_string()),
@@ -579,6 +626,47 @@ pub async fn ingest_file(
                 "this_folder": folder_display,
                 "reason": "robot_brain.exe, robot_brain.db, and files_to_import are all in the robot_brain directory"
             },
+            // =============================================================================
+            // MANDATORY WORKFLOW - MUST FOLLOW THESE EXACT STEPS FOR EACH FILE
+            // =============================================================================
+            "WORKFLOW_STATUS": {
+                "description": "This workflow applies to EACH file. Repeat for all files.",
+                "step_1_get_workflow": "[COMPLETE] (done at start of session)",
+                "step_2_list_importable": "[COMPLETE] (done at start of session)",
+                "step_3_ingest": "[COMPLETE] - NOW DO STEP 4",
+                "step_4_SUMMARIZE": {
+                    "status": "REQUIRED - DO THIS NOW",
+                    "instruction": "You MUST summarize what was just ingested BEFORE asking about deletion",
+                    "required_fields": ["filename", "file_size", "chunk_count", "memory_ids"],
+                    "example": "Ingested 'report.pdf' (2.5MB) - 10 chunks added to memory with IDs: abc123, def456, ..."
+                },
+                "step_5_ASK_USER_ABOUT_FILE": {
+                    "status": "REQUIRED - DO THIS AFTER SUMMARIZE",
+                    "instruction": "After summarizing, ASK the user if they want to delete the original file(s)",
+                    "example": "'I successfully ingested [filename]. Can I delete the original file to save space?'"
+                },
+                "step_6_DELETE_FILE": {
+                    "status": "ONLY AFTER USER CONFIRMS 'YES'",
+                    "instruction": "Only call delete_ingested_files AFTER user says YES to file deletion",
+                    "response_will_contain": "empty_folders field - check this after deletion"
+                },
+                "step_7_CHECK_EMPTY_FOLDERS": {
+                    "status": "REQUIRED - DO THIS AFTER FILE DELETION",
+                    "instruction": "After delete_ingested_files response, check empty_folders field",
+                    "if_empty_folders_not_empty": "ASK USER: 'Folders X, Y are now empty. Do you want to delete them?'",
+                    "WARNING_DO_NOT_SKIP": "You MUST ask about empty folders even if user said no to file deletion"
+                },
+                "step_8_REPEAT": {
+                    "status": "FOR EACH FILE",
+                    "instruction": "Repeat steps 4-7 for each remaining file, then ask user if done"
+                }
+            },
+            "MANDATORY_SUMMARIZE": {
+                "required": true,
+                "fields_to_include": ["filename", "file_size", "chunk_count", "memory_ids", "content_preview"],
+                "example": "Ingested '[FILENAME]' ([SIZE]) - [CHUNKS] chunks added to memory with IDs: [ID1, ID2, ...]",
+                "warning": "Do NOT skip the summary. Users need to know what was added to their memory."
+            },
             "note": if remaining_count > 0 {
                 format!("{} file(s) remaining in temp folder. Call ingest again with temp_folder path.", remaining_count)
             } else if successfully_ingested.is_empty() && already_ingested.is_empty() {
@@ -588,15 +676,46 @@ pub async fn ingest_file(
             } else {
                 "All files ingested.".to_string()
             },
-            "NEXT_ACTION": if !already_ingested.is_empty() && successfully_ingested.is_empty() {
-                // All files were already ingested - ask user if they want to re-ingest
-                serde_json::json!("ASK USER: 'The following files have already been added to memory: {:?}. Do you want to add them again?'. If YES, use force=true parameter.".replace("{:?}", &format!("{:?}", already_ingested_filenames)))
-            } else if successfully_ingested.is_empty() {
-                serde_json::json!("No action needed - no files were successfully ingested.")
-            } else {
-                serde_json::json!("ASK USER: 'I successfully ingested the file(s). Can I delete the original file(s) to save space?'")
+            "NEXT_ACTION": {
+                "description": "Complete these steps IN ORDER for each file:",
+                "step_1_SUMMARIZE": {
+                    "action": "TELL THE USER what was just ingested",
+                    "instruction": "Include: filename, file_size, chunk_count, memory_ids",
+                    "example": format!("Ingested '{}' ({} bytes) - {} chunks added to memory with IDs: {:?}", 
+                        ingested_file_details.first().and_then(|d| d.get("filename")).and_then(|v| v.as_str()).unwrap_or("file"),
+                        ingested_file_details.first().and_then(|d| d.get("file_size")).and_then(|v| v.as_str()).unwrap_or("?"),
+                        ingested_file_details.first().and_then(|d| d.get("chunks")).and_then(|v| v.as_u64()).unwrap_or(0),
+                        ingested_file_details.first().and_then(|d| d.get("memory_ids")).and_then(|v| v.as_array()).map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>()).unwrap_or_default()
+                    )
+                },
+                "step_2_ASK_ABOUT_FILE": {
+                    "action": "ASK THE USER about file deletion",
+                    "instruction": "After summary, ask: 'Can I delete the original file to save space?'",
+                    "WARNING_WAIT_FOR_RESPONSE": "Do NOT proceed until user responds YES or NO"
+                },
+                "step_3_DELETE_FILE": {
+                    "action": "ONLY IF USER SAYS YES",
+                    "instruction": "Call delete_ingested_files with the files list",
+                    "example": {
+                        "files": successfully_ingested,
+                        "confirmation": "yes"
+                    },
+                    "after_this": "Check the response for empty_folders field"
+                },
+                "step_4_ASK_ABOUT_EMPTY_FOLDERS": {
+                    "action": "AFTER FILE DELETION - CHECK AND ASK",
+                    "instruction": "In the delete_ingested_files response, look at empty_folders field",
+                    "if_folders_exist": "ASK THE USER: 'Folders are now empty. Do you want to delete them?'",
+                    "REQUIRED": "You MUST ask about empty folders even if user said no to file deletion"
+                }
             },
             "deletion_workflow": {
+                "required": true,
+                "workflow": [
+                    {"step": 1, "action": "SUMMARIZE what was ingested"},
+                    {"step": 2, "action": "ASK USER for deletion permission"},
+                    {"step": 3, "action": "ONLY THEN call delete_ingested_files"}
+                ],
                 "if_user_says_yes": {
                     "step_1": "Call delete_ingested_files",
                     "step_2": "Use files from 'files_ready_for_deletion' list",
@@ -625,8 +744,16 @@ pub async fn ingest_file(
             } else {
                 serde_json::Value::Null
             },
+            "batch_mode_warning": batch_mode_warning,
             "recursive_used": recursive,
-            "warning": "You MUST ask the user before calling delete_ingested_files. Do NOT delete without asking."
+            "CRITICAL_RULES_VIOLATION_WILL_CAUSE_ERRORS": [
+                "RULE 1: MUST summarize what was ingested (filename, size, chunks, IDs)",
+                "RULE 2: MUST ask user before deleting (do NOT auto-delete)",
+                "RULE 3: Do NOT batch ingest - use limit=1 for one file at a time",
+                "RULE 4: After file deletion, MUST check empty_folders and ASK USER about those",
+                "RULE 5: Repeat for each file, then ask user if done"
+            ],
+            "WARNING_VIOLATION": "VIOLATION: If you skip asking about empty folders, the workflow is incomplete."
         })))
     }
 }

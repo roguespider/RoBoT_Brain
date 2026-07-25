@@ -13,7 +13,7 @@ pub fn all() -> Vec<McpTool> {
     vec![
         McpTool {
             name: INGEST_FILES.to_string(),
-            description: "INGEST FILES INTO MEMORY. Default: folder='files_to_import' (in robot_brain.exe directory). IMPORTANT: Always use limit=1 to ingest ONE file at a time. Files are stored in robot_brain.db (same directory as exe). DO NOT batch ingest - always one file at a time.".to_string(),
+            description: "INGEST FILES INTO MEMORY. REQUIRED WORKFLOW: 1) Call get_workflow with purpose='file_ingestion' first. 2) Call list_importable to see files. 3) Call ingest_files with limit=1 (ONE file at a time). 4) SUMMARIZE what was ingested (filename, size, chunks, memory IDs). 5) ASK USER: 'Can I delete the original file?' 6) Only delete if user says YES. DO NOT batch ingest or auto-delete.".to_string(),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -27,7 +27,7 @@ pub fn all() -> Vec<McpTool> {
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "ALWAYS use limit=1 for single file ingestion. Default is 1. Example: limit=1"
+                        "description": "REQUIRED: Must be 1. Ingest ONE file at a time, then ASK USER about deletion before continuing. Default is 1. Example: limit=1"
                     },
                     "chunk_size": {
                         "type": "integer",
@@ -100,24 +100,28 @@ pub fn all() -> Vec<McpTool> {
                     "limit": {
                         "type": "integer",
                         "description": "Max files to return"
+                    },
+                    "recursive": {
+                        "type": "boolean",
+                        "description": "Search subfolders recursively (default: true). Set to false to only look in the root folder."
                     }
                 }
             }),
         },
         McpTool {
             name: DELETE_INGESTED_FILES.to_string(),
-            description: "Delete original files after they have been ingested. ALWAYS ask user for confirmation before calling this tool!".to_string(),
+            description: "DELETE ORIGINAL FILES after ingestion. ⚠️ CRITICAL: You MUST have asked the user 'Can I delete the original file?' and received a YES before calling this tool. Do NOT auto-delete. The tool will block deletion without user confirmation.".to_string(),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
                     "files": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "File paths to delete. MUST be files that were already ingested."
+                        "description": "File paths to delete. MUST be files that were already ingested by ingest_files."
                     },
                     "confirmation": {
                         "type": "string",
-                        "description": "VERIFICATION REQUIRED: Must be EXACTLY 'yes' to confirm deletion. Without this, deletion will NOT proceed."
+                        "description": "VERIFICATION REQUIRED: Must be EXACTLY 'yes' to confirm deletion. Without this, deletion will NOT proceed. The user must have explicitly said YES to deletion."
                     }
                 },
                 "required": ["files", "confirmation"]
