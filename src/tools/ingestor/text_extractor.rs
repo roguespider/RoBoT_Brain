@@ -19,6 +19,15 @@ pub fn extract_text(path: &Path) -> Result<String> {
         "pdf" => extract_pdf_text(path),
         "docx" => extract_docx_text(path),
         "epub" => extract_epub_text(path),
+        "json" | "jsonl" => {
+            // Check if it's a chroma export
+            let content = std::fs::read_to_string(path)?;
+            if is_chroma_export(&content) {
+                extract_chroma_text(&content)
+            } else {
+                Ok(content)
+            }
+        }
         _ => {
             let mut file = File::open(path)?;
             let mut content = String::new();
@@ -26,6 +35,85 @@ pub fn extract_text(path: &Path) -> Result<String> {
             Ok(content)
         }
     }
+}
+
+/// Check if JSON content looks like a chroma export
+fn is_chroma_export(content: &str) -> bool {
+    // Chroma exports typically have these fields
+    let lower = content.to_lowercase();
+    lower.contains("\"documents\"") && 
+    (lower.contains("\"embeddings\"") || lower.contains("\"metadatas\""))
+}
+
+/// Extract text from chroma database export
+/// Combines documents with their metadata for proper context
+fn extract_chroma_text(content: &str) -> Result<String> {
+    let json: serde_json::Value = serde_json::from_str(content)?;
+    
+    let documents = json.get("documents")
+        .and_then(|d| d.get(0))
+        .and_then(|d| d.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    
+    let metadatas = json.get("metadatas")
+        .and_then(|m| m.get(0))
+        .and_then(|m| m.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| serde_json::to_string_pretty(v).ok())
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    
+    let ids = json.get("ids")
+        .and_then(|i| i.get(0))
+        .and_then(|i| i.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| {
+                    if let Some(s) = v.as_str() {
+                        Some(s.to_string())
+                    } else if let Some(arr) = v.as_array() {
+                        let parts: Vec<_> = arr.iter().filter_map(|x| x.as_str().map(String::from)).collect();
+                        Some(parts.join(", "))
+                    } else {
+                        None
+                    }
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+    
+    if documents.is_empty() {
+        anyhow::bail!("No documents found in chroma export");
+    }
+    
+    let mut result = String::new();
+    result.push_str("# Chroma Database Export\n\n");
+    
+    for (i, doc) in documents.iter().enumerate() {
+        result.push_str(&format!("---\n"));
+        
+        // Add ID if available
+        if let Some(id) = ids.get(i) {
+            result.push_str(&format!("ID: {}\n", id));
+        }
+        
+        // Add metadata if available
+        if let Some(meta) = metadatas.get(i) {
+            result.push_str(&format!("Metadata: {}\n", meta));
+        }
+        
+        // Add document content
+        result.push_str(&format!("Content:\n{}\n\n", doc));
+    }
+    
+    Ok(result)
 }
 
 /// Extract text from PDF

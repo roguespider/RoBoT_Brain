@@ -668,12 +668,17 @@ async fn ingest_archive(
     let first_file = &files[0];
     let result = ingest_single_file(first_file, chunk_size, memory_type, db).await?;
 
-    // Clean up empty subfolders
-    delete_empty_folders(&temp_dir);
-
-    // Count remaining files
+    // Count remaining files BEFORE cleanup
     let remaining_files = collect_all_files_recursive(&temp_dir)?;
     let remaining_count = remaining_files.len();
+
+    // Delete ALL remaining files in temp directory (including transcribed audio files)
+    for file_path in &remaining_files {
+        let _ = std::fs::remove_file(file_path);
+    }
+
+    // Clean up empty subfolders
+    delete_empty_folders(&temp_dir);
 
     Ok(IngestResult {
         filename,
