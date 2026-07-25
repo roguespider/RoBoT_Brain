@@ -30,6 +30,7 @@ pub struct ExplorationFinding {
 
 impl ExplorationFinding {
     /// Create a new finding with the given description.
+    #[allow(dead_code)]
     pub fn new(id: String, description: String, confidence: f32) -> Self {
         Self {
             id,
@@ -41,6 +42,7 @@ impl ExplorationFinding {
     }
 
     /// Mark this finding as promoted to knowledge.
+    #[allow(dead_code)]
     pub fn promote(&mut self) {
         self.promoted = true;
     }

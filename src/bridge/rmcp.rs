@@ -131,6 +131,7 @@ struct McpServerHandler {
     name: String,
     version: String,
     enforcer: Arc<WorkflowEnforcer>,
+    #[allow(dead_code)]
     session_counter: Arc<AtomicU64>,
     session_id: String,
 }
@@ -149,6 +150,7 @@ impl McpServerHandler {
     }
 
     /// Generate a new session ID
+    #[allow(dead_code)]
     fn new_session(&self) -> String {
         let id = self.session_counter.fetch_add(1, Ordering::SeqCst);
         format!("session-{}", id)

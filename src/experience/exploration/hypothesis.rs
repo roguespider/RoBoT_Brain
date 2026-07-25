@@ -26,6 +26,7 @@ pub struct Hypothesis {
 
 impl Hypothesis {
     /// Create a new hypothesis with the given statement.
+    #[allow(dead_code)]
     pub fn new(id: String, statement: String, initial_confidence: f32) -> Self {
         Self {
             id,
@@ -36,11 +37,13 @@ impl Hypothesis {
     }
 
     /// Set the result of testing this hypothesis.
+    #[allow(dead_code)]
     pub fn set_result(&mut self, result: HypothesisResult) {
         self.result = Some(result);
     }
 
     /// Update confidence based on test results.
+    #[allow(dead_code)]
     pub fn update_confidence(&mut self, new_confidence: f32) {
         self.confidence = new_confidence.clamp(0.0, 1.0);
     }

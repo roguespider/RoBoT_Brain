@@ -33,6 +33,7 @@ pub struct ExplorationAttempt {
 
 impl ExplorationAttempt {
     /// Create a new attempt with the given action.
+    #[allow(dead_code)]
     pub fn new(id: String, action: String) -> Self {
         Self {
             id,
@@ -45,12 +46,14 @@ impl ExplorationAttempt {
     }
 
     /// Set the expected result before executing.
+    #[allow(dead_code)]
     pub fn with_expected_result(mut self, result: String) -> Self {
         self.expected_result = Some(result);
         self
     }
 
     /// Record the actual result and determine success.
+    #[allow(dead_code)]
     pub fn with_actual_result(mut self, result: String) -> Self {
         let result_clone = result.clone();
         self.actual_result = Some(result);

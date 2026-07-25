@@ -57,6 +57,7 @@ impl WorkflowEnforcementError {
         }
     }
 
+    #[allow(dead_code)]
     pub fn tools_blocked(blocked: Vec<String>) -> Self {
         Self {
             error_code: "TOOLS_BLOCKED".to_string(),
@@ -70,12 +71,14 @@ impl WorkflowEnforcementError {
 /// Session state tracking workflow compliance
 #[derive(Debug, Clone)]
 pub struct SessionState {
+    #[allow(dead_code)]
     pub session_id: String,
     pub workflow_retrieved: bool,
     pub workflow_purpose: Option<String>,
     pub memory_searched: bool,
     pub last_memory_search: Option<String>,
     pub patterns_reviewed: bool,
+    #[allow(dead_code)]
     pub created_at: Instant,
     pub last_activity: Instant,
     pub tools_used: Vec<String>,
@@ -117,6 +120,7 @@ pub struct WorkflowEnforcer {
     enforcement_enabled: bool,
     session_timeout: Duration,
     require_memory_search: bool,
+    #[allow(dead_code)]
     require_patterns_review: bool,
 }
 
@@ -133,6 +137,7 @@ impl WorkflowEnforcer {
     }
 
     /// Create with custom configuration
+    #[allow(dead_code)]
     pub fn with_config(
         enforcement_enabled: bool,
         session_timeout_secs: u64,
@@ -179,6 +184,7 @@ impl WorkflowEnforcer {
     }
 
     /// Record that memory search was called
+    #[allow(dead_code)]
     pub async fn record_memory_searched(&self, session_id: &str, query: Option<String>) {
         let mut sessions = self.sessions.write().await;
         if let Some(state) = sessions.get_mut(session_id) {
@@ -189,6 +195,7 @@ impl WorkflowEnforcer {
     }
 
     /// Record that patterns were reviewed
+    #[allow(dead_code)]
     pub async fn record_patterns_reviewed(&self, session_id: &str) {
         let mut sessions = self.sessions.write().await;
         if let Some(state) = sessions.get_mut(session_id) {
@@ -264,12 +271,14 @@ impl WorkflowEnforcer {
     }
 
     /// Get session state for debugging/admin purposes
+    #[allow(dead_code)]
     pub async fn get_session_state(&self, session_id: &str) -> Option<SessionState> {
         let sessions = self.sessions.read().await;
         sessions.get(session_id).cloned()
     }
 
     /// Clear expired sessions
+    #[allow(dead_code)]
     pub async fn cleanup_expired_sessions(&self) -> usize {
         let mut sessions = self.sessions.write().await;
         let before = sessions.len();
@@ -278,16 +287,19 @@ impl WorkflowEnforcer {
     }
 
     /// Enable/disable enforcement at runtime
+    #[allow(dead_code)]
     pub fn set_enforcement_enabled(&mut self, enabled: bool) {
         self.enforcement_enabled = enabled;
     }
 
     /// Get current enforcement status
+    #[allow(dead_code)]
     pub fn is_enforcement_enabled(&self) -> bool {
         self.enforcement_enabled
     }
 
     /// Update session with workflow purpose
+    #[allow(dead_code)]
     pub async fn update_workflow_purpose(&self, session_id: &str, purpose: String) {
         let mut sessions = self.sessions.write().await;
         if let Some(state) = sessions.get_mut(session_id) {
