@@ -180,6 +180,12 @@ impl WorkflowEnforcer {
             state.workflow_retrieved = true;
             state.workflow_purpose = purpose;
             state.last_activity = Instant::now();
+        } else {
+            // Create new session with workflow_retrieved set to true
+            let mut new_state = SessionState::new(session_id.to_string());
+            new_state.workflow_retrieved = true;
+            new_state.workflow_purpose = purpose;
+            sessions.insert(session_id.to_string(), new_state);
         }
     }
 
@@ -191,6 +197,12 @@ impl WorkflowEnforcer {
             state.memory_searched = true;
             state.last_memory_search = query;
             state.last_activity = Instant::now();
+        } else {
+            // Create new session with memory_searched set to true
+            let mut new_state = SessionState::new(session_id.to_string());
+            new_state.memory_searched = true;
+            new_state.last_memory_search = query;
+            sessions.insert(session_id.to_string(), new_state);
         }
     }
 
@@ -201,6 +213,11 @@ impl WorkflowEnforcer {
         if let Some(state) = sessions.get_mut(session_id) {
             state.patterns_reviewed = true;
             state.last_activity = Instant::now();
+        } else {
+            // Create new session with patterns_reviewed set to true
+            let mut new_state = SessionState::new(session_id.to_string());
+            new_state.patterns_reviewed = true;
+            sessions.insert(session_id.to_string(), new_state);
         }
     }
 
@@ -227,6 +244,10 @@ impl WorkflowEnforcer {
 
         // Exempt tools always allowed
         if Self::is_exempt(tool_name) {
+            // For get_workflow, mark workflow as retrieved
+            if tool_name == "get_workflow" {
+                self.record_workflow_retrieved(session_id, None).await;
+            }
             return Ok(());
         }
 
