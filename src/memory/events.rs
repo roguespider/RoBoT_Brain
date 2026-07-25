@@ -4,6 +4,8 @@
 //! Provides event-driven integration for memory system.
 //! Events flow into memory per the data flow architecture.
 
+#![allow(dead_code)]
+
 use std::sync::Arc;
 use tokio::sync::broadcast;
 use uuid::Uuid;

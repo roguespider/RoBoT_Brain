@@ -2284,7 +2284,7 @@ Rather than scattered rules, have one chapter that every coding agent must obey.
 Examples:
 No duplicated logic.
 Composition over inheritance.
-Keep files under roughly 500 lines when practical.
+Keep files under roughly 512 lines when practical.
 Public APIs remain stable.
 Document every module.
 Every subsystem owns its data.

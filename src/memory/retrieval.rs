@@ -4,12 +4,13 @@
 //! Provides retrieval capabilities for memory items across both
 //! working and permanent memory layers.
 
+#![allow(dead_code)]
+
 use std::sync::Arc;
 
 use super::permanent::PermanentMemory;
 use super::types::{MemoryItem, MemoryLayer, MemoryType};
 use super::working::WorkingMemory;
-use super::repository::MemoryRepository;
 
 /// Memory retrieval result with source information
 #[derive(Debug, Clone)]

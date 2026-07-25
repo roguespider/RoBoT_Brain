@@ -1146,23 +1146,14 @@ Principle 5
 Knowledge becomes more abstract over time.
 
 Conversation
-
 ↓
-
 Experience
-
 ↓
-
 Pattern
-
 ↓
-
 Skill
-
 ↓
-
 Policy
-
 ↓
 
 Strategic Knowledge
@@ -1468,21 +1459,13 @@ Example
 Goal
 
 Compile Rust
-
 ↓
-
 Compilation failed
-
 ↓
-
 Fixed lifetime
-
 ↓
-
 Compiled successfully
-
 ↓
-
 Experience saved
 5. Learning Engine
 Responsibility
@@ -1503,17 +1486,11 @@ Learning Engine
 Example
 
 50 successful experiences
-
 ↓
-
 Repeated sequence detected
-
 ↓
-
 Extract reusable policy
-
 ↓
-
 Store in Strategic Memory
 Strategic Memory
 
@@ -1960,20 +1937,9 @@ Keep LLM context minimal and deterministic.
 --------------------------------------------
 3. Confidence Graph
 
-One thing we've discussed but haven't fully designed:
-
 Don't score only nodes.
 
 Score relationships.
-
-Rust
- 95%
-
-SQLite
- 90%
-
-Rust ───── SQLite
-        42%
 
 The relationship confidence becomes its own entity.
 
