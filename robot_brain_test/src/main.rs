@@ -1,6 +1,35 @@
 //! MCP Integration Test for RoBoT Brain
 //!
-//! Standalone test suite to verify the compiled MCP server executable.
+//! Comprehensive standalone test suite to verify the compiled MCP server executable.
+//! Tests every single tool available in the RoBoT Brain MCP server.
+//!
+//! ## Project Structure
+//! ```
+//! robot_brain_test/
+//! ├── src/
+//! │   ├── lib.rs           # Main library (imported by main.rs)
+//! │   ├── main.rs          # CLI tool for MCP compliance testing
+//! │   ├── client.rs       # MCP test client implementation
+//! │   ├── tools.rs         # Tool definitions
+//! │   ├── common/          # Shared types and utilities
+//! │   │   ├── mod.rs
+//! │   │   └── types.rs
+//! │   └── tests/           # Modular test files (64 tests total)
+//! │       ├── mod.rs
+//! │       ├── connection.rs  # Server initialization tests
+//! │       ├── memory.rs     # Memory tool tests (4)
+//! │       ├── experience.rs # Experience tool tests (4)
+//! │       ├── knowledge.rs # Knowledge tool tests (5)
+//! │       ├── planner.rs   # Planner tool tests (9)
+//! │       ├── workflow.rs  # Workflow tool tests (9)
+//! │       ├── agent.rs     # Agent tool tests (4)
+//! │       ├── hypothesis.rs # Hypothesis tool tests (9)
+//! │       ├── reflection.rs # Reflection tool tests (4)
+//! │       ├── search.rs    # Search tool tests (3)
+//! │       ├── ingestor.rs  # Ingestor tool tests (4)
+//! │       ├── e2e.rs      # End-to-end workflow tests (4)
+//! │       └── error_handling.rs # Error handling tests (2)
+//! ```
 //!
 //! ## Building
 //! ```bash
@@ -9,22 +38,35 @@
 //! ```
 //!
 //! ## Running Tests (cargo test)
-//! Tests are defined in src/lib.rs and run with:
+//! The comprehensive test suite is in lib.rs and tests/:
 //! ```bash
-//! cargo test
+//! cargo test              # Run all tests
+//! cargo test connection  # Connection tests
+//! cargo test memory      # Memory tool tests
+//! cargo test experience # Experience tool tests
+//! cargo test knowledge  # Knowledge tool tests
+//! cargo test planner    # Planner tool tests
+//! cargo test workflow   # Workflow tool tests
+//! cargo test agent      # Agent tool tests
+//! cargo test hypothesis # Hypothesis tool tests
+//! cargo test reflection # Reflection tool tests
+//! cargo test search     # Search tool tests
+//! cargo test ingestor   # Ingestor tool tests
+//! cargo test e2e        # End-to-end tests
+//! cargo test error_handling # Error handling tests
 //! ```
 //!
-//! ## Running as CLI
-//! ```bash
-//! # Test all tools
-//! cargo run --release -- --test-all
-//!
-//! # Test specific tool
-//! cargo run --release -- --test-tool store_memory
-//!
-//! # Specify custom server path
-//! cargo run --release -- --server /path/to/robot_brain.exe --test-all
-//! ```
+//! ## Test Coverage (64 tests)
+//! - Memory Tools (4): store_memory, search_memory, get_memory, list_memories
+//! - Experience Tools (4): record_experience, get_experience_stats, list_experiences, get_experience
+//! - Knowledge Tools (5): add_knowledge, query_knowledge, record_knowledge_application, get_knowledge_stats, get_mature_knowledge
+//! - Planner Tools (9): create_plan, add_plan_step, add_step_dependency, get_plan, list_plans, start_plan, complete_step, fail_step, cancel_plan
+//! - Workflow Tools (9): create_workflow, add_workflow_step, get_workflow_status, list_workflows, start_workflow, pause_workflow, resume_workflow, cancel_workflow, delete_workflow
+//! - Agent Tools (4): get_workflow, list_tools, get_tool
+//! - Hypothesis Tools (9): record_observation, create_hypothesis, add_evidence, get_hypothesis, list_hypotheses, list_observations, evaluate_hypothesis, get_knowledge, extract_knowledge
+//! - Reflection Tools (4): get_insights, create_reflection, analyze_patterns, get_patterns
+//! - Search Tools (3): global_search, get_recommendations, get_reputation
+//! - Ingestor Tools (4): list_importable, ingest_files, list_ingested_files, transcribe_audio
 
 use std::path::PathBuf;
 use std::process::Stdio;
