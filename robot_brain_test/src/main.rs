@@ -1,428 +1,262 @@
-//! MCP Integration Test for RoBoT Brain
+//! RoBoT Brain MCP Server Comprehensive Test Suite
 //!
-//! Comprehensive standalone test suite to verify the compiled MCP server executable.
-//! Tests every single tool available in the RoBoT Brain MCP server.
-//!
-//! ## Project Structure
-//! ```
-//! robot_brain_test/
-//! ├── src/
-//! │   ├── lib.rs           # Main library (imported by main.rs)
-//! │   ├── main.rs          # CLI tool for MCP compliance testing
-//! │   ├── client.rs       # MCP test client implementation
-//! │   ├── tools.rs         # Tool definitions
-//! │   ├── common/          # Shared types and utilities
-//! │   │   ├── mod.rs
-//! │   │   └── types.rs
-//! │   └── tests/           # Modular test files (64 tests total)
-//! │       ├── mod.rs
-//! │       ├── connection.rs  # Server initialization tests
-//! │       ├── memory.rs     # Memory tool tests (4)
-//! │       ├── experience.rs # Experience tool tests (4)
-//! │       ├── knowledge.rs # Knowledge tool tests (5)
-//! │       ├── planner.rs   # Planner tool tests (9)
-//! │       ├── workflow.rs  # Workflow tool tests (9)
-//! │       ├── agent.rs     # Agent tool tests (4)
-//! │       ├── hypothesis.rs # Hypothesis tool tests (9)
-//! │       ├── reflection.rs # Reflection tool tests (4)
-//! │       ├── search.rs    # Search tool tests (3)
-//! │       ├── ingestor.rs  # Ingestor tool tests (4)
-//! │       ├── e2e.rs      # End-to-end workflow tests (4)
-//! │       └── error_handling.rs # Error handling tests (2)
-//! ```
-//!
-//! ## Building
-//! ```bash
-//! cd robot_brain_test
-//! cargo build --release
-//! ```
-//!
-//! ## Running Tests (cargo test)
-//! The comprehensive test suite is in lib.rs and tests/:
-//! ```bash
-//! cargo test              # Run all tests
-//! cargo test connection  # Connection tests
-//! cargo test memory      # Memory tool tests
-//! cargo test experience # Experience tool tests
-//! cargo test knowledge  # Knowledge tool tests
-//! cargo test planner    # Planner tool tests
-//! cargo test workflow   # Workflow tool tests
-//! cargo test agent      # Agent tool tests
-//! cargo test hypothesis # Hypothesis tool tests
-//! cargo test reflection # Reflection tool tests
-//! cargo test search     # Search tool tests
-//! cargo test ingestor   # Ingestor tool tests
-//! cargo test e2e        # End-to-end tests
-//! cargo test error_handling # Error handling tests
-//! ```
-//!
-//! ## Test Coverage (64 tests)
-//! - Memory Tools (4): store_memory, search_memory, get_memory, list_memories
-//! - Experience Tools (4): record_experience, get_experience_stats, list_experiences, get_experience
-//! - Knowledge Tools (5): add_knowledge, query_knowledge, record_knowledge_application, get_knowledge_stats, get_mature_knowledge
-//! - Planner Tools (9): create_plan, add_plan_step, add_step_dependency, get_plan, list_plans, start_plan, complete_step, fail_step, cancel_plan
-//! - Workflow Tools (9): create_workflow, add_workflow_step, get_workflow_status, list_workflows, start_workflow, pause_workflow, resume_workflow, cancel_workflow, delete_workflow
-//! - Agent Tools (4): get_workflow, list_tools, get_tool
-//! - Hypothesis Tools (9): record_observation, create_hypothesis, add_evidence, get_hypothesis, list_hypotheses, list_observations, evaluate_hypothesis, get_knowledge, extract_knowledge
-//! - Reflection Tools (4): get_insights, create_reflection, analyze_patterns, get_patterns
-//! - Search Tools (3): global_search, get_recommendations, get_reputation
-//! - Ingestor Tools (4): list_importable, ingest_files, list_ingested_files, transcribe_audio
+//! This test suite comprehensively tests ALL 57+ MCP tools available in the RoBoT Brain server.
+//! It simulates real agent usage scenarios with success and failure cases.
 
-use std::path::PathBuf;
+use std::path::{Path, PathBuf};
 use std::process::Stdio;
 use std::env;
 use std::time::Duration;
-use tokio::io::{AsyncBufReadExt, AsyncReadExt, BufReader, AsyncWriteExt};
-use tokio::process::{Command as AsyncCommand, ChildStdout};
+use std::fs;
+use tokio::io::{AsyncBufReadExt, BufReader, AsyncWriteExt};
+use tokio::process::{Command as AsyncCommand, ChildStdout, Child};
 use tokio::time::timeout;
 
-fn get_server_path() -> PathBuf {
-    env::var("MCP_SERVER_PATH")
-        .map(PathBuf::from)
-        .unwrap_or_else(|_| {
-            let release_path = PathBuf::from("../RoBoT_Brain/target/release/robot_brain");
-            #[cfg(windows)]
-            let release_path = release_path.with_extension("exe");
-            release_path
-        })
+mod test_environment;
+mod tests;
+
+use test_environment::TestEnvironment;
+
+/// Test statistics
+#[derive(Default)]
+pub struct TestStats {
+    pub passed: usize,
+    pub failed: usize,
+    pub skipped: usize,
 }
 
-#[tokio::main]
-async fn main() -> anyhow::Result<()> {
-    // Initialize logging
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::from_default_env()
-                .add_directive(tracing::Level::INFO.into()),
-        )
-        .init();
-
-    let args: Vec<String> = env::args().collect();
-    let server_path = args.iter()
-        .position(|a| a == "--server")
-        .and_then(|i| args.get(i + 1))
-        .map(PathBuf::from)
-        .unwrap_or_else(get_server_path);
-    
-    println!("Testing MCP server at: {}", server_path.display());
-    
-    if !server_path.exists() {
-        anyhow::bail!("Server not found at {}. Build with `cargo build --release` in RoBoT_Brain first.", server_path.display());
+impl TestStats {
+    pub fn new() -> Self {
+        Self::default()
     }
+    
+    pub fn print_summary(&self) {
+        println!("\n{}", "=".repeat(60));
+        println!("TEST SUMMARY");
+        println!("{}", "=".repeat(60));
+        println!("  Passed:  {} ✅", self.passed);
+        println!("  Failed:  {} ❌", self.failed);
+        println!("  Skipped: {}", self.skipped);
+        println!("{}", "=".repeat(60));
+        
+        if self.failed == 0 {
+            println!("\n🎉 ALL TESTS PASSED! 🎉\n");
+        } else {
+            println!("\n⚠️  SOME TESTS FAILED\n");
+        }
+    }
+}
 
-    // Spawn the server
-    let mut child = AsyncCommand::new(&server_path)
-        .stdout(Stdio::piped())
-        .stdin(Stdio::piped())
-        .kill_on_drop(true)
-        .spawn()?;
+/// Build the robot_brain server
+async fn build_server() -> anyhow::Result<PathBuf> {
+    println!("\n{}", "=".repeat(60));
+    println!("BUILDING ROBOT_BRAIN SERVER");
+    println!("{}", "=".repeat(60));
     
-    let mut stdin = child.stdin.take().unwrap();
-    let mut stdout = BufReader::new(child.stdout.take().unwrap());
+    let robot_brain_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+    let release_path = robot_brain_dir.join("target/release/robot_brain");
     
-    let mut send_id: u64 = 1;
+    if release_path.exists() {
+        println!("✓ Server already built at: {}", release_path.display());
+        return Ok(release_path);
+    }
     
-    // Helper to send request
-    async fn send_request(
-        stdin: &mut tokio::process::ChildStdin,
-        id: &mut u64,
-        method: &str,
-        params: serde_json::Value,
-    ) -> anyhow::Result<()> {
+    println!("Building robot_brain...");
+    
+    let output = AsyncCommand::new("cargo")
+        .current_dir(&robot_brain_dir)
+        .args(["build", "--release"])
+        .output()
+        .await?;
+    
+    if !output.status.success() {
+        let stderr = String::from_utf8_lossy(&output.stderr);
+        anyhow::bail!("Failed to build robot_brain:\n{}", stderr);
+    }
+    
+    println!("✓ Server built successfully: {}", release_path.display());
+    Ok(release_path)
+}
+
+/// Setup test environment
+fn setup_test_environment(server_path: &Path) -> anyhow::Result<TestEnvironment> {
+    println!("\n{}", "=".repeat(60));
+    println!("SETTING UP TEST ENVIRONMENT");
+    println!("{}", "=".repeat(60));
+    
+    let test_dir = server_path.parent().unwrap()
+        .join("robot_brain_test_env");
+    
+    if test_dir.exists() {
+        fs::remove_dir_all(&test_dir)?;
+    }
+    fs::create_dir_all(&test_dir)?;
+    
+    let test_server = test_dir.join("robot_brain");
+    fs::copy(server_path, &test_server)?;
+    
+    let files_folder = test_dir.join("files_to_import");
+    fs::create_dir_all(&files_folder)?;
+    
+    let sample_files = [
+        ("readme.txt", "This is a sample README file.\nIt contains important information."),
+        ("notes.txt", "Meeting Notes - Project Planning\n\n1. Define requirements\n2. Design architecture"),
+        ("todo.txt", "TODO List:\n- Write tests\n- Fix bugs\n- Deploy"),
+        ("config.json", r#"{"name": "test", "version": "1.0.0"}"#),
+        ("data.csv", "id,name,value\n1,alpha,100\n2,beta,200"),
+    ];
+    
+    for (filename, content) in sample_files {
+        fs::write(files_folder.join(filename), content)?;
+    }
+    
+    println!("✓ Test directory: {}", test_dir.display());
+    println!("✓ Server: {}", test_server.display());
+    println!("✓ Files folder: {}", files_folder.display());
+    
+    Ok(TestEnvironment::new(test_dir, test_server))
+}
+
+/// MCP Client wrapper for testing
+pub struct TestMcpClient {
+    #[allow(dead_code)]
+    child: Child,
+    stdin: tokio::process::ChildStdin,
+    stdout: BufReader<ChildStdout>,
+    send_id: u64,
+}
+
+impl TestMcpClient {
+    pub async fn new(server_path: &Path) -> anyhow::Result<Self> {
+        let mut child = AsyncCommand::new(server_path)
+            .stdout(Stdio::piped())
+            .stdin(Stdio::piped())
+            .kill_on_drop(true)
+            .spawn()?;
+        
+        let stdin = child.stdin.take().unwrap();
+        let stdout = BufReader::new(child.stdout.take().unwrap());
+        
+        let mut client = Self {
+            child,
+            stdin,
+            stdout,
+            send_id: 1,
+        };
+        
+        client.send_request("initialize", serde_json::json!({
+            "protocolVersion": "2024-11-05",
+            "capabilities": { "tools": {} },
+            "clientInfo": { "name": "robot_brain_test", "version": "1.0.0" }
+        })).await?;
+        
+        client.read_response_line(5).await?;
+        client.stdin.write_all(b"{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\",\"params\":{}}\n").await?;
+        
+        client.send_request("tools/call", serde_json::json!({
+            "name": "get_workflow",
+            "arguments": {}
+        })).await?;
+        client.read_response_line(5).await?;
+        
+        println!("✓ MCP connection established");
+        
+        Ok(client)
+    }
+    
+    async fn send_request(&mut self, method: &str, params: serde_json::Value) -> anyhow::Result<()> {
         let request = serde_json::json!({
             "jsonrpc": "2.0",
-            "id": *id,
+            "id": self.send_id,
             "method": method,
             "params": params
         });
-        *id += 1;
+        self.send_id += 1;
         let s = serde_json::to_string(&request)?;
-        stdin.write_all(s.as_bytes()).await?;
-        stdin.write_all(b"\n").await?;
+        self.stdin.write_all(s.as_bytes()).await?;
+        self.stdin.write_all(b"\n").await?;
         Ok(())
     }
     
-    // Helper to read a line, skipping log lines (tracing outputs to stdout)
-    async fn read_response_line(stdout: &mut BufReader<ChildStdout>, timeout_secs: u64) -> anyhow::Result<Option<String>> {
+    async fn read_response_line(&mut self, timeout_secs: u64) -> anyhow::Result<Option<String>> {
         let mut line = String::new();
         let deadline = tokio::time::Instant::now() + Duration::from_secs(timeout_secs);
         
         loop {
             let remaining = deadline.saturating_duration_since(tokio::time::Instant::now());
             if remaining.is_zero() {
-                return Ok(None); // Timeout
+                return Ok(None);
             }
             
-            match timeout(remaining, stdout.read_line(&mut line)).await {
-                Ok(Ok(0)) => return Ok(None), // EOF
+            match timeout(remaining, self.stdout.read_line(&mut line)).await {
+                Ok(Ok(0)) => return Ok(None),
                 Ok(Ok(_)) => {
                     let trimmed = line.trim();
-                    // Check if this is a JSON-RPC response
                     if trimmed.starts_with('{') && trimmed.contains("\"jsonrpc\"") {
                         return Ok(Some(line.clone()));
-                    }
-                    // Skip log lines (tracing outputs to stdout)
-                    if !trimmed.is_empty() {
-                        println!("[LOG] {}", trimmed);
                     }
                     line.clear();
                 }
                 Ok(Err(e)) => return Err(anyhow::anyhow!("Read error: {}", e)),
-                Err(_) => return Ok(None), // Timeout
+                Err(_) => return Ok(None),
             }
         }
     }
     
-    // Initialize
-    send_request(&mut stdin, &mut send_id, "initialize", serde_json::json!({
-        "protocolVersion": "2024-11-05",
-        "capabilities": { "tools": {} },
-        "clientInfo": { "name": "robot_brain_test", "version": "1.0.0" }
-    })).await?;
-    
-    // Read initialize response - STORE THIS for compliance test
-    let init_response = read_response_line(&mut stdout, 5).await?;
-    let init_response_str = init_response.clone().unwrap_or_default();
-    println!("Initialize response: {}", init_response_str);
-    
-    // Send initialized notification
-    stdin.write_all(b"{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\",\"params\":{}}\n").await?;
-    
-    // List tools
-    send_request(&mut stdin, &mut send_id, "tools/list", serde_json::json!({})).await?;
-    
-    let tools_response = read_response_line(&mut stdout, 5).await?;
-    let tools_response_str = tools_response.clone().unwrap_or_default();
-    println!("Tools list response: {}", tools_response_str);
-    
-    if let Ok(response) = serde_json::from_str::<serde_json::Value>(&tools_response_str) {
-        if let Some(result) = response.get("result") {
-            if let Some(tools) = result.get("tools").and_then(|t| t.as_array()) {
-                println!("\nFound {} tools:\n", tools.len());
-                for tool in tools {
-                    if let (Some(name), Some(desc)) = (tool.get("name"), tool.get("description")) {
-                        println!("  - {}: {}", name, desc);
-                    }
-                }
-            }
-        }
-    }
-    
-    // Test all tools
-    let tools = vec![
-        ("get_workflow", serde_json::json!({})),
-        ("store_memory", serde_json::json!({
-            "content": "CLI test memory",
-            "memory_type": "note",
-            "confidence": 0.9
-        })),
-        ("search_memory", serde_json::json!({"query": "CLI test", "limit": 5})),
-        ("list_memories", serde_json::json!({"limit": 5})),
-        ("record_experience", serde_json::json!({
-            "action": "cli_test",
-            "outcome": "success",
-            "context": "CLI test"
-        })),
-        ("get_experience_stats", serde_json::json!({})),
-        ("query_knowledge", serde_json::json!({"query": "test", "limit": 5})),
-        ("get_knowledge_stats", serde_json::json!({})),
-        ("create_plan", serde_json::json!({"goal": "CLI test plan"})),
-        ("list_plans", serde_json::json!({"limit": 5})),
-    ];
-    
-    println!("\n--- Testing MCP Protocol Compliance ---\n");
-    let mut passed = 0;
-    let mut failed = 0;
-    
-    // Test 1: Initialize should return proper server info
-    {
-        println!("TEST: Initialize - checking serverInfo...");
-        if let Ok(response) = serde_json::from_str::<serde_json::Value>(&init_response_str) {
-            if let Some(result) = response.get("result") {
-                if let Some(server_info) = result.get("serverInfo") {
-                    if let Some(name) = server_info.get("name").and_then(|v| v.as_str()) {
-                        println!("  serverInfo.name = '{}'", name);
-                        // Server name should be "robot_brain", NOT "rmcp"
-                        if name == "robot_brain" {
-                            println!("  ✓ PASS: Server name is 'robot_brain'");
-                            passed += 1;
-                        } else {
-                            println!("  ✗ FAIL: Server name should be 'robot_brain', got '{}'", name);
-                            println!("    ❌ This is why Zed/LM Studio can't see the server!");
-                            failed += 1;
-                        }
-                    }
-                    if let Some(version) = server_info.get("version").and_then(|v| v.as_str()) {
-                        println!("  serverInfo.version = '{}'", version);
-                        // Version should be a valid semver string (allow any version starting with 0.)
-                        if version.starts_with("0.") {
-                            println!("  ✓ PASS: Version is '{}' (valid semver)", version);
-                            passed += 1;
-                        } else {
-                            println!("  ✗ FAIL: Version should start with '0.', got '{}'", version);
-                            failed += 1;
-                        }
-                    }
-                } else {
-                    println!("  ✗ FAIL: Missing serverInfo in response");
-                    failed += 1;
-                }
-                
-                // protocolVersion should be present
-                if result.get("protocolVersion").is_some() {
-                    println!("  ✓ protocolVersion present");
-                    passed += 1;
-                } else {
-                    println!("  ✗ FAIL: Missing protocolVersion");
-                    failed += 1;
-                }
-
-                // CRITICAL: capabilities MUST include tools for MCP clients to recognize tools
-                if let Some(capabilities) = result.get("capabilities") {
-                    if let Some(tools) = capabilities.get("tools") {
-                        if !tools.is_null() {
-                            println!("  ✓ PASS: Server advertises 'tools' capability");
-                            passed += 1;
-                        } else {
-                            println!("  ✗ FAIL: capabilities.tools is null");
-                            println!("    ❌ This is why OpenHands/Zed/LM Studio says 'no MCP tools connected'!");
-                            failed += 1;
-                        }
-                    } else {
-                        println!("  ✗ FAIL: capabilities.tools is missing");
-                        println!("    ❌ This is why OpenHands/Zed/LM Studio says 'no MCP tools connected'!");
-                        failed += 1;
-                    }
-                } else {
-                    println!("  ✗ FAIL: capabilities object is missing or empty");
-                    println!("    ❌ This is why OpenHands/Zed/LM Studio says 'no MCP tools connected'!");
-                    failed += 1;
-                }
-            } else {
-                println!("  ✗ FAIL: Missing 'result' field");
-                failed += 1;
-            }
-        } else {
-            println!("  ✗ FAIL: Could not parse initialize response");
-            failed += 1;
-        }
-    }
-    
-    // Test 2: List tools should return tools in MCP format
-    {
-        println!("\nTEST: tools/list - checking tool format...");
-        if let Ok(response) = serde_json::from_str::<serde_json::Value>(&tools_response_str) {
-            if let Some(result) = response.get("result") {
-                if let Some(tools) = result.get("tools").and_then(|t| t.as_array()) {
-                    println!("  ✓ PASS: tools array present with {} tools", tools.len());
-                    passed += 1;
-                    
-                    // Check first tool format - should have name, description, inputSchema
-                    if let Some(first_tool) = tools.first() {
-                        let has_name = first_tool.get("name").is_some();
-                        let has_description = first_tool.get("description").is_some();
-                        let has_input_schema = first_tool.get("inputSchema").is_some();
-                        
-                        if has_name && has_description && has_input_schema {
-                            println!("  ✓ PASS: Tool format correct (name, description, inputSchema)");
-                            passed += 1;
-                        } else {
-                            println!("  ✗ FAIL: Tool format wrong - missing fields");
-                            if !has_name { println!("    - missing 'name'"); }
-                            if !has_description { println!("    - missing 'description'"); }
-                            if !has_input_schema { println!("    - missing 'inputSchema'"); }
-                            failed += 1;
-                        }
-                    }
-                } else {
-                    println!("  ✗ FAIL: Missing tools array");
-                    failed += 1;
-                }
-            }
-        }
-    }
-    
-    // Test 3: Tool call should return content array (MCP standard format)
-    {
-        println!("\nTEST: tools/call - checking response format...");
-        send_request(&mut stdin, &mut send_id, "tools/call", serde_json::json!({
-            "name": "get_workflow",
-            "arguments": {}
+    pub async fn call_tool(&mut self, name: &str, arguments: serde_json::Value) -> anyhow::Result<serde_json::Value> {
+        self.send_request("tools/call", serde_json::json!({
+            "name": name,
+            "arguments": arguments
         })).await?;
-        let tool_response = read_response_line(&mut stdout, 5).await?;
         
-        if let Some(response_str) = tool_response {
-            println!("  tool response: {}", response_str);
-            if let Ok(response) = serde_json::from_str::<serde_json::Value>(&response_str) {
-                if let Some(result) = response.get("result") {
-                    // MCP standard: result should have 'content' array
-                    if let Some(content) = result.get("content").and_then(|c| c.as_array()) {
-                        println!("  ✓ PASS: Response has 'content' array (MCP standard format)");
-                        passed += 1;
-                        if !content.is_empty() {
-                            if let Some(item) = content.first() {
-                                if item.get("type").is_some() && item.get("text").is_some() {
-                                    println!("  ✓ PASS: Content item has 'type' and 'text' (MCP standard)");
-                                    passed += 1;
-                                } else {
-                                    println!("  ✗ FAIL: Content item missing 'type' or 'text'");
-                                    println!("    Response: {:?}", item);
-                                    failed += 1;
-                                }
-                            }
-                        }
-                    } else if result.get("data").is_some() {
-                        // Custom format - not MCP compliant
-                        println!("  ✗ FAIL: Response has 'data' instead of 'content' (NOT MCP compliant!)");
-                        println!("    MCP standard requires: {{ \"content\": [{{\"type\": \"text\", \"text\": \"...\"}}] }}");
-                        println!("    This is why Zed/LM Studio can't use the tools!");
-                        failed += 1;
-                    } else {
-                        println!("  ✗ FAIL: Response has neither 'content' nor 'data'");
-                        println!("    Response: {:?}", result);
-                        failed += 1;
-                    }
-                } else if response.get("error").is_some() {
-                    println!("  ✗ FAIL: Tool call returned error");
-                    failed += 1;
-                } else {
-                    println!("  ✗ FAIL: No 'result' or 'error' in response");
-                    failed += 1;
-                }
-            } else {
-                println!("  ✗ FAIL: Could not parse tool response");
-                failed += 1;
-            }
-        } else {
-            println!("  ✗ FAIL: No response from tool call (timeout)");
-            failed += 1;
+        let response = self.read_response_line(10).await?
+            .ok_or_else(|| anyhow::anyhow!("No response from server"))?;
+        
+        let json: serde_json::Value = serde_json::from_str(&response)?;
+        
+        if let Some(error) = json.get("error") {
+            return Err(anyhow::anyhow!("Tool error: {:?}", error));
         }
+        
+        json.get("result")
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("No result in response"))
     }
+}
 
-    // Test 4: Real Zed/LM Studio Compatibility
-    {
-        println!("\nTEST: Real Zed/LM Studio Compatibility...");
-        println!("  ✅ PASS: Logs are redirected to sink, JSON responses are clean");
-        println!("    ");
-        println!("    ✅ FIX APPLIED: Changed logging to std::io::sink()");
-        println!("       Server is ready for Zed/LM Studio");
-        passed += 1;
-    }
-
-    println!("\n===========================================");
-    println!("MCP PROTOCOL COMPLIANCE TEST RESULTS");
-    println!("===========================================");
-    println!("Tests Passed: {}", passed);
-    println!("Tests Failed: {}", failed);
-    println!("===========================================");
-
-    if failed > 0 {
-        eprintln!("\n❌ MCP COMPLIANCE TEST FAILED!");
-        eprintln!("The MCP server needs to be rebuilt with the log fix to work in Zed/LM Studio.");
+#[tokio::main]
+async fn main() -> anyhow::Result<()> {
+    println!("\n{}", "#".repeat(60));
+    println!("#  RoBoT Brain MCP Server - Comprehensive Test Suite");
+    println!("#  Testing all 57+ MCP tools with real agent scenarios");
+    println!("{}", "#".repeat(60));
+    
+    let server_path = build_server().await?;
+    let env = setup_test_environment(&server_path)?;
+    let mut client = TestMcpClient::new(&env.server_path).await?;
+    let mut stats = TestStats::new();
+    
+    println!("\n{}", "=".repeat(60));
+    println!("RUNNING COMPREHENSIVE TOOL TESTS");
+    println!("{}", "=".repeat(60));
+    
+    tests::run_memory_tests(&mut client, &mut stats, None).await?;
+    tests::run_experience_tests(&mut client, &mut stats, None).await?;
+    tests::run_knowledge_tests(&mut client, &mut stats, None).await?;
+    tests::run_workflow_tests(&mut client, &mut stats, None).await?;
+    tests::run_planner_tests(&mut client, &mut stats, None).await?;
+    tests::run_hypothesis_tests(&mut client, &mut stats, None).await?;
+    tests::run_reflection_tests(&mut client, &mut stats, None).await?;
+    tests::run_search_tests(&mut client, &mut stats, None).await?;
+    tests::run_ingestor_tests(&mut client, &mut stats, None, &env).await?;
+    tests::run_agent_tests(&mut client, &mut stats, None).await?;
+    tests::run_error_handling_tests(&mut client, &mut stats, None).await?;
+    
+    stats.print_summary();
+    
+    if stats.failed > 0 {
         std::process::exit(1);
     }
-
-    println!("\n✓ MCP Protocol Compliance: ALL TESTS PASSED");
-    println!("\nTo use in Zed/LM Studio, configure the MCP server path in settings.");
+    
     Ok(())
 }

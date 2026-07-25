@@ -19,7 +19,7 @@ fn run_migrations(conn: &Connection) -> Result<()> {
     let mut version = current_version(conn)?;
 
     // Run all pending migrations sequentially
-    while version < 8 {
+    while version < 9 {
         match version {
             0 => {
                 migration_001_initial_memory(conn)?;
@@ -52,6 +52,10 @@ fn run_migrations(conn: &Connection) -> Result<()> {
             7 => {
                 migration_008_add_hypothesis_engine(conn)?;
                 version = 8;
+            }
+            8 => {
+                migration_009_add_memory_graph(conn)?;
+                version = 9;
             }
             _ => break,
         }
@@ -331,6 +335,61 @@ fn migration_006_add_scheduled_tasks(conn: &Connection) -> Result<()> {
 
 
         ",
+    )?;
+
+    Ok(())
+}
+
+// ==========================================================
+// Migration 008
+// Hypothesis Engine
+// Observation -> Hypothesis -> Test -> Evidence -> Knowledge
+// ==========================================================
+
+// ==========================================================
+// Migration 009
+// Memory tags and relationships (graph support)
+// ==========================================================
+
+fn migration_009_add_memory_graph(conn: &Connection) -> Result<()> {
+    conn.execute_batch(
+        "
+        -- Memory tags for categorization
+        CREATE TABLE IF NOT EXISTS memory_tags (
+            id TEXT PRIMARY KEY,
+            memory_id TEXT NOT NULL,
+            tag TEXT NOT NULL,
+            created_at TEXT NOT NULL,
+            UNIQUE(memory_id, tag)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_tag_memory ON memory_tags(memory_id);
+        CREATE INDEX IF NOT EXISTS idx_tag ON memory_tags(tag);
+
+        -- Memory relationships for graph traversal
+        CREATE TABLE IF NOT EXISTS memory_relationships (
+            id TEXT PRIMARY KEY,
+            memory_id TEXT NOT NULL,
+            related_id TEXT NOT NULL,
+            relationship_type TEXT DEFAULT 'related',
+            created_at TEXT NOT NULL,
+            UNIQUE(memory_id, related_id)
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_rel_memory ON memory_relationships(memory_id);
+        CREATE INDEX IF NOT EXISTS idx_rel_related ON memory_relationships(related_id);
+
+        -- Memory embeddings for vector search
+        CREATE TABLE IF NOT EXISTS memory_embeddings (
+            id TEXT PRIMARY KEY,
+            memory_id TEXT NOT NULL UNIQUE,
+            embedding BLOB NOT NULL,
+            model TEXT NOT NULL,
+            created_at TEXT NOT NULL
+        );
+
+        CREATE INDEX IF NOT EXISTS idx_embed_memory ON memory_embeddings(memory_id);
+        "
     )?;
 
     Ok(())

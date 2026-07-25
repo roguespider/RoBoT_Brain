@@ -1,6 +1,5 @@
 // src/memory/permanent.rs
 //! Permanent Memory - Per Architecture §6.3
-#![allow(dead_code)]
 //!
 //! Permanent Memory contains curated knowledge retained after evaluation.
 //!
@@ -10,6 +9,8 @@
 //! - Confidence weighted
 //! - Relationship aware
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -17,7 +18,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use super::types::{MemoryItem, MemoryStatus, MemoryType};
+use super::types::{MemoryItem, MemoryLayer, MemoryStatus, MemoryType};
 
 /// Permanent memory statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -42,6 +43,9 @@ pub struct PermanentMemory {
     /// Index by tag
     tag_index: Arc<RwLock<HashMap<String, Vec<Uuid>>>>,
 
+    /// Graph index for relationships
+    graph_index: Arc<RwLock<HashMap<Uuid, Vec<Uuid>>>>,
+
     /// Maximum cached items
     max_cache_size: usize,
 }
@@ -53,6 +57,7 @@ impl PermanentMemory {
             cache: Arc::new(RwLock::new(HashMap::new())),
             type_index: Arc::new(RwLock::new(HashMap::new())),
             tag_index: Arc::new(RwLock::new(HashMap::new())),
+            graph_index: Arc::new(RwLock::new(HashMap::new())),
             max_cache_size,
         }
     }
@@ -60,6 +65,10 @@ impl PermanentMemory {
     /// Store an item in permanent memory
     pub async fn store(&self, item: MemoryItem) -> Uuid {
         let id = item.id;
+
+        // Ensure the item is marked as Permanent layer
+        let mut item = item;
+        item.layer = MemoryLayer::Permanent;
 
         // Store in cache
         let mut cache = self.cache.write().await;
@@ -81,6 +90,15 @@ impl PermanentMemory {
                 .entry(tag.clone())
                 .or_insert_with(Vec::new)
                 .push(id);
+        }
+
+        // Update graph index
+        for related_id in &item.related_ids {
+            let mut graph_index = self.graph_index.write().await;
+            graph_index
+                .entry(id)
+                .or_insert_with(Vec::new)
+                .push(*related_id);
         }
 
         id
@@ -143,6 +161,66 @@ impl PermanentMemory {
             .collect()
     }
 
+    /// Search with scoring and ranking
+    pub async fn ranked_search(&self, query: &str, limit: usize) -> Vec<(MemoryItem, f32)> {
+        let query_lower = query.to_lowercase();
+        let cache = self.cache.read().await;
+        
+        let mut results: Vec<(MemoryItem, f32)> = cache
+            .values()
+            .filter(|item| item.status == MemoryStatus::Active)
+            .filter_map(|item| {
+                let score = self.calculate_relevance_score(&query_lower, item);
+                if score > 0.0 {
+                    Some((item.clone(), score))
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        // Sort by score descending
+        results.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        results.truncate(limit);
+        results
+    }
+
+    /// Calculate relevance score for a memory item
+    fn calculate_relevance_score(&self, query: &str, item: &MemoryItem) -> f32 {
+        let content_lower = item.content.to_lowercase();
+        
+        // Base score from exact match
+        let exact_match = if content_lower.contains(query) { 1.0 } else { 0.0 };
+        
+        // Word overlap score
+        let query_words: Vec<&str> = query.split_whitespace().collect();
+        let content_words: Vec<&str> = content_lower.split_whitespace().collect();
+        
+        let mut word_overlap = 0.0;
+        for qw in &query_words {
+            for cw in &content_words {
+                if cw.contains(qw) || qw.contains(cw) {
+                    word_overlap += 1.0;
+                    break;
+                }
+            }
+        }
+        let word_score = if !query_words.is_empty() {
+            word_overlap / query_words.len() as f32
+        } else {
+            0.0
+        };
+
+        // Confidence weight
+        let confidence_weight = item.confidence;
+
+        // Importance weight
+        let importance_weight = item.importance;
+
+        // Weighted combination
+        (exact_match * 0.4) + (word_score * 0.3) + (confidence_weight * 0.2) + (importance_weight * 0.1)
+    }
+
     /// Find high-confidence items
     pub async fn find_confident(&self, min_confidence: f32) -> Vec<MemoryItem> {
         let cache = self.cache.read().await;
@@ -153,18 +231,60 @@ impl PermanentMemory {
             .collect()
     }
 
-    /// Get related items
+    /// Get direct related items
     pub async fn get_related(&self, id: &Uuid) -> Vec<MemoryItem> {
         let cache = self.cache.read().await;
+        let graph_index = self.graph_index.read().await;
 
-        if let Some(item) = cache.get(id) {
-            item.related_ids
+        if let Some(related_ids) = graph_index.get(id) {
+            related_ids
                 .iter()
                 .filter_map(|rid| cache.get(rid).cloned())
+                .filter(|item| item.status == MemoryStatus::Active)
                 .collect()
         } else {
             Vec::new()
         }
+    }
+
+    /// Get related items with depth (graph traversal)
+    pub async fn get_related_graph(&self, id: &Uuid, depth: usize) -> Vec<(Uuid, MemoryItem)> {
+        let cache = self.cache.read().await;
+        let graph_index = self.graph_index.read().await;
+        let mut visited = std::collections::HashSet::new();
+        let mut result = Vec::new();
+        let mut queue = vec![(*id, 0)];
+
+        while let Some((current_id, current_depth)) = queue.pop() {
+            if visited.contains(&current_id) || current_depth > depth {
+                continue;
+            }
+            visited.insert(current_id);
+
+            if let Some(related_ids) = graph_index.get(&current_id) {
+                for rid in related_ids {
+                    if !visited.contains(rid) {
+                        if let Some(item) = cache.get(rid) {
+                            result.push((*rid, item.clone()));
+                            if current_depth < depth {
+                                queue.push((*rid, current_depth + 1));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+
+        result
+    }
+
+    /// Add a relationship between items
+    pub async fn add_relationship(&self, from_id: &Uuid, to_id: &Uuid) {
+        let mut graph_index = self.graph_index.write().await;
+        graph_index
+            .entry(*from_id)
+            .or_insert_with(Vec::new)
+            .push(*to_id);
     }
 
     /// Update item confidence
@@ -235,10 +355,12 @@ impl PermanentMemory {
         let mut cache = self.cache.write().await;
         let mut type_index = self.type_index.write().await;
         let mut tag_index = self.tag_index.write().await;
+        let mut graph_index = self.graph_index.write().await;
 
         cache.clear();
         type_index.clear();
         tag_index.clear();
+        graph_index.clear();
     }
 }
 

@@ -1,9 +1,10 @@
 // src/memory/retrieval.rs
 //! Memory Retrieval - Per Architecture §6.3
-#![allow(dead_code)]
 //!
 //! Provides retrieval capabilities for memory items across both
 //! working and permanent memory layers.
+
+#![allow(dead_code)]
 
 use std::sync::Arc;
 
@@ -141,6 +142,11 @@ impl MemoryRetrieval {
         self.permanent.get_related(memory_id).await
     }
 
+    /// Get related memories with graph traversal
+    pub async fn get_related_graph(&self, memory_id: &uuid::Uuid, depth: usize) -> Vec<(uuid::Uuid, MemoryItem)> {
+        self.permanent.get_related_graph(memory_id, depth).await
+    }
+
     /// Calculate relevance score for a memory item
     fn calculate_relevance(&self, item: &MemoryItem, query: &str) -> f32 {
         let query_lower = query.to_lowercase();
@@ -149,6 +155,25 @@ impl MemoryRetrieval {
         // Base score from content match
         let content_match = if content_lower.contains(&query_lower) {
             1.0
+        } else {
+            0.0
+        };
+
+        // Word overlap score
+        let query_words: Vec<&str> = query_lower.split_whitespace().collect();
+        let content_words: Vec<&str> = content_lower.split_whitespace().collect();
+        
+        let mut matches = 0.0;
+        for qw in &query_words {
+            for cw in &content_words {
+                if cw.contains(qw) || qw.contains(cw) {
+                    matches += 1.0;
+                    break;
+                }
+            }
+        }
+        let word_score = if !query_words.is_empty() {
+            matches / query_words.len() as f32
         } else {
             0.0
         };
@@ -165,10 +190,11 @@ impl MemoryRetrieval {
         let recency_score = (1.0 / (1.0 + age_hours / 24.0)).min(1.0);
 
         // Weighted combination
-        (content_match * 0.4)
+        (content_match * 0.25)
+            + (word_score * 0.25)
             + (confidence_score * 0.2)
-            + (importance_score * 0.2)
-            + (recency_score * 0.2)
+            + (importance_score * 0.15)
+            + (recency_score * 0.15)
     }
 
     /// Get statistics from both memory layers
@@ -183,6 +209,16 @@ impl MemoryRetrieval {
             working_active: working_stats.active_items,
             permanent_avg_confidence: permanent_stats.avg_confidence,
         }
+    }
+
+    /// Get reference to working memory
+    pub fn working_memory(&self) -> &Arc<WorkingMemory> {
+        &self.working
+    }
+
+    /// Get reference to permanent memory
+    pub fn permanent_memory(&self) -> &Arc<PermanentMemory> {
+        &self.permanent
     }
 }
 
