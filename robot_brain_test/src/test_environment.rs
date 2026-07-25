@@ -13,6 +13,7 @@ pub struct TestEnvironment {
     /// Path to test server executable
     pub server_path: PathBuf,
     /// Path to files_to_import folder
+    #[allow(dead_code)]
     pub files_folder: PathBuf,
 }
 
