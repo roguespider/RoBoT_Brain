@@ -1,5 +1,8 @@
-// /src/experience/exploration/store.rs
-// Repository for persisting and retrieving explorations
+//! ExplorationRepository - persistence for explorations.
+//!
+//! Per Architecture §4.06 (Repository Pattern), persistence is isolated
+//! through repositories. The cognitive layer should not know SQL queries
+//! or table structure - only the repository contract.
 
 #![allow(dead_code)]
 
