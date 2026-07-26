@@ -1,0 +1,117 @@
+//! Experience tool tests
+use crate::TestMcpClient;
+use crate::TestStats;
+
+/// Run experience tool tests
+pub async fn run_experience_tests(
+    client: &mut TestMcpClient,
+    stats: &mut TestStats,
+    _filter: Option<&str>,
+) -> anyhow::Result<()> {
+    println!("\n--- Experience Tools Tests ---");
+    
+    test_record_experience(client, stats, "Tool Execution Success", "Success", "store_memory").await?;
+    test_record_experience(client, stats, "Memory Lookup", "Success", "search_memory").await?;
+    test_record_experience(client, stats, "Partial Success", "Partial", "get_memory").await?;
+    test_record_experience(client, stats, "Failed Attempt", "Failure", "nonexistent_tool").await?;
+    
+    test_get_experience(client, stats, "test_exp").await?;
+    test_list_experiences(client, stats, None).await?;
+    test_list_experiences(client, stats, Some("tool_execution")).await?;
+    test_get_experience_stats(client, stats, None).await?;
+    test_get_experience_stats(client, stats, Some("day")).await?;
+    
+    Ok(())
+}
+
+async fn test_record_experience(
+    client: &mut TestMcpClient,
+    stats: &mut TestStats,
+    action: &str,
+    outcome: &str,
+    tool_name: &str,
+) -> anyhow::Result<()> {
+    match client.call_tool("record_experience", serde_json::json!({
+        "action": action,
+        "outcome": outcome,
+        "tool_name": tool_name
+    })).await {
+        Ok(_) => {
+            println!("  ✓ record_experience({}, {}) - SUCCESS", action, outcome);
+            stats.passed += 1;
+        }
+        Err(e) => {
+            println!("  ✗ record_experience({}, {}) - FAILED: {}", action, outcome, e);
+            stats.failed += 1;
+        }
+    }
+    Ok(())
+}
+
+async fn test_get_experience(
+    client: &mut TestMcpClient,
+    stats: &mut TestStats,
+    id: &str,
+) -> anyhow::Result<()> {
+    match client.call_tool("get_experience", serde_json::json!({
+        "id": id
+    })).await {
+        Ok(_) => {
+            println!("  ✓ get_experience({}) - SUCCESS", id);
+            stats.passed += 1;
+        }
+        Err(e) => {
+            println!("  ✗ get_experience({}) - FAILED: {}", id, e);
+            stats.failed += 1;
+        }
+    }
+    Ok(())
+}
+
+async fn test_list_experiences(
+    client: &mut TestMcpClient,
+    stats: &mut TestStats,
+    filter: Option<&str>,
+) -> anyhow::Result<()> {
+    let mut args = serde_json::json!({});
+    if let Some(f) = filter {
+        args["filter"] = serde_json::json!(f);
+    }
+    
+    match client.call_tool("list_experiences", args).await {
+        Ok(_) => {
+            let f = filter.unwrap_or("all");
+            println!("  ✓ list_experiences({}) - SUCCESS", f);
+            stats.passed += 1;
+        }
+        Err(e) => {
+            println!("  ✗ list_experiences({:?}) - FAILED: {}", filter, e);
+            stats.failed += 1;
+        }
+    }
+    Ok(())
+}
+
+async fn test_get_experience_stats(
+    client: &mut TestMcpClient,
+    stats: &mut TestStats,
+    time_window: Option<&str>,
+) -> anyhow::Result<()> {
+    let mut args = serde_json::json!({});
+    if let Some(t) = time_window {
+        args["time_window"] = serde_json::json!(t);
+    }
+    
+    match client.call_tool("get_experience_stats", args).await {
+        Ok(_) => {
+            let t = time_window.unwrap_or("all");
+            println!("  ✓ get_experience_stats({}) - SUCCESS", t);
+            stats.passed += 1;
+        }
+        Err(e) => {
+            println!("  ✗ get_experience_stats({:?}) - FAILED: {}", time_window, e);
+            stats.failed += 1;
+        }
+    }
+    Ok(())
+}
