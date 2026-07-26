@@ -71,7 +71,7 @@ mod tests {
 
 pub mod agent;
 pub mod experience;
-pub mod exploration_tools;
+pub mod exploration;
 pub mod hypothesis;
 pub mod ingestor;
 pub mod knowledge;
@@ -141,7 +141,7 @@ pub fn register_tools(context: &Arc<McpContext>) {
     tracing::info!("Registered {} hypothesis tools", tools.len());
 
     // Register exploration tools
-    let tools = exploration_tools::definitions::all();
+    let tools = exploration::definitions::all();
     tracing::info!("Registered {} exploration tools", tools.len());
 
     // Register knowledge tools
@@ -165,7 +165,7 @@ pub fn register_tools(context: &Arc<McpContext>) {
         .chain(ingestor::definitions::all())
         .chain(agent::definitions::all())
         .chain(hypothesis::definitions::all())
-        .chain(exploration_tools::definitions::all())
+        .chain(exploration::definitions::all())
         .chain(knowledge::definitions::all())
         .chain(planner::definitions::all())
         .chain(workflow::definitions::all())
