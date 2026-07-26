@@ -1,4 +1,4 @@
-// src/bridge/tools/search.rs
+// src/tools/search/mod.rs
 // Search-related MCP tools
 
 use std::sync::Arc;

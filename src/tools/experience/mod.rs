@@ -1,4 +1,4 @@
-// src/bridge/tools/experience.rs
+// src/tools/experience/mod.rs
 // Experience-related MCP tools
 
 
