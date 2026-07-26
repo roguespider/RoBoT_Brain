@@ -2,8 +2,6 @@
 // MCP (Model Context Protocol) module
 // Re-exports all MCP types and implementations
 
-#![allow(dead_code)]
-
 pub mod client;
 pub mod context;
 pub mod handler;

@@ -44,6 +44,12 @@ pub struct GetHypothesisInput {
     pub hypothesis_id: String,
 }
 
+/// Get observation by ID
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct GetObservationInput {
+    pub observation_id: String,
+}
+
 /// List hypotheses with optional filter
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct ListHypothesesInput {
@@ -88,6 +94,7 @@ pub mod definitions {
     pub const CREATE_HYPOTHESIS: &str = "create_hypothesis";
     pub const ADD_EVIDENCE: &str = "add_evidence";
     pub const GET_HYPOTHESIS: &str = "get_hypothesis";
+    pub const GET_OBSERVATION: &str = "get_observation";
     pub const LIST_HYPOTHESES: &str = "list_hypotheses";
     pub const LIST_OBSERVATIONS: &str = "list_observations";
     pub const EVALUATE_HYPOTHESIS: &str = "evaluate_hypothesis";
@@ -186,6 +193,20 @@ pub mod definitions {
                 }),
             },
             crate::bridge::mcp::McpTool {
+                name: GET_OBSERVATION.to_string(),
+                description: "Get a specific observation by its ID. Useful for examining individual observations that contributed to hypotheses.".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "observation_id": {
+                            "type": "string",
+                            "description": "ID of the observation to retrieve"
+                        }
+                    },
+                    "required": ["observation_id"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
                 name: LIST_HYPOTHESES.to_string(),
                 description: "List all hypotheses with optional filters.".to_string(),
                 input_schema: serde_json::json!({
@@ -279,8 +300,10 @@ pub mod definitions {
 // Re-export database functions
 
 // Re-export execution functions
+#[allow(unused_imports)]
 pub use execute::{
     execute_record_observation, execute_create_hypothesis, execute_add_evidence,
-    execute_get_hypothesis, execute_list_hypotheses, execute_list_observations,
-    execute_evaluate_hypothesis, execute_get_knowledge, execute_extract_knowledge,
+    execute_get_hypothesis, execute_get_observation, execute_list_hypotheses, 
+    execute_list_observations, execute_evaluate_hypothesis, execute_get_knowledge, 
+    execute_extract_knowledge,
 };

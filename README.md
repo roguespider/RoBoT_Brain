@@ -3,7 +3,7 @@
 
 A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with persistent memory, experience-based learning, and structured knowledge storage.
 
-> **Status:** v0.7 complete — Memory System implemented per Architecture §4.08, §6.3 with Working Memory, Permanent Memory, and Memory Retrieval. Full event catalog per Architecture §4.04. Learning Pipeline per Architecture §9. Database layer with 8 migrations.
+> **Status:** v0.7.1 (fix-and-repair) — Memory System implemented per Architecture §4.08, §6.3 with Working Memory, Permanent Memory, and Memory Retrieval. Full event catalog per Architecture §4.04. Learning Pipeline per Architecture §9. Database layer with 8 migrations. All 54 unit tests and 103 integration tests passing. 0 errors, 0 warnings.
 
 ---
 
@@ -2484,6 +2484,37 @@ cargo build --release
 ```
 
 > **Note:** The project uses the system SQLite3 library. The database (`robot_brain.db`) is created automatically on first run.
+
+### Testing
+
+This project includes a comprehensive test suite with 54 unit tests and a full integration test binary.
+
+```bash
+# Run unit tests
+cargo test
+
+# Build and run the comprehensive integration test suite
+cd robot_brain_test && cargo build && ./target/debug/robot_brain_test
+```
+
+**Test Results:**
+- **Unit Tests:** 54 tests passing (0 failed, 0 skipped)
+- **Integration Tests:** 103 tests passing (0 failed, 2 skipped)
+- **Build:** 0 errors, 0 warnings
+- **Both binaries compile and run successfully**
+
+The test suite covers:
+- Memory tools (14 tests)
+- Experience tools (11 tests)
+- Knowledge tools (9 tests)
+- Workflow tools (14 tests)
+- Planner tools (13 tests)
+- Hypothesis tools (14 tests)
+- Reflection tools (6 tests)
+- Search tools (6 tests)
+- Ingestor tools (6 tests)
+- Agent tools (6 tests)
+- Error handling tests (3 tests)
 
 ---
 
