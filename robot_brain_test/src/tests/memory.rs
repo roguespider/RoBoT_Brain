@@ -10,7 +10,10 @@ pub async fn run_memory_tests(
 ) -> anyhow::Result<()> {
     println!("\n--- Memory Tools Tests ---");
     
-    let memory_id = test_store_memory(client, stats, "note", "Test note content", Some(0.9), Some(0.8)).await?;
+    // Search memory first (required by workflow enforcement)
+    test_search_memory(client, stats, "test").await?;
+    
+    let memory_id = test_store_memory_with_id(client, stats, "note", "Test note content", Some(0.9), Some(0.8)).await?;
     test_store_memory(client, stats, "fact", "Important fact", None, None).await?;
     test_store_memory(client, stats, "task", "Task to complete", Some(0.7), Some(0.9)).await?;
     test_store_memory(client, stats, "code", "fn main() {}", Some(0.8), None).await?;
@@ -21,9 +24,11 @@ pub async fn run_memory_tests(
     test_search_memory(client, stats, "important").await?;
     test_search_memory(client, stats, "task").await?;
     
+    // Test with valid ID from previous store
     if let Some(id) = &memory_id {
         test_get_memory(client, stats, id).await?;
     }
+    // Also test with a non-existent but valid UUID
     test_get_memory(client, stats, "00000000-0000-0000-0000-000000000000").await?;
     
     test_list_memories(client, stats, None).await?;
@@ -54,10 +59,12 @@ async fn test_store_memory(
     }
     
     match client.call_tool("store_memory", args).await {
-        Ok(_result) => {
+        Ok(result) => {
             println!("  ✓ store_memory({}) - SUCCESS", memory_type);
             stats.passed += 1;
-            Ok(Some("test_id".to_string()))
+            // Extract the ID from the result
+            let id = result.get("id").and_then(|v| v.as_str()).map(|s| s.to_string());
+            Ok(id)
         }
         Err(e) => {
             println!("  ✗ store_memory({}) - FAILED: {}", memory_type, e);
@@ -65,6 +72,18 @@ async fn test_store_memory(
             Ok(None)
         }
     }
+}
+
+// Alias for backwards compatibility
+async fn test_store_memory_with_id(
+    client: &mut TestMcpClient,
+    stats: &mut TestStats,
+    memory_type: &str,
+    content: &str,
+    confidence: Option<f32>,
+    importance: Option<f32>,
+) -> anyhow::Result<Option<String>> {
+    test_store_memory(client, stats, memory_type, content, confidence, importance).await
 }
 
 async fn test_search_memory(

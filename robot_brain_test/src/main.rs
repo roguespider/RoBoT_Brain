@@ -220,6 +220,24 @@ impl TestMcpClient {
             return Err(anyhow::anyhow!("Tool error: {:?}", error));
         }
         
+        // Check if result contains success: false (tool execution error)
+        if let Some(result) = json.get("result") {
+            if let Some(content) = result.get("content").and_then(|c| c.as_array()).and_then(|arr| arr.first()) {
+                if let Some(text) = content.get("text") {
+                    if let Ok(text_str) = text.as_str().ok_or_else(|| anyhow::anyhow!("Expected text")) {
+                        if let Ok(content_json) = serde_json::from_str::<serde_json::Value>(text_str) {
+                            if content_json.get("success").and_then(|s| s.as_bool()) == Some(false) {
+                                let error_msg = content_json.get("error")
+                                    .map(|e| e.to_string())
+                                    .unwrap_or_else(|| "Unknown error".to_string());
+                                return Err(anyhow::anyhow!("Tool returned error: {}", error_msg));
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
         json.get("result")
             .cloned()
             .ok_or_else(|| anyhow::anyhow!("No result in response"))

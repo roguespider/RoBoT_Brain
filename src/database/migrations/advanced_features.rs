@@ -101,7 +101,8 @@ fn migration_008_add_hypothesis_engine(conn: &Connection) -> Result<()> {
             context TEXT NOT NULL,
             observation_type TEXT NOT NULL,
             related_experiences TEXT NOT NULL,
-            triggered_hypothesis TEXT
+            triggered_hypothesis TEXT,
+            created_at TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_observation_type ON observations(observation_type);
         CREATE TABLE IF NOT EXISTS evidence (
@@ -121,7 +122,8 @@ fn migration_008_add_hypothesis_engine(conn: &Connection) -> Result<()> {
             confidence REAL DEFAULT 0.5,
             domain TEXT NOT NULL,
             derivation TEXT NOT NULL,
-            active INTEGER DEFAULT 1
+            active INTEGER DEFAULT 1,
+            created_at TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_knowledge_domain ON learned_knowledge(domain);
         ",
