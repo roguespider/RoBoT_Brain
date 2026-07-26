@@ -1372,14 +1372,14 @@ impl McpServerHandler {
     )]
     async fn start_exploration(
         &self,
-        Parameters(input): Parameters<tools::exploration_tools::StartExplorationInput>,
+        Parameters(input): Parameters<tools::exploration::StartExplorationInput>,
     ) -> ContentBlock {
         if let Err(e) = self.check_workflow_enforcement("start_exploration").await {
             tracing::warn!("Workflow enforcement blocked start_exploration: {}", e.message);
             return enforcement_error_to_content(e);
         }
         
-        let result = tools::exploration_tools::execute_start_exploration(input);
+        let result = tools::exploration::execute_start_exploration(input);
         if result.success {
             self.record_tool_execution("start_exploration", None).await;
         }
@@ -1392,14 +1392,14 @@ impl McpServerHandler {
     )]
     async fn get_exploration_status(
         &self,
-        Parameters(input): Parameters<tools::exploration_tools::GetExplorationStatusInput>,
+        Parameters(input): Parameters<tools::exploration::GetExplorationStatusInput>,
     ) -> ContentBlock {
         if let Err(e) = self.check_workflow_enforcement("get_exploration_status").await {
             tracing::warn!("Workflow enforcement blocked get_exploration_status: {}", e.message);
             return enforcement_error_to_content(e);
         }
         
-        let result = tools::exploration_tools::execute_get_exploration_status(input);
+        let result = tools::exploration::execute_get_exploration_status(input);
         if result.success {
             self.record_tool_execution("get_exploration_status", None).await;
         }
@@ -1412,14 +1412,14 @@ impl McpServerHandler {
     )]
     async fn complete_exploration(
         &self,
-        Parameters(input): Parameters<tools::exploration_tools::CompleteExplorationInput>,
+        Parameters(input): Parameters<tools::exploration::CompleteExplorationInput>,
     ) -> ContentBlock {
         if let Err(e) = self.check_workflow_enforcement("complete_exploration").await {
             tracing::warn!("Workflow enforcement blocked complete_exploration: {}", e.message);
             return enforcement_error_to_content(e);
         }
         
-        let result = tools::exploration_tools::execute_complete_exploration(input);
+        let result = tools::exploration::execute_complete_exploration(input);
         if result.success {
             self.record_tool_execution("complete_exploration", None).await;
         }
@@ -1432,14 +1432,14 @@ impl McpServerHandler {
     )]
     async fn abandon_exploration(
         &self,
-        Parameters(input): Parameters<tools::exploration_tools::GetExplorationStatusInput>,
+        Parameters(input): Parameters<tools::exploration::GetExplorationStatusInput>,
     ) -> ContentBlock {
         if let Err(e) = self.check_workflow_enforcement("abandon_exploration").await {
             tracing::warn!("Workflow enforcement blocked abandon_exploration: {}", e.message);
             return enforcement_error_to_content(e);
         }
         
-        let result = tools::exploration_tools::execute_abandon_exploration(input);
+        let result = tools::exploration::execute_abandon_exploration(input);
         if result.success {
             self.record_tool_execution("abandon_exploration", None).await;
         }
@@ -1452,14 +1452,14 @@ impl McpServerHandler {
     )]
     async fn record_attempt(
         &self,
-        Parameters(input): Parameters<tools::exploration_tools::RecordAttemptInput>,
+        Parameters(input): Parameters<tools::exploration::RecordAttemptInput>,
     ) -> ContentBlock {
         if let Err(e) = self.check_workflow_enforcement("record_attempt").await {
             tracing::warn!("Workflow enforcement blocked record_attempt: {}", e.message);
             return enforcement_error_to_content(e);
         }
         
-        let result = tools::exploration_tools::execute_record_attempt(input);
+        let result = tools::exploration::execute_record_attempt(input);
         if result.success {
             self.record_tool_execution("record_attempt", None).await;
         }
@@ -1472,14 +1472,14 @@ impl McpServerHandler {
     )]
     async fn add_exploration_hypothesis(
         &self,
-        Parameters(input): Parameters<tools::exploration_tools::AddHypothesisInput>,
+        Parameters(input): Parameters<tools::exploration::AddHypothesisInput>,
     ) -> ContentBlock {
         if let Err(e) = self.check_workflow_enforcement("add_exploration_hypothesis").await {
             tracing::warn!("Workflow enforcement blocked add_exploration_hypothesis: {}", e.message);
             return enforcement_error_to_content(e);
         }
         
-        let result = tools::exploration_tools::execute_add_hypothesis(input);
+        let result = tools::exploration::execute_add_hypothesis(input);
         if result.success {
             self.record_tool_execution("add_exploration_hypothesis", None).await;
         }
@@ -1492,14 +1492,14 @@ impl McpServerHandler {
     )]
     async fn evaluate_exploration_hypothesis(
         &self,
-        Parameters(input): Parameters<tools::exploration_tools::EvaluateHypothesisInput>,
+        Parameters(input): Parameters<tools::exploration::EvaluateHypothesisInput>,
     ) -> ContentBlock {
         if let Err(e) = self.check_workflow_enforcement("evaluate_exploration_hypothesis").await {
             tracing::warn!("Workflow enforcement blocked evaluate_exploration_hypothesis: {}", e.message);
             return enforcement_error_to_content(e);
         }
         
-        let result = tools::exploration_tools::execute_evaluate_hypothesis(input);
+        let result = tools::exploration::execute_evaluate_hypothesis(input);
         if result.success {
             self.record_tool_execution("evaluate_exploration_hypothesis", None).await;
         }
@@ -1512,14 +1512,14 @@ impl McpServerHandler {
     )]
     async fn promote_finding(
         &self,
-        Parameters(input): Parameters<tools::exploration_tools::PromoteFindingInput>,
+        Parameters(input): Parameters<tools::exploration::PromoteFindingInput>,
     ) -> ContentBlock {
         if let Err(e) = self.check_workflow_enforcement("promote_finding").await {
             tracing::warn!("Workflow enforcement blocked promote_finding: {}", e.message);
             return enforcement_error_to_content(e);
         }
         
-        let result = tools::exploration_tools::execute_promote_finding(input);
+        let result = tools::exploration::execute_promote_finding(input);
         if result.success {
             self.record_tool_execution("promote_finding", None).await;
         }
@@ -1532,14 +1532,14 @@ impl McpServerHandler {
     )]
     async fn pause_exploration(
         &self,
-        Parameters(input): Parameters<tools::exploration_tools::GetExplorationStatusInput>,
+        Parameters(input): Parameters<tools::exploration::GetExplorationStatusInput>,
     ) -> ContentBlock {
         if let Err(e) = self.check_workflow_enforcement("pause_exploration").await {
             tracing::warn!("Workflow enforcement blocked pause_exploration: {}", e.message);
             return enforcement_error_to_content(e);
         }
         
-        let result = tools::exploration_tools::execute_pause_exploration(input);
+        let result = tools::exploration::execute_pause_exploration(input);
         if result.success {
             self.record_tool_execution("pause_exploration", None).await;
         }
@@ -1552,14 +1552,14 @@ impl McpServerHandler {
     )]
     async fn resume_exploration(
         &self,
-        Parameters(input): Parameters<tools::exploration_tools::GetExplorationStatusInput>,
+        Parameters(input): Parameters<tools::exploration::GetExplorationStatusInput>,
     ) -> ContentBlock {
         if let Err(e) = self.check_workflow_enforcement("resume_exploration").await {
             tracing::warn!("Workflow enforcement blocked resume_exploration: {}", e.message);
             return enforcement_error_to_content(e);
         }
         
-        let result = tools::exploration_tools::execute_resume_exploration(input);
+        let result = tools::exploration::execute_resume_exploration(input);
         if result.success {
             self.record_tool_execution("resume_exploration", None).await;
         }
