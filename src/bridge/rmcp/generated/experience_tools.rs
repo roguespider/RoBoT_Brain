@@ -1,3 +1,4 @@
+    #[tool(name = "record_experience", description = "Record a new experience")]
     async fn record_experience(
         &self,
         Parameters(input): Parameters<tools::experience::RecordExperienceInput>,

@@ -1,3 +1,7 @@
+    #[tool(
+        name = "get_knowledge",
+        description = "Get learned knowledge extracted from validated hypotheses."
+    )]
     async fn get_knowledge(
         &self,
         Parameters(input): Parameters<tools::hypothesis::GetKnowledgeInput>,

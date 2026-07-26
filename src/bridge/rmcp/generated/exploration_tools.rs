@@ -1,3 +1,7 @@
+    #[tool(
+        name = "start_exploration",
+        description = "Start a new exploration session. Explorations allow RoBoT to actively investigate topics and test hypotheses."
+    )]
     async fn start_exploration(
         &self,
         Parameters(input): Parameters<tools::exploration::StartExplorationInput>,

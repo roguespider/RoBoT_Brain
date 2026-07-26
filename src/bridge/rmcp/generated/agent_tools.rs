@@ -1,3 +1,7 @@
+    #[tool(
+        name = "list_tools",
+        description = "List all available MCP tools with optional filter"
+    )]
     async fn list_tools(
         &self,
         Parameters(input): Parameters<tools::agent::ListToolsInput>,

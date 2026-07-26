@@ -1,3 +1,7 @@
+    #[tool(
+        name = "ingest_files",
+        description = "Ingest files from a folder into memory"
+    )]
     async fn ingest_files(
         &self,
         Parameters(input): Parameters<tools::ingestor::IngestFilesInput>,

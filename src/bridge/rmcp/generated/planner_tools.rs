@@ -1,3 +1,4 @@
+    #[tool(name = "create_plan", description = "Create a new plan from a goal")]
     async fn create_plan(
         &self,
         Parameters(input): Parameters<tools::planner::CreatePlanInput>,

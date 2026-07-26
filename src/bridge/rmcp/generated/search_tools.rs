@@ -1,3 +1,7 @@
+    #[tool(
+        name = "global_search",
+        description = "Search across all memories and experiences"
+    )]
     async fn global_search(
         &self,
         Parameters(input): Parameters<tools::search::GlobalSearchInput>,

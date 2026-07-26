@@ -1,3 +1,7 @@
+    #[tool(
+        name = "create_workflow",
+        description = "Create a new workflow with a name and optional description"
+    )]
     async fn create_workflow(
         &self,
         Parameters(input): Parameters<tools::workflow::CreateWorkflowInput>,

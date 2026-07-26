@@ -1,3 +1,7 @@
+    #[tool(
+        name = "get_insights",
+        description = "Get actionable insights from reflections"
+    )]
     async fn get_insights(
         &self,
         Parameters(input): Parameters<tools::reflection::GetInsightsInput>,

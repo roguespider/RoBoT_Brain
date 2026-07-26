@@ -1,3 +1,7 @@
+    #[tool(
+        name = "record_observation",
+        description = "Record an observation. Observations are the starting point for learning - record successes, failures, patterns, or anomalies."
+    )]
     async fn record_observation(
         &self,
         Parameters(input): Parameters<tools::hypothesis::RecordObservationInput>,
