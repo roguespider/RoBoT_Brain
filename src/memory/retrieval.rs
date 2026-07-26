@@ -8,6 +8,11 @@
 
 use std::sync::Arc;
 
+use anyhow::Result;
+use chrono::Utc;
+
+use crate::database::sqlite::SqliteDatabase;
+
 use super::permanent::PermanentMemory;
 use super::types::{MemoryItem, MemoryLayer, MemoryType};
 use super::working::WorkingMemory;
@@ -185,7 +190,7 @@ impl MemoryRetrieval {
         let importance_score = item.importance;
 
         // Access recency (more recent = higher score)
-        let now = chrono::Utc::now();
+        let now = Utc::now();
         let age_hours = (now - item.accessed_at).num_hours() as f32;
         let recency_score = (1.0 / (1.0 + age_hours / 24.0)).min(1.0);
 
@@ -220,6 +225,76 @@ impl MemoryRetrieval {
     pub fn permanent_memory(&self) -> &Arc<PermanentMemory> {
         &self.permanent
     }
+
+    /// Consolidate memories between working and permanent memory layers
+    /// Per Architecture §6.3: Moves high-value memories from Working to Permanent Memory
+    pub async fn consolidate(&self) -> ConsolidationStats {
+        let mut stats = ConsolidationStats::default();
+        
+        // Get all items from working memory
+        let working_items = self.working.get_all().await;
+        
+        for item in working_items {
+            // Evaluate for promotion based on criteria
+            let should_promote = self.should_promote(&item).await;
+            
+            if should_promote {
+                // Promote to permanent memory
+                let mut promoted_item = item.clone();
+                promoted_item.layer = MemoryLayer::Permanent;
+                promoted_item.last_consolidated = Some(Utc::now());
+                
+                self.permanent.store(promoted_item).await;
+                self.working.remove(&item.id).await;
+                stats.promoted += 1;
+            } else {
+                stats.kept += 1;
+            }
+        }
+        
+        stats
+    }
+
+    /// Check if a memory item should be promoted to permanent memory
+    async fn should_promote(&self, item: &MemoryItem) -> bool {
+        // Promote if high confidence (>= 0.7)
+        if item.confidence >= 0.7 {
+            return true;
+        }
+        
+        // Promote if high importance (>= 0.8)
+        if item.importance >= 0.8 {
+            return true;
+        }
+        
+        // Promote if frequently accessed (>= 5 accesses)
+        if item.access_count >= 5 {
+            return true;
+        }
+        
+        // Promote if tagged as knowledge
+        if item.tags.iter().any(|t| 
+            t == "knowledge" || 
+            t == "important" || 
+            t == "learned"
+        ) {
+            return true;
+        }
+        
+        false
+    }
+
+    /// Checkpoint all memories to database for persistence
+    /// Per Architecture §6.3: SQLite is the final persistence layer
+    pub async fn checkpoint_to_database(&self, db: &Arc<SqliteDatabase>) -> Result<()> {
+        // Checkpoint working memory
+        self.working.checkpoint_to_database(db).await?;
+        
+        // Checkpoint permanent memory  
+        self.permanent.checkpoint_to_database(db).await?;
+        
+        Ok(())
+    }
 }
 
 /// Statistics for the retrieval system
@@ -230,6 +305,15 @@ pub struct MemoryRetrievalStats {
     pub total_items: usize,
     pub working_active: usize,
     pub permanent_avg_confidence: f32,
+}
+
+/// Statistics for memory consolidation
+#[derive(Debug, Clone, Default)]
+pub struct ConsolidationStats {
+    pub promoted: usize,
+    pub archived: usize,
+    pub kept: usize,
+    pub deleted: usize,
 }
 
 #[cfg(test)]

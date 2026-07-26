@@ -156,61 +156,16 @@ impl WorkflowEngine {
         match action {
             // Memory actions
             "store_memory" => {
-                let input = tools::memory::StoreMemoryInput {
-                    content: get_param("content"),
-                    memory_type: params
-                        .get("memory_type")
-                        .cloned()
-                        .unwrap_or_else(|| "note".to_string()),
-                    confidence: params.get("confidence").and_then(|s| s.parse().ok()),
-                    importance: params.get("importance").and_then(|s| s.parse().ok()),
-                    tags: params.get("tags").map(|s| s.split(',').map(String::from).collect()),
-                };
-
-                if let Some(db) = &self.database {
-                    let result = tools::memory::execute_store_memory(input, db).await?;
-                    Ok(result)
-                } else {
-                    Ok(ToolOutput::success(json!({
-                        "status": "no_database",
-                        "message": "Workflow engine created without database access",
-                        "action": action
-                    })))
-                }
+                // store_memory requires working_memory which workflow engine doesn't have
+                Ok(ToolOutput::error("store_memory action requires working_memory which is not available in workflow engine. Use ingest_file for file ingestion."))
             }
             "search_memory" => {
-                let input = tools::memory::SearchMemoryInput {
-                    query: get_param("query"),
-                    limit: params.get("limit").and_then(|s| s.parse().ok()),
-                };
-
-                if let Some(db) = &self.database {
-                    let result = tools::memory::execute_search_memory(input, db).await?;
-                    Ok(result)
-                } else {
-                    Ok(ToolOutput::success(json!({
-                        "status": "no_database",
-                        "message": "Workflow engine created without database access",
-                        "action": action
-                    })))
-                }
+                // search_memory requires memory_retrieval which workflow engine doesn't have
+                Ok(ToolOutput::error("search_memory action requires memory_retrieval which is not available in workflow engine"))
             }
             "list_memories" => {
-                let input = tools::memory::ListMemoriesInput {
-                    memory_type: params.get("memory_type").cloned(),
-                    limit: params.get("limit").and_then(|s| s.parse().ok()),
-                };
-
-                if let Some(db) = &self.database {
-                    let result = tools::memory::execute_list_memories(input, db).await?;
-                    Ok(result)
-                } else {
-                    Ok(ToolOutput::success(json!({
-                        "status": "no_database",
-                        "message": "Workflow engine created without database access",
-                        "action": action
-                    })))
-                }
+                // list_memories requires memory_retrieval which workflow engine doesn't have
+                Ok(ToolOutput::error("list_memories action requires memory_retrieval which is not available in workflow engine"))
             }
 
             // Experience actions
@@ -273,29 +228,8 @@ impl WorkflowEngine {
 
             // Ingestor actions
             "ingest_files" => {
-                let input = tools::ingestor::IngestFilesInput {
-                    folder: params.get("folder").cloned(),
-                    file_path: params.get("file_path").cloned(),
-                    file_paths_alias: None,
-                    limit: params.get("limit").and_then(|s| s.parse().ok()),
-                    chunk_size: params.get("chunk_size").and_then(|s| s.parse().ok()),
-                    memory_type: params.get("memory_type").cloned(),
-                    timeout_seconds: params.get("timeout_seconds").and_then(|s| s.parse().ok()),
-                    recursive: params.get("recursive").and_then(|s| s.parse().ok()),
-                    force: params.get("force").and_then(|s| s.parse().ok()),
-                    summary_only: params.get("summary_only").and_then(|s| s.parse().ok()),
-                };
-
-                if let Some(db) = &self.database {
-                    let result = tools::ingestor::ingest_file(input, Arc::clone(db)).await?;
-                    Ok(result)
-                } else {
-                    Ok(ToolOutput::success(json!({
-                        "status": "no_database",
-                        "message": "Workflow engine created without database access",
-                        "action": action
-                    })))
-                }
+                // ingest_files requires working_memory which workflow engine doesn't have
+                Ok(ToolOutput::error("ingest_files action requires working_memory which is not available in workflow engine"))
             }
 
             // Generic tool call
@@ -318,49 +252,9 @@ impl WorkflowEngine {
         action: &str,
         params: &HashMap<String, String>,
     ) -> Option<ToolOutput> {
-        if Self::should_skip_memory_read(action) {
-            return None;
-        }
-
-        let db = self.database.as_ref()?;
-
-        let query = build_search_query(action, params);
-
-        tracing::info!(
-            "[Working Memory] Searching for context before action '{}': '{}'",
-            action,
-            query
-        );
-
-        let input = tools::memory::SearchMemoryInput {
-            query: query.clone(),
-            limit: Some(5),
-        };
-
-        match tools::memory::execute_search_memory(input, db).await {
-            Ok(result) => {
-                if !result
-                    .data
-                    .get("memories")
-                    .map(|v| v.as_array().map(|a| !a.is_empty()).unwrap_or(false))
-                    .unwrap_or(false)
-                {
-                    tracing::debug!(
-                        "[Working Memory] No relevant context found for action '{}'",
-                        action
-                    );
-                }
-                Some(result)
-            }
-            Err(e) => {
-                tracing::warn!(
-                    "[Working Memory] Failed to search context before action '{}': {}",
-                    action,
-                    e
-                );
-                None
-            }
-        }
+        // Workflow engine doesn't have memory_retrieval, so skip memory read
+        // This is a limitation - workflow execution won't have context from working memory
+        None
     }
 
     /// Record an experience after action completion

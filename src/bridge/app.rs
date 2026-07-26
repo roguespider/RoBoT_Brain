@@ -78,13 +78,26 @@ impl App {
             working_memory_core.clone(),
             permanent_memory.clone(),
         ));
-        tracing::info!("Memory system initialized (Working: 1000, Permanent: 10000)");
+
+        // Load memories from database into in-memory caches on startup
+        // This restores the caches from persistent storage
+        if let Err(e) = working_memory_core.load_from_database(&database).await {
+            tracing::warn!("Failed to load working memory from database: {}", e);
+        }
+        if let Err(e) = permanent_memory.load_from_database(&database).await {
+            tracing::warn!("Failed to load permanent memory from database: {}", e);
+        }
+        tracing::info!("Memory system initialized and loaded from database (Working: 1000, Permanent: 10000)");
 
         // Create scheduler with background tasks
         let scheduler = Self::setup_scheduler(database.clone()).await?;
 
-        // Register task handlers
-        Self::register_task_handlers(scheduler.clone()).await;
+        // Register task handlers with access to memory retrieval
+        Self::register_task_handlers(
+            scheduler.clone(),
+            memory_retrieval.clone(),
+            database.clone(),
+        ).await;
 
         // Start scheduler background loop
         let scheduler_clone = scheduler.clone();
@@ -197,11 +210,25 @@ impl App {
             )
             .await?;
 
+        // Schedule memory checkpoint (every 15 minutes)
+        // Per Architecture §6.3: SQLite is the persistence layer
+        scheduler
+            .create_task(
+                "memory_checkpoint",
+                TaskType::MemoryCheckpoint,
+                TaskSchedule::Interval { seconds: 900 },
+            )
+            .await?;
+
         Ok(scheduler)
     }
 
     /// Register task handlers for the scheduler
-    async fn register_task_handlers(scheduler: Arc<Scheduler>) {
+    async fn register_task_handlers(
+        scheduler: Arc<Scheduler>,
+        memory_retrieval: Arc<MemoryRetrieval>,
+        database: Arc<SqliteDatabase>,
+    ) {
         use crate::experience::scheduler::TaskType;
 
         // Reflection task handler
@@ -296,34 +323,63 @@ impl App {
             .await;
 
         // Memory consolidation handler
+        // Per Architecture §6.3: Consolidates Working Memory to Permanent Memory
+        let memory_retrieval_clone = memory_retrieval.clone();
+        let database_clone = database.clone();
         scheduler
             .register_handler(
                 TaskType::MemoryConsolidation,
-                Box::new(|| {
+                Box::new(move || {
+                    let memory_retrieval = memory_retrieval_clone.clone();
+                    let database = database_clone.clone();
                     Box::pin(async move {
                         tracing::info!("Executing scheduled memory consolidation");
-                        // Get database from app state
-                        let database = crate::database::sqlite::SqliteDatabase::initialize()?;
-                        let pipeline = crate::memory::pipeline::MemoryPipeline::new(std::sync::Arc::new(database));
-                        match pipeline.run_consolidation_sync() {
-                            Ok(stats) => {
-                                tracing::info!(
-                                    "Memory consolidation complete: {} promoted, {} archived, {} deleted, {} kept",
-                                    stats.promoted, stats.archived, stats.deleted, stats.kept
-                                );
-                            }
-                            Err(e) => {
-                                tracing::error!("Memory consolidation failed: {}", e);
-                                return Err(e);
-                            }
+                        
+                        // Consolidate between in-memory caches (Architecture §6.3)
+                        let stats = memory_retrieval.consolidate().await;
+                        tracing::info!(
+                            "Memory consolidation complete: {} promoted, {} archived, {} deleted, {} kept",
+                            stats.promoted, stats.archived, stats.deleted, stats.kept
+                        );
+                        
+                        // Checkpoint caches to database for persistence
+                        if let Err(e) = memory_retrieval.checkpoint_to_database(&database).await {
+                            tracing::error!("Failed to checkpoint memories to database: {}", e);
                         }
+                        
                         Ok(())
                     })
                 }),
             )
             .await;
 
-        tracing::info!("Registered {} task handlers", 8);
+        // Memory checkpoint handler
+        // Per Architecture §6.3: Checkpoint in-memory caches to SQLite
+        let memory_retrieval_checkpoint = memory_retrieval.clone();
+        let database_checkpoint = database.clone();
+        scheduler
+            .register_handler(
+                TaskType::MemoryCheckpoint,
+                Box::new(move || {
+                    let memory_retrieval = memory_retrieval_checkpoint.clone();
+                    let database = database_checkpoint.clone();
+                    Box::pin(async move {
+                        tracing::debug!("Executing scheduled memory checkpoint");
+                        
+                        // Checkpoint caches to database for persistence
+                        if let Err(e) = memory_retrieval.checkpoint_to_database(&database).await {
+                            tracing::error!("Failed to checkpoint memories to database: {}", e);
+                            return Err(e);
+                        }
+                        
+                        tracing::debug!("Memory checkpoint completed successfully");
+                        Ok(())
+                    })
+                }),
+            )
+            .await;
+
+        tracing::info!("Registered {} task handlers", 9);
     }
 
     /// Start the runtime.

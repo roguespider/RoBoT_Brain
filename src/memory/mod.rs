@@ -1,5 +1,5 @@
 // src/memory/mod.rs
-//! Memory System - Per Architecture §4.08, §6.3
+//! Memory System - Per Architecture §6.3
 //!
 //! Memory provides storage and retrieval capabilities.
 //!
@@ -21,7 +21,7 @@ pub mod pipeline;
 
 pub use working::WorkingMemory;
 pub use permanent::PermanentMemory;
-pub use retrieval::MemoryRetrieval;
+pub use retrieval::{MemoryRetrieval, ConsolidationStats};
 
 // Exported for future integration (will be used when wiring up persistence)
 #[allow(unused_imports)]

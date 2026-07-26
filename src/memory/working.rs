@@ -3,6 +3,11 @@
 //!
 //! Working Memory contains temporary information used during active tasks.
 //!
+//! This is a DIFFERENT concept from `src/learning/working_memory/`:
+//! - Memory Working Memory: Stores MemoryItem objects for retrieval (this module)
+//! - Learning Working Memory: Tracks active context with state machine transitions
+//!
+//! Per Architecture §6.3:
 //! Characteristics:
 //! - Short lifespan
 //! - High volatility
@@ -13,12 +18,14 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use anyhow::Result;
 use chrono::{Duration, Utc};
 use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use super::types::{MemoryItem, MemoryLayer, MemoryStatus, MemoryType};
+use crate::database::queries;
 
 /// Working memory statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -256,6 +263,45 @@ impl WorkingMemory {
     /// Get default TTL
     pub fn default_ttl(&self) -> Duration {
         self.default_ttl
+    }
+
+    /// Load Working layer memories from SQLite into the cache
+    /// This restores the cache from persistent storage on startup
+    pub async fn load_from_database(&self, db: &Arc<crate::database::sqlite::SqliteDatabase>) -> Result<usize> {
+        let conn = db.connection()?;
+        let cards = queries::list_memories_by_layer(&conn, "working", self.max_items)?;
+
+        let mut count = 0;
+        for card in cards {
+            let item = MemoryItem::from(&card);
+            let mut items = self.items.write().await;
+            items.insert(item.id, item);
+            count += 1;
+        }
+
+        tracing::info!("Loaded {} memories from Working layer into cache", count);
+        Ok(count)
+    }
+
+    /// Checkpoint all cached items to SQLite for persistence
+    /// This saves the current state of working memory to the database
+    pub async fn checkpoint_to_database(&self, db: &Arc<crate::database::sqlite::SqliteDatabase>) -> Result<usize> {
+        let items: Vec<MemoryItem> = {
+            let items = self.items.read().await;
+            items.values().cloned().collect()
+        };
+
+        let conn = db.connection()?;
+        let mut count = 0;
+
+        for item in items {
+            let card = crate::database::models::MemoryCard::from(item);
+            queries::insert_memory(&conn, &card)?;
+            count += 1;
+        }
+
+        tracing::debug!("Checkpointed {} items from Working memory cache to database", count);
+        Ok(count)
     }
 }
 

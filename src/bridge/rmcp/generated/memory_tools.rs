@@ -73,7 +73,7 @@
             return enforcement_error_to_content(e);
         }
         
-        match tools::memory::execute_get_memory(input, &self.context.database).await {
+        match tools::memory::execute_get_memory(input, &self.context.database, &self.context.memory_retrieval).await {
             Ok(result) => {
                 self.record_tool_execution("get_memory", None).await;
                 tool_output_to_content(result)
@@ -93,7 +93,7 @@
             return enforcement_error_to_content(e);
         }
         
-        match tools::memory::execute_list_memories(input, &self.context.database).await {
+        match tools::memory::execute_list_memories(input, &self.context.database, &self.context.memory_retrieval).await {
             Ok(result) => {
                 self.record_tool_execution("list_memories", None).await;
                 tool_output_to_content(result)

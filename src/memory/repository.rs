@@ -1,5 +1,5 @@
 // src/memory/repository.rs
-//! Memory Repository - Per Architecture §4.08, §6.3
+//! Memory Repository - Per Architecture §6.3
 //!
 //! Provides persistence layer for memory items using SQLite.
 //! Bridges in-memory structures with database storage.
@@ -136,6 +136,7 @@ impl MemoryRepository for SqliteMemoryRepository {
                 created_at: parse_time(&row.get::<_, String>(5)?),
                 accessed_at: parse_time(&row.get::<_, String>(6)?),
                 modified_at: parse_time(&row.get::<_, String>(6)?),
+                last_consolidated: Some(parse_time(&row.get::<_, String>(6)?)),
                 access_count: 0,
                 tags: Vec::new(),
                 source: "database".to_string(),
@@ -203,6 +204,7 @@ impl MemoryRepository for SqliteMemoryRepository {
                 created_at: parse_time(&row.get::<_, String>(5)?),
                 accessed_at: parse_time(&row.get::<_, String>(6)?),
                 modified_at: parse_time(&row.get::<_, String>(6)?),
+                last_consolidated: Some(parse_time(&row.get::<_, String>(6)?)),
                 access_count: 0,
                 tags: Vec::new(),
                 source: "database".to_string(),
@@ -241,6 +243,7 @@ impl MemoryRepository for SqliteMemoryRepository {
                 created_at: parse_time(&row.get::<_, String>(5)?),
                 accessed_at: parse_time(&row.get::<_, String>(6)?),
                 modified_at: parse_time(&row.get::<_, String>(6)?),
+                last_consolidated: Some(parse_time(&row.get::<_, String>(6)?)),
                 access_count: 0,
                 tags: Vec::new(),
                 source: "database".to_string(),
@@ -277,6 +280,7 @@ impl MemoryRepository for SqliteMemoryRepository {
                 created_at: parse_time(&row.get::<_, String>(5)?),
                 accessed_at: parse_time(&row.get::<_, String>(6)?),
                 modified_at: parse_time(&row.get::<_, String>(6)?),
+                last_consolidated: Some(parse_time(&row.get::<_, String>(6)?)),
                 access_count: 0,
                 tags: Vec::new(),
                 source: "database".to_string(),
