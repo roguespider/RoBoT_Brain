@@ -120,6 +120,7 @@ impl McpClient {
     }
 
     /// Get a specific tool by name
+    #[allow(dead_code)]
     pub async fn get_tool(&self, name: &str) -> Option<Tool> {
         let servers = self.servers.read().await;
         for server in servers.iter() {

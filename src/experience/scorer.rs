@@ -16,11 +16,72 @@ use crate::experience::{
 pub struct ExperienceScorer;
 
 /// Scores individual encounters.
+///
+/// This provides granular scoring for each encounter within an experience,
+/// complementing the ExperienceScore which scores the overall experience.
+#[derive(Debug, Clone)]
 #[allow(dead_code)]
 pub struct EncounterScore {
+    /// Success indicator (0.0-1.0)
     pub success: f32,
+    /// Quality of the encounter (0.0-1.0)
     pub quality: f32,
+    /// Reliability of the result (0.0-1.0)
     pub reliability: f32,
+}
+
+#[allow(dead_code)]
+impl EncounterScore {
+    /// Create a new encounter score with default values
+    pub fn new() -> Self {
+        Self {
+            success: 0.5,
+            quality: 0.5,
+            reliability: 0.5,
+        }
+    }
+
+    /// Create from an encounter result
+    pub fn from_result(result: &super::types::EncounterResult) -> Self {
+        match result {
+            super::types::EncounterResult::Success => Self {
+                success: 1.0,
+                quality: 0.8,
+                reliability: 0.9,
+            },
+            super::types::EncounterResult::Failure => Self {
+                success: 0.0,
+                quality: 0.2,
+                reliability: 0.8,
+            },
+            super::types::EncounterResult::Partial(_) => Self {
+                success: 0.5,
+                quality: 0.6,
+                reliability: 0.6,
+            },
+            super::types::EncounterResult::Error(_) => Self {
+                success: 0.0,
+                quality: 0.1,
+                reliability: 0.5,
+            },
+            super::types::EncounterResult::Timeout => Self {
+                success: 0.0,
+                quality: 0.3,
+                reliability: 0.3,
+            },
+        }
+    }
+
+    /// Calculate the overall score as a weighted average
+    pub fn overall(&self) -> f32 {
+        (self.success * 0.5) + (self.quality * 0.3) + (self.reliability * 0.2)
+    }
+}
+
+impl Default for EncounterScore {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ExperienceScorer {
@@ -35,6 +96,30 @@ impl ExperienceScorer {
             confidence: self.calculate_confidence(experience),
             novelty: self.calculate_novelty(experience),
             reliability: self.calculate_reliability(experience),
+        }
+    }
+
+    /// Score an individual encounter
+    #[allow(dead_code)]
+    pub fn score_encounter(&self, result: &super::types::EncounterResult) -> EncounterScore {
+        EncounterScore::from_result(result)
+    }
+
+    /// Aggregate scores from multiple encounters
+    #[allow(dead_code)]
+    pub fn aggregate_encounter_scores(&self, scores: &[EncounterScore]) -> EncounterScore {
+        if scores.is_empty() {
+            return EncounterScore::new();
+        }
+
+        let sum_success = scores.iter().map(|s| s.success).sum::<f32>() / scores.len() as f32;
+        let sum_quality = scores.iter().map(|s| s.quality).sum::<f32>() / scores.len() as f32;
+        let sum_reliability = scores.iter().map(|s| s.reliability).sum::<f32>() / scores.len() as f32;
+
+        EncounterScore {
+            success: sum_success,
+            quality: sum_quality,
+            reliability: sum_reliability,
         }
     }
 
@@ -112,5 +197,51 @@ impl ExperienceObserver for ExperienceScorer {
         // For now, just log the event
         println!("Scorer received event: {:?}", event);
         Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_encounter_score_from_success() {
+        let score = EncounterScore::from_result(&super::super::types::EncounterResult::Success);
+        assert_eq!(score.success, 1.0);
+        assert_eq!(score.quality, 0.8);
+        assert_eq!(score.reliability, 0.9);
+    }
+
+    #[test]
+    fn test_encounter_score_from_failure() {
+        let score = EncounterScore::from_result(&super::super::types::EncounterResult::Failure);
+        assert_eq!(score.success, 0.0);
+        assert_eq!(score.quality, 0.2);
+    }
+
+    #[test]
+    fn test_encounter_score_overall() {
+        let score = EncounterScore::from_result(&super::super::types::EncounterResult::Success);
+        // 1.0 * 0.5 + 0.8 * 0.3 + 0.9 * 0.2 = 0.5 + 0.24 + 0.18 = 0.92
+        let overall = score.overall();
+        assert!((overall - 0.92).abs() < 0.001);
+    }
+
+    #[test]
+    fn test_scorer_score_encounter() {
+        let scorer = ExperienceScorer::new();
+        let score = scorer.score_encounter(&super::super::types::EncounterResult::Success);
+        assert_eq!(score.success, 1.0);
+    }
+
+    #[test]
+    fn test_aggregate_encounter_scores() {
+        let scorer = ExperienceScorer::new();
+        let scores = vec![
+            EncounterScore::from_result(&super::super::types::EncounterResult::Success),
+            EncounterScore::from_result(&super::super::types::EncounterResult::Failure),
+        ];
+        let aggregated = scorer.aggregate_encounter_scores(&scores);
+        assert!((aggregated.success - 0.5).abs() < 0.001); // (1.0 + 0.0) / 2
     }
 }

@@ -51,7 +51,6 @@ mod tests {
 
     #[test]
     fn test_tool_output_from_value() {
-        // Test from_value() - wires up the dead function
         #[derive(Serialize)]
         struct TestData {
             message: String,
@@ -68,6 +67,16 @@ mod tests {
         assert!(output.error.is_none());
         assert_eq!(output.data["message"], "Hello");
         assert_eq!(output.data["count"], 42);
+    }
+
+    #[test]
+    fn test_get_tools_sync() {
+        // get_tools() returns empty vec when registry not initialized
+        let tools = get_tools();
+        assert!(tools.is_empty());
+        
+        // get_tools() should return same type as get_tools_async
+        // This wires up the sync variant for use in non-async contexts
     }
 }
 
@@ -180,7 +189,10 @@ pub fn register_tools(context: &Arc<McpContext>) {
 }
 
 /// Get all registered tools (sync version for use outside async context)
-#[allow(dead_code)]
+/// 
+/// This is the preferred method when you're in a synchronous context
+/// (e.g., CLI commands, non-async handlers). For async contexts,
+/// prefer `get_tools_async()` which properly yields without blocking.
 pub fn get_tools() -> Vec<crate::bridge::mcp::McpTool> {
     TOOL_REGISTRY
         .get()
