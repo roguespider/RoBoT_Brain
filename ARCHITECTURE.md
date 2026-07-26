@@ -14,31 +14,223 @@
 ================================================================================
 ## Table of Contents
 
-[Chapter 01 - Vision & Philosophy](#chapter-01---vision--philosophy)
-[Chapter 02 - Core Design Principles](#chapter-02---core-design-principles)
-[Chapter 03 - High Level System Overview](#chapter-03---high-level-system-overview)
-[Chapter 04 - Data Flow](#chapter-04---data-flow)
-[Chapter 05 - Conversation Engine](#chapter-05---conversation-engine)
-[Chapter 06 - Context Engine](#chapter-06---context-engine)
-[Chapter 07 - Memory Engine](#chapter-07---memory-engine)
-[Chapter 08 - Experience Engine](#chapter-08---experience-engine)
-[Chapter 09 - Learning Engine](#chapter-09---learning-engine)
-[Chapter 10 - Planning Engine](#chapter-10---planning-engine)
-[Chapter 11 - Execution Engine](#chapter-11---execution-engine)
-[Chapter 12 - Tool Engine](#chapter-12---tool-engine)
-[Chapter 13 - Memory Hierarchy](#chapter-13---memory-hierarchy)
-[Chapter 14 - Context Lifecycle](#chapter-14---context-lifecycle)
-[Chapter 15 - Retrieval Pipeline](#chapter-15---retrieval-pipeline)
-[Chapter 16 - Prompt Construction](#chapter-16---prompt-construction)
-[Chapter 17 - Strategic Learning](#chapter-17---strategic-learning)
-[Chapter 18 - Confidence System](#chapter-18---confidence-system)
-[Chapter 19 - Knowledge Graph](#chapter-19---knowledge-graph)
-[Chapter 20 - Storage Architecture](#chapter-20---storage-architecture)
-[Chapter 21 - Database Design](#chapter-21---database-design)
-[Chapter 22 - Background Workers](#chapter-22---background-workers)
-[Chapter 23 - AI Contributor Operating Agreement](#chapter-23---ai-contributor-operating-agreement)
-[Appendix A - Complete Workflow](#appendix-a---complete-workflow)
-[Appendix B - Future Research](#appendix-b---future-research)
+### Chapter 01 - Vision & Philosophy
+
+[Vision](#vision)
+
+[Philosophy](#philosophy)
+
+[Learning Pipeline](#learning-pipeline)
+
+[Cognitive Architecture](#cognitive-architecture)
+
+[Core Design Goals](#core-design-goals)
+
+[Long-Term Goal](#long-term-goal)
+
+---
+
+### Chapter 02 - Core Principles
+
+[Purpose](#purpose)
+
+[Experience Over Memory](#1-experience-over-memory)
+
+[Knowledge Must Be Earned](#2-knowledge-must-be-earned)
+
+[Confidence Is Multi-Dimensional](#3-confidence-is-multi-dimensional)
+
+[Everything Important Becomes an Experience](#4-everything-important-becomes-an-experience)
+
+[Separate Observation From Interpretation](#5-separate-observation-from-interpretation)
+
+[Event-Driven Architecture](#6-event-driven-architecture)
+
+[Loose Coupling, Strong Contracts](#7-loose-coupling-strong-contracts)
+
+[Working Memory Is Temporary](#8-working-memory-is-temporary)
+
+[Permanent Memory Is Curated](#9-permanent-memory-is-curated)
+
+[Reflection Drives Improvement](#10-reflection-drives-improvement)
+
+[Hypotheses Enable Discovery](#11-hypotheses-enable-discovery)
+
+[Reputation Determines Trust](#12-reputation-determines-trust)
+
+[Learning Requires Feedback](#13-learning-requires-feedback)
+
+[Design For Evolution](#14-design-for-evolution)
+
+[Simplicity Over Complexity](#15-simplicity-over-complexity)
+
+[Core Principle Summary](#core-principle-summary)
+
+---
+
+### Chapter 03 - System Overview
+
+[Purpose](#purpose)
+
+[Experience System](#21-experience-system)
+
+[Memory System](#22-memory-system)
+
+[Knowledge System](#23-knowledge-system)
+
+[Reflection System](#24-reflection-system)
+
+[Hypothesis System](#25-hypothesis-system)
+
+[Reputation System](#26-reputation-system)
+
+[Exploration System](#27-exploration-system)
+
+[Planning System](#28-planning-system)
+
+[Skills System](#29-skills-system)
+
+[MCP Interface](#210-mcp-interface)
+
+[System Relationships](#3-system-relationships)
+
+---
+
+### Chapter 04 - Data Flow
+
+[Purpose](#purpose)
+
+[Experience Processing](#4031-experience-processing)
+
+[Reflection Processing](#4032-reflection-processing)
+
+[Hypothesis Processing](#4033-hypothesis-processing)
+
+[Knowledge Processing](#4034-knowledge-processing)
+
+[Planning Processing](#4035-planning-processing)
+
+---
+
+### Chapter 05 - Conversation Engine
+
+[Overview](#51-overview)
+
+[Stage 1 - Input](#stage-1---input)
+
+[Stage 2 - Observation](#stage-2---observation)
+
+[Stage 3 - Experience Creation](#stage-3---experience-creation)
+
+[Experience Recorder](#experience-recorder)
+
+[Experience Scoring](#experience-scoring)
+
+[Reflection](#reflection)
+
+[Memory Processing](#memory-processing)
+
+---
+
+### Chapter 06 - Context Engine
+
+[Overview](#61-overview)
+
+[Experience System](#62-experience-system)
+
+[Memory System](#63-memory-system)
+
+[Knowledge System](#64-knowledge-system)
+
+[Learning System](#65-learning-system)
+
+[Hypothesis System](#66-hypothesis-system)
+
+[Reflection System](#67-reflection-system)
+
+[Reputation System](#68-reputation-system)
+
+[MCP Integration Layer](#69-mcp-integration-layer)
+
+[Storage Layer](#610-storage-layer)
+
+---
+
+### Chapter 07 - Memory Engine
+
+---
+
+### Chapter 08 - Experience Engine
+
+[Design Invariants](#design-invariants)
+
+---
+
+### Chapter 09 - Learning Engine
+
+---
+
+### Chapter 10 - Planning Engine
+
+---
+
+### Chapter 11 - Execution Engine
+
+---
+
+### Chapter 12 - Tool Engine
+
+---
+
+### Chapter 13 - Memory Hierarchy
+
+---
+
+### Chapter 14 - Context Lifecycle
+
+---
+
+### Chapter 15 - Retrieval Pipeline
+
+---
+
+### Chapter 16 - Prompt Construction
+
+---
+
+### Chapter 17 - Strategic Learning
+
+---
+
+### Chapter 18 - Confidence System
+
+---
+
+### Chapter 19 - Knowledge Graph
+
+---
+
+### Chapter 20 - Storage Architecture
+
+---
+
+### Chapter 21 - Database Design
+
+---
+
+### Chapter 22 - Background Workers
+
+---
+
+### Chapter 23 - AI Contributor Operating Agreement
+
+---
+
+### Chapter 24 - *(pending)*
+
+---
+
+### Chapter 25 - *(pending)*
 
 ================================================================================
 
@@ -50,7 +242,7 @@
 
 ---
 
-## Chapter 01 - Vision & Philosophy
+## Chapter 01 - Vision & Philosophy {#chapter-01-vision--philosophy}
 
 ## Vision
 
@@ -109,25 +301,18 @@ Learning is viewed as an ongoing scientific process rather than a database updat
 ## Learning Pipeline
 
 ```text
-Experience
-      │
-      ▼
-Observation
-      │
-      ▼
-Evidence
-      │
-      ▼
-Beliefs
-      │
-      ▼
-Knowledge
-      │
-      ▼
-Models
-      │
-      ▼
-Skills
+                         Skills
+                           ▲
+                           │
+                      feedback
+                           │
+Experience ───► Observation ───► Evidence ───► Beliefs
+     ▲                                                     │
+     │                                                     ▼
+     └──────────────── loop back ◄─────────────── Knowledge
+                              │
+                              ▼
+                            Models
 ```
 
 Every experience has the potential to:
@@ -143,12 +328,12 @@ Every experience has the potential to:
 ## Cognitive Architecture
 
 ```text
-                    Planner
-                       ▲
-                       │
-              Hypothesis Engine
-                       ▲
-                       │
+                         Planner
+                            │
+                            ▼
+              Hypothesis ◄─── Hypothesis Engine
+                            │
+                            ▼
 Experience ───► Reflection ───► Knowledge
      │                │
      ▼                ▼
@@ -161,6 +346,10 @@ Experience ───► Reflection ───► Knowledge
                Permanent Memory │
                        │
                  MCP Interface
+                            │
+         ┌─────────────────┘
+         ▼
+    Skills ───► feedback loop ───► Experience
 ```
 
 Memory is the library.
@@ -211,7 +400,7 @@ RoBoT asks:
 Every subsystem in this repository exists to support that objective.
 
 ================================================================================
-## Chapter 02 - Core Principles
+## Chapter 02 - Core Principles {#chapter-02-core-principles}
 
 ## Purpose
 
@@ -537,7 +726,7 @@ Action creates new experience.
 The architecture exists to support this continuous learning cycle.
 
 ================================================================================
-## Chapter 03 - System Overview
+## Chapter 03 - System Overview {#chapter-03-system-overview}
 
 ## Purpose
 
@@ -965,7 +1154,7 @@ The goal is to create a system capable of:
 RoBoT is therefore designed as a learning architecture rather than a storage architecture.
 
 ================================================================================
-## Chapter 04 - High-Level Architecture
+## Chapter 04 - Data Flow {#chapter-04-data-flow}
 
 ## Purpose
 
@@ -1444,7 +1633,7 @@ Independent Evolution
 The architecture exists to allow RoBoT to grow from a memory system into a complete cognitive platform.
 
 ================================================================================
-## Chapter 05 - Data Flow
+## Chapter 05 - Conversation Engine {#chapter-05-conversation-engine}
 
 ## 5.1 Overview
 
@@ -1847,7 +2036,7 @@ Learning becomes improved behavior.
 The data flow architecture provides the foundation that connects all major subsystems and allows the system to evolve over time.
 
 ================================================================================
-## Chapter 06 - Subsystem Architecture
+## Chapter 06 - Context Engine {#chapter-06-context-engine}
 
 ## 6.1 Overview
 
@@ -2007,7 +2196,7 @@ Primary components:
 - Knowledge records
 
 ================================================================================
-## Chapter 07 - Experience Engine Design
+## Chapter 07 - Memory Engine {#chapter-07-memory-engine}
 
 07.01 Purpose
 
@@ -2068,7 +2257,7 @@ Future expansion points.
 • Historical data is never destroyed, only archived.
 
 ================================================================================
-## Chapter 08 - Memory Architecture
+## Chapter 08 - Experience Engine {#chapter-08-experience-engine}
 
 Chapter 08 - Knowledge System
 
@@ -2090,7 +2279,7 @@ Promotion from Experience
 
 
 ================================================================================
-## Chapter 09 - Learning Pipeline
+## Chapter 09 - Learning Engine {#chapter-09-learning-engine}
 
 Input
 ↓
@@ -2111,7 +2300,7 @@ Action
 Reflection
 
 ================================================================================
-## Chapter 10: Hypothesis and Reasoning
+## Chapter 10 - Planning Engine {#chapter-10-planning-engine}
 
 Chapter 10 - Planning
 
@@ -2126,7 +2315,7 @@ dependencies
 replanning
 
 ================================================================================
-## Chapter 11: MCP and External Interfaces
+## Chapter 11 - Execution Engine {#chapter-11-execution-engine}
 
 Chapter 11 - Reflection
 
@@ -2142,7 +2331,7 @@ confidence updates
 hypothesis creation
 
 ================================================================================
-## Chapter 12: Database Schema
+## Chapter 12 - Tool Engine {#chapter-12-tool-engine}
 
 Chapter 12 - Learning
 
@@ -2162,7 +2351,7 @@ forgetting
 reputation updates
 
 ================================================================================
-## Chapter 13: Rust Implementation Guidelines
+## Chapter 13 - Memory Hierarchy {#chapter-13-memory-hierarchy}
 
 Chapter 13 - Personality
 
@@ -2180,7 +2369,7 @@ interaction policies
 This keeps personality from leaking into core cognition.
 
 ================================================================================
-## Chapter 14: Planning
+## Chapter 14 - Context Lifecycle {#chapter-14-context-lifecycle}
 
 Chapter 14 - World Model
 
@@ -2202,7 +2391,7 @@ Memory stores facts.
 World Model stores understanding.
 
 ================================================================================
-## Chapter 15: Skills
+## Chapter 15 - Retrieval Pipeline {#chapter-15-retrieval-pipeline}
 
 Chapter 15 - Skills
 
@@ -2225,7 +2414,7 @@ practice
 execution metrics
 
 ================================================================================
-## Chapter 16: Database
+## Chapter 16 - Prompt Construction {#chapter-16-prompt-construction}
 
 Chapter 16 - Safety
 
@@ -2241,7 +2430,7 @@ hallucination handling
 uncertainty reporting
 
 ================================================================================
-## Chapter 17: MCP
+## Chapter 17 - Strategic Learning {#chapter-17-strategic-learning}
 
 Chapter 17 - Performance
 
@@ -2259,7 +2448,7 @@ batching
 memory limits
 
 ================================================================================
-## Chapter 18: Services
+## Chapter 18 - Confidence System {#chapter-18-confidence-system}
 
 Chapter 18 - Future Roadmap
 
@@ -2275,7 +2464,7 @@ multimodal perception
 robotics integration
 
 ================================================================================
-## Chapter 19: Repositories
+## Chapter 19 - Knowledge Graph {#chapter-19-knowledge-graph}
 
 Chapter 19 - AI Coding Standards
 
@@ -2297,7 +2486,7 @@ Every feature includes tests when feasible.
 No hidden global state.
 
 ================================================================================
-## Chapter 20: Coding Standards
+## Chapter 20 - Storage Architecture {#chapter-20-storage-architecture}
 
 Chapter 20 - Philosophy
 
@@ -2309,19 +2498,19 @@ RoBoT is designed to become more competent through accumulated experience rather
 Those kinds of statements become tie-breakers when architecture choices compete.
 
 ================================================================================
-## Chapter 21: AI Development Workflow
+## Chapter 21 - Database Design {#chapter-21-database-design}
 
 ================================================================================
-## Chapter 22: Roadmap
+## Chapter 22 - Background Workers {#chapter-22-background-workers}
 
 ================================================================================
-## Chapter 23: Future Research
+## Chapter 23 - AI Contributor Operating Agreement {#chapter-23-ai-contributor-operating-agreement}
 
 ================================================================================
-## Chapter 24:
+## Chapter 24 {#chapter-24}
 
 ================================================================================
-## Chapter 25:
+## Chapter 25 {#chapter-25}
 
 
 
