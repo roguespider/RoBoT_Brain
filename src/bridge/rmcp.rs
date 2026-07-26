@@ -43,13 +43,19 @@ fn tool_output_to_content(output: ToolOutput) -> ContentBlock {
 }
 
 /// RMCP server wrapper for MCP bridge (reserved for future use)
-#[allow(dead_code)]
+/// 
+/// This struct provides a higher-level API around the MCP server handler.
+/// Currently used by the stdio server, but can be extended for other transports.
 pub struct RmcpServer {
     context: Arc<McpContext>,
 }
 
-#[allow(dead_code)]
 impl RmcpServer {
+    /// Create a new RMCP server wrapper
+    pub fn new(context: Arc<McpContext>) -> Self {
+        Self { context }
+    }
+
     /// Get the shared context
     pub fn context(&self) -> Arc<McpContext> {
         Arc::clone(&self.context)
@@ -64,17 +70,10 @@ pub async fn run_stdio_server(name: &str, version: &str, context: Arc<McpContext
         version
     );
 
-    let enforcer = Arc::new(WorkflowEnforcer::new());
-    let session_counter = Arc::new(AtomicU64::new(1));
-
-    let handler = McpServerHandler {
-        context,
-        name: name.to_string(),
-        version: version.to_string(),
-        enforcer,
-        session_counter,
-        session_id: "default".to_string(),
-    };
+    // Use McpServerHandler::new() to create the handler
+    let mut handler = McpServerHandler::new(context, name.to_string(), version.to_string());
+    // Generate a proper session ID using new_session()
+    handler.session_id = handler.new_session();
 
     // Log the tools that will be exposed
     let router = McpServerHandler::tool_router();
@@ -131,13 +130,11 @@ struct McpServerHandler {
     name: String,
     version: String,
     enforcer: Arc<WorkflowEnforcer>,
-    #[allow(dead_code)]
     session_counter: Arc<AtomicU64>,
     session_id: String,
 }
 
 impl McpServerHandler {
-    #[allow(dead_code)]
     fn new(context: Arc<McpContext>, name: String, version: String) -> Self {
         Self {
             context,
@@ -150,7 +147,6 @@ impl McpServerHandler {
     }
 
     /// Generate a new session ID
-    #[allow(dead_code)]
     fn new_session(&self) -> String {
         let id = self.session_counter.fetch_add(1, Ordering::SeqCst);
         format!("session-{}", id)

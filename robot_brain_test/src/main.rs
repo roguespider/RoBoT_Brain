@@ -95,8 +95,10 @@ fn setup_test_environment(server_path: &Path) -> anyhow::Result<TestEnvironment>
     let test_server = test_dir.join("robot_brain");
     fs::copy(server_path, &test_server)?;
     
-    let files_folder = test_dir.join("files_to_import");
-    fs::create_dir_all(&files_folder)?;
+    // Create TestEnvironment first to get the files_folder path
+    let test_env = TestEnvironment::new(test_dir, test_server);
+    let files_folder = &test_env.files_folder;
+    fs::create_dir_all(files_folder)?;
     
     let sample_files = [
         ("readme.txt", "This is a sample README file.\nIt contains important information."),
@@ -110,16 +112,16 @@ fn setup_test_environment(server_path: &Path) -> anyhow::Result<TestEnvironment>
         fs::write(files_folder.join(filename), content)?;
     }
     
-    println!("✓ Test directory: {}", test_dir.display());
-    println!("✓ Server: {}", test_server.display());
+    println!("✓ Test directory: {}", test_env.root_dir.display());
+    println!("✓ Server: {}", test_env.server_path.display());
     println!("✓ Files folder: {}", files_folder.display());
     
-    Ok(TestEnvironment::new(test_dir, test_server))
+    Ok(test_env)
 }
 
 /// MCP Client wrapper for testing
 pub struct TestMcpClient {
-    #[allow(dead_code)]
+    /// The child process (kept alive to maintain the server)
     child: Child,
     stdin: tokio::process::ChildStdin,
     stdout: BufReader<ChildStdout>,
@@ -221,6 +223,16 @@ impl TestMcpClient {
         json.get("result")
             .cloned()
             .ok_or_else(|| anyhow::anyhow!("No result in response"))
+    }
+    
+    /// Check if the child process is still running
+    pub fn is_running(&mut self) -> bool {
+        self.child.try_wait().ok().flatten().is_none()
+    }
+    
+    /// Get the child process PID (for debugging/logging)
+    pub fn pid(&self) -> Option<u32> {
+        self.child.id()
     }
 }
 

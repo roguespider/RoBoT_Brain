@@ -160,7 +160,6 @@ pub struct McpContext {
     pub database: Arc<SqliteDatabase>,
 
     /// Event bus
-    #[allow(dead_code)]
     pub bus: Arc<ExperienceBus>,
 
     /// Experience coordinator (used by experience tools)
@@ -170,15 +169,12 @@ pub struct McpContext {
     pub reflection: Arc<ReflectionEngine>,
 
     /// Evolution engine
-    #[allow(dead_code)]
     pub evolution: Arc<EvolutionEngine>,
 
     /// Background scheduler
-    #[allow(dead_code)]
     pub scheduler: Arc<Scheduler>,
 
     /// Metrics collector
-    #[allow(dead_code)]
     pub metrics: Arc<MetricsCollector>,
 
     /// Knowledge system - manages validated knowledge (used by knowledge tools)
@@ -188,30 +184,24 @@ pub struct McpContext {
     pub planner: Arc<crate::planner::Planner>,
 
     /// Policy engine - decision-making rules
-    #[allow(dead_code)]
     pub policy: Arc<crate::planner::PolicyEngine>,
 
     /// Working memory - short-term memory layer
-    #[allow(dead_code)]
     pub working_memory: Arc<crate::memory::WorkingMemory>,
 
     /// Permanent memory - long-term memory layer
-    #[allow(dead_code)]
     pub permanent_memory: Arc<crate::memory::PermanentMemory>,
 
     /// Memory retrieval - unified retrieval across layers
-    #[allow(dead_code)]
     pub memory_retrieval: Arc<crate::memory::MemoryRetrieval>,
 
     /// Workflow engine - structured workflow execution
     pub workflow_engine: Arc<WorkflowEngine>,
 
     /// Server info
-    #[allow(dead_code)]
     pub server_info: McpServerInfo,
 
     /// Server capabilities
-    #[allow(dead_code)]
     pub capabilities: McpCapabilities,
 }
 

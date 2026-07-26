@@ -19,14 +19,29 @@ impl EventHandler {
     /// Start the event handler - subscribes to events and logs them.
     /// This runs in the background processing events.
     pub fn start(&self) {
+        let bus = self.bus.clone();
         let mut receiver = self.bus.subscribe();
 
         tokio::spawn(async move {
             tracing::info!("Event handler started, listening for events");
-            while let Ok(event) = receiver.recv().await {
-                Self::handle_event(&event);
+            let mut tick_count: u64 = 0;
+            loop {
+                tokio::select! {
+                    Ok(event) = receiver.recv() => {
+                        Self::handle_event(&event);
+                    }
+                    _ = tokio::time::sleep(tokio::time::Duration::from_secs(60)) => {
+                        // Periodically log subscriber count for monitoring
+                        tick_count += 1;
+                        let count = bus.subscriber_count();
+                        tracing::debug!(
+                            "Event bus health: {} subscribers, {} ticks",
+                            count,
+                            tick_count
+                        );
+                    }
+                }
             }
-            tracing::warn!("Event handler stopped - bus closed");
         });
     }
 
@@ -40,7 +55,6 @@ impl EventHandler {
     }
 
     /// Get subscriber count for monitoring
-    #[allow(dead_code)]
     pub fn subscriber_count(&self) -> usize {
         self.bus.subscriber_count()
     }

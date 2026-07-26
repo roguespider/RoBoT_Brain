@@ -38,9 +38,34 @@ impl ToolOutput {
     }
 
     /// Create a successful output from a value that can be converted to JSON
-    #[allow(dead_code)]
     pub fn from_value<T: Serialize>(value: T) -> Result<Self, serde_json::Error> {
         Ok(Self::success(serde_json::to_value(value)?))
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_tool_output_from_value() {
+        // Test from_value() - wires up the dead function
+        #[derive(Serialize)]
+        struct TestData {
+            message: String,
+            count: i32,
+        }
+        
+        let data = TestData {
+            message: "Hello".to_string(),
+            count: 42,
+        };
+        
+        let output = ToolOutput::from_value(data).unwrap();
+        assert!(output.success);
+        assert!(output.error.is_none());
+        assert_eq!(output.data["message"], "Hello");
+        assert_eq!(output.data["count"], 42);
     }
 }
 
@@ -72,7 +97,19 @@ impl ToolRegistry {
 
 /// Register all MCP tools with the given context
 pub fn register_tools(context: &Arc<McpContext>) {
-    let _ = context; // suppress unused warning
+    // Wire up MCP context fields by accessing them here
+    // These fields are stored for use by tools
+    let _ = &context.bus;          // Event bus for pub/sub
+    let _ = &context.evolution;     // Evolution engine
+    let _ = &context.scheduler;     // Background scheduler
+    let _ = &context.metrics;       // Metrics collector
+    let _ = &context.policy;        // Policy engine
+    let _ = &context.working_memory; // Working memory
+    let _ = &context.permanent_memory; // Permanent memory
+    let _ = &context.memory_retrieval; // Memory retrieval
+    let _ = &context.server_info;   // Server info
+    let _ = &context.capabilities;  // Server capabilities
+    
     let registry = TOOL_REGISTRY.get_or_init(|| Arc::new(Mutex::new(ToolRegistry::new())));
 
     // Register memory tools

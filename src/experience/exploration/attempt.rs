@@ -33,7 +33,6 @@ pub struct ExplorationAttempt {
 
 impl ExplorationAttempt {
     /// Create a new attempt with the given action.
-    #[allow(dead_code)]
     pub fn new(id: String, action: String) -> Self {
         Self {
             id,
@@ -46,14 +45,12 @@ impl ExplorationAttempt {
     }
 
     /// Set the expected result before executing.
-    #[allow(dead_code)]
     pub fn with_expected_result(mut self, result: String) -> Self {
         self.expected_result = Some(result);
         self
     }
 
     /// Record the actual result and determine success.
-    #[allow(dead_code)]
     pub fn with_actual_result(mut self, result: String) -> Self {
         let result_clone = result.clone();
         self.actual_result = Some(result);
@@ -61,5 +58,31 @@ impl ExplorationAttempt {
             .map(|e| e == &result_clone)
             .unwrap_or(false);
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_attempt_builder() {
+        // Test new(), with_expected_result(), and with_actual_result()
+        let attempt = ExplorationAttempt::new("attempt-1".to_string(), "Try solution A".to_string())
+            .with_expected_result("Problem solved".to_string())
+            .with_actual_result("Problem solved".to_string());
+        
+        assert!(attempt.success);
+        assert_eq!(attempt.expected_result, Some("Problem solved".to_string()));
+        assert_eq!(attempt.actual_result, Some("Problem solved".to_string()));
+    }
+
+    #[test]
+    fn test_attempt_failure() {
+        let attempt = ExplorationAttempt::new("attempt-2".to_string(), "Try solution B".to_string())
+            .with_expected_result("Problem solved".to_string())
+            .with_actual_result("Still broken".to_string());
+        
+        assert!(!attempt.success);
     }
 }

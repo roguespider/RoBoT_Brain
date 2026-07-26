@@ -104,6 +104,47 @@ impl PermanentMemory {
         id
     }
 
+    /// Link two memory items as related (bidirectional)
+    /// This wires up the MemoryItem::add_related() method
+    pub async fn link_related(&self, id1: &Uuid, id2: &Uuid) -> bool {
+        // Clone items first to avoid borrow checker issues
+        let (item1, item2) = {
+            let cache = self.cache.read().await;
+            let i1 = cache.get(id1).cloned();
+            let i2 = cache.get(id2).cloned();
+            (i1, i2)
+        };
+        
+        match (item1, item2) {
+            (Some(mut i1), Some(mut i2)) => {
+                // Add bidirectional relationships using add_related
+                i1.add_related(*id2);
+                i2.add_related(*id1);
+                
+                // Update cache with modified items
+                {
+                    let mut cache = self.cache.write().await;
+                    cache.insert(*id1, i1.clone());
+                    cache.insert(*id2, i2.clone());
+                }
+                
+                // Update graph index bidirectionally
+                let mut graph_index = self.graph_index.write().await;
+                graph_index
+                    .entry(*id1)
+                    .or_insert_with(Vec::new)
+                    .push(*id2);
+                graph_index
+                    .entry(*id2)
+                    .or_insert_with(Vec::new)
+                    .push(*id1);
+                
+                true
+            }
+            _ => false,
+        }
+    }
+
     /// Retrieve an item from permanent memory
     pub async fn retrieve(&self, id: &Uuid) -> Option<MemoryItem> {
         let mut cache = self.cache.write().await;
@@ -469,5 +510,39 @@ mod tests {
         let confident_items = memory.find_confident(0.8).await;
         assert_eq!(confident_items.len(), 1);
         assert!(confident_items[0].content.contains("High"));
+    }
+
+    #[tokio::test]
+    async fn test_link_related() {
+        // Test that link_related uses MemoryItem::add_related
+        let memory = PermanentMemory::new(100);
+
+        let mut item1 = MemoryItem::new(
+            MemoryLayer::Permanent,
+            MemoryType::Knowledge,
+            "Item 1".to_string(),
+            "test".to_string(),
+        );
+        item1.add_tag("related_test");
+
+        let mut item2 = MemoryItem::new(
+            MemoryLayer::Permanent,
+            MemoryType::Knowledge,
+            "Item 2".to_string(),
+            "test".to_string(),
+        );
+        item2.add_tag("related_test");
+
+        let id1 = memory.store(item1).await;
+        let id2 = memory.store(item2).await;
+
+        // Link the items - this uses add_related internally
+        let linked = memory.link_related(&id1, &id2).await;
+        assert!(linked);
+
+        // Verify the relationship was created
+        let related = memory.get_related(&id1).await;
+        assert_eq!(related.len(), 1);
+        assert_eq!(related[0].id, id2);
     }
 }

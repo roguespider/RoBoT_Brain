@@ -26,7 +26,6 @@ pub struct Hypothesis {
 
 impl Hypothesis {
     /// Create a new hypothesis with the given statement.
-    #[allow(dead_code)]
     pub fn new(id: String, statement: String, initial_confidence: f32) -> Self {
         Self {
             id,
@@ -37,13 +36,11 @@ impl Hypothesis {
     }
 
     /// Set the result of testing this hypothesis.
-    #[allow(dead_code)]
     pub fn set_result(&mut self, result: HypothesisResult) {
         self.result = Some(result);
     }
 
     /// Update confidence based on test results.
-    #[allow(dead_code)]
     pub fn update_confidence(&mut self, new_confidence: f32) {
         self.confidence = new_confidence.clamp(0.0, 1.0);
     }
@@ -63,4 +60,43 @@ pub enum HypothesisResult {
     Rejected,
     /// Unable to determine result from evidence
     Unknown,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_hypothesis_lifecycle() {
+        // Test new(), set_result(), and update_confidence()
+        let mut hypothesis = Hypothesis::new(
+            "hyp-1".to_string(),
+            "This approach will work".to_string(),
+            0.5,
+        );
+        assert_eq!(hypothesis.confidence, 0.5);
+        assert!(hypothesis.result.is_none());
+        
+        // Test the hypothesis
+        hypothesis.set_result(HypothesisResult::Supported);
+        assert!(hypothesis.result.is_some());
+        
+        // Update confidence based on result
+        hypothesis.update_confidence(0.9);
+        assert_eq!(hypothesis.confidence, 0.9);
+    }
+
+    #[test]
+    fn test_confidence_clamping() {
+        let mut hypothesis = Hypothesis::new(
+            "hyp-2".to_string(),
+            "Statement".to_string(),
+            0.5,
+        );
+        hypothesis.update_confidence(1.5); // Should be clamped to 1.0
+        assert_eq!(hypothesis.confidence, 1.0);
+        
+        hypothesis.update_confidence(-0.5); // Should be clamped to 0.0
+        assert_eq!(hypothesis.confidence, 0.0);
+    }
 }

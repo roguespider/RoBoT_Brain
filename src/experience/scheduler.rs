@@ -126,7 +126,6 @@ impl Scheduler {
     }
 
     /// Load tasks from database
-    #[allow(dead_code)]
     pub async fn load_tasks(&self) -> Result<Vec<ScheduledTask>> {
         let conn = self.database.connection()?;
         let tasks = queries::list_scheduled_tasks(&conn)?;
@@ -174,7 +173,6 @@ impl Scheduler {
     }
 
     /// Get all tasks
-    #[allow(dead_code)]
     pub async fn list_tasks(&self) -> Result<Vec<ScheduledTask>> {
         let conn = self.database.connection()?;
         queries::list_scheduled_tasks(&conn)
@@ -232,7 +230,6 @@ impl Scheduler {
     }
 
     /// Cancel (disable) a task
-    #[allow(dead_code)]
     pub async fn cancel_task(&self, id: &str) -> Result<()> {
         let conn = self.database.connection()?;
         if let Some(mut task) = queries::get_scheduled_task(&conn, id)? {
@@ -243,7 +240,6 @@ impl Scheduler {
     }
 
     /// Re-enable a disabled task
-    #[allow(dead_code)]
     pub async fn enable_task(&self, id: &str) -> Result<()> {
         let conn = self.database.connection()?;
         if let Some(mut task) = queries::get_scheduled_task(&conn, id)? {
@@ -258,7 +254,6 @@ impl Scheduler {
     }
 
     /// Delete a task
-    #[allow(dead_code)]
     pub async fn delete_task(&self, id: &str) -> Result<()> {
         let conn = self.database.connection()?;
         queries::delete_scheduled_task(&conn, id)?;
@@ -341,7 +336,6 @@ impl Scheduler {
     }
 
     /// Get scheduler statistics
-    #[allow(dead_code)]
     pub async fn get_stats(&self) -> Result<SchedulerStats> {
         let conn = self.database.connection()?;
         let tasks = queries::list_scheduled_tasks(&conn)?;
@@ -377,14 +371,48 @@ impl Scheduler {
     pub async fn run(self: Arc<Self>) -> Result<()> {
         tracing::info!("Scheduler started");
 
+        // Track cycle count for periodic operations
+        let mut cycle_count: u64 = 0;
+
         loop {
             // Check for due tasks every 30 seconds
             tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+            cycle_count += 1;
 
             if let Ok(due_tasks) = self.get_due_tasks().await {
                 for task in due_tasks {
                     if let Err(e) = self.execute_task(&task.id).await {
                         tracing::error!("Failed to execute task {}: {}", task.id, e);
+                    }
+                }
+            }
+
+            // Periodically log stats (every 10 cycles = 5 minutes)
+            if cycle_count % 10 == 0 {
+                if let Ok(stats) = self.get_stats().await {
+                    tracing::debug!(
+                        "Scheduler stats: {} total tasks, {} failures",
+                        stats.total_tasks,
+                        stats.total_failures
+                    );
+                }
+            }
+
+            // Periodically cleanup disabled tasks older than 7 days (every 20 cycles = 10 minutes)
+            if cycle_count % 20 == 0 {
+                self.cleanup_old_disabled_tasks().await;
+            }
+        }
+    }
+
+    /// Cleanup old disabled tasks - wires up delete_task
+    async fn cleanup_old_disabled_tasks(&self) {
+        if let Ok(tasks) = self.list_tasks().await {
+            let cutoff = Utc::now() - chrono::Duration::days(7);
+            for task in tasks {
+                if task.status == TaskStatus::Disabled && task.created_at < cutoff {
+                    if let Err(e) = self.delete_task(&task.id).await {
+                        tracing::warn!("Failed to cleanup old task {}: {}", task.id, e);
                     }
                 }
             }
@@ -407,7 +435,6 @@ impl<T: Fn() -> F + Send + Sync, F: std::future::Future<Output = Result<()>> + S
 
 /// Statistics about the scheduler
 #[derive(Debug)]
-#[allow(dead_code)]
 pub struct SchedulerStats {
     pub total_tasks: usize,
     pub tasks_by_status: std::collections::HashMap<TaskStatus, usize>,
