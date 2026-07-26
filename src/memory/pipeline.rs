@@ -5,6 +5,14 @@
 //! - Consolidates working memory into permanent storage
 //! - Evaluates memories for promotion based on access patterns
 //! - Handles the reflection and memory update cycle
+//! 
+//! Per Architecture §9 (Permanent Memory Is Curated):
+//! - "Information should move from working memory into permanent memory only after evaluation"
+//! - Promotion requires the experience to go through the learning pipeline
+//! 
+//! Per Architecture §07:
+//! - Every experience originates from observations
+//! - Consolidation creates experiences that feed into reflection
 
 #![allow(dead_code)]
 
@@ -14,8 +22,9 @@ use anyhow::Result;
 use tracing::{info, debug};
 
 use crate::database::sqlite::SqliteDatabase;
-use crate::database::models::{MemoryCard, MemoryLayer as DbMemoryLayer};
+use crate::database::models::{MemoryCard, MemoryLayer as DbMemoryLayer, Observation};
 use crate::database::queries;
+use crate::experience::types::{Experience, ExperienceContext, ExperienceOutcome, ExperienceType};
 
 /// Consolidation criteria for promoting memories to Permanent layer
 #[derive(Debug, Clone)]
@@ -147,20 +156,81 @@ impl MemoryPipeline {
     }
 
     /// Consolidate a memory based on evaluation
+    /// 
+    /// Per Architecture §9: "Information should move from working memory into permanent 
+    ///                       memory only after evaluation"
+    /// Per Architecture §07: Every experience originates from observations
     pub fn consolidate_memory(&self, memory: &mut MemoryCard) -> Result<ConsolidationDecision> {
         let decision = self.evaluate_for_consolidation(memory);
+        let conn = self.database.connection()?;
         
+        // Create observation for consolidation decision (Per Architecture §07)
+        let content_preview = if memory.content.len() > 50 {
+            format!("{}...", &memory.content[..50])
+        } else {
+            memory.content.clone()
+        };
+        
+        let observation = Observation::new(
+            format!("Memory consolidation: {:?}", decision),
+            format!("memory_id={}, confidence={}, importance={}, access_count={}", 
+                    memory.id, memory.confidence, memory.importance, memory.access_count),
+            "memory_consolidation".to_string(),
+        );
+        queries::insert_observation(&conn, &observation)?;
+        
+        // Create experience for consolidation (Per Architecture §07: experiences originate from observations)
+        let decision_description = match decision {
+            ConsolidationDecision::Promote => format!("Memory promoted to Permanent: {}", content_preview),
+            ConsolidationDecision::Archive => format!("Memory archived: {}", content_preview),
+            ConsolidationDecision::KeepWorking => format!("Memory kept in Working: {}", content_preview),
+            ConsolidationDecision::Delete => format!("Memory deleted: {}", content_preview),
+        };
+        
+        let mut experience = Experience::new(
+            format!("Memory consolidation: {:?}", decision),
+            decision_description,
+            ExperienceType::Reflection,  // Consolidation is a form of reflection
+            vec![observation.id],  // Observation origins per §07
+        );
+        
+        experience.context = ExperienceContext {
+            memory_type: Some(memory.memory_type.to_string()),
+            content_length: Some(memory.content.len()),
+            source: Some("memory_consolidation".to_string()),
+            ..Default::default()
+        };
+        
+        // Set outcome based on decision
+        experience.outcome = match decision {
+            ConsolidationDecision::Promote => ExperienceOutcome::success(),
+            ConsolidationDecision::Archive | ConsolidationDecision::KeepWorking => ExperienceOutcome::interrupted(),
+            ConsolidationDecision::Delete => ExperienceOutcome::failure("Memory deleted during consolidation"),
+        };
+        
+        experience.tags = vec![
+            "memory".to_string(),
+            "consolidation".to_string(),
+            format!("{:?}", decision).to_lowercase(),
+        ];
+        if let Err(e) = experience.commit() {
+            debug!("Experience already committed: {}", e);
+        }
+        
+        // Store experience memory (this feeds into the learning pipeline)
+        let memory_from_exp = MemoryCard::from_experience(&experience);
+        queries::insert_memory(&conn, &memory_from_exp)?;
+        
+        // Perform the consolidation action
         match decision {
             ConsolidationDecision::Promote => {
                 memory.promote_to_permanent();
-                let conn = self.database.connection()?;
                 queries::insert_memory(&conn, memory)?;
-                info!("Memory {} promoted to Permanent layer", memory.id);
+                info!("Memory {} promoted to Permanent layer (via learning pipeline)", memory.id);
             }
             ConsolidationDecision::Archive => {
                 memory.layer = DbMemoryLayer::Permanent;
                 memory.confidence *= 0.8; // Reduce confidence
-                let conn = self.database.connection()?;
                 queries::insert_memory(&conn, memory)?;
                 debug!("Memory {} archived", memory.id);
             }
@@ -168,7 +238,6 @@ impl MemoryPipeline {
                 debug!("Memory {} kept in Working layer", memory.id);
             }
             ConsolidationDecision::Delete => {
-                let conn = self.database.connection()?;
                 queries::delete_memories(&conn, &[memory.id])?;
                 info!("Memory {} deleted", memory.id);
             }

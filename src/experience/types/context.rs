@@ -15,6 +15,13 @@ pub struct ExperienceContext {
     pub session_id: Option<String>,
     pub parent_experience: Option<Uuid>,
     pub user_query: Option<String>,
+    
+    // Per Architecture §6.3: Memory-related context
+    pub memory_type: Option<String>,
+    pub content_length: Option<usize>,
+    pub search_query: Option<String>,
+    pub results_count: Option<usize>,
+    pub source: Option<String>,
 }
 
 /// Workflow information.
