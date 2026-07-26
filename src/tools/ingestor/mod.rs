@@ -15,5 +15,6 @@ pub use core::{
     execute_list_ingested_files, execute_transcribe_audio, ingest_file,
     IngestFilesInput, ListImportableInput,
     DeleteIngestedFilesInput, ListIngestedFilesInput, TranscribeAudioInput,
-    can_delete_files, clear_ingest_tracker, can_verify_deletion,
+    can_delete_files, clear_ingest_tracker, can_verify_deletion, DEFAULT_CHUNK_SIZE, 
+    DEFAULT_CHUNK_OVERLAP, JSON_CHUNK_SIZE, DEFAULT_INGEST_TIMEOUT_SECS,
 };
