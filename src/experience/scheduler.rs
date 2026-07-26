@@ -70,6 +70,9 @@ pub enum TaskType {
     /// Run reputation decay
     ReputationDecay,
 
+    /// Consolidate working memory to permanent
+    MemoryConsolidation,
+
     /// Custom task
     Custom,
 }
@@ -442,4 +445,23 @@ pub struct SchedulerStats {
     pub tasks_by_status: std::collections::HashMap<TaskStatus, usize>,
     pub tasks_by_type: std::collections::HashMap<TaskType, usize>,
     pub total_failures: u32,
+}
+
+/// Setup memory consolidation as a periodic task
+pub async fn setup_memory_consolidation_task(scheduler: &Scheduler) -> Result<()> {
+    // Check if task already exists
+    let existing = scheduler.list_tasks().await?;
+    let has_consolidation = existing.iter().any(|t| t.task_type == TaskType::MemoryConsolidation);
+    
+    if !has_consolidation {
+        // Create memory consolidation task - runs every hour
+        scheduler.create_task(
+            "Memory Consolidation",
+            TaskType::MemoryConsolidation,
+            TaskSchedule::Interval { seconds: 3600 }, // Run every hour
+        ).await?;
+        tracing::info!("Scheduled memory consolidation task (hourly)");
+    }
+    
+    Ok(())
 }

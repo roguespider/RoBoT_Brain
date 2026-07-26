@@ -276,12 +276,14 @@ impl WorkflowEngine {
                 let input = tools::ingestor::IngestFilesInput {
                     folder: params.get("folder").cloned(),
                     file_path: params.get("file_path").cloned(),
+                    file_paths_alias: None,
                     limit: params.get("limit").and_then(|s| s.parse().ok()),
                     chunk_size: params.get("chunk_size").and_then(|s| s.parse().ok()),
                     memory_type: params.get("memory_type").cloned(),
                     timeout_seconds: params.get("timeout_seconds").and_then(|s| s.parse().ok()),
                     recursive: params.get("recursive").and_then(|s| s.parse().ok()),
                     force: params.get("force").and_then(|s| s.parse().ok()),
+                    summary_only: params.get("summary_only").and_then(|s| s.parse().ok()),
                 };
 
                 if let Some(db) = &self.database {

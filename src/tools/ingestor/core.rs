@@ -2,7 +2,7 @@
 // Core file ingestion logic
 
 use std::collections::HashSet;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::{Duration, Instant};
 
@@ -12,19 +12,21 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 
 use crate::database::models::{MemoryCard, MemoryType};
-use crate::database::queries;
 use crate::database::sqlite::SqliteDatabase;
+use crate::memory::pipeline::MemoryPipeline;
 use crate::tools::ToolOutput;
 use crate::tools::ingestor::archive_handler::{
-    create_archive_temp_dir, delete_empty_folders,
-    get_recent_archive_temp_folder, process_archive,
+    create_archive_temp_dir, delete_empty_folders, process_archive,
 };
-use crate::tools::ingestor::file_collector::{collect_all_files_recursive, collect_importable_files, collect_importable_files_with_recursive, get_import_folder, is_supported_extension, JSON_EXTENSIONS, ARCHIVE_EXTENSIONS};
-use crate::tools::ingestor::text_extractor::{chunk_text, extract_text};
+use crate::tools::ingestor::file_collector::{collect_all_files_recursive, collect_importable_files, collect_importable_files_with_recursive, get_import_folder, is_supported_extension, JSON_EXTENSIONS, ARCHIVE_EXTENSIONS, TEXT_EXTENSIONS, IMAGE_EXTENSIONS};
+use crate::tools::ingestor::text_extractor::{extract_text, extract_image_metadata, validate_text_quality};
+use crate::tools::ingestor::semantic_chunker::{parse_document, get_file_type};
+use crate::tools::ingestor::json_importer::import_json_file;
 
 // Re-export for convenience (via parent module)
 pub use super::workflow::{
     execute_delete_ingested_files, execute_list_importable, execute_list_ingested_files,
+    find_empty_folders_after_deletion,
 };
 pub use super::audio::execute_transcribe_audio;
 
@@ -34,9 +36,6 @@ pub const DEFAULT_CHUNK_SIZE: usize = 1000;
 /// Default overlap between chunks
 pub const DEFAULT_CHUNK_OVERLAP: usize = 100;
 
-/// Larger chunk size for JSON files (better for structured data)
-pub const JSON_CHUNK_SIZE: usize = 16384;
-
 /// Check if a file is an archive based on its extension
 fn is_archive_file(path: &Path) -> bool {
     is_supported_extension(path, ARCHIVE_EXTENSIONS)
@@ -45,19 +44,21 @@ fn is_archive_file(path: &Path) -> bool {
 /// Get file size as a human-readable string
 fn file_info_size(path: &str) -> String {
     std::fs::metadata(path)
-        .map(|m| {
-            let bytes = m.len();
-            if bytes < 1024 {
-                format!("{} B", bytes)
-            } else if bytes < 1024 * 1024 {
-                format!("{:.1} KB", bytes as f64 / 1024.0)
-            } else if bytes < 1024 * 1024 * 1024 {
-                format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0))
-            } else {
-                format!("{:.1} GB", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
-            }
-        })
+        .map(|m| format_size(m.len()))
         .unwrap_or_else(|_| "unknown size".to_string())
+}
+
+/// Format bytes as human-readable string
+fn format_size(bytes: u64) -> String {
+    if bytes < 1024 {
+        format!("{} B", bytes)
+    } else if bytes < 1024 * 1024 {
+        format!("{:.1} KB", bytes as f64 / 1024.0)
+    } else if bytes < 1024 * 1024 * 1024 {
+        format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0))
+    } else {
+        format!("{:.1} GB", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
+    }
 }
 
 /// Tracks recently ingested files for deletion verification
@@ -192,6 +193,9 @@ pub const DEFAULT_INGEST_TIMEOUT_SECS: u64 = 60;
 pub struct IngestFilesInput {
     pub folder: Option<String>,
     pub file_path: Option<String>,
+    /// Alias for file_path for backwards compatibility
+    #[serde(rename = "file_paths", alias = "file_paths")]
+    pub file_paths_alias: Option<Vec<String>>,
     pub limit: Option<usize>,
     pub chunk_size: Option<usize>,
     pub memory_type: Option<String>,
@@ -203,6 +207,24 @@ pub struct IngestFilesInput {
     /// Force re-ingestion of already-ingested files (default: false)
     /// Use this when user confirms they want to add a file again
     pub force: Option<bool>,
+    /// Return a compact summary instead of full verbose output (default: false)
+    /// Set to true for cleaner output when using interactively
+    pub summary_only: Option<bool>,
+}
+
+impl IngestFilesInput {
+    /// Get the first file path from either file_path or file_paths
+    pub fn get_file_path(&self) -> Option<&str> {
+        if let Some(ref fp) = self.file_path {
+            return Some(fp);
+        }
+        if let Some(ref fps) = self.file_paths_alias {
+            if let Some(first) = fps.first() {
+                return Some(first);
+            }
+        }
+        None
+    }
 }
 
 /// Tool: List files ready for import
@@ -212,6 +234,9 @@ pub struct ListImportableInput {
     pub limit: Option<usize>,
     /// Search subfolders recursively (default: true)
     pub recursive: Option<bool>,
+    /// List all files without limit (default: false)
+    /// Set to true to show all files instead of just the first few
+    pub list_all: Option<bool>,
 }
 
 /// Tool: Transcribe an audio file
@@ -269,16 +294,17 @@ pub async fn ingest_file(
     db: Arc<SqliteDatabase>,
 ) -> Result<ToolOutput> {
     let folder = get_import_folder(input.folder.as_deref());
-    let file_path = input.file_path.as_ref();
+    let file_path = input.get_file_path();
     let limit = input.limit.unwrap_or(1);
     let chunk_size = input.chunk_size.unwrap_or(DEFAULT_CHUNK_SIZE);
     let memory_type = parse_memory_type(input.memory_type.as_deref().unwrap_or("file"));
     let timeout_secs = input.timeout_seconds.unwrap_or(DEFAULT_INGEST_TIMEOUT_SECS);
     let recursive = input.recursive.unwrap_or(true);
     let force = input.force.unwrap_or(false);
+    let summary_only = input.summary_only.unwrap_or(false);
 
-    tracing::info!("Starting file ingestion: limit={}, chunk_size={}, timeout={}s, recursive={}, force={}", 
-                   limit, chunk_size, timeout_secs, recursive, force);
+    tracing::info!("Starting file ingestion: limit={}, chunk_size={}, timeout={}s, recursive={}, force={}, summary_only={}", 
+                   limit, chunk_size, timeout_secs, recursive, force, summary_only);
 
     // Helper function to ingest a single file (handles both regular and archive files)
     async fn ingest_path(
@@ -533,7 +559,7 @@ pub async fn ingest_file(
             .map(|r| r.file_path.clone())
             .collect();
 
-        let remaining_count: usize = results.iter().map(|r| r.remaining_count).sum();
+        let _remaining_count: usize = results.iter().map(|r| r.remaining_count).sum();
 
         // RECORD INGESTED FILES for deletion tracking
         // This enables the delete_ingested_files tool to verify files were actually ingested
@@ -548,8 +574,8 @@ pub async fn ingest_file(
         }
 
         	        // Get folder path for reference
-        let folder_display = folder.to_string_lossy().to_string();
-        let exe_dir = std::env::current_exe()
+        let _folder_display = folder.to_string_lossy().to_string();
+        let _exe_dir = std::env::current_exe()
             .ok()
             .and_then(|p| p.parent().map(|p| p.to_string_lossy().to_string()))
             .unwrap_or_else(|| "unknown".to_string());
@@ -572,7 +598,19 @@ pub async fn ingest_file(
             })
             .collect();
 
-        let summary = IngestSummary {
+        // Check if the ingested file had an error (before moving results)
+        let failed_file = if failed > 0 {
+            results.iter().find(|r| !r.success).map(|r| {
+                serde_json::json!({
+                    "filename": r.filename,
+                    "error": r.error
+                })
+            })
+        } else {
+            None
+        };
+
+        let _summary = IngestSummary {
             total_files,
             successful,
             failed,
@@ -583,185 +621,167 @@ pub async fn ingest_file(
         // Format already ingested files for display
         let already_ingested_filenames: Vec<String> = already_ingested.iter().map(|f| f.filename.clone()).collect();
         
-        // Check if batch mode was used (limit > 1)
-        let batch_mode_warning = if limit > 1 {
-            "WARNING: Batch mode detected (limit > 1). Per workflow rules, you should use limit=1 for one file at a time."
+        // Check if this file was skipped (has issues before ingestion)
+        let skipped_file = if !skipped_files.is_empty() {
+            Some(serde_json::json!({
+                "filename": skipped_files[0].filename,
+                "size": format_size(skipped_files[0].size),
+                "reason": skipped_files[0].skip_reason
+            }))
         } else {
-            ""
+            None
         };
         
         // Generate user-facing message based on what happened
-        let user_message = if !already_ingested.is_empty() && successfully_ingested.is_empty() {
-            // All files were already ingested - ask user if they want to re-ingest
-            format!(
-                "These files have already been added to memory: {:?}.\nDo you want to add them again?",
-                already_ingested_filenames
-            )
+        let _user_message = if let Some(ref skipped) = skipped_file {
+            format!("Can't ingest '{}': {}", skipped["filename"], skipped["reason"])
+        } else if let Some(ref failed) = failed_file {
+            format!("'{}' failed: {}. Do you want to retry?", 
+                failed["filename"], failed["error"])
+        } else if !already_ingested.is_empty() && successfully_ingested.is_empty() {
+            format!("'{}' was already ingested. Do you want to ingest it again?", already_ingested_filenames[0])
         } else if successfully_ingested.is_empty() && already_ingested.is_empty() {
-            "No files were ingested. Files may have been skipped (size limits, embedding patterns, or unsupported format).".to_string()
-        } else if successfully_ingested.is_empty() {
-            "No new files were ingested.".to_string()
+            "No files to ingest.".to_string()
         } else if successfully_ingested.len() == 1 {
             let filename = successfully_ingested[0].rsplit('/').last().unwrap_or(&successfully_ingested[0]).rsplit('\\').last().unwrap_or(&successfully_ingested[0]);
-            format!(
-                "Successfully ingested: {}\nCan I delete the original file to save space?",
-                filename
-            )
+            format!("Successfully ingested: {}", filename)
         } else {
-            format!(
-                "Successfully ingested {} files.\nCan I delete the original files to save space?",
-                successfully_ingested.len()
-            )
+            format!("Successfully ingested {} files.", successfully_ingested.len())
         };
         
+        // Return compact response if summary_only is true
+        if summary_only {
+            let empty_folders = find_empty_folders_after_deletion(&successfully_ingested);
+            
+            return Ok(ToolOutput::success(serde_json::json!({
+                "success": successful > 0,
+                "total_chunks": total_chunks,
+                
+                // Files ingested
+                "files": ingested_file_details.iter().map(|d| {
+                    serde_json::json!({
+                        "filename": d.get("filename").and_then(|v| v.as_str()).unwrap_or("?"),
+                        "size": d.get("file_size").and_then(|v| v.as_str()).unwrap_or("?"),
+                        "chunks": d.get("chunks").and_then(|v| v.as_u64()).unwrap_or(0)
+                    })
+                }).collect::<Vec<_>>(),
+                
+                // Summary of what was added to memory
+                "summary": if successful == 1 {
+                    format!("Added {} chunks to memory from '{}'", 
+                        total_chunks,
+                        ingested_file_details.first().and_then(|d| d.get("filename")).and_then(|v| v.as_str()).unwrap_or("file"))
+                } else {
+                    format!("Added {} chunks to memory from {} files", total_chunks, successful)
+                },
+                
+                // Ask user about deleting the file(s)
+                "ask_delete_file": if successful > 0 {
+                    serde_json::json!("Can I delete the original file to save space?")
+                } else {
+                    serde_json::Value::Null
+                },
+                "deletion_candidates": successfully_ingested,
+                
+                // Check for empty folders
+                "empty_folders": empty_folders.iter().map(|p| {
+                    p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| p.to_string_lossy().to_string())
+                }).collect::<Vec<_>>(),
+                "ask_delete_folders": if !empty_folders.is_empty() {
+                    serde_json::json!("Some folders are now empty. Can I delete them too?")
+                } else {
+                    serde_json::Value::Null
+                },
+                
+                // Skipped or failed file info
+                "can't_ingest": skipped_file.clone(),
+                "ask_skip": if skipped_file.is_some() {
+                    serde_json::json!("Skip this file and move to the next one?")
+                } else if failed_file.is_some() {
+                    serde_json::json!("Do you want to retry ingesting this file?")
+                } else {
+                    serde_json::Value::Null
+                },
+                
+                // Already ingested
+                "already_ingested": already_ingested_filenames,
+                "ask_reingest": if !already_ingested.is_empty() && successful == 0 {
+                    serde_json::json!("This file was already ingested. Do you want to ingest it again?")
+                } else {
+                    serde_json::Value::Null
+                },
+                
+                "timeout_occurred": timeout_occurred
+            })));
+        }
+        
         Ok(ToolOutput::success(serde_json::json!({
-            "summary": summary,
-            "user_message": user_message,
-            "successfully_ingested": successfully_ingested,
-            "ingested_file_details": ingested_file_details,
-            "import_folder": folder_display,
-            "exe_directory": exe_dir,
-            "temp_folder": get_recent_archive_temp_folder().map(|p| p.to_string_lossy().to_string()),
-            "remaining_in_temp": remaining_count,
-            "files_stored_in": format!("robot_brain.db in {}", exe_dir),
-            "files_ready_for_deletion": successfully_ingested.clone(),
-            "already_ingested": already_ingested_filenames,
-            "already_ingested_count": already_ingested.len(),
-            "skipped_count": skipped_files.len(),
-            "IMPORTANT_SCOPING": {
-                "scope": "ONLY look in import_folder for files",
-                "do_not_look": ["current project folder", "source code directories", "anywhere outside import_folder"],
-                "this_folder": folder_display,
-                "reason": "robot_brain.exe, robot_brain.db, and files_to_import are all in the robot_brain directory"
-            },
-            // =============================================================================
-            // MANDATORY WORKFLOW - MUST FOLLOW THESE EXACT STEPS FOR EACH FILE
-            // =============================================================================
-            "WORKFLOW_STATUS": {
-                "description": "This workflow applies to EACH file. Repeat for all files.",
-                "step_1_get_workflow": "[COMPLETE] (done at start of session)",
-                "step_2_list_importable": "[COMPLETE] (done at start of session)",
-                "step_3_ingest": "[COMPLETE] - NOW DO STEP 4",
-                "step_4_SUMMARIZE": {
-                    "status": "REQUIRED - DO THIS NOW",
-                    "instruction": "You MUST summarize what was just ingested BEFORE asking about deletion",
-                    "required_fields": ["filename", "file_size", "chunk_count", "memory_ids"],
-                    "example": "Ingested 'report.pdf' (2.5MB) - 10 chunks added to memory with IDs: abc123, def456, ..."
-                },
-                "step_5_ASK_USER_ABOUT_FILE": {
-                    "status": "REQUIRED - DO THIS AFTER SUMMARIZE",
-                    "instruction": "After summarizing, ASK the user if they want to delete the original file(s)",
-                    "example": "'I successfully ingested [filename]. Can I delete the original file to save space?'"
-                },
-                "step_6_DELETE_FILE": {
-                    "status": "ONLY AFTER USER CONFIRMS 'YES'",
-                    "instruction": "Only call delete_ingested_files AFTER user says YES to file deletion",
-                    "response_will_contain": "empty_folders field - check this after deletion"
-                },
-                "step_7_CHECK_EMPTY_FOLDERS": {
-                    "status": "REQUIRED - DO THIS AFTER FILE DELETION",
-                    "instruction": "After delete_ingested_files response, check empty_folders field",
-                    "if_empty_folders_not_empty": "ASK USER: 'Folders X, Y are now empty. Do you want to delete them?'",
-                    "WARNING_DO_NOT_SKIP": "You MUST ask about empty folders even if user said no to file deletion"
-                },
-                "step_8_REPEAT": {
-                    "status": "FOR EACH FILE",
-                    "instruction": "Repeat steps 4-7 for each remaining file, then ask user if done"
-                }
-            },
-            "MANDATORY_SUMMARIZE": {
-                "required": true,
-                "fields_to_include": ["filename", "file_size", "chunk_count", "memory_ids", "content_preview"],
-                "example": "Ingested '[FILENAME]' ([SIZE]) - [CHUNKS] chunks added to memory with IDs: [ID1, ID2, ...]",
-                "warning": "Do NOT skip the summary. Users need to know what was added to their memory."
-            },
-            "note": if remaining_count > 0 {
-                format!("{} file(s) remaining in temp folder. Call ingest again with temp_folder path.", remaining_count)
-            } else if successfully_ingested.is_empty() && already_ingested.is_empty() {
-                "No files were ingested. Files may have been skipped (size limits, embedding patterns).".to_string()
-            } else if successfully_ingested.is_empty() {
-                "No new files were ingested.".to_string()
+            // Success status
+            "success": successful > 0,
+            "total_chunks": total_chunks,
+            
+            // Files ingested (one at a time)
+            "files": ingested_file_details.iter().map(|d| {
+                serde_json::json!({
+                    "filename": d.get("filename").and_then(|v| v.as_str()).unwrap_or("?"),
+                    "size": d.get("file_size").and_then(|v| v.as_str()).unwrap_or("?"),
+                    "chunks": d.get("chunks").and_then(|v| v.as_u64()).unwrap_or(0)
+                })
+            }).collect::<Vec<_>>(),
+            
+            // Summary of what was added to memory
+            "summary": if successful == 1 {
+                format!("Added {} chunks to memory from '{}'", 
+                    total_chunks,
+                    ingested_file_details.first().and_then(|d| d.get("filename")).and_then(|v| v.as_str()).unwrap_or("file"))
             } else {
-                "All files ingested.".to_string()
+                format!("Added {} chunks to memory from {} files", total_chunks, successful)
             },
-            "NEXT_ACTION": {
-                "description": "Complete these steps IN ORDER for each file:",
-                "step_1_SUMMARIZE": {
-                    "action": "TELL THE USER what was just ingested",
-                    "instruction": "Include: filename, file_size, chunk_count, memory_ids",
-                    "example": format!("Ingested '{}' ({} bytes) - {} chunks added to memory with IDs: {:?}", 
-                        ingested_file_details.first().and_then(|d| d.get("filename")).and_then(|v| v.as_str()).unwrap_or("file"),
-                        ingested_file_details.first().and_then(|d| d.get("file_size")).and_then(|v| v.as_str()).unwrap_or("?"),
-                        ingested_file_details.first().and_then(|d| d.get("chunks")).and_then(|v| v.as_u64()).unwrap_or(0),
-                        ingested_file_details.first().and_then(|d| d.get("memory_ids")).and_then(|v| v.as_array()).map(|a| a.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>()).unwrap_or_default()
-                    )
-                },
-                "step_2_ASK_ABOUT_FILE": {
-                    "action": "ASK THE USER about file deletion",
-                    "instruction": "After summary, ask: 'Can I delete the original file to save space?'",
-                    "WARNING_WAIT_FOR_RESPONSE": "Do NOT proceed until user responds YES or NO"
-                },
-                "step_3_DELETE_FILE": {
-                    "action": "ONLY IF USER SAYS YES",
-                    "instruction": "Call delete_ingested_files with the files list",
-                    "example": {
-                        "files": successfully_ingested,
-                        "confirmation": "yes"
-                    },
-                    "after_this": "Check the response for empty_folders field"
-                },
-                "step_4_ASK_ABOUT_EMPTY_FOLDERS": {
-                    "action": "AFTER FILE DELETION - CHECK AND ASK",
-                    "instruction": "In the delete_ingested_files response, look at empty_folders field",
-                    "if_folders_exist": "ASK THE USER: 'Folders are now empty. Do you want to delete them?'",
-                    "REQUIRED": "You MUST ask about empty folders even if user said no to file deletion"
-                }
-            },
-            "deletion_workflow": {
-                "required": true,
-                "workflow": [
-                    {"step": 1, "action": "SUMMARIZE what was ingested"},
-                    {"step": 2, "action": "ASK USER for deletion permission"},
-                    {"step": 3, "action": "ONLY THEN call delete_ingested_files"}
-                ],
-                "if_user_says_yes": {
-                    "step_1": "Call delete_ingested_files",
-                    "step_2": "Use files from 'files_ready_for_deletion' list",
-                    "step_3": "Set confirmation='yes'",
-                    "step_4": "Check response.empty_folders - if not empty, ASK USER about folder cleanup",
-                    "example": {
-                        "files": successfully_ingested,
-                        "confirmation": "yes"
-                    }
-                },
-                "if_user_says_no": {
-                    "action": "Keep files - no deletion needed",
-                    "note": "Files will NOT be offered again on next ingest_files call"
-                },
-                "files_pending_deletion": successfully_ingested.len()
-            },
-            "folder_cleanup": {
-                "note": "After file deletion, check delete_ingested_files response for empty_folders",
-                "scenario": "If empty_folders is not empty, folders are now empty and can be deleted",
-                "ask_user": "ASK USER: 'Do you want to delete the empty folder(s)?'",
-                "warning": "Only delete folders INSIDE files_to_import, never the files_to_import folder itself"
-            },
-            "timeout_occurred": timeout_occurred,
-            "timeout_help": if timeout_occurred {
-                serde_json::json!("A timeout occurred. To fix this, call ingest_files again with a higher timeout_seconds value (e.g., 300 for 5 minutes).")
+            
+            // Ask user about deleting the file(s)
+            "ask_delete_file": if successful > 0 {
+                serde_json::json!("Can I delete the original file to save space?")
             } else {
                 serde_json::Value::Null
             },
-            "batch_mode_warning": batch_mode_warning,
-            "recursive_used": recursive,
-            "CRITICAL_RULES_VIOLATION_WILL_CAUSE_ERRORS": [
-                "RULE 1: MUST summarize what was ingested (filename, size, chunks, IDs)",
-                "RULE 2: MUST ask user before deleting (do NOT auto-delete)",
-                "RULE 3: Do NOT batch ingest - use limit=1 for one file at a time",
-                "RULE 4: After file deletion, MUST check empty_folders and ASK USER about those",
-                "RULE 5: Repeat for each file, then ask user if done"
-            ],
-            "WARNING_VIOLATION": "VIOLATION: If you skip asking about empty folders, the workflow is incomplete."
+            "deletion_candidates": successfully_ingested,
+            
+            // Check for empty folders after deletion
+            "empty_folders": find_empty_folders_after_deletion(&successfully_ingested).iter().map(|p| {
+                p.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_else(|| p.to_string_lossy().to_string())
+            }).collect::<Vec<_>>(),
+            
+            // Ask user about deleting empty folders
+            "ask_delete_folders": if !find_empty_folders_after_deletion(&successfully_ingested).is_empty() {
+                serde_json::json!("Some folders are now empty. Can I delete them too?")
+            } else {
+                serde_json::Value::Null
+            },
+            
+            // Skipped or failed file info
+            "can't_ingest": skipped_file.clone(),
+            "ask_skip": if skipped_file.is_some() {
+                serde_json::json!("Skip this file and move to the next one?")
+            } else if failed_file.is_some() {
+                serde_json::json!("Do you want to retry ingesting this file?")
+            } else {
+                serde_json::Value::Null
+            },
+            
+            // Already ingested
+            "already_ingested": already_ingested_filenames,
+            "ask_reingest": if !already_ingested.is_empty() && successful == 0 {
+                serde_json::json!("This file was already ingested. Do you want to ingest it again?")
+            } else {
+                serde_json::Value::Null
+            },
+            
+            "timeout_occurred": timeout_occurred,
+            "timeout_help": if timeout_occurred {
+                serde_json::json!("A timeout occurred. Call ingest_files again with a higher timeout_seconds value (e.g., 300).")
+            } else {
+                serde_json::Value::Null
+            }
         })))
     }
 }
@@ -799,8 +819,42 @@ async fn ingest_archive(
         });
     }
 
-    // Ingest the first file
-    let first_file = &files[0];
+    // Filter to only text-based files (skip images, binaries, etc.)
+    let all_files = files.clone();
+    let text_files: Vec<PathBuf> = files
+        .into_iter()
+        .filter(|f| {
+            let ext = f.extension()
+                .and_then(|e| e.to_str())
+                .unwrap_or("")
+                .to_lowercase();
+            TEXT_EXTENSIONS.contains(&ext.as_str()) || 
+            JSON_EXTENSIONS.contains(&ext.as_str()) ||
+            ext == "txt" || ext == "md" || ext == "html" || ext == "xml"
+        })
+        .collect();
+
+    if text_files.is_empty() {
+        // Clean up the temp directory
+        for file_path in all_files {
+            let _ = std::fs::remove_file(&file_path);
+        }
+        delete_empty_folders(&temp_dir);
+        
+        return Ok(IngestResult {
+            filename,
+            file_path: path.to_string_lossy().to_string(),
+            success: false,
+            chunks_created: 0,
+            chunk_size_used: chunk_size,
+            memory_ids: vec![],
+            error: Some("Archive contains no text-based files (only images, binaries, etc.)".to_string()),
+            remaining_count: 0,
+        });
+    }
+
+    // Ingest the first text file
+    let first_file = &text_files[0];
     let result = ingest_single_file(first_file, chunk_size, memory_type, db).await?;
 
     // Count remaining files BEFORE cleanup
@@ -827,8 +881,108 @@ async fn ingest_archive(
     })
 }
 
-/// Ingest a single file into memory
+/// Ingest a single file into memory using semantic hierarchical chunking
 async fn ingest_single_file(
+    path: &Path,
+    _chunk_size: usize,
+    memory_type: MemoryType,
+    db: Arc<SqliteDatabase>,
+) -> Result<IngestResult> {
+    let filename = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+
+    // Check if this is an image file - handle separately
+    if is_supported_extension(path, IMAGE_EXTENSIONS) {
+        return ingest_image_file(path, 0, memory_type, db).await;
+    }
+
+    // Check if this is a JSON file - use smart JSON importer
+    if is_supported_extension(path, JSON_EXTENSIONS) {
+        return ingest_json_file(path, 0, memory_type, db).await;
+    }
+
+    // Extract text content for other file types
+    let text = extract_text(path)
+        .with_context(|| format!("Failed to extract text from {}", filename))?;
+
+    if text.trim().is_empty() {
+        return Ok(IngestResult {
+            filename,
+            file_path: path.to_string_lossy().to_string(),
+            success: false,
+            chunks_created: 0,
+            chunk_size_used: 0,
+            memory_ids: vec![],
+            error: Some("File contains no text".to_string()),
+            remaining_count: 0,
+        });
+    }
+
+    // Validate text quality - reject binary garbage
+    let (is_valid, quality_reason) = validate_text_quality(&text);
+    if !is_valid {
+        return Ok(IngestResult {
+            filename,
+            file_path: path.to_string_lossy().to_string(),
+            success: false,
+            chunks_created: 0,
+            chunk_size_used: 0,
+            memory_ids: vec![],
+            error: Some(format!("Content is not readable text: {}", quality_reason)),
+            remaining_count: 0,
+        });
+    }
+
+    // Get file extension for semantic parsing
+    let extension = path
+        .extension()
+        .and_then(|e| e.to_str())
+        .unwrap_or("txt");
+    let file_type = get_file_type(extension);
+    
+    // Parse document into hierarchy tree
+    let hierarchy = parse_document(&text, &filename, file_type);
+    
+    // Flatten tree into memories
+    let mut memories = hierarchy.flatten();
+    
+    // Update file_source for all memories
+    let file_source = path.to_string_lossy().to_string();
+    for memory in &mut memories {
+        memory.file_source = Some(file_source.clone());
+    }
+    
+    let total_memories = memories.len();
+
+    // Store memories using MemoryPipeline (stores in Working layer for consolidation)
+    let pipeline = MemoryPipeline::new(db.clone());
+    let mut memory_ids = Vec::new();
+
+    for memory in &memories {
+        if let Err(e) = pipeline.store_working(memory) {
+            tracing::warn!("Failed to store memory chunk: {}", e);
+        } else {
+            memory_ids.push(memory.id.to_string());
+        }
+    }
+
+    Ok(IngestResult {
+        filename,
+        file_path: path.to_string_lossy().to_string(),
+        success: true,
+        chunks_created: total_memories,
+        chunk_size_used: 0,  // Semantic chunking doesn't use fixed sizes
+        memory_ids,
+        error: None,
+        remaining_count: 0,
+    })
+}
+
+/// Ingest a JSON file using smart structured extraction
+async fn ingest_json_file(
     path: &Path,
     chunk_size: usize,
     memory_type: MemoryType,
@@ -840,11 +994,24 @@ async fn ingest_single_file(
         .unwrap_or("unknown")
         .to_string();
 
-    // Extract text content
-    let text = extract_text(path)
-        .with_context(|| format!("Failed to extract text from {}", filename))?;
+    // Use smart JSON importer
+    let result = match import_json_file(path, None) {
+        Ok(r) => r,
+        Err(e) => {
+            return Ok(IngestResult {
+                filename,
+                file_path: path.to_string_lossy().to_string(),
+                success: false,
+                chunks_created: 0,
+                chunk_size_used: chunk_size,
+                memory_ids: vec![],
+                error: Some(format!("Failed to parse JSON: {}", e)),
+                remaining_count: 0,
+            });
+        }
+    };
 
-    if text.trim().is_empty() {
+    if result.items.is_empty() {
         return Ok(IngestResult {
             filename,
             file_path: path.to_string_lossy().to_string(),
@@ -852,37 +1019,53 @@ async fn ingest_single_file(
             chunks_created: 0,
             chunk_size_used: chunk_size,
             memory_ids: vec![],
-            error: Some("File contains no text".to_string()),
+            error: Some("JSON file contains no extractable text content".to_string()),
             remaining_count: 0,
         });
     }
 
-    // Use larger chunk size for JSON files (better for structured data)
-    let actual_chunk_size = if is_supported_extension(path, JSON_EXTENSIONS) {
-        JSON_CHUNK_SIZE
-    } else {
-        chunk_size
-    };
-
-    // Chunk the text
-    let chunks = chunk_text(&text, actual_chunk_size, DEFAULT_CHUNK_OVERLAP);
-
-    // Store each chunk as a memory card using batch inserts for performance
+    // Store each extracted item as a memory with hierarchy using MemoryPipeline
+    let pipeline = MemoryPipeline::new(db.clone());
     let mut memory_ids = Vec::new();
-    let batch_size = 100; // Insert 100 chunks per transaction
-
-    for batch in chunks.chunks(batch_size) {
-        let memories: Vec<MemoryCard> = batch
-            .iter()
-            .map(|chunk| MemoryCard::new(chunk.clone(), memory_type.clone()))
-            .collect();
-
-        let conn = db.connection()?;
-        queries::insert_memories_batch(&conn, &memories)?;
+    
+    let file_source = path.to_string_lossy().to_string();
+    
+    for (idx, item) in result.items.iter().enumerate() {
+        let content = item.to_memory_content();
         
-        // Collect the IDs from this batch
-        for memory in &memories {
-            memory_ids.push(memory.id.to_string());
+        // Use semantic chunking for long content
+        if content.len() > 1000 {
+            // Parse as JSON to get structure
+            let hierarchy = parse_document(&content, &format!("{}[{}]", filename, idx), "json");
+            let mut memories = hierarchy.flatten();
+            
+            for memory in &mut memories {
+                memory.file_source = Some(file_source.clone());
+            }
+            
+            for memory in &memories {
+                if let Err(e) = pipeline.store_working(memory) {
+                    tracing::warn!("Failed to store JSON memory chunk: {}", e);
+                } else {
+                    memory_ids.push(memory.id.to_string());
+                }
+            }
+        } else {
+            // Short content - store as single memory
+            let memory = MemoryCard::new_hierarchical(
+                content,
+                memory_type.clone(),
+                None,  // Top level
+                crate::database::models::HierarchyLevel::Section,
+                idx,
+                format!("{}/item[{}]", filename, idx),
+                Some(file_source.clone()),
+            );
+            if let Err(e) = pipeline.store_working(&memory) {
+                tracing::warn!("Failed to store JSON memory: {}", e);
+            } else {
+                memory_ids.push(memory.id.to_string());
+            }
         }
     }
 
@@ -890,9 +1073,71 @@ async fn ingest_single_file(
         filename,
         file_path: path.to_string_lossy().to_string(),
         success: true,
-        chunks_created: chunks.len(),
-        chunk_size_used: actual_chunk_size,
+        chunks_created: memory_ids.len(),
+        chunk_size_used: 0,
         memory_ids,
+        error: None,
+        remaining_count: 0,
+    })
+}
+
+/// Ingest an image file - store only metadata, not image content
+async fn ingest_image_file(
+    path: &Path,
+    chunk_size: usize,
+    memory_type: MemoryType,
+    db: Arc<SqliteDatabase>,
+) -> Result<IngestResult> {
+    let filename = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+
+    // Extract image metadata
+    let metadata = match extract_image_metadata(path) {
+        Ok(m) => m,
+        Err(e) => {
+            return Ok(IngestResult {
+                filename,
+                file_path: path.to_string_lossy().to_string(),
+                success: false,
+                chunks_created: 0,
+                chunk_size_used: chunk_size,
+                memory_ids: vec![],
+                error: Some(format!("Failed to extract image metadata: {}", e)),
+                remaining_count: 0,
+            });
+        }
+    };
+
+    // Convert metadata to memory content
+    let content = metadata.to_memory_content();
+
+    // Store as a single chunk using MemoryPipeline
+    let memory = MemoryCard::new(content, memory_type);
+    let pipeline = MemoryPipeline::new(db.clone());
+    
+    if let Err(e) = pipeline.store_working(&memory) {
+        return Ok(IngestResult {
+            filename,
+            file_path: path.to_string_lossy().to_string(),
+            success: false,
+            chunks_created: 0,
+            chunk_size_used: chunk_size,
+            memory_ids: vec![],
+            error: Some(format!("Failed to store image memory: {}", e)),
+            remaining_count: 0,
+        });
+    }
+
+    Ok(IngestResult {
+        filename,
+        file_path: path.to_string_lossy().to_string(),
+        success: true,
+        chunks_created: 1,
+        chunk_size_used: chunk_size,
+        memory_ids: vec![memory.id.to_string()],
         error: None,
         remaining_count: 0,
     })

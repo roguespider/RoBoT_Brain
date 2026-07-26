@@ -8,6 +8,8 @@ pub mod audio;
 pub mod core;
 pub mod definitions;
 pub mod file_collector;
+pub mod json_importer;
+pub mod semantic_chunker;
 pub mod text_extractor;
 pub mod workflow;
 
@@ -19,3 +21,7 @@ pub use core::{
     DeleteIngestedFilesInput, ListIngestedFilesInput, TranscribeAudioInput,
     can_delete_files, clear_ingest_tracker, can_verify_deletion,
 };
+
+// Re-export JSON importer
+
+// Re-export semantic chunker

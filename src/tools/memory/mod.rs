@@ -44,12 +44,30 @@ pub struct ListMemoriesInput {
     pub limit: Option<usize>,
 }
 
+/// Tool: Preview memories for deletion (asks user before deleting)
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct CleanupMemoriesInput {
+    /// List of memory IDs to delete
+    pub ids: Vec<String>,
+    /// Confirmation from user: "yes" to proceed with deletion
+    pub confirmation: String,
+}
+
+/// Tool: List all image memories and detect garbage
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct ListImageMemoriesInput {
+    /// Show memories that look like garbage image text (binary data stored as text)
+    pub include_garbage: Option<bool>,
+}
+
 /// Memory tool definitions
 pub mod definitions {
     pub const STORE_MEMORY: &str = "store_memory";
     pub const SEARCH_MEMORY: &str = "search_memory";
     pub const GET_MEMORY: &str = "get_memory";
     pub const LIST_MEMORIES: &str = "list_memories";
+    pub const CLEANUP_MEMORIES: &str = "cleanup_memories";
+    pub const LIST_IMAGE_MEMORIES: &str = "list_image_memories";
     
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         vec![
@@ -168,6 +186,14 @@ pub async fn execute_store_memory(
         id: Uuid::new_v4(),
         content: input.content,
         memory_type: parse_memory_type(&input.memory_type),
+        layer: crate::database::models::MemoryLayer::Working,
+        parent_id: None,
+        hierarchy_level: crate::database::models::HierarchyLevel::Document,
+        order_index: 0,
+        path: String::new(),
+        file_source: None,
+        access_count: 0,
+        last_accessed: None,
         confidence: input.confidence.unwrap_or(0.5),
         importance: input.importance.unwrap_or(0.5),
         created_at: chrono::Utc::now(),
@@ -273,4 +299,189 @@ pub async fn execute_list_memories(
         "memories": result,
         "count": result.len()
     })))
+}
+
+/// Execute cleanup memories tool - ALWAYS requires user confirmation to delete
+pub async fn execute_cleanup_memories(
+    input: CleanupMemoriesInput,
+    database: &Arc<SqliteDatabase>,
+) -> Result<ToolOutput> {
+    if input.ids.is_empty() {
+        return Ok(ToolOutput::success(serde_json::json!({
+            "deleted": 0,
+            "ask_confirmation": false,
+            "message": "No memories specified for deletion."
+        })));
+    }
+    
+    // ALWAYS show preview first and require confirmation
+    // There is NO way to delete without explicit confirmation
+    let conn = database.connection()?;
+    
+    let mut memories_to_delete = Vec::new();
+    for id_str in &input.ids {
+        if let Ok(id) = Uuid::parse_str(id_str) {
+            if let Ok(Some(memory)) = queries::get_memory(&conn, id) {
+                memories_to_delete.push(serde_json::json!({
+                    "id": memory.id.to_string(),
+                    "preview": if memory.content.len() > 100 {
+                        format!("{}...", &memory.content[..100])
+                    } else {
+                        memory.content.clone()
+                    },
+                    "memory_type": memory.memory_type.to_string(),
+                    "created_at": memory.created_at.to_rfc3339()
+                }));
+            }
+        }
+    }
+    
+    // Check if user confirmed
+    let confirmation = input.confirmation.to_lowercase();
+    let confirmed = confirmation == "yes" || confirmation == "y" || confirmation == "true";
+    
+    if confirmed {
+        // User confirmed - delete the memories
+        let deleted = queries::delete_memories_by_string_ids(&conn, &input.ids)?;
+        
+        return Ok(ToolOutput::success(serde_json::json!({
+            "deleted": deleted,
+            "requested": input.ids.len(),
+            "confirmed": true,
+            "ask_confirmation": false,
+            "message": format!("Deleted {} memory(ies) from memory.", deleted)
+        })));
+    }
+    
+    // No confirmation yet - show preview and ask for it
+    Ok(ToolOutput::success(serde_json::json!({
+        "deleted": 0,
+        "confirmed": false,
+        "ask_confirmation": true,
+        "memories_to_delete": memories_to_delete,
+        "count": memories_to_delete.len(),
+        "message": format!("About to delete {} memory(ies). Say 'yes' to confirm deletion.", memories_to_delete.len())
+    })))
+}
+
+/// Execute list image memories tool
+/// Lists all image memories and optionally shows garbage (binary data stored as text)
+pub async fn execute_list_image_memories(
+    input: ListImageMemoriesInput,
+    database: &Arc<SqliteDatabase>,
+) -> Result<ToolOutput> {
+    let include_garbage = input.include_garbage.unwrap_or(false);
+    let conn = database.connection()?;
+    
+    // List all memories
+    let all_memories = queries::list_memories(&conn, None, 1000)?;
+    
+    // Categorize memories
+    let mut proper_images = Vec::new();
+    let mut garbage_memories = Vec::new();
+    
+    for memory in all_memories {
+        let content = &memory.content;
+        
+        // Check if this looks like a proper image memory (starts with "IMAGE FILE")
+        if content.starts_with("IMAGE FILE") {
+            proper_images.push(serde_json::json!({
+                "id": memory.id.to_string(),
+                "filename": extract_field_from_content(content, "Filename:"),
+                "format": extract_field_from_content(content, "Format:"),
+                "size": extract_field_from_content(content, "Size:"),
+                "preview": content.lines().take(5).collect::<Vec<_>>().join("\n"),
+                "memory_type": memory.memory_type.to_string(),
+                "created_at": memory.created_at.to_rfc3339()
+            }));
+        }
+        // Check if this looks like garbage (binary data stored as text)
+        else if content_looks_like_garbage(content) {
+            garbage_memories.push(serde_json::json!({
+                "id": memory.id.to_string(),
+                "preview": if content.len() > 100 { format!("{}...", &content[..100]) } else { content.clone() },
+                "size_chars": content.len(),
+                "memory_type": memory.memory_type.to_string(),
+                "created_at": memory.created_at.to_rfc3339(),
+                "likely_source": "image"
+            }));
+        }
+    }
+    
+    let show_garbage = include_garbage;
+    let garbage_count = garbage_memories.len();
+    
+    let response = serde_json::json!({
+        "images": proper_images,
+        "images_count": proper_images.len(),
+        "garbage": if show_garbage { serde_json::Value::Array(garbage_memories.clone()) } else { serde_json::Value::Null },
+        "garbage_count": garbage_count,
+        "has_garbage": !garbage_memories.is_empty(),
+        "ask_cleanup": if !garbage_memories.is_empty() {
+            serde_json::json!(format!("Found {} memory(ies) that look like binary garbage. Do you want to clean them up?", garbage_count))
+        } else {
+            serde_json::Value::Null
+        },
+        "message": if proper_images.is_empty() && garbage_memories.is_empty() {
+            "No image memories found.".to_string()
+        } else if proper_images.is_empty() {
+            format!("No proper image memories, but found {} garbage memories.", garbage_count)
+        } else {
+            format!("Found {} image memories.", proper_images.len())
+        }
+    });
+    
+    Ok(ToolOutput::success(response))
+}
+
+/// Extract a field value from content
+fn extract_field_from_content(content: &str, field_name: &str) -> String {
+    for line in content.lines() {
+        if line.starts_with(field_name) {
+            return line[field_name.len()..].trim().to_string();
+        }
+    }
+    "unknown".to_string()
+}
+
+/// Check if content looks like binary garbage
+fn content_looks_like_garbage(content: &str) -> bool {
+    let bytes = content.as_bytes();
+    
+    // Empty or very short
+    if content.len() < 10 {
+        return false;
+    }
+    
+    // Count null bytes
+    let null_count = bytes.iter().filter(|&&b| b == 0).count();
+    if null_count > 0 {
+        return true;
+    }
+    
+    // Check ratio of printable characters
+    let printable = bytes.iter().filter(|&&b| (b >= 32 && b < 127) || b >= 128).count();
+    let ratio = printable as f64 / bytes.len() as f64;
+    if ratio < 0.3 {
+        return true;
+    }
+    
+    // Check for common binary patterns using byte strings
+    if content.starts_with("PK\x03\x04") {  // ZIP
+        return true;
+    }
+    if bytes.starts_with(&[0x89, b'P', b'N', b'G']) {  // PNG
+        return true;
+    }
+    if content.starts_with("GIF8") {  // GIF
+        return true;
+    }
+    if bytes.starts_with(&[0xff, 0xd8, 0xff]) {  // JPEG
+        return true;
+    }
+    if content.starts_with("BM\x00\x00") {  // BMP
+        return true;
+    }
+    
+    false
 }

@@ -230,6 +230,75 @@ impl std::fmt::Display for MemoryType {
 }
 
 // ==========================================================
+// MEMORY LAYER (STM vs LTM)
+// ==========================================================
+
+/// Memory layer per Architecture §6.3
+/// - Working: Short-term, volatile, context-focused
+/// - Permanent: Long-term, curated, indexed
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum MemoryLayer {
+    /// Short-term memory - temporary, high volatility
+    Working,
+    /// Long-term memory - curated, persistent, indexed
+    Permanent,
+}
+
+impl Default for MemoryLayer {
+    fn default() -> Self {
+        MemoryLayer::Working
+    }
+}
+
+impl std::fmt::Display for MemoryLayer {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            MemoryLayer::Working => "working",
+            MemoryLayer::Permanent => "permanent",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+// ==========================================================
+// HIERARCHY LEVELS
+// ==========================================================
+
+/// Level in the document hierarchy
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+pub enum HierarchyLevel {
+    /// Root level - whole document/file
+    Document,
+    /// Major section (h1, ## header, chapter)
+    Section,
+    /// Subsection (h2-h4, ### header)
+    Subsection,
+    /// Paragraph - natural text block
+    Paragraph,
+    /// Individual sentence (for fine-grained search)
+    Sentence,
+}
+
+impl Default for HierarchyLevel {
+    fn default() -> Self {
+        HierarchyLevel::Document
+    }
+}
+
+impl std::fmt::Display for HierarchyLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            HierarchyLevel::Document => "document",
+            HierarchyLevel::Section => "section",
+            HierarchyLevel::Subsection => "subsection",
+            HierarchyLevel::Paragraph => "paragraph",
+            HierarchyLevel::Sentence => "sentence",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+// ==========================================================
 // CORE MEMORY CARD
 // ==========================================================
 
@@ -240,6 +309,20 @@ pub struct MemoryCard {
     pub content: String,
 
     pub memory_type: MemoryType,
+
+    // Memory layer - per Architecture §6.3
+    pub layer: MemoryLayer,
+
+    // Hierarchy fields for hierarchical storage
+    pub parent_id: Option<Uuid>,           // None for root document
+    pub hierarchy_level: HierarchyLevel,   // document, section, paragraph, sentence
+    pub order_index: usize,               // Position within parent
+    pub path: String,                     // e.g., "readme.md/section[0]/paragraph[2]"
+    pub file_source: Option<String>,       // Original file path
+
+    // Access tracking for consolidation
+    pub access_count: u32,
+    pub last_accessed: Option<DateTime<Utc>>,
 
     pub confidence: f32,
 
@@ -261,6 +344,20 @@ impl MemoryCard {
 
             memory_type,
 
+            // Memory layer - starts in Working (STM)
+            layer: MemoryLayer::Working,
+
+            // Hierarchy fields - default for flat/non-hierarchical memory
+            parent_id: None,
+            hierarchy_level: HierarchyLevel::Document,
+            order_index: 0,
+            path: String::new(),
+            file_source: None,
+
+            // Access tracking
+            access_count: 0,
+            last_accessed: None,
+
             confidence: 0.5,
 
             importance: 0.5,
@@ -269,6 +366,73 @@ impl MemoryCard {
 
             updated_at: now,
         }
+    }
+
+    /// Create a new memory in Permanent layer (LTM)
+    #[allow(dead_code)]
+    pub fn new_permanent(content: String, memory_type: MemoryType) -> Self {
+        let now = Utc::now();
+        Self {
+            id: Uuid::new_v4(),
+            content,
+            memory_type,
+            layer: MemoryLayer::Permanent,
+            parent_id: None,
+            hierarchy_level: HierarchyLevel::Document,
+            order_index: 0,
+            path: String::new(),
+            file_source: None,
+            access_count: 0,
+            last_accessed: None,
+            confidence: 0.7,  // Higher default confidence for promoted memories
+            importance: 0.7,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    /// Create a new hierarchical memory card
+    pub fn new_hierarchical(
+        content: String,
+        memory_type: MemoryType,
+        parent_id: Option<Uuid>,
+        hierarchy_level: HierarchyLevel,
+        order_index: usize,
+        path: String,
+        file_source: Option<String>,
+    ) -> Self {
+        let now = Utc::now();
+
+        Self {
+            id: Uuid::new_v4(),
+            content,
+            memory_type,
+            layer: MemoryLayer::Working,
+            parent_id,
+            hierarchy_level,
+            order_index,
+            path,
+            file_source,
+            access_count: 0,
+            last_accessed: None,
+            confidence: 0.5,
+            importance: 0.5,
+            created_at: now,
+            updated_at: now,
+        }
+    }
+
+    /// Promote this memory to Permanent layer (Working → Permanent)
+    pub fn promote_to_permanent(&mut self) {
+        self.layer = MemoryLayer::Permanent;
+        self.confidence = (self.confidence + 0.2).min(1.0);  // Boost confidence
+        self.updated_at = Utc::now();
+    }
+
+    /// Record an access for consolidation tracking
+    pub fn record_access(&mut self) {
+        self.access_count += 1;
+        self.last_accessed = Some(Utc::now());
     }
 }
 

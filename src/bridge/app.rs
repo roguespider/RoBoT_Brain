@@ -188,6 +188,15 @@ impl App {
             )
             .await?;
 
+        // Schedule memory consolidation (every hour)
+        scheduler
+            .create_task(
+                "memory_consolidation",
+                TaskType::MemoryConsolidation,
+                TaskSchedule::Interval { seconds: 3600 },
+            )
+            .await?;
+
         Ok(scheduler)
     }
 
@@ -286,7 +295,35 @@ impl App {
             )
             .await;
 
-        tracing::info!("Registered {} task handlers", 7);
+        // Memory consolidation handler
+        scheduler
+            .register_handler(
+                TaskType::MemoryConsolidation,
+                Box::new(|| {
+                    Box::pin(async move {
+                        tracing::info!("Executing scheduled memory consolidation");
+                        // Get database from app state
+                        let database = crate::database::sqlite::SqliteDatabase::initialize()?;
+                        let pipeline = crate::memory::pipeline::MemoryPipeline::new(std::sync::Arc::new(database));
+                        match pipeline.run_consolidation_sync() {
+                            Ok(stats) => {
+                                tracing::info!(
+                                    "Memory consolidation complete: {} promoted, {} archived, {} deleted, {} kept",
+                                    stats.promoted, stats.archived, stats.deleted, stats.kept
+                                );
+                            }
+                            Err(e) => {
+                                tracing::error!("Memory consolidation failed: {}", e);
+                                return Err(e);
+                            }
+                        }
+                        Ok(())
+                    })
+                }),
+            )
+            .await;
+
+        tracing::info!("Registered {} task handlers", 8);
     }
 
     /// Start the runtime.

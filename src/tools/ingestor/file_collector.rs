@@ -12,9 +12,6 @@ pub const DEFAULT_IMPORT_FOLDER: &str = "files_to_import";
 /// Maximum file size for text files (50MB) - larger files may cause timeouts
 pub const MAX_TEXT_FILE_SIZE: u64 = 50 * 1024 * 1024;
 
-/// Maximum file size for JSON files (10MB) - JSON with embeddings don't chunk well
-pub const MAX_JSON_FILE_SIZE: u64 = 10 * 1024 * 1024;
-
 /// Supported file extensions
 pub const TEXT_EXTENSIONS: &[&str] = &[
     "txt", "md", "rst", "csv", "log", "xml", "html", "htm",  // Standard text
@@ -139,15 +136,9 @@ fn check_file_size_limits(path: &Path, file_type: &str, size: u64) -> Option<Str
         }
     }
     
-    // Check JSON-specific size limits
+    // JSON files are now handled by the smart JSON importer
+    // No size limit - we extract structured data intelligently
     if is_supported_extension(path, JSON_EXTENSIONS) {
-        if size > MAX_JSON_FILE_SIZE {
-            return Some(format!(
-                "JSON file exceeds {}MB limit (found {}MB). JSON files with embeddings/metadata don't chunk well.",
-                MAX_JSON_FILE_SIZE / (1024 * 1024),
-                size / (1024 * 1024)
-            ));
-        }
         return None;
     }
     
@@ -238,12 +229,20 @@ fn collect_files_recursive(dir: &Path, recursive: bool, files: &mut Vec<Importab
             continue;
         }
         
+        // Images are listed but marked as needing special handling
+        let is_image = is_supported_extension(&path, IMAGE_EXTENSIONS);
+        
         let size = match fs::metadata(&path) {
             Ok(m) => m.len(),
             Err(_) => continue,
         };
         
-        let skip_reason = check_file_size_limits(&path, &file_type, size);
+        // For images, add skip reason indicating they're handled separately
+        let skip_reason = if is_image {
+            Some("Images store metadata only (not image content). Use 'list_images' to see full details.".to_string())
+        } else {
+            check_file_size_limits(&path, &file_type, size)
+        };
         
         // Always use canonical/absolute path to avoid confusion
         let absolute_path = path.canonicalize()

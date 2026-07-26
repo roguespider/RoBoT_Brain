@@ -4,6 +4,7 @@
 // - v1: Core memory, decisions, and sources (migrations 001-003)
 // - v2: Events, reputations, and scheduled tasks (migrations 004-006)
 // - v3: Lineage, hypothesis engine, and memory graph (migrations 007-009)
+// - v4: Hierarchical memory storage (migrations 010+)
 
 use anyhow::Result;
 use rusqlite::Connection;
@@ -14,6 +15,7 @@ pub mod core_data_storage;
 pub mod tracking;
 pub mod scheduling;
 pub mod advanced_features;
+pub mod hierarchical_memory;
 
 /// Run all pending migrations.
 pub fn run(database: &SqliteDatabase) -> Result<()> {
@@ -29,7 +31,7 @@ fn run_migrations(conn: &Connection) -> Result<()> {
     let mut version = current_version(conn)?;
 
     // Run all pending migrations sequentially
-    while version < 9 {
+    while version < 11 {
         match version {
             0..=2 => {
                 core_data_storage::run(conn)?;
@@ -43,6 +45,10 @@ fn run_migrations(conn: &Connection) -> Result<()> {
             6..=8 => {
                 advanced_features::run(conn)?;
                 version = 9;
+            }
+            9 | 10 => {
+                hierarchical_memory::run(conn)?;
+                version = 11;
             }
             _ => break,
         }

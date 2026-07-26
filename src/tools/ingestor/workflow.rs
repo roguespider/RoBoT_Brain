@@ -53,7 +53,7 @@ fn get_parent_dirs(file_paths: &[String]) -> Vec<PathBuf> {
 }
 
 /// Find empty folders after file deletion (checks all subdirectories up the tree)
-fn find_empty_folders_after_deletion(file_paths: &[String]) -> Vec<PathBuf> {
+pub fn find_empty_folders_after_deletion(file_paths: &[String]) -> Vec<PathBuf> {
     let mut empty_folders = Vec::new();
     let import_folder = get_import_folder(None);
     
@@ -83,8 +83,16 @@ pub async fn execute_list_importable(
     input: ListImportableInput,
 ) -> Result<ToolOutput> {
     let folder = get_import_folder(input.folder.as_deref());
-    let limit = input.limit.unwrap_or(5);
     let recursive = input.recursive.unwrap_or(true);
+    
+    // Determine limit: use input.limit if provided, otherwise default to 3
+    // Special value 0 or list_all=true means show all files
+    let list_all = input.list_all.unwrap_or(false);
+    let limit = if list_all {
+        None // No limit - show all
+    } else {
+        Some(input.limit.unwrap_or(3))
+    };
     
     // Get exe directory for reference (canonicalize for absolute path)
     let exe_dir = std::env::current_exe()
@@ -126,30 +134,78 @@ pub async fn execute_list_importable(
         .partition(|f| f.skip_reason.is_none());
     
     let total = ingestable.len();
-    let files: Vec<_> = ingestable.into_iter().take(limit).collect();
+    let files: Vec<_> = match limit {
+        Some(n) => ingestable.into_iter().take(n).collect(),
+        None => ingestable, // list_all=true - take all
+    };
+    let showing_count = files.len();
+    
+    // Helper to format file size
+    fn format_size(bytes: u64) -> String {
+        if bytes < 1024 {
+            format!("{} B", bytes)
+        } else if bytes < 1024 * 1024 {
+            format!("{:.1} KB", bytes as f64 / 1024.0)
+        } else if bytes < 1024 * 1024 * 1024 {
+            format!("{:.1} MB", bytes as f64 / (1024.0 * 1024.0))
+        } else {
+            format!("{:.1} GB", bytes as f64 / (1024.0 * 1024.0 * 1024.0))
+        }
+    }
+    
+    // Build a clear user-facing message
+    let showing_all = list_all || total <= 3;
+    let user_message = if files.is_empty() && skipped.is_empty() {
+        format!("No importable files found in {}. Add files to this folder to ingest them.", folder_display)
+    } else if files.is_empty() {
+        format!("All {} file(s) in {} have issues (see 'skipped' list).", total, folder_display)
+    } else if total == 1 {
+        format!("Found 1 file ready for ingestion: {} ({})", files[0].filename, format_size(files[0].size))
+    } else if showing_all {
+        format!("Found {} file(s) ready for ingestion in {}:\n\n{}", total, folder_display, 
+            files.iter().map(|f| format!("  - {} ({})", f.filename, format_size(f.size))).collect::<Vec<_>>().join("\n"))
+    } else {
+        format!("Found {} file(s) ready for ingestion in {}. Showing first {}:\n\n{}\n\nDo you want to ingest all {} files or specific ones?",
+            total, folder_display, showing_count,
+            files.iter().map(|f| format!("  - {} ({})", f.filename, format_size(f.size))).collect::<Vec<_>>().join("\n"),
+            total)
+    };
+    
+    // Build files list with formatted sizes for the JSON response
+    // Keep it simple: just filename and size for display
+    let files_with_info: Vec<serde_json::Value> = files.iter().map(|f| {
+        serde_json::json!({
+            "filename": f.filename,
+            "size": format_size(f.size)
+        })
+    }).collect();
     
     // Build response with clear separation
     Ok(ToolOutput::success(serde_json::json!({
-        "files": files,
+        "files": files_with_info,
         "import_folder": folder_display,
         "exe_directory": exe_dir_display,
         "relative_path": "files_to_import",
-        "count": files.len(),
+        "count": showing_count,
         "total": total,
+        "remaining": if total > showing_count { Some(total - showing_count) } else { None },
+        "list_all": list_all,
+        "showing_all": showing_all,
         "recursive": recursive,
-        "instruction": "Use ingest_files with folder='files_to_import' (or omit folder parameter) and limit=1 to ingest one file at a time",
+        "instruction": "Use ingest_files with folder='files_to_import' (or omit folder parameter) to ingest. Use limit=X to process X files at a time.",
         "IMPORTANT_SCOPING": {
             "scope": "ONLY look in import_folder for files",
             "do_not_look": ["current project folder", "source code directories", "anywhere outside import_folder"],
             "this_folder": folder_display,
             "reason": "robot_brain.exe, robot_brain.db, and files_to_import are all in the robot_brain directory"
         },
-        "message": if files.is_empty() && skipped.is_empty() {
-            format!("No importable files found in {}. Add files to this folder to ingest them.", folder_display)
-        } else if files.is_empty() {
-            format!("All files in {} have issues (see 'skipped' list).", folder_display)
+        "message": user_message,
+        "ask_user": if total > 3 && !showing_all {
+            serde_json::json!("Do you want to ingest all files or specific ones?")
+        } else if total > 0 {
+            serde_json::json!("Ready to ingest. Should I proceed?")
         } else {
-            format!("Found {} file(s) ready for ingestion at: {}", total, folder_display)
+            serde_json::Value::Null
         },
         "skipped": skipped,
         "skipped_count": skipped.len(),

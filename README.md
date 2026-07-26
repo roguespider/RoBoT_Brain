@@ -3,7 +3,7 @@
 
 A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with persistent memory, experience-based learning, and structured knowledge storage.
 
-> **Status:** v0.7.1 (fix-and-repair) — Memory System implemented per Architecture §4.08, §6.3 with Working Memory, Permanent Memory, and Memory Retrieval. Full event catalog per Architecture §4.04. Learning Pipeline per Architecture §9. Database layer with 8 migrations. All 54 unit tests and 103 integration tests passing. 0 errors, 0 warnings.
+> **Status:** v0.0.0.7 (fix-and-repair) — Memory System implemented per Architecture §4.08, §6.3 with Working Memory, Permanent Memory, MemoryPipeline for consolidation, and Memory Retrieval. Full event catalog per Architecture §4.04. Learning Pipeline per Architecture §9. Database layer with 11 migrations. All 54 unit tests and 103 integration tests passing. 0 errors, 0 warnings.
 
 ---
 
