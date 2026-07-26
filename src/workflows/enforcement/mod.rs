@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/workflows/enforcement.rs
 //! Workflow enforcement layer - ensures agents follow mandatory workflow steps
 //! 

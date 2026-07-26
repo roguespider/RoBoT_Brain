@@ -23,11 +23,8 @@ pub mod reputation;
 pub mod score;
 
 // Re-export all types for backwards compatibility
-pub use context::{ExperienceContext, ModelContext, ToolContext, WorkflowContext};
-pub use encounter::{Encounter, EncounterResult, EncounterStats};
-pub use evidence::{Evidence, ExperienceSource};
+pub use context::ExperienceContext;
+pub use encounter::{Encounter, EncounterResult};
 pub use experience::{Experience, ExperienceType};
-pub use maturity::{ImportanceLevel, KnowledgeMaturity};
 pub use outcome::{ExperienceOutcome, OutcomeKind};
-pub use reputation::{ReputationRecord, ReputationTarget};
 pub use score::ExperienceScore;

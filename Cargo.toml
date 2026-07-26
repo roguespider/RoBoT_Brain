@@ -3,6 +3,8 @@ name = "robot_brain"
 version = "0.1.0"
 edition = "2021"
 
+[build-dependencies]
+
 [dependencies]
 rmcp = { version = "2", features = ["server", "client", "transport-io", "macros", "transport-child-process"] }
 schemars = "1"

@@ -12,7 +12,6 @@ use crate::tools::{self, ToolOutput};
 use crate::workflows::engine::types::{WorkflowEngine, WorkflowStatus};
 
 use super::experience::{build_experience_description, build_search_query, map_action_to_experience_type};
-use super::types::ExperienceRecord;
 use crate::workflows::engine::SKIP_MEMORY_READ;
 
 impl WorkflowEngine {

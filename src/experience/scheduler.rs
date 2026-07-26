@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // /src/experience/scheduler.rs
 // Background job scheduler for learning tasks
 
