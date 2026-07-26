@@ -123,7 +123,6 @@ pub struct MemoryItem {
 
 impl MemoryItem {
     /// Create a new memory item
-    #[allow(dead_code)]
     pub fn new(
         layer: MemoryLayer,
         memory_type: MemoryType,
@@ -168,7 +167,6 @@ impl MemoryItem {
     }
 
     /// Add a related memory
-    #[allow(dead_code)]
     pub fn add_related(&mut self, related_id: Uuid) {
         if !self.related_ids.contains(&related_id) {
             self.related_ids.push(related_id);
@@ -176,7 +174,6 @@ impl MemoryItem {
     }
 
     /// Add a tag
-    #[allow(dead_code)]
     pub fn add_tag(&mut self, tag: impl Into<String>) {
         let tag = tag.into();
         if !self.tags.contains(&tag) {

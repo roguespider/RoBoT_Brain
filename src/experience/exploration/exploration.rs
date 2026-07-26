@@ -68,7 +68,6 @@ pub struct Exploration {
 
 impl Exploration {
     /// Create a new exploration with initial values.
-    #[allow(dead_code)]
     pub fn new(id: String, title: String, purpose: String, context: ExperienceContext) -> Self {
         Self {
             id,
@@ -85,57 +84,48 @@ impl Exploration {
     }
 
     /// Start the exploration (transition from Planned to Active).
-    #[allow(dead_code)]
     pub fn start(&mut self) {
         self.status = ExplorationStatus::Active;
     }
 
     /// Pause the exploration.
-    #[allow(dead_code)]
     pub fn pause(&mut self) {
         self.status = ExplorationStatus::Paused;
     }
 
     /// Complete the exploration successfully.
-    #[allow(dead_code)]
     pub fn complete(&mut self) {
         self.completed_at = Some(Utc::now());
         self.status = ExplorationStatus::Completed;
     }
 
     /// Abandon the exploration.
-    #[allow(dead_code)]
     pub fn abandon(&mut self) {
         self.completed_at = Some(Utc::now());
         self.status = ExplorationStatus::Abandoned;
     }
 
     /// Add a hypothesis to test.
-    #[allow(dead_code)]
     pub fn add_hypothesis(&mut self, hypothesis: Hypothesis) {
         self.hypotheses.push(hypothesis);
     }
 
     /// Add an attempt made during exploration.
-    #[allow(dead_code)]
     pub fn add_attempt(&mut self, attempt: ExplorationAttempt) {
         self.attempts.push(attempt);
     }
 
     /// Add a finding from exploration.
-    #[allow(dead_code)]
     pub fn add_finding(&mut self, finding: ExplorationFinding) {
         self.findings.push(finding);
     }
 
     /// Check if exploration is still active.
-    #[allow(dead_code)]
     pub fn is_active(&self) -> bool {
         self.status == ExplorationStatus::Active
     }
 
     /// Check if exploration has completed (successfully or abandoned).
-    #[allow(dead_code)]
     pub fn is_complete(&self) -> bool {
         matches!(
             self.status,

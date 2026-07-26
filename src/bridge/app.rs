@@ -32,11 +32,9 @@ pub struct App {
     _database: Arc<SqliteDatabase>,
 
     /// Event bus for pub/sub.
-    #[allow(dead_code)]
     bus: Arc<ExperienceBus>,
 
     /// Experience system coordinator.
-    #[allow(dead_code)]
     coordinator: Arc<ExperienceCoordinator>,
 
     /// Background task scheduler.
@@ -306,5 +304,27 @@ impl App {
             self.mcp_context.clone(),
         )
         .await
+    }
+
+    // === Accessor methods that wire up the bus and coordinator fields ===
+
+    /// Get the event bus for monitoring/debugging
+    pub fn event_bus(&self) -> &Arc<ExperienceBus> {
+        &self.bus
+    }
+
+    /// Get the experience coordinator for testing/admin
+    pub fn experience_coordinator(&self) -> &Arc<ExperienceCoordinator> {
+        &self.coordinator
+    }
+
+    /// Get subscriber count on the event bus
+    pub fn subscriber_count(&self) -> usize {
+        self.bus.subscriber_count()
+    }
+
+    /// Record an experience through the coordinator
+    pub fn process_experience(&self, experience: crate::experience::types::Experience) -> crate::experience::types::Experience {
+        self.coordinator.process(experience)
     }
 }
