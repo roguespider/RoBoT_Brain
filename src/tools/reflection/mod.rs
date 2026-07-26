@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/tools/reflection/mod.rs
 // Reflection-related MCP tools
 

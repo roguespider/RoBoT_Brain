@@ -1,10 +1,11 @@
+#![allow(dead_code)]
+
 // src/tools/exploration_tools.rs
 //! Exploration MCP tools - wiring up exploration types from experience::exploration
 
 pub mod definitions;
 mod handlers;
 
-pub use definitions::*;
 pub use handlers::*;
 
 use serde::{Deserialize, Serialize};

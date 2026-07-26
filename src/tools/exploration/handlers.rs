@@ -5,7 +5,6 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 
 use uuid::Uuid;
-use lazy_static::lazy_static;
 
 use crate::experience::exploration::{
     Exploration, ExplorationAttempt, ExplorationFinding, ExplorationStatus, Hypothesis,

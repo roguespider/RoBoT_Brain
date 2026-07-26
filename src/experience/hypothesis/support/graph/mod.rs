@@ -13,7 +13,7 @@ mod graph_algorithms;
 mod graph_builder;
 mod graph_types;
 
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::HashMap;
 
 use serde::{Deserialize, Serialize};
 
@@ -21,9 +21,8 @@ use crate::experience::hypothesis::core::hypothesis::HypothesisId;
 
 // Re-export types for public API
 pub use graph_types::{
-    EdgeId, GraphStats, HypothesisEdge, HypothesisNode, HypothesisRelationship, NodeMetadata,
+    EdgeId, HypothesisEdge, HypothesisNode, HypothesisRelationship, NodeMetadata,
 };
-pub use graph_builder::GraphBuilder;
 
 /// ============================================================================
 /// HYPOTHESIS GRAPH

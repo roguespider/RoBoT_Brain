@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/experience/event_handler.rs
 // Event handler that processes events from the bus
 

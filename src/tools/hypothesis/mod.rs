@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/tools/hypothesis/mod.rs
 // Hypothesis Engine: Observation -> Hypothesis -> Test -> Evidence -> Knowledge
 
@@ -275,10 +277,6 @@ pub mod definitions {
 }
 
 // Re-export database functions
-pub use db::{
-    record_observation, get_observation_by_id, create_hypothesis, get_hypothesis_by_id,
-    update_hypothesis, add_evidence, get_evidence_for_hypothesis, create_knowledge, get_knowledge,
-};
 
 // Re-export execution functions
 pub use execute::{

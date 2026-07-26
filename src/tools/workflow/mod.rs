@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/tools/workflow/mod.rs
 //! Workflow-related MCP tools - create, manage, and execute workflows
 

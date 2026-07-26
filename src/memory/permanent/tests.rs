@@ -2,7 +2,7 @@
 //! Tests for permanent memory
 
 use super::*;
-use crate::memory::types::MemoryLayer;
+use crate::memory::types::{MemoryItem, MemoryLayer, MemoryType};
 
 #[tokio::test]
 async fn test_store_and_retrieve() {

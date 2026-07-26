@@ -2,13 +2,14 @@
 // Agent-related MCP tools
 // Module re-exports for backwards compatibility
 
+#![allow(dead_code)]
+
 pub mod definitions;
 pub mod inputs;
 pub mod mcp_tools;
 pub mod workflows;
 
 // Re-export for backwards compatibility
-pub use definitions::{all, CALL_MCP_TOOL, CONNECT_MCP_SERVER, GET_TOOL, GET_WORKFLOW, LIST_TOOLS};
 pub use inputs::{
     CallMcpToolInput, ConnectMcpServerInput, GetToolInput, GetWorkflowInput, ListToolsInput,
 };
