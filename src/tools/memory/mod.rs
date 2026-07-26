@@ -2,16 +2,19 @@
 
 // src/tools/memory/mod.rs
 // Memory-related MCP tools
+// Per Architecture §07: Every experience originates from observations
 
 use std::sync::Arc;
 
 use anyhow::Result;
+use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::database::models::{MemoryCard, MemoryType};
+use crate::database::models::{MemoryCard, MemoryType, Observation};
 use crate::database::queries;
 use crate::database::sqlite::SqliteDatabase;
+use crate::experience::types::{Experience, ExperienceContext, ExperienceOutcome, ExperienceType};
 use crate::tools::ToolOutput;
 
 /// Tool: Store a new memory
@@ -178,14 +181,56 @@ fn parse_memory_type(s: &str) -> MemoryType {
 }
 
 /// Execute store memory tool
+/// 
+/// Per Architecture §07: Every experience originates from observations
+/// Per Architecture §1: Memory is a component. Experience is the source of learning.
+/// Per Architecture §4: "Actions, observations, decisions, successes, failures, 
+///                      and discoveries should create experiences."
 pub async fn execute_store_memory(
     input: StoreMemoryInput,
     database: &Arc<SqliteDatabase>,
 ) -> Result<ToolOutput> {
+    let memory_type = parse_memory_type(&input.memory_type);
+    
+    // Step 1: Create an Observation (Per Architecture §07 invariant)
+    // "Every experience originates from one or more observations"
+    let content_preview = if input.content.len() > 100 {
+        format!("{}...", &input.content[..100])
+    } else {
+        input.content.clone()
+    };
+    let observation = Observation::new(
+        content_preview.clone(),
+        format!("memory_type={}", input.memory_type),
+        "memory_store".to_string(),
+    );
+    let observation_id = observation.id;
+    
+    // Step 2: Create an Experience with observation origin (Per Architecture §07)
+    // "Experience answers: What happened, what did we learn, and what should change?"
+    let mut experience = Experience::new(
+        format!("Memory stored: {}", input.memory_type),
+        format!("Stored {} memory: {}", input.memory_type, content_preview),
+        ExperienceType::MemoryStore,
+        vec![observation_id],  // Observation origins per §07
+    );
+    experience.context = ExperienceContext {
+        memory_type: Some(input.memory_type.clone()),
+        content_length: Some(input.content.len()),
+        source: Some("store_memory_tool".to_string()),
+        ..Default::default()
+    };
+    experience.outcome = ExperienceOutcome::success();
+    experience.tags = vec![
+        "memory".to_string(),
+        memory_type.to_string(),
+    ];
+    
+    // Step 3: Create the MemoryCard (stored in Working layer initially per §8, §9)
     let memory = MemoryCard {
         id: Uuid::new_v4(),
         content: input.content,
-        memory_type: parse_memory_type(&input.memory_type),
+        memory_type,
         layer: crate::database::models::MemoryLayer::Working,
         parent_id: None,
         hierarchy_level: crate::database::models::HierarchyLevel::Document,
@@ -196,21 +241,49 @@ pub async fn execute_store_memory(
         last_accessed: None,
         confidence: input.confidence.unwrap_or(0.5),
         importance: input.importance.unwrap_or(0.5),
-        created_at: chrono::Utc::now(),
-        updated_at: chrono::Utc::now(),
+        created_at: Utc::now(),
+        updated_at: Utc::now(),
     };
-
+    
+    let memory_id = memory.id;
+    let experience_id = experience.id;
+    
+    // Store all three: Observation → Experience → Memory
     let conn = database.connection()?;
+    
+    // Store observation first (per Architecture §07: experiences originate from observations)
+    queries::insert_observation(&conn, &observation)?;
+    
+    // Commit and store experience (commit returns Result<(), &'static str>)
+    if let Err(e) = experience.commit() {
+        tracing::warn!("Experience already committed: {}", e);
+    }
+    let memory_from_exp = MemoryCard::from_experience(&experience);
+    queries::insert_memory(&conn, &memory_from_exp)?;
+    
+    // Store the actual memory in Working layer
     queries::insert_memory(&conn, &memory)?;
+
+    tracing::info!(
+        "Memory stored with observation and experience: memory_id={}, observation_id={}, experience_id={}",
+        memory_id, observation_id, experience_id
+    );
 
     Ok(ToolOutput::success(serde_json::json!({
         "success": true,
-        "message": "Memory stored successfully",
-        "id": memory.id.to_string()
+        "message": "Memory stored successfully with observation and experience",
+        "id": memory_id.to_string(),
+        "observation_id": observation_id.to_string(),
+        "experience_id": experience_id.to_string(),
+        "layer": "working",  // Per §8: Working Memory is temporary
+        "note": "Per Architecture §9: Memory will be evaluated before promotion to Permanent layer"
     })))
 }
 
 /// Execute search memory tool
+/// 
+/// Per Architecture §07: Memory access generates observations for the learning pipeline.
+/// Per Architecture §4: Memory retrieval is part of the event system.
 pub async fn execute_search_memory(
     input: SearchMemoryInput,
     database: &Arc<SqliteDatabase>,
@@ -218,6 +291,40 @@ pub async fn execute_search_memory(
     let limit = input.limit.unwrap_or(10);
     let conn = database.connection()?;
     let results = queries::search_memory(&conn, &input.query, limit)?;
+    
+    // Create observation for memory lookup (Per Architecture §07)
+    let query_preview = if input.query.len() > 50 {
+        format!("{}...", &input.query[..50])
+    } else {
+        input.query.clone()
+    };
+    let observation = Observation::new(
+        format!("Searched for: {}", query_preview),
+        format!("results_found={}", results.len()),
+        "memory_lookup".to_string(),
+    );
+    queries::insert_observation(&conn, &observation)?;
+    
+    // Create experience for the memory lookup
+    let mut experience = Experience::new(
+        format!("Memory lookup: {}", query_preview),
+        format!("Searched memory with query '{}', found {} results", input.query, results.len()),
+        ExperienceType::MemoryLookup,
+        vec![observation.id],
+    );
+    experience.context = ExperienceContext {
+        search_query: Some(input.query.clone()),
+        results_count: Some(results.len()),
+        source: Some("search_memory_tool".to_string()),
+        ..Default::default()
+    };
+    experience.outcome = ExperienceOutcome::success();
+    experience.tags = vec!["memory".to_string(), "search".to_string()];
+    if let Err(e) = experience.commit() {
+        tracing::warn!("Experience already committed: {}", e);
+    }
+    let memory_from_exp = MemoryCard::from_experience(&experience);
+    queries::insert_memory(&conn, &memory_from_exp)?;
 
     let memories: Vec<serde_json::Value> = results
         .into_iter()
@@ -236,11 +343,15 @@ pub async fn execute_search_memory(
 
     Ok(ToolOutput::success(serde_json::json!({
         "results": memories,
-        "count": memories.len()
+        "count": memories.len(),
+        "observation_id": observation.id.to_string(),
+        "experience_id": experience.id.to_string()
     })))
 }
 
 /// Execute get memory tool
+/// 
+/// Per Architecture §07: Memory access generates observations for the learning pipeline.
 pub async fn execute_get_memory(
     input: GetMemoryInput,
     database: &Arc<SqliteDatabase>,
@@ -252,18 +363,56 @@ pub async fn execute_get_memory(
     let memory = queries::get_memory(&conn, uuid)?;
 
     match memory {
-        Some(m) => Ok(ToolOutput::success(serde_json::json!({
-            "found": true,
-            "memory": {
-                "id": m.id.to_string(),
-                "content": m.content,
-                "memory_type": m.memory_type.to_string(),
-                "confidence": m.confidence,
-                "importance": m.importance,
-                "created_at": m.created_at.to_rfc3339(),
-                "updated_at": m.updated_at.to_rfc3339()
+        Some(m) => {
+            // Create observation for memory retrieval (Per Architecture §07)
+            let content_preview = if m.content.len() > 50 {
+                format!("{}...", &m.content[..50])
+            } else {
+                m.content.clone()
+            };
+            let observation = Observation::new(
+                format!("Retrieved memory: {}", content_preview),
+                format!("memory_type={}, id={}", m.memory_type, m.id),
+                "memory_retrieval".to_string(),
+            );
+            queries::insert_observation(&conn, &observation)?;
+            
+            // Create experience for the memory retrieval
+            let mut experience = Experience::new(
+                format!("Memory retrieved: {}", content_preview),
+                format!("Retrieved {} memory with id {}", m.memory_type, m.id),
+                ExperienceType::MemoryLookup,
+                vec![observation.id],
+            );
+            experience.context = ExperienceContext {
+                memory_type: Some(m.memory_type.to_string()),
+                content_length: Some(m.content.len()),
+                source: Some("get_memory_tool".to_string()),
+                ..Default::default()
+            };
+            experience.outcome = ExperienceOutcome::success();
+            experience.tags = vec!["memory".to_string(), m.memory_type.to_string()];
+            if let Err(e) = experience.commit() {
+                tracing::warn!("Experience already committed: {}", e);
             }
-        }))),
+            let memory_from_exp = MemoryCard::from_experience(&experience);
+            queries::insert_memory(&conn, &memory_from_exp)?;
+            
+            Ok(ToolOutput::success(serde_json::json!({
+                "found": true,
+                "memory": {
+                    "id": m.id.to_string(),
+                    "content": m.content,
+                    "memory_type": m.memory_type.to_string(),
+                    "confidence": m.confidence,
+                    "importance": m.importance,
+                    "created_at": m.created_at.to_rfc3339(),
+                    "updated_at": m.updated_at.to_rfc3339()
+                },
+                "observation_id": observation.id.to_string(),
+                "experience_id": experience.id.to_string()
+            })))
+        }
         None => Ok(ToolOutput::success(serde_json::json!({
             "found": false,
             "memory": serde_json::Value::Null
