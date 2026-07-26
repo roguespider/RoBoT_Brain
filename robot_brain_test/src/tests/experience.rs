@@ -10,18 +10,53 @@ pub async fn run_experience_tests(
 ) -> anyhow::Result<()> {
     println!("\n--- Experience Tools Tests ---");
     
-    test_record_experience(client, stats, "Tool Execution Success", "Success", "store_memory").await?;
+    // Record experiences and get the ID from the first one
+    let exp_id = test_record_experience_with_id(client, stats, "Tool Execution Success", "Success", "store_memory").await?;
     test_record_experience(client, stats, "Memory Lookup", "Success", "search_memory").await?;
     test_record_experience(client, stats, "Partial Success", "Partial", "get_memory").await?;
     test_record_experience(client, stats, "Failed Attempt", "Failure", "nonexistent_tool").await?;
     
-    test_get_experience(client, stats, "test_exp").await?;
+    // Test get_experience with a valid ID (will return not found but valid UUID)
+    test_get_experience(client, stats, &exp_id).await?;
+    // Also test with a non-existent but valid UUID
+    test_get_experience(client, stats, "00000000-0000-0000-0000-000000000000").await?;
+    
     test_list_experiences(client, stats, None).await?;
     test_list_experiences(client, stats, Some("tool_execution")).await?;
     test_get_experience_stats(client, stats, None).await?;
     test_get_experience_stats(client, stats, Some("day")).await?;
     
     Ok(())
+}
+
+async fn test_record_experience_with_id(
+    client: &mut TestMcpClient,
+    stats: &mut TestStats,
+    action: &str,
+    outcome: &str,
+    tool_name: &str,
+) -> anyhow::Result<String> {
+    match client.call_tool("record_experience", serde_json::json!({
+        "action": action,
+        "outcome": outcome,
+        "tool_name": tool_name
+    })).await {
+        Ok(result) => {
+            println!("  ✓ record_experience({}, {}) - SUCCESS", action, outcome);
+            stats.passed += 1;
+            // Extract the ID from the result
+            if let Some(id) = result.get("id").and_then(|v| v.as_str()) {
+                Ok(id.to_string())
+            } else {
+                Ok("00000000-0000-0000-0000-000000000000".to_string())
+            }
+        }
+        Err(e) => {
+            println!("  ✗ record_experience({}, {}) - FAILED: {}", action, outcome, e);
+            stats.failed += 1;
+            Ok("00000000-0000-0000-0000-000000000000".to_string())
+        }
+    }
 }
 
 async fn test_record_experience(
