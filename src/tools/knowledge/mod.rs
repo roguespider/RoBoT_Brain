@@ -1,4 +1,4 @@
-// src/tools/knowledge.rs
+// src/tools/knowledge/mod.rs
 //! Knowledge system MCP tools
 
 use std::sync::Arc;

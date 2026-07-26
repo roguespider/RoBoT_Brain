@@ -1,4 +1,4 @@
-// src/bridge/tools/memory.rs
+// src/tools/memory/mod.rs
 // Memory-related MCP tools
 
 use std::sync::Arc;

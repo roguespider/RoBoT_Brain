@@ -1,4 +1,4 @@
-// src/bridge/tools/reflection.rs
+// src/tools/reflection/mod.rs
 // Reflection-related MCP tools
 
 use std::collections::HashMap;

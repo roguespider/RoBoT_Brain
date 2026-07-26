@@ -1,4 +1,4 @@
-// src/tools/planner.rs
+// src/tools/planner/mod.rs
 //! Planner MCP tools - task decomposition and execution
 
 use std::sync::Arc;
