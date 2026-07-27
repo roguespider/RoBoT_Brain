@@ -7,6 +7,25 @@ A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with p
 
 ---
 
+## Building
+
+```bash
+# Basic build (no audio transcription)
+cargo build --release
+
+# Build WITH audio transcription (requires libclang installed)
+cargo build --release --features whisper
+```
+
+**Prerequisites for audio transcription:** You must install LLVM/libclang BEFORE building with whisper:
+- **macOS:** `brew install llvm`
+- **Linux:** `sudo apt install libclang-dev` or `sudo yum install llvm-dev`
+- **Windows:** Download and install LLVM from https://llvm.org, then add it to your PATH
+
+The build will fail if libclang is not found on your system.
+
+---
+
 ## Objective
 
 **Problem:** Previous Python MCP memory suffered from storage bloat and slow ingestion due to embedding everything and eager graph extraction.

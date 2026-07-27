@@ -595,6 +595,8 @@ fn extract_embeddings_export(
 }
 
 /// Extract generic JSON (fallback for unknown structures)
+/// IMPORTANT: This extracts ALL content types including numbers, booleans, and null
+/// to ensure no data is lost from simple JSON files.
 fn extract_generic_json(
     value: &Value,
     path: &str,
@@ -610,13 +612,39 @@ fn extract_generic_json(
     
     match value {
         Value::Null => {
-            // Skip null
+            // Store null as a marker item - helps preserve structure awareness
+            if depth > 0 { // Don't add at root level
+                items.push(ExtractedJsonData {
+                    content: "null".to_string(),
+                    json_path: path.to_string(),
+                    field_name: "_null".to_string(),
+                    sibling_context: String::new(),
+                    data_type: "null".to_string(),
+                    raw_value: Value::Null,
+                });
+            }
         }
-        Value::Bool(_b) => {
-            // Skip booleans as separate items
+        Value::Bool(b) => {
+            // Store booleans - they may represent important state
+            items.push(ExtractedJsonData {
+                content: b.to_string(),
+                json_path: path.to_string(),
+                field_name: "_boolean".to_string(),
+                sibling_context: String::new(),
+                data_type: "boolean".to_string(),
+                raw_value: Value::Bool(*b),
+            });
         }
-        Value::Number(_n) => {
-            // Skip numbers as separate items (usually metadata)
+        Value::Number(n) => {
+            // Store numbers - they may be important values
+            items.push(ExtractedJsonData {
+                content: n.to_string(),
+                json_path: path.to_string(),
+                field_name: "_number".to_string(),
+                sibling_context: String::new(),
+                data_type: "number".to_string(),
+                raw_value: value.clone(),
+            });
         }
         Value::String(s) => {
             if s.len() >= config.min_text_length {
