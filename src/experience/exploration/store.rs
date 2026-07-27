@@ -4,7 +4,7 @@
 //! through repositories. The cognitive layer should not know SQL queries
 //! or table structure - only the repository contract.
 
-#![allow(dead_code)]
+
 
 use anyhow::Result;
 use std::collections::HashMap;

@@ -1,6 +1,6 @@
 // /src/experience/reflection/pattern.rs
 // Pattern detection and representation
-#![allow(dead_code)]
+
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

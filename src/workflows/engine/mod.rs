@@ -3,7 +3,7 @@
 //! 
 //! This module provides the workflow engine for executing multi-step workflows.
 
-#![allow(dead_code)]
+
 
 mod engine;
 mod executor;

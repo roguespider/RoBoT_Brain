@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+
 
 // src/tools/exploration_tools.rs
 //! Exploration MCP tools - wiring up exploration types from experience::exploration

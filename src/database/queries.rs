@@ -68,7 +68,7 @@ pub fn insert_memory(conn: &Connection, memory: &MemoryCard) -> Result<()> {
 
 /// Insert multiple memories in a single transaction for performance.
 /// This is much faster than inserting one at a time when dealing with large files.
-#[allow(dead_code)]
+
 pub fn insert_memories_batch(conn: &Connection, memories: &[MemoryCard]) -> Result<usize> {
     if memories.is_empty() {
         return Ok(0);
@@ -511,7 +511,7 @@ pub fn delete_scheduled_task(conn: &Connection, id: &str) -> Result<()> {
 use crate::database::models::Observation;
 
 /// Insert an observation (Per Architecture §07: Every experience originates from observations)
-#[allow(dead_code)]
+
 pub fn insert_observation(conn: &Connection, observation: &Observation) -> Result<()> {
     conn.execute(
         "
@@ -541,7 +541,7 @@ pub fn insert_observation(conn: &Connection, observation: &Observation) -> Resul
 }
 
 /// Get an observation by ID
-#[allow(dead_code)]
+
 pub fn get_observation(conn: &Connection, id: Uuid) -> Result<Option<Observation>> {
     let mut stmt = conn.prepare(
         "SELECT id, content, context, observation_type, related_experiences, triggered_hypothesis, created_at
@@ -571,7 +571,7 @@ pub fn get_observation(conn: &Connection, id: Uuid) -> Result<Option<Observation
 }
 
 /// List recent observations
-#[allow(dead_code)]
+
 pub fn list_observations(conn: &Connection, limit: usize) -> Result<Vec<Observation>> {
     let mut stmt = conn.prepare(
         "SELECT id, content, context, observation_type, related_experiences, triggered_hypothesis, created_at
@@ -597,7 +597,7 @@ pub fn list_observations(conn: &Connection, limit: usize) -> Result<Vec<Observat
 }
 
 /// Link an observation to an experience
-#[allow(dead_code)]
+
 pub fn link_observation_to_experience(conn: &Connection, observation_id: Uuid, experience_id: Uuid) -> Result<()> {
     if let Some(mut obs) = get_observation(conn, observation_id)? {
         obs.related_experiences.push(experience_id);

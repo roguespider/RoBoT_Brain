@@ -4,7 +4,7 @@
 //! NOTE: This module is implemented but not yet integrated into the coordinator.
 //! It provides structured experience recording with observation tracking.
 
-#![allow(dead_code)]
+
 
 use std::sync::Arc;
 

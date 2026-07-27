@@ -20,7 +20,7 @@ pub struct ExperienceScorer;
 /// This provides granular scoring for each encounter within an experience,
 /// complementing the ExperienceScore which scores the overall experience.
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
+
 pub struct EncounterScore {
     /// Success indicator (0.0-1.0)
     pub success: f32,
@@ -30,7 +30,7 @@ pub struct EncounterScore {
     pub reliability: f32,
 }
 
-#[allow(dead_code)]
+
 impl EncounterScore {
     /// Create a new encounter score with default values
     pub fn new() -> Self {
@@ -100,13 +100,11 @@ impl ExperienceScorer {
     }
 
     /// Score an individual encounter
-    #[allow(dead_code)]
     pub fn score_encounter(&self, result: &super::types::EncounterResult) -> EncounterScore {
         EncounterScore::from_result(result)
     }
 
     /// Aggregate scores from multiple encounters
-    #[allow(dead_code)]
     pub fn aggregate_encounter_scores(&self, scores: &[EncounterScore]) -> EncounterScore {
         if scores.is_empty() {
             return EncounterScore::new();

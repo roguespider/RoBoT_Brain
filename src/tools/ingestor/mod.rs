@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+
 
 // src/tools/ingestor/mod.rs
 // Ingestor module - file ingestion for short-term memory

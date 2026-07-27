@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+
 
 // src/tools/mod.rs
 // MCP tools for Zed Editor integration

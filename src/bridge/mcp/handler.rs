@@ -6,7 +6,7 @@ use anyhow::Result;
 use super::types::{McpCapabilities, McpNotification, McpRequest, McpResponse, McpServerInfo};
 
 /// Trait for MCP protocol handlers
-#[allow(dead_code)]
+
 pub trait McpHandler: Send + Sync {
     /// Handle an MCP request
     fn handle_request(&self, request: McpRequest) -> Result<McpResponse>;
@@ -22,13 +22,13 @@ pub trait McpHandler: Send + Sync {
 }
 
 /// Default MCP handler that provides basic request routing
-#[allow(dead_code)]
+
 pub struct DefaultMcpHandler {
     capabilities: McpCapabilities,
     server_info: McpServerInfo,
 }
 
-#[allow(dead_code)]
+
 impl DefaultMcpHandler {
     /// Create a new default handler with the given info
     pub fn new(server_name: &str, server_version: &str) -> Self {

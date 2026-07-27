@@ -6,7 +6,7 @@
 //!
 //! This subscriber wires the event bus to all learning subsystems.
 
-#![allow(dead_code)]
+
 
 use std::sync::Arc;
 use tokio::sync::broadcast;

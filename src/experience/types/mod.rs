@@ -11,7 +11,7 @@
 
 //! NOTE: This module is implemented but not yet fully integrated.
 
-#![allow(dead_code)]
+
 
 pub mod context;
 pub mod encounter;

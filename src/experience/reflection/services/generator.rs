@@ -1,6 +1,6 @@
 // /src/experience/reflection/services/generator.rs
 // Generates reflections from experiences
-#![allow(dead_code)]
+
 
 use uuid::Uuid;
 

@@ -4,7 +4,7 @@
 //! Per Architecture §4.04:
 //! ExperienceRecorded → Reflection observes → Hypothesis evaluates → Knowledge updates → Reputation adjusts
 
-#![allow(dead_code)]
+
 
 use chrono::Utc;
 use uuid::Uuid;

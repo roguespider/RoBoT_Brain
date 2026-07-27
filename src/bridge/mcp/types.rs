@@ -4,11 +4,11 @@
 use serde::{Deserialize, Serialize};
 
 /// MCP protocol version
-#[allow(dead_code)]
+
 pub const MCP_VERSION: &str = "2024-11-05";
 
 /// MCP message types
-#[allow(dead_code)]
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum McpMessage {
@@ -18,7 +18,7 @@ pub enum McpMessage {
 }
 
 /// MCP request message
-#[allow(dead_code)]
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpRequest {
     pub method: String,
@@ -27,7 +27,7 @@ pub struct McpRequest {
 }
 
 /// MCP response message
-#[allow(dead_code)]
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpResponse {
     pub result: Option<serde_json::Value>,
@@ -36,7 +36,7 @@ pub struct McpResponse {
 }
 
 /// MCP error
-#[allow(dead_code)]
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpError {
     pub code: i32,
@@ -45,7 +45,7 @@ pub struct McpError {
 }
 
 /// MCP notification message
-#[allow(dead_code)]
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpNotification {
     pub method: String,
@@ -61,7 +61,7 @@ pub struct McpTool {
 }
 
 /// Resource definition for MCP
-#[allow(dead_code)]
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpResource {
     pub uri: String,
@@ -71,7 +71,7 @@ pub struct McpResource {
 }
 
 /// Prompt definition for MCP
-#[allow(dead_code)]
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpPrompt {
     pub name: String,
@@ -80,7 +80,7 @@ pub struct McpPrompt {
 }
 
 /// Argument for a prompt
-#[allow(dead_code)]
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpPromptArgument {
     pub name: String,
@@ -89,7 +89,7 @@ pub struct McpPromptArgument {
 }
 
 /// Initialize request parameters
-#[allow(dead_code)]
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InitializeParams {
     pub protocol_version: String,
@@ -115,7 +115,7 @@ pub struct McpCapabilities {
 pub struct McpEmpty;
 
 /// Resources capability
-#[allow(dead_code)]
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpResourcesCapability {
     pub subscribe: Option<bool>,
@@ -123,7 +123,7 @@ pub struct McpResourcesCapability {
 }
 
 /// Client information
-#[allow(dead_code)]
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpClientInfo {
     pub name: String,

@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+
 
 // src/workflows/enforcement/enforcer.rs
 //! WorkflowEnforcer implementation

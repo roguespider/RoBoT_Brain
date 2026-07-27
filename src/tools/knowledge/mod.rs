@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+
 
 // src/tools/knowledge/mod.rs
 //! Knowledge system MCP tools

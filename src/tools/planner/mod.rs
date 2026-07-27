@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+
 
 // src/tools/planner/mod.rs
 //! Planner MCP tools - task decomposition and execution

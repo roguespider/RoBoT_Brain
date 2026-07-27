@@ -367,10 +367,11 @@ pub async fn store_transcription_as_memory(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    use std::path::Path;
 
     #[test]
     fn test_is_audio_file() {
+        use super::is_audio_file;
         assert!(is_audio_file(Path::new("test.mp3")));
         assert!(is_audio_file(Path::new("test.WAV")));
         assert!(is_audio_file(Path::new("test.m4a")));
@@ -380,6 +381,7 @@ mod tests {
 
     #[test]
     fn test_get_supported_extensions() {
+        use super::get_supported_extensions;
         let exts = get_supported_extensions();
         assert!(exts.contains(&"mp3"));
         assert!(exts.contains(&"wav"));

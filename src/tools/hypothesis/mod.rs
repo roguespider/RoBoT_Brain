@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+
 
 // src/tools/hypothesis/mod.rs
 // Hypothesis Engine: Observation -> Hypothesis -> Test -> Evidence -> Knowledge

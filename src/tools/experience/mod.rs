@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+
 
 // src/tools/experience/mod.rs
 // Experience-related MCP tools
