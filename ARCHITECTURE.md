@@ -14,225 +14,32 @@
 ================================================================================
 ## Table of Contents
 
-### Chapter 01 - Vision & Philosophy
-
-[Vision](#vision)
-
-[Philosophy](#philosophy)
-
-[Learning Pipeline](#learning-pipeline)
-
-[Cognitive Architecture](#cognitive-architecture)
-
-[Core Design Goals](#core-design-goals)
-
-[Long-Term Goal](#long-term-goal)
-
----
-
-### Chapter 02 - Core Principles
-
-[Purpose](#purpose)
-
-[Experience Over Memory](#1-experience-over-memory)
-
-[Knowledge Must Be Earned](#2-knowledge-must-be-earned)
-
-[Confidence Is Multi-Dimensional](#3-confidence-is-multi-dimensional)
-
-[Everything Important Becomes an Experience](#4-everything-important-becomes-an-experience)
-
-[Separate Observation From Interpretation](#5-separate-observation-from-interpretation)
-
-[Event-Driven Architecture](#6-event-driven-architecture)
-
-[Loose Coupling, Strong Contracts](#7-loose-coupling-strong-contracts)
-
-[Working Memory Is Temporary](#8-working-memory-is-temporary)
-
-[Permanent Memory Is Curated](#9-permanent-memory-is-curated)
-
-[Reflection Drives Improvement](#10-reflection-drives-improvement)
-
-[Hypotheses Enable Discovery](#11-hypotheses-enable-discovery)
-
-[Reputation Determines Trust](#12-reputation-determines-trust)
-
-[Learning Requires Feedback](#13-learning-requires-feedback)
-
-[Design For Evolution](#14-design-for-evolution)
-
-[Simplicity Over Complexity](#15-simplicity-over-complexity)
-
-[Core Principle Summary](#core-principle-summary)
-
----
-
-### Chapter 03 - System Overview
-
-[Purpose](#purpose)
-
-[Experience System](#21-experience-system)
-
-[Memory System](#22-memory-system)
-
-[Knowledge System](#23-knowledge-system)
-
-[Reflection System](#24-reflection-system)
-
-[Hypothesis System](#25-hypothesis-system)
-
-[Reputation System](#26-reputation-system)
-
-[Exploration System](#27-exploration-system)
-
-[Planning System](#28-planning-system)
-
-[Skills System](#29-skills-system)
-
-[MCP Interface](#210-mcp-interface)
-
-[System Relationships](#3-system-relationships)
-
----
-
-### Chapter 04 - Data Flow
-
-[Purpose](#purpose)
-
-[Experience Processing](#4031-experience-processing)
-
-[Reflection Processing](#4032-reflection-processing)
-
-[Hypothesis Processing](#4033-hypothesis-processing)
-
-[Knowledge Processing](#4034-knowledge-processing)
-
-[Planning Processing](#4035-planning-processing)
-
----
-
-### Chapter 05 - Conversation Engine
-
-[Overview](#51-overview)
-
-[Stage 1 - Input](#stage-1---input)
-
-[Stage 2 - Observation](#stage-2---observation)
-
-[Stage 3 - Experience Creation](#stage-3---experience-creation)
-
-[Experience Recorder](#experience-recorder)
-
-[Experience Scoring](#experience-scoring)
-
-[Reflection](#reflection)
-
-[Memory Processing](#memory-processing)
-
----
-
-### Chapter 06 - Context Engine
-
-[Overview](#61-overview)
-
-[Experience System](#62-experience-system)
-
-[Memory System](#63-memory-system)
-
-[Knowledge System](#64-knowledge-system)
-
-[Learning System](#65-learning-system)
-
-[Hypothesis System](#66-hypothesis-system)
-
-[Reflection System](#67-reflection-system)
-
-[Reputation System](#68-reputation-system)
-
-[MCP Integration Layer](#69-mcp-integration-layer)
-
-[Storage Layer](#610-storage-layer)
-
----
-
-### Chapter 07 - Memory Engine
-
----
-
-### Chapter 08 - Experience Engine
-
-[Design Invariants](#design-invariants)
-
----
-
-### Chapter 09 - Learning Engine
-
----
-
-### Chapter 10 - Planning Engine
-
----
-
-### Chapter 11 - Execution Engine
-
----
-
-### Chapter 12 - Tool Engine
-
----
-
-### Chapter 13 - Memory Hierarchy
-
----
-
-### Chapter 14 - Context Lifecycle
-
----
-
-### Chapter 15 - Retrieval Pipeline
-
----
-
-### Chapter 16 - Prompt Construction
-
----
-
-### Chapter 17 - Strategic Learning
-
----
-
-### Chapter 18 - Confidence System
-
----
-
-### Chapter 19 - Knowledge Graph
-
----
-
-### Chapter 20 - Storage Architecture
-
----
-
-### Chapter 21 - Database Design
-
----
-
-### Chapter 22 - Background Workers
-
----
-
-### Chapter 23 - AI Contributor Operating Agreement
-
----
-
-### Chapter 24 - *(pending)*
-
----
-
-### Chapter 25 - *(pending)*
+01. [Chapter 01 - Vision & Philosophy](#chapter-01-vision--philosophy)
+02. [Chapter 02 - Core Principles](#chapter-02-core-principles)
+03. [Chapter 03 - System Overview](#chapter-03-system-overview)
+04. [Chapter 04 - High-Level Architecture](#chapter-04-high-level-architecture)
+05. [Chapter 05 - Data Flow](#chapter-05-data-flow)
+06. [Chapter 06 - Event System](#chapter-06-event-system)
+07. [Chapter 07 - Experience System](#chapter-07-experience-system)
+08. [Chapter 08 - Memory System](#chapter-08-memory-system)
+09. [Chapter 09 - Knowledge System](#chapter-09-knowledge-system)
+10. [Chapter 10 - Reflection](#chapter-10-reflection)
+11. [Chapter 11 - Hypothesis](#chapter-11-hypothesis)
+12. [Chapter 12 - Reputation](#chapter-12-reputation)
+13. [Chapter 13 - Exploration](#chapter-13-exploration)
+14. [Chapter 14 - Planning](#chapter-14-planning)
+15. [Chapter 15 - Skills](#chapter-15-skills)
+16. [Chapter 16 - Database](#chapter-16-database)
+17. [Chapter 17 - MCP](#chapter-17-mcp)
+18. [Chapter 18 - Services](#chapter-18-services)
+19. [Chapter 19 - Repositories](#chapter-19-repositories)
+20. [Chapter 20 - Coding Standards](#chapter-20-coding-standards)
+21. [Chapter 21 - AI Development Workflow](#chapter-21-ai-development-workflow)
+22. [Chapter 22 - Roadmap](#chapter-22-roadmap)
+23. [Chapter 23 - Future Research](#chapter-23-future-research)
 
 ================================================================================
+## Chapter 01 - Vision & Philosophy
 
 # RoBoT Architecture Specification
 
@@ -242,7 +49,7 @@
 
 ---
 
-## Chapter 01 - Vision & Philosophy {#chapter-01-vision--philosophy}
+# Chapter 1 - Vision & Philosophy
 
 ## Vision
 
@@ -301,18 +108,25 @@ Learning is viewed as an ongoing scientific process rather than a database updat
 ## Learning Pipeline
 
 ```text
-                         Skills
-                           ▲
-                           │
-                      feedback
-                           │
-Experience ───► Observation ───► Evidence ───► Beliefs
-     ▲                                                     │
-     │                                                     ▼
-     └──────────────── loop back ◄─────────────── Knowledge
-                              │
-                              ▼
-                            Models
+Experience
+      │
+      ▼
+Observation
+      │
+      ▼
+Evidence
+      │
+      ▼
+Beliefs
+      │
+      ▼
+Knowledge
+      │
+      ▼
+Models
+      │
+      ▼
+Skills
 ```
 
 Every experience has the potential to:
@@ -328,12 +142,12 @@ Every experience has the potential to:
 ## Cognitive Architecture
 
 ```text
-                         Planner
-                            │
-                            ▼
-              Hypothesis ◄─── Hypothesis Engine
-                            │
-                            ▼
+                    Planner
+                       ▲
+                       │
+              Hypothesis Engine
+                       ▲
+                       │
 Experience ───► Reflection ───► Knowledge
      │                │
      ▼                ▼
@@ -346,10 +160,6 @@ Experience ───► Reflection ───► Knowledge
                Permanent Memory │
                        │
                  MCP Interface
-                            │
-         ┌─────────────────┘
-         ▼
-    Skills ───► feedback loop ───► Experience
 ```
 
 Memory is the library.
@@ -400,7 +210,7 @@ RoBoT asks:
 Every subsystem in this repository exists to support that objective.
 
 ================================================================================
-## Chapter 02 - Core Principles {#chapter-02-core-principles}
+## Chapter 02 - Core Principles
 
 ## Purpose
 
@@ -726,7 +536,7 @@ Action creates new experience.
 The architecture exists to support this continuous learning cycle.
 
 ================================================================================
-## Chapter 03 - System Overview {#chapter-03-system-overview}
+## Chapter 03 - System Overview
 
 ## Purpose
 
@@ -1154,7 +964,7 @@ The goal is to create a system capable of:
 RoBoT is therefore designed as a learning architecture rather than a storage architecture.
 
 ================================================================================
-## Chapter 04 - Data Flow {#chapter-04-data-flow}
+## Chapter 04 - High-Level Architecture
 
 ## Purpose
 
@@ -1633,7 +1443,7 @@ Independent Evolution
 The architecture exists to allow RoBoT to grow from a memory system into a complete cognitive platform.
 
 ================================================================================
-## Chapter 05 - Conversation Engine {#chapter-05-conversation-engine}
+## Chapter 05 - Data Flow
 
 ## 5.1 Overview
 
@@ -2036,7 +1846,7 @@ Learning becomes improved behavior.
 The data flow architecture provides the foundation that connects all major subsystems and allows the system to evolve over time.
 
 ================================================================================
-## Chapter 06 - Context Engine {#chapter-06-context-engine}
+## Chapter 06 - Subsystem Architecture
 
 ## 6.1 Overview
 
@@ -2196,7 +2006,7 @@ Primary components:
 - Knowledge records
 
 ================================================================================
-## Chapter 07 - Memory Engine {#chapter-07-memory-engine}
+## Chapter 07 - Experience Engine Design
 
 07.01 Purpose
 
@@ -2257,7 +2067,7 @@ Future expansion points.
 • Historical data is never destroyed, only archived.
 
 ================================================================================
-## Chapter 08 - Experience Engine {#chapter-08-experience-engine}
+## Chapter 08 - Memory Architecture
 
 Chapter 08 - Knowledge System
 
@@ -2279,7 +2089,7 @@ Promotion from Experience
 
 
 ================================================================================
-## Chapter 09 - Learning Engine {#chapter-09-learning-engine}
+## Chapter 09 - Learning Pipeline
 
 Input
 ↓
@@ -2300,7 +2110,7 @@ Action
 Reflection
 
 ================================================================================
-## Chapter 10 - Planning Engine {#chapter-10-planning-engine}
+## Chapter 10: Hypothesis and Reasoning
 
 Chapter 10 - Planning
 
@@ -2315,7 +2125,7 @@ dependencies
 replanning
 
 ================================================================================
-## Chapter 11 - Execution Engine {#chapter-11-execution-engine}
+## Chapter 11: MCP and External Interfaces
 
 Chapter 11 - Reflection
 
@@ -2331,7 +2141,7 @@ confidence updates
 hypothesis creation
 
 ================================================================================
-## Chapter 12 - Tool Engine {#chapter-12-tool-engine}
+## Chapter 12: Database Schema
 
 Chapter 12 - Learning
 
@@ -2351,7 +2161,7 @@ forgetting
 reputation updates
 
 ================================================================================
-## Chapter 13 - Memory Hierarchy {#chapter-13-memory-hierarchy}
+## Chapter 13: Rust Implementation Guidelines
 
 Chapter 13 - Personality
 
@@ -2369,7 +2179,7 @@ interaction policies
 This keeps personality from leaking into core cognition.
 
 ================================================================================
-## Chapter 14 - Context Lifecycle {#chapter-14-context-lifecycle}
+## Chapter 14: Planning
 
 Chapter 14 - World Model
 
@@ -2391,7 +2201,7 @@ Memory stores facts.
 World Model stores understanding.
 
 ================================================================================
-## Chapter 15 - Retrieval Pipeline {#chapter-15-retrieval-pipeline}
+## Chapter 15: Skills
 
 Chapter 15 - Skills
 
@@ -2414,7 +2224,7 @@ practice
 execution metrics
 
 ================================================================================
-## Chapter 16 - Prompt Construction {#chapter-16-prompt-construction}
+## Chapter 16: Database
 
 Chapter 16 - Safety
 
@@ -2430,7 +2240,7 @@ hallucination handling
 uncertainty reporting
 
 ================================================================================
-## Chapter 17 - Strategic Learning {#chapter-17-strategic-learning}
+## Chapter 17: MCP
 
 Chapter 17 - Performance
 
@@ -2448,7 +2258,7 @@ batching
 memory limits
 
 ================================================================================
-## Chapter 18 - Confidence System {#chapter-18-confidence-system}
+## Chapter 18: Services
 
 Chapter 18 - Future Roadmap
 
@@ -2464,7 +2274,7 @@ multimodal perception
 robotics integration
 
 ================================================================================
-## Chapter 19 - Knowledge Graph {#chapter-19-knowledge-graph}
+## Chapter 19: Repositories
 
 Chapter 19 - AI Coding Standards
 
@@ -2473,7 +2283,7 @@ Rather than scattered rules, have one chapter that every coding agent must obey.
 Examples:
 No duplicated logic.
 Composition over inheritance.
-Keep files under roughly 512 lines when practical.
+Keep files under roughly 500 lines when practical.
 Public APIs remain stable.
 Document every module.
 Every subsystem owns its data.
@@ -2486,7 +2296,7 @@ Every feature includes tests when feasible.
 No hidden global state.
 
 ================================================================================
-## Chapter 20 - Storage Architecture {#chapter-20-storage-architecture}
+## Chapter 20: Coding Standards
 
 Chapter 20 - Philosophy
 
@@ -2498,19 +2308,19 @@ RoBoT is designed to become more competent through accumulated experience rather
 Those kinds of statements become tie-breakers when architecture choices compete.
 
 ================================================================================
-## Chapter 21 - Database Design {#chapter-21-database-design}
+## Chapter 21: AI Development Workflow
 
 ================================================================================
-## Chapter 22 - Background Workers {#chapter-22-background-workers}
+## Chapter 22: Roadmap
 
 ================================================================================
-## Chapter 23 - AI Contributor Operating Agreement {#chapter-23-ai-contributor-operating-agreement}
+## Chapter 23: Future Research
 
 ================================================================================
-## Chapter 24 {#chapter-24}
+## Chapter 24:
 
 ================================================================================
-## Chapter 25 {#chapter-25}
+## Chapter 25:
 
 
 
@@ -2690,151 +2500,3 @@ RULE
 
 Optimize for completing the entire project, not minimizing code changes.
 Think like the project's CTO, not a code assistant.
-
-=========================================================
-MCP WORKFLOW RULES (MANDATORY)
-===
-
-This section defines the REQUIRED workflow for any AI agent using RoBoT's MCP interface.
-
-# 1. CONSULT MCP BEFORE ANY ACTION
-
-**CRITICAL**: Before taking ANY action, the agent MUST:
-
-1. Call `list_tools` to see available MCP tools
-2. Consult relevant memory using `search_memory` or `global_search`
-3. Review any stored patterns using `get_patterns` or `analyze_patterns`
-4. Only then proceed with actions
-
-**NEVER** skip the memory consultation step.
-
----
-
-# 2. FILE INGESTION WORKFLOW
-
-When ingesting files, follow this EXACT sequence:
-
-## Step 1: Check Available Files
-```
-Call: list_importable
-This returns: files in files_to_import/ (in exe directory)
-```
-
-## Step 2: Ingest ONE File at a Time
-```
-Call: ingest_files with:
-  - folder: "files_to_import" (or omit - it's the default)
-  - limit: 1 (REQUIRED for single file mode)
-  OR
-  - file_path: "exact/path/to/file.txt"
-```
-
-**IMPORTANT**:
-- Always use `limit=1` for single file ingestion
-- NEVER batch ingest multiple files without explicit user instruction
-- Each file should be ingested, processed, and verified before the next
-
-## Step 3: Verify Ingestion Success
-```
-Check the response for:
-  - success: true
-  - chunks_created: > 0
-  - remaining_in_temp: should be 0 or handled
-```
-
-## Step 4: Ask User Before Deletion
-```
-NEVER delete files without explicit user confirmation.
-Ask: "Can I delete the original file X? It has been successfully ingested."
-```
-
-## Step 5: Delete Only After Confirmation
-```
-Call: delete_ingested_files with:
-  - files: [list of file paths to delete]
-  - confirmation: "yes" (EXACTLY this value)
-```
-
----
-
-# 3. DIRECTORY STRUCTURE
-
-The following files MUST be in the SAME directory as the executable:
-
-```
-robot_brain/          (or wherever exe is located)
-├── robot_brain.exe   (or robot_brain on Linux)
-├── robot_brain.db    (SQLite database)
-└── files_to_import/  (import folder)
-    ├── file1.txt
-    ├── file2.md
-    └── ...
-```
-
-**The MCP will report `files_to_import` as the default import location.**
-
----
-
-# 4. DELETE VERIFICATION RULES
-
-**ABSOLUTE RULES**:
-
-1. NEVER delete files without user confirmation
-2. ALWAYS show what files will be deleted before calling delete_ingested_files
-3. The confirmation parameter MUST be exactly "yes" (case-insensitive)
-4. If confirmation is missing or wrong, deletion will NOT proceed
-5. Original folders are NOT deleted automatically - only files
-
----
-
-# 5. PATTERN ANALYSIS WORKFLOW
-
-Before making repetitive decisions:
-
-```
-1. Call: analyze_patterns
-2. Review returned patterns, themes, and recommendations
-3. Consider pattern confidence scores
-4. Apply learned patterns to current situation
-```
-
----
-
-# 6. DATABASE CONCURRENCY
-
-RoBoT uses SQLite with WAL mode for better concurrency:
-- Multiple readers can run simultaneously with one writer
-- Busy timeout is set to 30 seconds
-- If you encounter "database is locked", wait and retry
-
----
-
-# 7. ERROR HANDLING
-
-When operations fail:
-
-1. Check the `error` field in the response
-2. Log the error for debugging
-3. Report the error clearly to the user
-4. Do NOT silently skip errors
-5. Do NOT retry indefinitely without user input
-
----
-
-# QUICK REFERENCE: MCP TOOL USAGE
-
-| Tool | When to Use | Key Parameters |
-|------|-------------|----------------|
-| list_importable | Before ingestion, check available files | folder, limit |
-| ingest_files | Ingest files into memory | folder, file_path, limit=1 |
-| list_ingested_files | List files that can be deleted | folder, limit |
-| delete_ingested_files | Delete originals (NEEDS CONFIRMATION) | files, confirmation="yes" |
-| search_memory | Search stored memories | query, types, limit |
-| global_search | Search all data types | query, limit |
-| analyze_patterns | Detect patterns in experiences | experience_ids |
-| get_patterns | Get stored patterns | min_confidence, pattern_type |
-| get_insights | Get actionable insights | min_confidence, limit |
-
----
-
-This MCP workflow section is MANDATORY for all agents using RoBoT.
