@@ -32,7 +32,7 @@
             return enforcement_error_to_content(e);
         }
         
-        match tools::memory::execute_store_memory(input, &self.context.database).await {
+        match tools::memory::execute_store_memory(input, &self.context.database, &self.context.working_memory).await {
             Ok(result) => {
                 self.record_tool_execution("store_memory", None).await;
                 tool_output_to_content(result)
@@ -53,7 +53,7 @@
         }
         
         let query = Some(input.query.clone());
-        match tools::memory::execute_search_memory(input, &self.context.database).await {
+        match tools::memory::execute_search_memory(input, &self.context.database, &self.context.memory_retrieval).await {
             Ok(result) => {
                 self.record_tool_execution("search_memory", query).await;
                 tool_output_to_content(result)
