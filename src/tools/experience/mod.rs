@@ -189,7 +189,10 @@ pub async fn execute_record_experience(
     // Set outcome
     experience.outcome = outcome_kind_to_experience_outcome(input.outcome);
 
-    // Process through coordinator for scoring
+    // Process through coordinator for scoring and event emission
+    // This publishes:
+    // 1. Scored event (for WorkerManager and observers)
+    // 2. ExperienceRecorded event (for EventSubscriber - triggers Reflection → Hypothesis → Knowledge → Reputation)
     let processed = coordinator.process(experience.clone());
 
     // Store in database

@@ -203,12 +203,14 @@ impl App {
         policy_engine.load_defaults().await;
         tracing::info!("Policy engine loaded with default rules");
 
-        // Create workflow engine with database access
-        let workflow_engine = Arc::new(WorkflowEngine::with_database(
+        // Create workflow engine with database access and coordinator for event integration
+        // This ensures workflow experiences flow to WorkerManager and EventSubscriber
+        let workflow_engine = Arc::new(WorkflowEngine::with_database_and_coordinator(
             metrics.clone(),
             database.clone(),
+            coordinator.clone(),
         ));
-        tracing::info!("Workflow engine initialized");
+        tracing::info!("Workflow engine initialized with coordinator");
 
         // Create MCP context with all systems
         let mcp_context = Arc::new(McpContext::new(

@@ -202,17 +202,28 @@ impl ExperienceObserver for ExperienceScorer {
     }
 
     fn observe(&self, event: &ExperienceEvent) -> Result<()> {
-        use crate::experience::events::{ExperienceEventType, payload::EventPayload};
+        use crate::experience::events::payload::EventPayload;
         
-        // Only process ExperienceRecorded events
-        if let ExperienceEventType::ExperienceRecorded = event.event_type {
-            if let EventPayload::ExperienceRecord { experience, .. } = &event.payload {
+        match &event.payload {
+            // Process Scored events - already has the score calculated
+            EventPayload::Score { experience_id, score } => {
+                tracing::debug!(
+                    "ExperienceScorer received Scored event: {} with score {:?}",
+                    experience_id,
+                    score
+                );
+            }
+            // Process ExperienceRecorded events - score the experience
+            EventPayload::ExperienceRecord { experience, .. } => {
                 let score = self.score(experience);
                 tracing::debug!(
-                    "Scored experience {}: {:?}",
+                    "ExperienceScorer received ExperienceRecorded: {} scored {:?}",
                     experience.id,
                     score
                 );
+            }
+            _ => {
+                tracing::trace!("ExperienceScorer ignoring event type: {:?}", event.event_type);
             }
         }
         Ok(())

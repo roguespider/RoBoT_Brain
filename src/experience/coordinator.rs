@@ -32,6 +32,12 @@ impl ExperienceCoordinator {
     }
 
     /// Process a completed experience through the learning pipeline.
+    /// 
+    /// This method:
+    /// 1. Scores the experience
+    /// 2. Records metrics
+    /// 3. Publishes Scored event
+    /// 4. Publishes ExperienceRecorded event (with full experience for downstream processing)
     pub fn process(&self, mut experience: Experience) -> Experience {
         // Score it.
         let score = self.scorer.score(&experience);
@@ -54,14 +60,23 @@ impl ExperienceCoordinator {
             }
         });
 
-        // Publish scored event using builder
-        let event = ExperienceEvent::scored(experience.id, score);
-        let _ = self.bus.publish(event);
+        // Publish Scored event
+        let scored_event = ExperienceEvent::scored(experience.id, score.clone());
+        let _ = self.bus.publish(scored_event);
+
+        // Publish ExperienceRecorded event with full experience for downstream processing
+        // This triggers the learning pipeline: Reflection → Hypothesis → Knowledge → Reputation
+        let recorded_event = ExperienceEvent::experience_recorded(experience.clone());
+        let _ = self.bus.publish(recorded_event);
 
         experience
     }
 
-    /// Record that an experience was created
+    /// Record that an experience was created (legacy method - use process() instead)
+    /// 
+    /// Note: This only emits an event with the ID, not the full experience.
+    /// The downstream handlers expect EventPayload::ExperienceRecord with the full experience.
+    /// Use process() which emits both Scored and ExperienceRecorded with full data.
     pub fn record_experience(&self, id: Uuid) {
         use crate::experience::metrics::metric_names;
         let metrics = self.metrics.clone();
