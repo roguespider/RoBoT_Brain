@@ -15,16 +15,20 @@ use crate::experience::bus::ExperienceBus;
 use crate::experience::coordinator::ExperienceCoordinator;
 use crate::experience::event_handler::EventHandler;
 use crate::experience::evolution::EvolutionEngine;
+use crate::experience::hypothesis::HypothesisEngine;
+use crate::experience::integration::event_subscriber::{EventSubscriber, start_event_subscriber};
 use crate::experience::metrics::MetricsCollector;
 use crate::experience::reflection::ReflectionEngine;
 use crate::experience::scheduler::{Scheduler, TaskSchedule, TaskType};
 use crate::experience::scorer::ExperienceScorer;
+use crate::experience::worker::{ExperienceWorker, ObserverJob};
 use crate::knowledge::KnowledgeStore;
 use crate::learning::{LineageTracker, WorkingMemory};
 use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory as MemWorkingMemory};
 use crate::planner::{Planner, PolicyEngine};
 use crate::tools;
 use crate::workflows::engine::WorkflowEngine;
+use tokio::sync::mpsc;
 
 /// Root application container.
 ///
@@ -54,22 +58,57 @@ impl App {
 
         // Create core systems
         let bus = Arc::new(ExperienceBus::new());
+        let metrics = Arc::new(MetricsCollector::new());
         let scorer = ExperienceScorer::new();
-        let coordinator = Arc::new(ExperienceCoordinator::new(scorer, bus.clone()));
+        let coordinator = Arc::new(ExperienceCoordinator::new(scorer, bus.clone(), metrics.clone()));
 
         // Start event handler to process events from the bus
         let event_handler = EventHandler::new(bus.clone());
         event_handler.start();
         tracing::info!("Event handler started");
 
+        // Wire ExperienceScorer as an observer that scores experiences
+        // Create a separate scorer instance for the observer
+        let scorer_for_observer = ExperienceScorer::new();
+        let scorer_observer: Arc<dyn crate::experience::observer::ExperienceObserver> = Arc::new(scorer_for_observer);
+        
+        // Subscribe scorer to events (it will score experiences)
+        let scorer_bus = bus.clone();
+        tokio::spawn(async move {
+            let mut receiver = scorer_bus.subscribe();
+            tracing::info!("Experience scorer observer started, listening for events");
+            while let Ok(event) = receiver.recv().await {
+                if scorer_observer.accepts(&event) {
+                    if let Err(e) = scorer_observer.observe(&event) {
+                        tracing::error!("Scorer observer error: {}", e);
+                    }
+                }
+            }
+        });
+        tracing::info!("Experience scorer observer subscribed to bus");
+
         // Create learning engines
         let reflection_engine = Arc::new(ReflectionEngine::new());
+        let hypothesis_engine = Arc::new(HypothesisEngine::new());
         let evolution_engine = Arc::new(EvolutionEngine::new());
 
         // Create working memory, lineage tracker, and knowledge store
         let _working_memory = Arc::new(WorkingMemory::new(1000));
         let _lineage_tracker = Arc::new(LineageTracker::new());
         let knowledge_store = Arc::new(KnowledgeStore::new(10000));
+
+        // Create event subscriber for the learning pipeline
+        // Per Architecture §4.04: Experience → Reflection → Hypothesis → Knowledge → Reputation
+        let event_subscriber = Arc::new(EventSubscriber::new(
+            reflection_engine.clone(),
+            hypothesis_engine.clone(),
+            evolution_engine.clone(),
+            knowledge_store.clone(),
+        ));
+        
+        // Start the event subscriber background task
+        let _event_subscriber_handle = start_event_subscriber(bus.clone(), event_subscriber);
+        tracing::info!("Event subscriber started for learning pipeline");
 
         // Create memory system - Working and Permanent Memory (Architecture §6.3)
         let working_memory_core = Arc::new(MemWorkingMemory::new(1000));
@@ -132,6 +171,7 @@ impl App {
             bus.clone(),
             coordinator.clone(),
             reflection_engine.clone(),
+            hypothesis_engine.clone(),
             evolution_engine.clone(),
             scheduler.clone(),
             metrics.clone(),

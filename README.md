@@ -10,19 +10,10 @@ A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with p
 ## Building
 
 ```bash
-# Basic build (no audio transcription)
 cargo build --release
-
-# Build WITH audio transcription (requires libclang installed)
-cargo build --release --features whisper
 ```
 
-**Prerequisites for audio transcription:** You must install LLVM/libclang BEFORE building with whisper:
-- **macOS:** `brew install llvm`
-- **Linux:** `sudo apt install libclang-dev` or `sudo yum install llvm-dev`
-- **Windows:** Download and install LLVM from https://llvm.org, then add it to your PATH
-
-The build will fail if libclang is not found on your system.
+Audio transcription is enabled by default using Candle (no extra features or libclang required).
 
 ---
 
@@ -1711,17 +1702,11 @@ The Context Engine can query Memory, but Memory never pushes information into Co
 
 Query Flow
 Question
-
 ↓
-
 Task Detection
-
 ↓
-
 Context Planning
-
 ↓
-
 Need Memory?
 
 ├── No
@@ -2211,81 +2196,64 @@ knowledge, updates confidence, discovers patterns, and retires stale information
 loop and makes the system improve over time rather than simply grow larger.
 ---
 speech engines upgrade
-F5-TTS and whisper-rs (quantized to 4-bit) for STT
+candle for TTS and STT
 
- code architecture needed to load a local .wav file, convert it to raw PCM data, and pass it directly to
- an F5-TTS ONNX model instance within your Rust application:
- 1. Configure the Cargo.toml
- You need a WAV decoder (hound) and the ONNX model pipeline (ort with an ndarray mathematical backend):
- toml[dependencies]
- ort = { version = "2.0", features = ["load-dynamic"] }
- ndarray = "0.15"
- hound = "3.5"
- ---
- Core Rust Processing Scriptrustuse ort::{Session, SessionParameters, Value};
- use ndarray::{Array1, Array2};
- use std::path::Path;
+ Candle with Qwen3-TTS (via Candle)
+
+[ User Microphone / Audio WAV File ]
+              │
+              ▼
+    ( Candle-Whisper Large-V3 )   <── Runs locally on GPU via CUDA/Metal
+              │
+              ▼
+      [ Raw Text String ]
+              │
+              ▼
+   ( Your LLM / Application Logic )
+              │
+              ▼
+      [ Response Text ]
+              │
+              ▼
+    ( Candle Qwen3-TTS )          <── Ingests Response Text + Your Speaker WAV Sample
+              │
+              ▼
+  [ Synthesized Output Audio ]
+
+use qwen_tts::model::loader::{ModelLoader, LoaderConfig};
+use candle_core::Device;
+use std::path::Path;
+use cargo build --release --features cuda
+
+[  MCP Client ]
+          │
+          ▼ (MCP JSON-RPC Protocol)
+┌─────────────────────────────────┐
+│       Local Rust MCP Agent      │  <── Only manages text, files, and state
+└─────────────────────────────────┘
+          │
+          ▼ (Fast Binary Frame or HTTP Protocol)
+┌─────────────────────────────────┐
+│ qwen3-tts-candle (Inference)    │  <── Does the actual heavy math on the GPU
+└─────────────────────────────────┘
+
+toml[dependencies]
+async-trait = "0.1"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tokio = { version = "1.0", features = ["full"] }
+anyhow = "1.0"
+
+# Pull in the Candle Qwen3 port (Enable "cuda" or "metal" depending on your GPU)
+qwen3-tts = { version = "0.1", features = ["hub", "cuda"] } 
+
+use async_trait::async_trait;
+use serde::{Deserialize, Serialize};
+use serde_json::{json, Value};
+use std::path::Path;
+use qwen3_tts::{Qwen3TTS, Language, auto_device}; // Utilizing native candle-backed crate
  
- pub struct F5VoiceCloner {
-     onnx_session: Session,
- }
- 
- impl F5VoiceCloner {
-     pub fn new(model_path: &str) -> Result<Self, Box<dyn std::error::Error>> {
-         // Initialize the ONNX session optimized to strictly use CPU cores
-         let session = Session::builder()?
-             .commit_from_file(model_path)?;
-         Ok(Self { onnx_session: session })
-     }
- 
-     pub fn clone_voice_from_wav(
-         &self, 
-         wav_path: &str, 
-         ref_text_tokens: Vec<i64>,  // Int tokens matching what is said in the WAV
-         target_text_tokens: Vec<i64> // Int tokens for the new phrase
-     ) -> Result<Vec<f32>, Box<dyn std::error::Error>> {
-         
-         // 1. Open the custom WAV file and decode its audio samples
-         let mut reader = hound::WavReader::open(wav_path)?;
-         let spec = reader.spec();
- 
-         // F5-TTS natively expects 24,000Hz mono audio data
-         if spec.sample_rate != 24000 || spec.channels != 1 {
-             return Err("Reference WAV must be exactly 24kHz Mono!".into());
-         }
- 
-         // Convert the raw 16-bit sound waves into a normalized f32 vector array
-         let raw_samples: Vec<f32> = reader
-             .into_samples::<i16>()
-             .map(|s| s.unwrap() as f32 / 32768.0) 
-             .collect();
- 
-         // 2. Shape the reference audio into a 2D matrix shape for ONNX (1, sample_count)
-         let sample_count = raw_samples.len();
-         let audio_matrix = Array2::from_shape_vec((1, sample_count), raw_samples)?;
- 
-         // 3. Shape the text arrays into standard 2D token matrices
-         let ref_text_matrix = Array2::from_shape_vec((1, ref_text_tokens.len()), ref_text_tokens)?;
-         let target_text_matrix = Array2::from_shape_vec((1, target_text_tokens.len()), target_text_tokens)?;
- 
-         // 4. Pass all data directly into the F5-TTS model session inputs
-         let inputs = ort::inputs![
-             "ref_audio" => audio_matrix,
-             "ref_text" => ref_text_matrix,
-             "target_text" => target_text_matrix,
-         ()?;
- 
-         // 5. Execute the generation process natively on the CPU
-         let outputs = self.onnx_session.run(inputs)?;
-         
-         // Extract the newly generated audio array
-         let output_tensor = outputs["output_audio"].try_extract_tensor::<f32>()?;
-         let generated_speech_raw = output_tensor.view().to_owned().into_raw_vec();
- 
-         Ok(generated_speech_raw)
-     }
- }
- ---
+  ---
 
 tools\
      ├──interaction\
@@ -2343,11 +2311,6 @@ ZIP
 Rust source
 Entire folders
 sent to ingestor which adds it to short term memory for agent usage. simply hands them to the ingestion pipeline, which routes each file to the appropriate processor.
-
- F5-TTS and whisper-rs (quantized to 4-bit) for STT
-
-
-
 
 an Interaction Layer as a peer to your Experience and Memory systems:
 Interaction

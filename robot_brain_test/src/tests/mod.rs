@@ -1,3 +1,7 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+
 //! Test modules
 //!
 //! Split from the monolithic tests.rs file for better maintainability.

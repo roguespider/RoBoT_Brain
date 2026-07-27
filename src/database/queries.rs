@@ -66,65 +66,6 @@ pub fn insert_memory(conn: &Connection, memory: &MemoryCard) -> Result<()> {
     Ok(())
 }
 
-/// Insert multiple memories in a single transaction for performance.
-/// This is much faster than inserting one at a time when dealing with large files.
-
-pub fn insert_memories_batch(conn: &Connection, memories: &[MemoryCard]) -> Result<usize> {
-    if memories.is_empty() {
-        return Ok(0);
-    }
-
-    let tx = conn.unchecked_transaction()?;
-    
-    let mut inserted = 0;
-    for memory in memories {
-        tx.execute(
-            "
-            INSERT OR REPLACE INTO memories
-            (
-                id,
-                content,
-                memory_type,
-                layer,
-                parent_id,
-                hierarchy_level,
-                order_index,
-                path,
-                file_source,
-                access_count,
-                last_accessed,
-                confidence,
-                importance,
-                created_at,
-                updated_at
-            )
-            VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)
-            ",
-            params![
-                memory.id.to_string(),
-                memory.content,
-                memory.memory_type.to_string(),
-                memory.layer.to_string(),
-                memory.parent_id.map(|u| u.to_string()),
-                memory.hierarchy_level.to_string(),
-                memory.order_index,
-                memory.path,
-                memory.file_source,
-                memory.access_count,
-                memory.last_accessed.map(|t| t.to_rfc3339()),
-                memory.confidence,
-                memory.importance,
-                memory.created_at.to_rfc3339(),
-                memory.updated_at.to_rfc3339()
-            ],
-        )?;
-        inserted += 1;
-    }
-    
-    tx.commit()?;
-    Ok(inserted)
-}
-
 /// Delete memories by their IDs
 pub fn delete_memories(conn: &Connection, ids: &[Uuid]) -> Result<usize> {
     if ids.is_empty() {

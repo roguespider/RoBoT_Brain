@@ -1,3 +1,7 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+
 //! Test Environment Setup Module
 //! 
 //! Sets up the test environment with database and files_to_import folder

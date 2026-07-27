@@ -13,6 +13,7 @@ use crate::experience::{
 /// The scorer does not decide what is true.
 /// It only evaluates the usefulness and quality
 /// of recorded experiences.
+#[derive(Clone)]
 pub struct ExperienceScorer;
 
 /// Scores individual encounters.
@@ -191,9 +192,28 @@ impl ExperienceObserver for ExperienceScorer {
         "ExperienceScorer"
     }
 
+    fn accepts(&self, event: &ExperienceEvent) -> bool {
+        use crate::experience::events::ExperienceEventType;
+        matches!(
+            event.event_type,
+            ExperienceEventType::ExperienceRecorded | ExperienceEventType::Scored
+        )
+    }
+
     fn observe(&self, event: &ExperienceEvent) -> Result<()> {
-        // For now, just log the event
-        println!("Scorer received event: {:?}", event);
+        use crate::experience::events::{ExperienceEventType, payload::EventPayload};
+        
+        // Only process ExperienceRecorded events
+        if let ExperienceEventType::ExperienceRecorded = event.event_type {
+            if let EventPayload::ExperienceRecord { experience, .. } = &event.payload {
+                let score = self.score(experience);
+                tracing::debug!(
+                    "Scored experience {}: {:?}",
+                    experience.id,
+                    score
+                );
+            }
+        }
         Ok(())
     }
 }

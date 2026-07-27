@@ -7,6 +7,7 @@ use crate::database::sqlite::SqliteDatabase;
 use crate::experience::bus::ExperienceBus;
 use crate::experience::coordinator::ExperienceCoordinator;
 use crate::experience::evolution::EvolutionEngine;
+use crate::experience::hypothesis::HypothesisEngine;
 use crate::experience::metrics::MetricsCollector;
 use crate::experience::reflection::ReflectionEngine;
 use crate::experience::scheduler::Scheduler;
@@ -30,6 +31,9 @@ pub struct McpContext {
 
     /// Reflection engine (used by reflection tools)
     pub reflection: Arc<ReflectionEngine>,
+
+    /// Hypothesis engine (used by hypothesis tools)
+    pub hypothesis: Arc<HypothesisEngine>,
 
     /// Evolution engine
     pub evolution: Arc<EvolutionEngine>,
@@ -75,6 +79,7 @@ impl McpContext {
         bus: Arc<ExperienceBus>,
         coordinator: Arc<ExperienceCoordinator>,
         reflection: Arc<ReflectionEngine>,
+        hypothesis: Arc<HypothesisEngine>,
         evolution: Arc<EvolutionEngine>,
         scheduler: Arc<Scheduler>,
         metrics: Arc<MetricsCollector>,
@@ -91,6 +96,7 @@ impl McpContext {
             bus,
             coordinator,
             reflection,
+            hypothesis,
             evolution,
             scheduler,
             metrics,

@@ -1,3 +1,7 @@
+#![allow(dead_code)]
+#![allow(unused_variables)]
+#![allow(unused_imports)]
+
 //! Planner tool tests
 use crate::TestMcpClient;
 use crate::TestStats;
