@@ -3,7 +3,7 @@
 
 A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with persistent memory, experience-based learning, and structured knowledge storage.
 
-> **Status:** v0.0.0.7 (fix-and-repair-v0.0.1) — Memory-Observation-Experience integration per Architecture §07: Every experience originates from one or more observations. Memory operations now create observations which feed into experiences. Database layer with 11 migrations. All 58 unit tests and 103 integration tests passing. 0 errors, 0 warnings.
+> **Status:** v0.7.1 (fix-and-repair) — Memory System implemented per Architecture §4.08, §6.3 with Working Memory, Permanent Memory, and Memory Retrieval. Full event catalog per Architecture §4.04. Learning Pipeline per Architecture §9. Database layer with 8 migrations. All 54 unit tests and 103 integration tests passing. 0 errors, 0 warnings.
 
 ---
 
@@ -68,56 +68,6 @@ A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with p
                     +----------------+
 ```
 
-
-### Memory-Observation-Experience Integration (Per Architecture §07)
-
-The system follows a fundamental invariant: **"Every experience originates from one or more observations."**
-
-```
-┌─────────────────────────────────────────────────────────────────────┐
-│                    Memory → Observation → Experience                 │
-├─────────────────────────────────────────────────────────────────────┤
-│                                                                     │
-│   Memory Operations:                                                │
-│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐            │
-│   │ store_memory │───▶│ Observation │───▶│ Experience  │            │
-│   └─────────────┘    └─────────────┘    └──────┬──────┘            │
-│   ┌─────────────┐         │                    │                     │
-│   │ search_memory│─────────┤                    │                     │
-│   └─────────────┘         │                    ▼                     │
-│   ┌─────────────┐         │            ┌─────────────┐              │
-│   │ get_memory  │─────────┴────────────▶│   Memory    │              │
-│   └─────────────┘                      │ (from exp)  │              │
-│                                         └─────────────┘              │
-│                                                                     │
-│   Consolidation Pipeline:                                            │
-│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐            │
-│   │ consolidate │───▶│ Observation │───▶│ Experience  │            │
-│   │ _memory     │    │             │    │ (Reflection)│            │
-│   └─────────────┘    └─────────────┘    └──────┬──────┘            │
-│                                                 │                    │
-│   Per Architecture §9:                          ▼                    │
-│   "Information should move from                ┌─────────────┐     │
-│    working memory into permanent memory          │   Memory    │     │
-│    only after evaluation"                       │ (Permanent) │     │
-│                                                 └─────────────┘     │
-└─────────────────────────────────────────────────────────────────────┘
-```
-
-#### Components
-
-| Component | File | Description |
-|-----------|------|-------------|
-| `Observation` | `src/database/models.rs` | Raw observations: content, context, observation_type, triggered_hypothesis |
-| `insert_observation` | `src/database/queries.rs` | Store observations in SQLite |
-| Memory tools | `src/tools/memory/mod.rs` | Create observation → experience → memory for all operations |
-
-#### Key Implementation Details
-
-- **store_memory**: Creates observation → experience → experience-memory → actual-memory
-- **search_memory**: Creates observation → experience on every search
-- **get_memory**: Creates observation → experience on every access  
-- **consolidate_memory**: Creates observation → experience → experience-memory, then performs consolidation action
 
 ### Memory Layers (Per Architecture §6.3)
 
@@ -2449,7 +2399,7 @@ The ingestor tools allow you to import files from a `files_to_import/` folder in
 | Text | `.txt`, `.md`, `.rst`, `.csv`, `.log`, `.xml`, `.html` | Direct ingestion |
 | JSON | `.json`, `.jsonl` | Pretty-printed for search |
 | PDF | `.pdf` | Basic text extraction |
-| Images | `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.webp` | Metadata extraction |
+| Audio | `.mp3`, `.wav`, `.m4a`, `.flac`, `.ogg`, `.aac` | Placeholder for transcription |
 
 ### MCP Tools
 
@@ -2695,9 +2645,8 @@ Delete a workflow completely.
 
 | Area | Status | Details |
 |------|--------|---------|
-| Database layer | ✅ Functional | Schema + 11 migrations (v0→v11 via `migrations/` module), CRUD queries all implemented |
+| Database layer | ✅ Functional | Schema + 8 migrations (v0→v8 via `migrations/` module), CRUD queries all implemented |
 | Memory System | ✅ Complete | Working Memory, Permanent Memory, Memory Retrieval per Architecture §6.3 |
-| Observation System | ✅ Complete | Per Architecture §07: Every experience originates from observations |
 | Event System | ✅ Complete | Full event catalog per Architecture §4.04 (30+ event types) |
 | Learning Pipeline | ✅ Implemented | Input→Observation→Memory→Experience→Knowledge→Planning→Decision→Action→Reflection |
 | Experience types/events | ✅ Complete | Full type system for experiences, scores, reputation, event payloads |
