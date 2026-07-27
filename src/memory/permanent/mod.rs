@@ -9,8 +9,6 @@
 //! - Confidence weighted
 //! - Relationship aware
 
-#![allow(dead_code)]
-
 mod store;
 #[cfg(test)]
 mod tests;

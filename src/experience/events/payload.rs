@@ -1,45 +1,95 @@
 // /src/experience/events/payload.rs
+//! Event payloads for all experience system events
+//!
+//! Per Architecture §4.04:
+//! ExperienceRecorded → Reflection observes → Hypothesis evaluates → Knowledge updates → Reputation adjusts
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::experience::types::ExperienceScore;
+use crate::experience::types::{Experience, ExperienceScore};
+use crate::experience::reflection::reflection::Reflection;
+use crate::experience::hypothesis::core::Hypothesis;
 
 /// The specific event that occurred.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EventPayload {
     // -------------------------------------------------------------------------
-    // Experience lifecycle
+    // Experience lifecycle (Per Architecture §5.3)
     // -------------------------------------------------------------------------
     /// A new experience was recorded.
-    ExperienceRecorded,
+    ExperienceRecord {
+        /// The experience that was recorded
+        experience: Experience,
+    },
 
     /// An existing experience changed.
-    ExperienceUpdated,
+    ExperienceUpdated {
+        experience_id: Uuid,
+    },
 
     /// An experience was archived.
-    ExperienceArchived,
+    ExperienceArchived {
+        experience_id: Uuid,
+    },
 
     /// An experience was deleted.
-    ExperienceDeleted,
+    ExperienceDeleted {
+        experience_id: Uuid,
+    },
 
     // -------------------------------------------------------------------------
-    // Processing results
+    // Processing events (Per Architecture §5.3, §4.04)
     // -------------------------------------------------------------------------
     /// Scoring completed.
-    ScoreCalculated { score: f32 },
+    ScoreRecord {
+        experience_id: Uuid,
+        score: ExperienceScore,
+    },
 
-    /// Reputation metrics changed.
-    ReputationUpdated { previous: f32, current: f32 },
+    /// Reflection completed (Per Architecture §4.04).
+    ReflectionRecord {
+        reflection: Reflection,
+    },
 
-    /// Reflection completed.
-    ReflectionCompleted { reflection_id: Uuid },
+    /// Hypothesis generated (Per Architecture §4.04).
+    HypothesisRecord {
+        hypothesis: Hypothesis,
+    },
 
-    /// Hypothesis generated.
-    HypothesisGenerated { hypothesis_id: Uuid },
+    /// Hypothesis validated (Per Architecture §4.04).
+    HypothesisValidation {
+        hypothesis_id: String,
+        result: String,
+    },
 
-    /// Exploration completed.
-    ExplorationCompleted { exploration_id: Uuid },
+    /// Knowledge updated (Per Architecture §4.04).
+    KnowledgeRecord {
+        knowledge_id: Uuid,
+    },
+
+    /// Reputation metrics changed (Per Architecture §4.04).
+    ReputationRecord {
+        entity_id: String,
+        previous: f32,
+        current: f32,
+    },
+
+    /// Exploration completed (Per Architecture §4.04).
+    ExplorationRecord {
+        exploration_id: Uuid,
+    },
+
+    // -------------------------------------------------------------------------
+    // Evidence events (Per Architecture §11)
+    // -------------------------------------------------------------------------
+    /// Evidence added to a hypothesis
+    EvidenceRecord {
+        evidence_id: Uuid,
+        hypothesis_id: String,
+        direction: String, // "support" or "contradict"
+        strength: f32,
+    },
 
     // -------------------------------------------------------------------------
     // Observer lifecycle
@@ -60,8 +110,23 @@ pub enum EventPayload {
     ProcessingFailed { stage: String, error: String },
 
     // -------------------------------------------------------------------------
-    // Legacy / misc
+    // Legacy / misc (for backwards compatibility)
     // -------------------------------------------------------------------------
+    /// Scoring completed.
+    ScoreCalculated { score: f32 },
+
+    /// Reputation metrics changed.
+    ReputationUpdated { previous: f32, current: f32 },
+
+    /// Reflection completed.
+    ReflectionCompleted { reflection_id: Uuid },
+
+    /// Hypothesis generated.
+    HypothesisGenerated { hypothesis_id: Uuid },
+
+    /// Exploration completed.
+    ExplorationCompleted { exploration_id: Uuid },
+
     /// Reflection has been requested.
     ReflectionRequested,
 
@@ -72,7 +137,7 @@ pub enum EventPayload {
     Error { message: String },
 
     // -------------------------------------------------------------------------
-    // Builders payload variants
+    // Builder payload variants (legacy compatibility)
     // -------------------------------------------------------------------------
     /// Generic event tied to an experience.
     Experience { experience_id: Uuid },
