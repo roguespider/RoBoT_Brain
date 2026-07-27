@@ -14,12 +14,13 @@ use super::db::{
     record_observation, create_hypothesis, get_hypothesis_by_id, update_hypothesis,
     add_evidence, get_evidence_for_hypothesis, create_knowledge, get_knowledge,
 };
-use crate::database::queries::{get_observation, list_observations};
+use crate::database::queries::{get_observation, list_observations, link_observation_to_experience};
 use crate::database::models::{Observation, Evidence};
 use crate::tools::hypothesis::{
     RecordObservationInput, CreateHypothesisInput, AddEvidenceInput,
     GetHypothesisInput, GetObservationInput, ListHypothesesInput, ListObservationsInput,
     EvaluateHypothesisInput, GetKnowledgeInput, ExtractKnowledgeInput,
+    LinkObservationToExperienceInput,
 };
 
 // ============================================================================
@@ -336,6 +337,24 @@ pub async fn execute_list_observations(
     Ok(ToolOutput::success(serde_json::json!({
         "observations": results,
         "count": results.len()
+    })))
+}
+
+pub async fn execute_link_observation_to_experience(
+    input: LinkObservationToExperienceInput,
+    db: &Arc<SqliteDatabase>,
+) -> Result<ToolOutput> {
+    let observation_id = Uuid::parse_str(&input.observation_id)
+        .map_err(|e| anyhow::anyhow!("Invalid observation ID: {}", e))?;
+    let experience_id = Uuid::parse_str(&input.experience_id)
+        .map_err(|e| anyhow::anyhow!("Invalid experience ID: {}", e))?;
+    
+    let conn = db.connection()?;
+    link_observation_to_experience(&conn, observation_id, experience_id)?;
+    
+    Ok(ToolOutput::success(serde_json::json!({
+        "success": true,
+        "message": format!("Observation {} linked to experience {}", input.observation_id, input.experience_id)
     })))
 }
 
