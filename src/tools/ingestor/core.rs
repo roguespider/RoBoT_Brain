@@ -20,7 +20,7 @@ use crate::tools::ToolOutput;
 use crate::tools::ingestor::archive_handler::{
     create_archive_temp_dir, delete_empty_folders, process_archive,
 };
-use crate::tools::ingestor::file_collector::{collect_all_files_recursive, collect_importable_files, collect_importable_files_with_recursive, get_import_folder, is_supported_extension, JSON_EXTENSIONS, ARCHIVE_EXTENSIONS, TEXT_EXTENSIONS, IMAGE_EXTENSIONS};
+use crate::tools::ingestor::file_collector::{collect_all_files_recursive, collect_importable_files, collect_importable_files_with_recursive, get_import_folder, is_supported_extension, AUDIO_EXTENSIONS, JSON_EXTENSIONS, ARCHIVE_EXTENSIONS, TEXT_EXTENSIONS, IMAGE_EXTENSIONS};
 use crate::tools::ingestor::text_extractor::{extract_text, extract_image_metadata, validate_text_quality};
 use crate::tools::ingestor::semantic_chunker::{parse_document, get_file_type};
 use crate::tools::ingestor::json_importer::import_json_file;
@@ -238,6 +238,13 @@ pub struct ListImportableInput {
     /// List all files without limit (default: false)
     /// Set to true to show all files instead of just the first few
     pub list_all: Option<bool>,
+}
+
+/// Tool: Transcribe an audio file (placeholder - not currently implemented)
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct TranscribeAudioInput {
+    pub path: String,
+    pub output: Option<String>,
 }
 
 /// Tool: Delete successfully imported files
@@ -919,6 +926,11 @@ async fn ingest_single_file(
         return ingest_json_file(path, 0, memory_type, db, working_memory).await;
     }
 
+    // Check if this is an audio file - placeholder for future audio processing
+    if is_supported_extension(path, AUDIO_EXTENSIONS) {
+        return ingest_audio_file_placeholder(path).await;
+    }
+
     // Extract text content for other file types
     let text = extract_text(path)
         .with_context(|| format!("Failed to extract text from {}", filename))?;
@@ -1190,4 +1202,26 @@ fn parse_memory_type(s: &str) -> MemoryType {
         "note" => MemoryType::Note,
         _ => MemoryType::File,
     }
+}
+
+/// Placeholder for audio file ingestion - audio processing not currently available
+async fn ingest_audio_file_placeholder(path: &Path) -> Result<IngestResult> {
+    let filename = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+
+    tracing::info!("Audio file skipped (not currently supported): {}", filename);
+
+    Ok(IngestResult {
+        filename,
+        file_path: path.to_string_lossy().to_string(),
+        success: false,
+        chunks_created: 0,
+        chunk_size_used: 0,
+        memory_ids: vec![],
+        error: Some("Audio processing not currently available".to_string()),
+        remaining_count: 0,
+    })
 }

@@ -19,6 +19,7 @@ pub use core::{
     IngestFilesInput, ListImportableInput,
     DeleteIngestedFilesInput, ListIngestedFilesInput,
     can_delete_files, clear_ingest_tracker, can_verify_deletion,
+    TranscribeAudioInput,
 };
 
 // Re-export JSON importer
