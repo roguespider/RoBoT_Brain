@@ -11,9 +11,6 @@
 //!
 //! Knowledge is not static - it changes as new evidence appears.
 
-//! Scaffolding module - knowledge system components
-#![allow(dead_code, unused_imports)]
-
 pub mod types;
 pub mod store;
 pub mod query;

@@ -17,6 +17,7 @@ pub mod workflow;
 pub use core::{
     execute_delete_ingested_files, execute_list_importable,
     execute_list_ingested_files, ingest_file,
+    execute_transcribe_audio,
     IngestFilesInput, ListImportableInput,
     DeleteIngestedFilesInput, ListIngestedFilesInput,
     can_delete_files, clear_ingest_tracker, can_verify_deletion,
