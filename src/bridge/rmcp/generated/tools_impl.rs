@@ -427,7 +427,7 @@ async fn transcribe_audio(
         return enforcement_error_to_content(e);
     }
 
-    match tools::ingestor::execute_transcribe_audio(input, Arc::clone(&self.context.database), Arc::clone(&self.context.working_memory)).await {
+    match tools::ingestor::execute_transcribe_audio(input, self.context.database.clone(), self.context.working_memory.clone()).await {
         Ok(result) => {
             self.record_tool_execution("transcribe_audio", None).await;
             tool_output_to_content(result)
