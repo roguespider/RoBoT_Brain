@@ -19,6 +19,7 @@ pub mod integration;
 
 pub mod metrics;
 pub mod observer;
+pub mod observers; // Observer implementations for learning subsystems
 pub mod queue;
 
 pub mod reflection;

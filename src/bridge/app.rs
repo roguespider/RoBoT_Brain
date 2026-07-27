@@ -23,6 +23,9 @@ use crate::experience::hypothesis::HypothesisEngine;
 use crate::experience::integration::event_subscriber::{EventSubscriber, start_event_subscriber};
 use crate::experience::integration::reflection_pipeline::ReflectionPipeline;
 use crate::experience::metrics::MetricsCollector;
+use crate::experience::observers::{
+    ReputationObserver, HypothesisObserver, MetricsObserver,
+};
 use crate::experience::reflection::ReflectionEngine;
 use crate::experience::reputation::decay::ReputationDecay;
 use crate::experience::scheduler::{Scheduler, TaskSchedule, TaskType};
@@ -90,17 +93,39 @@ impl App {
         event_handler.start();
         tracing::info!("Event handler started");
 
+        // Create learning engines first (needed for observers)
+        let reflection_engine = Arc::new(ReflectionEngine::new());
+        let hypothesis_engine_for_subscriber = Arc::new(HypothesisEngine::new());
+        let hypothesis_engine = Arc::new(Mutex::new(HypothesisEngine::new()));
+        let evolution_engine = Arc::new(EvolutionEngine::new());
+        let metrics = Arc::new(MetricsCollector::new());
+
         // Create WorkerManager for background job processing per Architecture §22
         // Design: Experience → Recorder → Bus → Job Queue → Workers → Observers
         let worker_manager = Arc::new(WorkerManager::new(bus.clone()));
 
-        // Wire ExperienceScorer as an observer that scores experiences
-        let scorer_for_observer = ExperienceScorer::new();
-        let scorer_observer: Arc<dyn crate::experience::observer::ExperienceObserver> = Arc::new(scorer_for_observer);
-        
-        // Register scorer with WorkerManager - creates dedicated worker
-        worker_manager.register_observer(scorer_observer.clone()).await?;
+        // Register all observers with WorkerManager per Architecture §22
+        // Each observer runs in its own dedicated worker
+
+        // 1. ExperienceScorer - scores experiences
+        let scorer = Arc::new(ExperienceScorer::new()) as Arc<dyn crate::experience::observer::ExperienceObserver>;
+        worker_manager.register_observer(scorer).await?;
         tracing::info!("ExperienceScorer registered with WorkerManager");
+
+        // 2. ReputationObserver - updates entity reputations
+        let reputation_observer = Arc::new(ReputationObserver::new()) as Arc<dyn crate::experience::observer::ExperienceObserver>;
+        worker_manager.register_observer(reputation_observer).await?;
+        tracing::info!("ReputationObserver registered with WorkerManager");
+
+        // 3. HypothesisObserver - generates and evaluates hypotheses
+        let hypothesis_observer = Arc::new(HypothesisObserver::new(hypothesis_engine.clone())) as Arc<dyn crate::experience::observer::ExperienceObserver>;
+        worker_manager.register_observer(hypothesis_observer).await?;
+        tracing::info!("HypothesisObserver registered with WorkerManager");
+
+        // 4. MetricsObserver - collects metrics from all events
+        let metrics_observer = Arc::new(MetricsObserver::new(metrics.clone())) as Arc<dyn crate::experience::observer::ExperienceObserver>;
+        worker_manager.register_observer(metrics_observer).await?;
+        tracing::info!("MetricsObserver registered with WorkerManager");
 
         // Start worker manager background task - subscribes to bus and enqueues jobs
         let manager_clone = worker_manager.clone();
@@ -118,15 +143,6 @@ impl App {
             manager_bus.unsubscribe();
         });
         tracing::info!("Worker manager subscribed to bus (total subscribers: {})", bus.subscriber_count());
-
-        // Create learning engines
-        let reflection_engine = Arc::new(ReflectionEngine::new());
-        // hypothesis_engine for event subscriber (immutable reference)
-        let hypothesis_engine_for_subscriber = Arc::new(HypothesisEngine::new());
-        // Store a separate hypothesis_engine for mutable operations (process_experience)
-        use std::sync::Mutex;
-        let hypothesis_engine = Arc::new(Mutex::new(HypothesisEngine::new()));
-        let evolution_engine = Arc::new(EvolutionEngine::new());
 
         // Create working memory, lineage tracker, and knowledge store
         let _working_memory = Arc::new(WorkingMemory::new(1000));
@@ -175,10 +191,7 @@ impl App {
         }
         tracing::info!("Memory system initialized and loaded from database (Working: 1000, Permanent: 10000)");
 
-        // Create metrics collector before scheduler handlers need it
-        let metrics = Arc::new(MetricsCollector::new());
-
-        // Create scheduler with background tasks
+        // Create scheduler with background tasks (metrics already created above)
         let scheduler = Self::setup_scheduler(database.clone()).await?;
 
         // Register task handlers with access to all required engines
