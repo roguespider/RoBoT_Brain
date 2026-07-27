@@ -9,7 +9,7 @@
 //! Evidence is intentionally independent from hypothesis evaluation. It simply
 //! describes what was observed and how trustworthy that observation is.
 
-
+#![allow(dead_code)]
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -17,7 +17,8 @@ use uuid::Uuid;
 
 use super::hypothesis::HypothesisId;
 
-/// Type alias for experience ID
+/// Type alias for experience ID (scaffolding for future use)
+#[allow(dead_code)]
 pub type ExperienceId = String;
 
 /// ============================================================================

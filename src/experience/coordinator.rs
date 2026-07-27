@@ -1,4 +1,5 @@
 // /src/experience/coordinator.rs
+#![allow(dead_code)]
 // Experience system coordinator per Architecture §07
 
 
@@ -9,6 +10,7 @@ use crate::experience::{
         Exploration, ExplorationAttempt, ExplorationFinding, Hypothesis,
         InMemoryExplorationRepository, ExplorationRepository,
     },
+    metrics::MetricsCollector,
     scorer::ExperienceScorer, types::*,
 };
 use std::sync::Arc;
@@ -22,14 +24,16 @@ pub struct ExperienceCoordinator {
     scorer: ExperienceScorer,
     bus: Arc<ExperienceBus>,
     exploration_store: Arc<InMemoryExplorationRepository>,
+    metrics: Arc<MetricsCollector>,
 }
 
 impl ExperienceCoordinator {
-    pub fn new(scorer: ExperienceScorer, bus: Arc<ExperienceBus>) -> Self {
+    pub fn new(scorer: ExperienceScorer, bus: Arc<ExperienceBus>, metrics: Arc<MetricsCollector>) -> Self {
         Self {
             scorer,
             bus,
             exploration_store: Arc::new(InMemoryExplorationRepository::new()),
+            metrics,
         }
     }
 
@@ -38,6 +42,23 @@ impl ExperienceCoordinator {
         // Score it.
         let score = self.scorer.score(&experience);
         experience.score = Some(score.clone());
+
+        // Record metrics
+        use crate::experience::metrics::metric_names;
+        let metrics_clone = self.metrics.clone();
+        let outcome_kind = experience.outcome.kind;
+        tokio::spawn(async move {
+            metrics_clone.increment(metric_names::EXPERIENCES_RECORDED).await;
+            match outcome_kind {
+                OutcomeKind::Success | OutcomeKind::Partial => {
+                    metrics_clone.increment(metric_names::EXPERIENCES_SUCCESS).await;
+                }
+                OutcomeKind::Failure => {
+                    metrics_clone.increment(metric_names::EXPERIENCES_FAILURE).await;
+                }
+                _ => {}
+            }
+        });
 
         // Publish scored event using builder
         let event = ExperienceEvent::scored(experience.id, score);
@@ -48,12 +69,22 @@ impl ExperienceCoordinator {
 
     /// Record that an experience was created
     pub fn record_experience(&self, id: Uuid) {
+        use crate::experience::metrics::metric_names;
+        let metrics = self.metrics.clone();
+        tokio::spawn(async move {
+            metrics.increment(metric_names::EXPERIENCES_RECORDED).await;
+        });
         let event = ExperienceEvent::recorded(id);
         let _ = self.bus.publish(event);
     }
 
     /// Record that reflection was completed
     pub fn complete_reflection(&self, id: Uuid) {
+        use crate::experience::metrics::metric_names;
+        let metrics = self.metrics.clone();
+        tokio::spawn(async move {
+            metrics.increment(metric_names::REFLECTIONS_CREATED).await;
+        });
         let reflection_id = Uuid::new_v4();
         let event = ExperienceEvent::reflection_completed(id, reflection_id);
         let _ = self.bus.publish(event);
@@ -61,6 +92,11 @@ impl ExperienceCoordinator {
 
     /// Record that a hypothesis was generated
     pub fn generate_hypothesis(&self, id: Uuid) {
+        use crate::experience::metrics::metric_names;
+        let metrics = self.metrics.clone();
+        tokio::spawn(async move {
+            metrics.increment(metric_names::HYPOTHESES_GENERATED).await;
+        });
         let hypothesis_id = Uuid::new_v4();
         let event = ExperienceEvent::hypothesis_generated(id, hypothesis_id);
         let _ = self.bus.publish(event);
@@ -68,6 +104,11 @@ impl ExperienceCoordinator {
 
     /// Record that exploration was completed
     pub fn complete_exploration(&self, id: Uuid) {
+        use crate::experience::metrics::metric_names;
+        let metrics = self.metrics.clone();
+        tokio::spawn(async move {
+            metrics.increment(metric_names::EXPLORATIONS_COMPLETED).await;
+        });
         let exploration_id = Uuid::new_v4();
         let event = ExperienceEvent::exploration_completed(id, exploration_id);
         let _ = self.bus.publish(event);

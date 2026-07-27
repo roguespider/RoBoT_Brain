@@ -64,14 +64,3 @@ impl Default for ExperienceBus {
         Self::new()
     }
 }
-
-/// Helper trait for publishing events
-pub trait EventPublisher: Send + Sync {
-    fn publish(&self, event: ExperienceEvent) -> Result<()>;
-}
-
-impl EventPublisher for ExperienceBus {
-    fn publish(&self, event: ExperienceEvent) -> Result<()> {
-        ExperienceBus::publish(self, event)
-    }
-}

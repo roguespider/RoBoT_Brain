@@ -23,7 +23,7 @@ use crate::tools::ingestor::archive_handler::{
 use crate::tools::ingestor::file_collector::{collect_all_files_recursive, collect_importable_files, collect_importable_files_with_recursive, get_import_folder, is_supported_extension, AUDIO_EXTENSIONS, JSON_EXTENSIONS, ARCHIVE_EXTENSIONS, TEXT_EXTENSIONS, IMAGE_EXTENSIONS};
 use crate::tools::ingestor::text_extractor::{extract_text, extract_image_metadata, validate_text_quality};
 use crate::tools::ingestor::semantic_chunker::{parse_document, get_file_type};
-use crate::tools::ingestor::json_importer::import_json_file;
+use crate::tools::ingestor::json_importer::{import_json_file, ExtractedJsonData};
 use crate::tools::ingestor::audio_transcriber::{
     self, is_audio_file, store_transcription_as_memory,
 };
@@ -1049,18 +1049,34 @@ async fn ingest_json_file(
         }
     };
 
-    if result.items.is_empty() {
-        return Ok(IngestResult {
-            filename,
-            file_path: path.to_string_lossy().to_string(),
-            success: false,
-            chunks_created: 0,
-            chunk_size_used: chunk_size,
-            memory_ids: vec![],
-            error: Some("JSON file contains no extractable text content".to_string()),
-            remaining_count: 0,
-        });
-    }
+    // Even if items is empty, we try to read the raw file content as fallback
+    let items_to_store = if result.items.is_empty() {
+        // Try to read raw JSON content as a single fallback item
+        if let Ok(raw_content) = std::fs::read_to_string(path) {
+            tracing::info!("JSON file had no structured items, storing raw content ({} chars)", raw_content.len());
+            vec![ExtractedJsonData {
+                content: raw_content,
+                json_path: "root".to_string(),
+                field_name: "raw".to_string(),
+                sibling_context: String::new(),
+                data_type: "raw.json".to_string(),
+                raw_value: serde_json::Value::String("raw file content".to_string()),
+            }]
+        } else {
+            return Ok(IngestResult {
+                filename,
+                file_path: path.to_string_lossy().to_string(),
+                success: false,
+                chunks_created: 0,
+                chunk_size_used: chunk_size,
+                memory_ids: vec![],
+                error: Some("JSON file contains no extractable content".to_string()),
+                remaining_count: 0,
+            });
+        }
+    } else {
+        result.items
+    };
 
     // Store each extracted item as a memory with hierarchy using MemoryPipeline
     let pipeline = MemoryPipeline::new(db.clone());
@@ -1068,7 +1084,7 @@ async fn ingest_json_file(
     
     let file_source = path.to_string_lossy().to_string();
     
-    for (idx, item) in result.items.iter().enumerate() {
+    for (idx, item) in items_to_store.iter().enumerate() {
         let content = item.to_memory_content();
         
         // Use semantic chunking for long content

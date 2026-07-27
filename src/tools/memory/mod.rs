@@ -4,6 +4,8 @@
 // Memory-related MCP tools
 // Per Architecture §07: Every experience originates from observations
 
+#![allow(dead_code)]
+
 use std::sync::Arc;
 
 use anyhow::Result;

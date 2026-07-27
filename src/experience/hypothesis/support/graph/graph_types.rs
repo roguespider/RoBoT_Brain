@@ -2,6 +2,8 @@
 
 //! Type definitions for the hypothesis graph.
 
+#![allow(dead_code)]
+
 use serde::{Deserialize, Serialize};
 
 use crate::experience::hypothesis::core::hypothesis::HypothesisId;

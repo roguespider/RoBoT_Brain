@@ -191,8 +191,9 @@ impl WorkflowEngine {
                 if let Some(db) = &self.database {
                     let scorer = crate::experience::scorer::ExperienceScorer::new();
                     let bus = Arc::new(crate::experience::bus::ExperienceBus::new());
+                    let metrics = Arc::new(crate::experience::metrics::MetricsCollector::new());
                     let coordinator = Arc::new(
-                        crate::experience::coordinator::ExperienceCoordinator::new(scorer, bus),
+                        crate::experience::coordinator::ExperienceCoordinator::new(scorer, bus, metrics),
                     );
                     let result =
                         tools::experience::execute_record_experience(input, &coordinator, db).await?;
@@ -294,8 +295,9 @@ impl WorkflowEngine {
 
         let scorer = crate::experience::scorer::ExperienceScorer::new();
         let bus = Arc::new(crate::experience::bus::ExperienceBus::new());
+        let metrics = Arc::new(crate::experience::metrics::MetricsCollector::new());
         let coordinator = Arc::new(crate::experience::coordinator::ExperienceCoordinator::new(
-            scorer, bus,
+            scorer, bus, metrics,
         ));
 
         match tools::experience::execute_record_experience(input, &coordinator, db).await {

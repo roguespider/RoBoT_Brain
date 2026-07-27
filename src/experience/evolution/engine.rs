@@ -1,7 +1,7 @@
 // /src/experience/evolution/engine.rs
 // The main engine that transforms insights into behaviors
 
-
+#![allow(dead_code)]
 
 use anyhow::Result;
 use chrono::Utc;
@@ -49,7 +49,8 @@ impl Default for EvolutionConfig {
     }
 }
 
-/// Trait for evolution engine implementations
+/// Trait for evolution engine implementations (scaffolding for future use)
+#[allow(dead_code)]
 pub trait EvolutionEngineTrait: Send + Sync {
     /// Create a behavior from an insight
     fn create_behavior_from_insight(&self, insight: &Insight) -> impl std::future::Future<Output = Result<Behavior>> + Send;
@@ -62,6 +63,7 @@ pub trait EvolutionEngineTrait: Send + Sync {
 }
 
 /// The evolution engine transforms insights into behaviors
+#[derive(Clone)]
 pub struct EvolutionEngine {
     behaviors: Arc<RwLock<HashMap<String, Behavior>>>,
     evidence: Arc<RwLock<HashMap<String, Vec<EvolutionEvidence>>>>,
@@ -417,6 +419,23 @@ impl EvolutionEngine {
 impl Default for EvolutionEngine {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl EvolutionEngineTrait for EvolutionEngine {
+    /// Create a behavior from an insight
+    async fn create_behavior_from_insight(&self, insight: &Insight) -> Result<Behavior> {
+        self.create_behavior_from_insight(insight).await
+    }
+    
+    /// Record a behavior application result
+    async fn record_result(&self, behavior_id: &str, success: bool) -> Result<()> {
+        self.record_result(behavior_id, success).await
+    }
+    
+    /// Get active behaviors for a context
+    async fn get_active_behaviors(&self, context: &str) -> Vec<Behavior> {
+        self.suggest_behaviors(context).await
     }
 }
 

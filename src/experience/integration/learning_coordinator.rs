@@ -7,6 +7,8 @@
 //! This coordinator ensures the continuous feedback loop:
 //! Experience → Reflection → Hypothesis → Validation → Knowledge Update → Behavior Improvement
 
+#![allow(dead_code)]
+
 use std::sync::Arc;
 use anyhow::Result;
 use chrono::{Duration, Utc};

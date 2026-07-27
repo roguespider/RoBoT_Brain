@@ -1,4 +1,5 @@
 // src/experience/compression/exceptions.rs
+#![allow(dead_code)]
 //! Exception tracking for experiences that deviate from patterns
 
 

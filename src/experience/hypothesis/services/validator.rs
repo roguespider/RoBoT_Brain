@@ -15,6 +15,8 @@
 //! - LLM validation
 //! - domain-specific rules
 
+#![allow(dead_code)]
+
 use serde::{Deserialize, Serialize};
 
 use crate::experience::hypothesis::core::hypothesis::{Hypothesis, HypothesisStatus};

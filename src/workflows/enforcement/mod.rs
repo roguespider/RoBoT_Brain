@@ -9,6 +9,8 @@
 //! 3. get_patterns - SHOULD be called for repetitive decisions
 //! 4. Other tools - Only available after mandatory steps
 
+#![allow(dead_code)]
+
 mod enforcer;
 #[cfg(test)]
 mod tests;

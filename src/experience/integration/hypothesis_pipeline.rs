@@ -1,4 +1,5 @@
 // src/experience/integration/hypothesis_pipeline.rs
+#![allow(dead_code)]
 //! Hypothesis Pipeline - Wires hypothesis engine to reflection and exploration
 //!
 //! Per Architecture §11:

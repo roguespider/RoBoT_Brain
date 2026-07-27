@@ -13,6 +13,8 @@
 //! - High volatility
 //! - Context focused
 
+#![allow(dead_code)]
+
 use std::collections::HashMap;
 use std::sync::Arc;
 
@@ -25,7 +27,8 @@ use uuid::Uuid;
 use super::types::{MemoryItem, MemoryLayer, MemoryStatus, MemoryType};
 use crate::database::queries;
 
-/// Working memory statistics
+/// Working memory statistics (scaffolding for future use)
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkingMemoryStats {
     pub total_items: usize,

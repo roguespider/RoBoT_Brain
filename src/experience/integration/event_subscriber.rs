@@ -1,4 +1,5 @@
 // src/experience/integration/event_subscriber.rs
+#![allow(dead_code)]
 //! Event subscriber that listens to experience events and triggers learning pipeline
 //!
 //! Per Architecture §4.04:
@@ -17,6 +18,7 @@ use crate::experience::events::{ExperienceEvent, ExperienceEventType};
 use crate::experience::types::Experience;
 use crate::experience::reflection::ReflectionEngine;
 use crate::experience::hypothesis::HypothesisEngine;
+use crate::experience::evolution::EvolutionEngine;
 use crate::experience::reputation::reputation::Reputation;
 use crate::knowledge::KnowledgeStore;
 use crate::experience::events::payload::EventPayload;
@@ -53,6 +55,7 @@ pub struct EventSubscriber {
     config: EventSubscriberConfig,
     reflection_engine: Arc<ReflectionEngine>,
     hypothesis_engine: Arc<HypothesisEngine>,
+    evolution_engine: Arc<EvolutionEngine>,
     knowledge_store: Arc<KnowledgeStore>,
     reputation_store: Arc<tokio::sync::RwLock<std::collections::HashMap<String, Reputation>>>,
 }
@@ -62,12 +65,14 @@ impl EventSubscriber {
     pub fn new(
         reflection_engine: Arc<ReflectionEngine>,
         hypothesis_engine: Arc<HypothesisEngine>,
+        evolution_engine: Arc<EvolutionEngine>,
         knowledge_store: Arc<KnowledgeStore>,
     ) -> Self {
         Self {
             config: EventSubscriberConfig::default(),
             reflection_engine,
             hypothesis_engine,
+            evolution_engine,
             knowledge_store,
             reputation_store: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
         }
@@ -78,12 +83,14 @@ impl EventSubscriber {
         config: EventSubscriberConfig,
         reflection_engine: Arc<ReflectionEngine>,
         hypothesis_engine: Arc<HypothesisEngine>,
+        evolution_engine: Arc<EvolutionEngine>,
         knowledge_store: Arc<KnowledgeStore>,
     ) -> Self {
         Self {
             config,
             reflection_engine,
             hypothesis_engine,
+            evolution_engine,
             knowledge_store,
             reputation_store: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
         }
@@ -219,10 +226,25 @@ impl EventSubscriber {
     }
 
     /// Generate hypothesis from experience
-    async fn generate_hypothesis(&self, _experience: &Experience) -> Result<()> {
+    async fn generate_hypothesis(&self, experience: &Experience) -> Result<()> {
         // Use hypothesis engine to process the experience
-        
-        
+        // If high-scoring, create a behavior via evolution engine
+        if let Some(score) = &experience.score {
+            if score.confidence > 0.7 {
+                // Create an insight from the high-confidence experience
+                let mut insight = crate::experience::reflection::insight::Insight::new(
+                    uuid::Uuid::new_v4().to_string(),
+                    format!("Insight from: {}", experience.title),
+                    format!("High-confidence experience: {:?}", experience.outcome),
+                    crate::experience::reflection::insight::InsightType::Pattern,
+                );
+                insight.confidence = score.confidence;
+                insight.add_experience(experience.id.to_string());
+                
+                let _behavior = self.evolution_engine.create_behavior_from_insight(&insight).await?;
+                tracing::info!("Created behavior from high-confidence experience: {}", experience.id);
+            }
+        }
 
         tracing::info!("Generated hypotheses from experience");
         Ok(())

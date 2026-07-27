@@ -1,4 +1,5 @@
 // src/tools/ingestor/text_extractor.rs
+#![allow(dead_code)]
 // Text extraction from various file formats
 
 use std::fs::File;
