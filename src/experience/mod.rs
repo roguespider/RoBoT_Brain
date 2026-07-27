@@ -9,7 +9,6 @@ pub mod coordinator;
 pub mod encounter_recorder;
 pub mod event_handler;
 
-pub mod compression;
 pub mod events;
 
 pub mod evolution;

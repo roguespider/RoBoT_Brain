@@ -3,9 +3,12 @@
 // src/tools/exploration_tools.rs
 //! Exploration MCP tools - wiring up exploration types from experience::exploration
 
+#![allow(unused_imports)]
+
 pub mod definitions;
 mod handlers;
 
+#[allow(unused_imports)]
 pub use handlers::*;
 
 use serde::{Deserialize, Serialize};

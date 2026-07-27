@@ -6,6 +6,7 @@
 //! "Hypotheses Enable Discovery"
 //! A hypothesis is: A proposed explanation, Supported by evidence, Assigned confidence, Tested through future experience
 
+#![allow(dead_code)]
 use std::sync::Arc;
 use anyhow::Result;
 use uuid::Uuid;

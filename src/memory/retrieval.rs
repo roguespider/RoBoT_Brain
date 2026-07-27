@@ -5,6 +5,7 @@
 //! Provides retrieval capabilities for memory items across both
 //! working and permanent memory layers.
 
+#![allow(dead_code)]
 use std::sync::Arc;
 
 use anyhow::Result;

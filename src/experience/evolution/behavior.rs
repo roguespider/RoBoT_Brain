@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 // /src/experience/evolution/behavior.rs
 
 // Represents a behavior that can be adopted by the agent

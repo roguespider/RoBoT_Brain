@@ -4,6 +4,7 @@
 //! This module provides audio transcription capabilities using Candle,
 //! a Rust LLM inference framework with Whisper model support.
 
+#![allow(dead_code)]
 use std::path::Path;
 use std::sync::Arc;
 

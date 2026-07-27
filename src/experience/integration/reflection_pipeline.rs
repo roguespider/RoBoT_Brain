@@ -6,6 +6,7 @@
 //! "Reflection transforms experience into understanding"
 //! Reflection asks: What happened? Why did it happen? Was the result expected? What should change?
 
+#![allow(dead_code)]
 use std::sync::Arc;
 use anyhow::Result;
 use uuid::Uuid;

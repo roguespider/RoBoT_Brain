@@ -8,6 +8,7 @@
 //! how confidence is evaluated, and how hypotheses move through their
 //! lifecycle.
 
+#![allow(dead_code)]
 pub mod hypothesis;
 pub mod evidence;
 pub mod evaluator;

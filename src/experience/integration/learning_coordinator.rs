@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 // src/experience/integration/learning_coordinator.rs
 //! Learning Coordinator - Orchestrates the complete learning pipeline
 //!

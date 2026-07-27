@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 #![allow(clippy::module_inception)]
 // /src/experience/reputation/mod.rs
 

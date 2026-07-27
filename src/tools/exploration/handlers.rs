@@ -1,6 +1,7 @@
 // src/tools/exploration_tools/handlers.rs
 //! Tool execution handlers
 
+#![allow(dead_code)]
 use std::collections::HashMap;
 use std::sync::RwLock;
 

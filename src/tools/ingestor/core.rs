@@ -1,6 +1,7 @@
 // src/tools/ingestor/core.rs
 // Core file ingestion logic
 
+#![allow(dead_code)]
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;

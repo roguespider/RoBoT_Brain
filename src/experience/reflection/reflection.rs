@@ -12,6 +12,7 @@
 //    ├── status
 //    └── lifecycle methods
 
+#![allow(dead_code)]
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
