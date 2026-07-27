@@ -1,5 +1,5 @@
 // src/memory/types.rs
-//! Memory types - Per Architecture §4.08, §6.3
+//! Memory types - Per Architecture §6.3
 
 #![allow(dead_code)]
 
@@ -75,7 +75,7 @@ impl Default for MemoryStatus {
     }
 }
 
-/// A memory item - Per Architecture §4.08
+/// A memory item - Per Architecture §6.3
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct MemoryItem {
     /// Unique identifier
@@ -107,6 +107,9 @@ pub struct MemoryItem {
 
     /// When this memory was last modified
     pub modified_at: DateTime<Utc>,
+
+    /// When this memory was last consolidated (promoted to permanent)
+    pub last_consolidated: Option<DateTime<Utc>>,
 
     /// Access count
     pub access_count: u32,
@@ -141,6 +144,7 @@ impl MemoryItem {
             created_at: now,
             accessed_at: now,
             modified_at: now,
+            last_consolidated: None,
             access_count: 0,
             tags: Vec::new(),
             source,
@@ -185,5 +189,79 @@ impl MemoryItem {
 impl Default for MemoryLayer {
     fn default() -> Self {
         MemoryLayer::Working
+    }
+}
+
+// ============================================================
+// CONVERSION TO/FROM DATABASE MODELS
+// ============================================================
+
+use crate::database::models::{MemoryCard, HierarchyLevel};
+
+impl From<&MemoryCard> for MemoryItem {
+    fn from(card: &MemoryCard) -> Self {
+        Self {
+            id: card.id,
+            layer: match card.layer {
+                crate::database::models::MemoryLayer::Working => MemoryLayer::Working,
+                crate::database::models::MemoryLayer::Permanent => MemoryLayer::Permanent,
+            },
+            memory_type: match card.memory_type {
+                crate::database::models::MemoryType::Note => MemoryType::Experience,
+                crate::database::models::MemoryType::Fact => MemoryType::Knowledge,
+                crate::database::models::MemoryType::Task => MemoryType::Skill,
+                crate::database::models::MemoryType::File => MemoryType::Workflow,
+                crate::database::models::MemoryType::Conversation => MemoryType::Context,
+                crate::database::models::MemoryType::Code => MemoryType::Skill,
+                crate::database::models::MemoryType::Decision => MemoryType::Experience,
+                crate::database::models::MemoryType::Event => MemoryType::Observation,
+                crate::database::models::MemoryType::Encounter => MemoryType::Observation,
+                crate::database::models::MemoryType::Experience => MemoryType::Experience,
+            },
+            status: MemoryStatus::Active,
+            content: card.content.clone(),
+            confidence: card.confidence,
+            importance: card.importance,
+            created_at: card.created_at,
+            accessed_at: card.last_accessed.unwrap_or(card.created_at),
+            modified_at: card.updated_at,
+            last_consolidated: None,
+            access_count: card.access_count,
+            tags: Vec::new(),
+            source: card.file_source.clone().unwrap_or_else(|| "database".to_string()),
+            related_ids: Vec::new(),
+        }
+    }
+}
+
+impl From<MemoryItem> for MemoryCard {
+    fn from(item: MemoryItem) -> Self {
+        Self {
+            id: item.id,
+            content: item.content,
+            memory_type: match item.memory_type {
+                MemoryType::Experience => crate::database::models::MemoryType::Experience,
+                MemoryType::Knowledge => crate::database::models::MemoryType::Fact,
+                MemoryType::Skill => crate::database::models::MemoryType::Code,
+                MemoryType::Workflow => crate::database::models::MemoryType::File,
+                MemoryType::Context => crate::database::models::MemoryType::Conversation,
+                MemoryType::Observation => crate::database::models::MemoryType::Event,
+            },
+            layer: match item.layer {
+                MemoryLayer::Working => crate::database::models::MemoryLayer::Working,
+                MemoryLayer::Permanent => crate::database::models::MemoryLayer::Permanent,
+            },
+            parent_id: None,
+            hierarchy_level: HierarchyLevel::Document,
+            order_index: 0,
+            path: String::new(),
+            file_source: Some(item.source).filter(|s| s != "database"),
+            access_count: item.access_count,
+            last_accessed: Some(item.accessed_at),
+            confidence: item.confidence,
+            importance: item.importance,
+            created_at: item.created_at,
+            updated_at: item.modified_at,
+        }
     }
 }

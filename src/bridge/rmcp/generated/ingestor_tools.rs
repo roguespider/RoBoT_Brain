@@ -1,4 +1,4 @@
-    #[tool(
+    	    #[tool(
         name = "ingest_files",
         description = "Ingest files from a folder into memory"
     )]
@@ -12,7 +12,12 @@
             return enforcement_error_to_content(e);
         }
         
-        match tools::ingestor::ingest_file(input, Arc::clone(&self.context.database)).await {
+        // Per Architecture §6.3: Store ingested memories in Working Memory cache
+        match tools::ingestor::ingest_file(
+            input, 
+            Arc::clone(&self.context.database),
+            Arc::clone(&self.context.working_memory),
+        ).await {
             Ok(result) => {
                 self.record_tool_execution("ingest_files", None).await;
                 tool_output_to_content(result)

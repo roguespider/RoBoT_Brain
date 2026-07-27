@@ -14,11 +14,13 @@ use serde::{Deserialize, Serialize};
 use crate::database::models::{MemoryCard, MemoryType};
 use crate::database::sqlite::SqliteDatabase;
 use crate::memory::pipeline::MemoryPipeline;
+use crate::memory::types::MemoryItem;
+use crate::memory::WorkingMemory;
 use crate::tools::ToolOutput;
 use crate::tools::ingestor::archive_handler::{
     create_archive_temp_dir, delete_empty_folders, process_archive,
 };
-use crate::tools::ingestor::file_collector::{collect_all_files_recursive, collect_importable_files, collect_importable_files_with_recursive, get_import_folder, is_supported_extension, JSON_EXTENSIONS, ARCHIVE_EXTENSIONS, TEXT_EXTENSIONS, IMAGE_EXTENSIONS};
+use crate::tools::ingestor::file_collector::{collect_all_files_recursive, collect_importable_files, collect_importable_files_with_recursive, get_import_folder, is_supported_extension, AUDIO_EXTENSIONS, JSON_EXTENSIONS, ARCHIVE_EXTENSIONS, TEXT_EXTENSIONS, IMAGE_EXTENSIONS};
 use crate::tools::ingestor::text_extractor::{extract_text, extract_image_metadata, validate_text_quality};
 use crate::tools::ingestor::semantic_chunker::{parse_document, get_file_type};
 use crate::tools::ingestor::json_importer::import_json_file;
@@ -28,7 +30,6 @@ pub use super::workflow::{
     execute_delete_ingested_files, execute_list_importable, execute_list_ingested_files,
     find_empty_folders_after_deletion,
 };
-pub use super::audio::execute_transcribe_audio;
 
 /// Default chunk size for text splitting
 pub const DEFAULT_CHUNK_SIZE: usize = 1000;
@@ -239,7 +240,7 @@ pub struct ListImportableInput {
     pub list_all: Option<bool>,
 }
 
-/// Tool: Transcribe an audio file
+/// Tool: Transcribe an audio file (placeholder - not currently implemented)
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct TranscribeAudioInput {
     pub path: String,
@@ -289,9 +290,14 @@ pub struct IngestSummary {
 // MAIN INGESTION FUNCTIONS
 // ============================================================================
 
+/// Ingest files into memory
+/// 
+/// Per Architecture §6.3: Stores memories in Working Memory cache (fast, volatile, in-memory)
+/// Also persists to SQLite for recovery via checkpoint
 pub async fn ingest_file(
     input: IngestFilesInput,
     db: Arc<SqliteDatabase>,
+    working_memory: Arc<WorkingMemory>,
 ) -> Result<ToolOutput> {
     let folder = get_import_folder(input.folder.as_deref());
     let file_path = input.get_file_path();
@@ -312,12 +318,24 @@ pub async fn ingest_file(
         chunk_size: usize,
         memory_type: MemoryType,
         db: Arc<SqliteDatabase>,
+        working_memory: Arc<WorkingMemory>,
     ) -> Result<IngestResult> {
         if is_archive_file(path) {
-            ingest_archive(path, chunk_size, memory_type, db).await
+            ingest_archive(path, chunk_size, memory_type, db, working_memory).await
         } else {
-            ingest_single_file(path, chunk_size, memory_type, db).await
+            ingest_single_file(path, chunk_size, memory_type, db, working_memory).await
         }
+    }
+
+    // Wrapper for backward compatibility
+    async fn ingest_path_with_memory(
+        path: &Path,
+        chunk_size: usize,
+        memory_type: MemoryType,
+        db: Arc<SqliteDatabase>,
+        working_memory: Arc<WorkingMemory>,
+    ) -> Result<IngestResult> {
+        ingest_path(path, chunk_size, memory_type, db, working_memory).await
     }
 
     // Check if ingesting a specific file or from folder
@@ -326,7 +344,7 @@ pub async fn ingest_file(
         if path.exists() {
             let result = time::timeout(
                 Duration::from_secs(timeout_secs),
-                ingest_path(path, chunk_size, memory_type, db)
+                ingest_path_with_memory(path, chunk_size, memory_type, db, working_memory)
             ).await;
             
             match result {
@@ -352,7 +370,7 @@ pub async fn ingest_file(
             if path.exists() {
                 let result = time::timeout(
                     Duration::from_secs(timeout_secs),
-                    ingest_path(&path, chunk_size, memory_type, db)
+                    ingest_path_with_memory(&path, chunk_size, memory_type, db, working_memory)
                 ).await;
                 
                 match result {
@@ -399,7 +417,7 @@ pub async fn ingest_file(
         if folder.is_file() {
             let result = time::timeout(
                 Duration::from_secs(timeout_secs),
-                ingest_path(&folder, chunk_size, memory_type, db)
+                ingest_path_with_memory(&folder, chunk_size, memory_type, db, working_memory)
             ).await;
             
             return match result {
@@ -463,7 +481,7 @@ pub async fn ingest_file(
             if file_info.file_type == "archive" {
                 let result = time::timeout(
                     Duration::from_secs(timeout_secs),
-                    ingest_archive(path, chunk_size, memory_type.clone(), db.clone())
+                    ingest_archive(path, chunk_size, memory_type.clone(), db.clone(), working_memory.clone())
                 ).await;
                 
                 match result {
@@ -504,7 +522,7 @@ pub async fn ingest_file(
             } else {
                 let result = time::timeout(
                     Duration::from_secs(timeout_secs),
-                    ingest_single_file(path, chunk_size, memory_type.clone(), db.clone())
+                    ingest_single_file(path, chunk_size, memory_type.clone(), db.clone(), working_memory.clone())
                 ).await;
                 
                 match result {
@@ -787,11 +805,13 @@ pub async fn ingest_file(
 }
 
 /// Ingest an archive file
+/// Per Architecture §6.3: Stores in Working Memory cache
 async fn ingest_archive(
     path: &Path,
     chunk_size: usize,
     memory_type: MemoryType,
     db: Arc<SqliteDatabase>,
+    working_memory: Arc<WorkingMemory>,
 ) -> Result<IngestResult> {
     let filename = path
         .file_name()
@@ -855,7 +875,7 @@ async fn ingest_archive(
 
     // Ingest the first text file
     let first_file = &text_files[0];
-    let result = ingest_single_file(first_file, chunk_size, memory_type, db).await?;
+    let result = ingest_single_file(first_file, chunk_size, memory_type, db, working_memory).await?;
 
     // Count remaining files BEFORE cleanup
     let remaining_files = collect_all_files_recursive(&temp_dir)?;
@@ -882,11 +902,13 @@ async fn ingest_archive(
 }
 
 /// Ingest a single file into memory using semantic hierarchical chunking
+/// Per Architecture §6.3: Stores in Working Memory cache
 async fn ingest_single_file(
     path: &Path,
     _chunk_size: usize,
     memory_type: MemoryType,
     db: Arc<SqliteDatabase>,
+    working_memory: Arc<WorkingMemory>,
 ) -> Result<IngestResult> {
     let filename = path
         .file_name()
@@ -896,12 +918,17 @@ async fn ingest_single_file(
 
     // Check if this is an image file - handle separately
     if is_supported_extension(path, IMAGE_EXTENSIONS) {
-        return ingest_image_file(path, 0, memory_type, db).await;
+        return ingest_image_file(path, 0, memory_type, db, working_memory).await;
     }
 
     // Check if this is a JSON file - use smart JSON importer
     if is_supported_extension(path, JSON_EXTENSIONS) {
-        return ingest_json_file(path, 0, memory_type, db).await;
+        return ingest_json_file(path, 0, memory_type, db, working_memory).await;
+    }
+
+    // Check if this is an audio file - placeholder for future audio processing
+    if is_supported_extension(path, AUDIO_EXTENSIONS) {
+        return ingest_audio_file_placeholder(path).await;
     }
 
     // Extract text content for other file types
@@ -958,15 +985,20 @@ async fn ingest_single_file(
     let total_memories = memories.len();
 
     // Store memories using MemoryPipeline (stores in Working layer for consolidation)
+    // Also store directly in Working Memory cache (Architecture §6.3)
     let pipeline = MemoryPipeline::new(db.clone());
     let mut memory_ids = Vec::new();
 
     for memory in &memories {
+        // Store in pipeline (for SQLite persistence)
         if let Err(e) = pipeline.store_working(memory) {
-            tracing::warn!("Failed to store memory chunk: {}", e);
-        } else {
-            memory_ids.push(memory.id.to_string());
+            tracing::warn!("Failed to store memory chunk via pipeline: {}", e);
         }
+        
+        // Store in Working Memory cache (fast, in-memory) - Architecture §6.3
+        let memory_item = MemoryItem::from(memory);
+        working_memory.store(memory_item).await;
+        memory_ids.push(memory.id.to_string());
     }
 
     Ok(IngestResult {
@@ -982,11 +1014,13 @@ async fn ingest_single_file(
 }
 
 /// Ingest a JSON file using smart structured extraction
+/// Per Architecture §6.3: Stores in Working Memory cache
 async fn ingest_json_file(
     path: &Path,
     chunk_size: usize,
     memory_type: MemoryType,
     db: Arc<SqliteDatabase>,
+    working_memory: Arc<WorkingMemory>,
 ) -> Result<IngestResult> {
     let filename = path
         .file_name()
@@ -1044,11 +1078,15 @@ async fn ingest_json_file(
             }
             
             for memory in &memories {
+                // Store in pipeline (for SQLite persistence)
                 if let Err(e) = pipeline.store_working(memory) {
-                    tracing::warn!("Failed to store JSON memory chunk: {}", e);
-                } else {
-                    memory_ids.push(memory.id.to_string());
+                    tracing::warn!("Failed to store JSON memory chunk via pipeline: {}", e);
                 }
+                
+                // Store in Working Memory cache (Architecture §6.3)
+                let memory_item = MemoryItem::from(memory);
+                working_memory.store(memory_item).await;
+                memory_ids.push(memory.id.to_string());
             }
         } else {
             // Short content - store as single memory
@@ -1061,11 +1099,16 @@ async fn ingest_json_file(
                 format!("{}/item[{}]", filename, idx),
                 Some(file_source.clone()),
             );
+            
+            // Store in pipeline (for SQLite persistence)
             if let Err(e) = pipeline.store_working(&memory) {
-                tracing::warn!("Failed to store JSON memory: {}", e);
-            } else {
-                memory_ids.push(memory.id.to_string());
+                tracing::warn!("Failed to store JSON memory via pipeline: {}", e);
             }
+            
+            // Store in Working Memory cache (Architecture §6.3)
+            let memory_item = MemoryItem::from(&memory);
+            working_memory.store(memory_item).await;
+            memory_ids.push(memory.id.to_string());
         }
     }
 
@@ -1082,11 +1125,13 @@ async fn ingest_json_file(
 }
 
 /// Ingest an image file - store only metadata, not image content
+/// Per Architecture §6.3: Stores in Working Memory cache
 async fn ingest_image_file(
     path: &Path,
     chunk_size: usize,
     memory_type: MemoryType,
     db: Arc<SqliteDatabase>,
+    working_memory: Arc<WorkingMemory>,
 ) -> Result<IngestResult> {
     let filename = path
         .file_name()
@@ -1115,9 +1160,11 @@ async fn ingest_image_file(
     let content = metadata.to_memory_content();
 
     // Store as a single chunk using MemoryPipeline
+    // Also store in Working Memory cache (Architecture §6.3)
     let memory = MemoryCard::new(content, memory_type);
     let pipeline = MemoryPipeline::new(db.clone());
     
+    // Store in pipeline (for SQLite persistence)
     if let Err(e) = pipeline.store_working(&memory) {
         return Ok(IngestResult {
             filename,
@@ -1130,6 +1177,10 @@ async fn ingest_image_file(
             remaining_count: 0,
         });
     }
+    
+    // Store in Working Memory cache (Architecture §6.3)
+    let memory_item = MemoryItem::from(&memory);
+    working_memory.store(memory_item).await;
 
     Ok(IngestResult {
         filename,
@@ -1151,4 +1202,26 @@ fn parse_memory_type(s: &str) -> MemoryType {
         "note" => MemoryType::Note,
         _ => MemoryType::File,
     }
+}
+
+/// Placeholder for audio file ingestion - audio processing not currently available
+async fn ingest_audio_file_placeholder(path: &Path) -> Result<IngestResult> {
+    let filename = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+
+    tracing::info!("Audio file skipped (not currently supported): {}", filename);
+
+    Ok(IngestResult {
+        filename,
+        file_path: path.to_string_lossy().to_string(),
+        success: false,
+        chunks_created: 0,
+        chunk_size_used: 0,
+        memory_ids: vec![],
+        error: Some("Audio processing not currently available".to_string()),
+        remaining_count: 0,
+    })
 }

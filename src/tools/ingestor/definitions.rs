@@ -5,7 +5,6 @@ use crate::bridge::mcp::McpTool;
 
 pub const INGEST_FILES: &str = "ingest_files";
 pub const LIST_IMPORTABLE: &str = "list_importable";
-pub const TRANSCRIBE_AUDIO: &str = "transcribe_audio";
 pub const LIST_INGESTED_FILES: &str = "list_ingested_files";
 pub const DELETE_INGESTED_FILES: &str = "delete_ingested_files";
 
@@ -67,24 +66,6 @@ pub fn all() -> Vec<McpTool> {
                         "description": "Search subfolders recursively (default: true). Set to false to only look in the root folder."
                     }
                 }
-            }),
-        },
-        McpTool {
-            name: TRANSCRIBE_AUDIO.to_string(),
-            description: "Transcribe audio file to text.".to_string(),
-            input_schema: serde_json::json!({
-                "type": "object",
-                "properties": {
-                    "path": {
-                        "type": "string",
-                        "description": "Path to audio file"
-                    },
-                    "output": {
-                        "type": "string",
-                        "description": "Output path for transcription JSON"
-                    }
-                },
-                "required": ["path"]
             }),
         },
         McpTool {

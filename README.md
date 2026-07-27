@@ -2449,7 +2449,7 @@ The ingestor tools allow you to import files from a `files_to_import/` folder in
 | Text | `.txt`, `.md`, `.rst`, `.csv`, `.log`, `.xml`, `.html` | Direct ingestion |
 | JSON | `.json`, `.jsonl` | Pretty-printed for search |
 | PDF | `.pdf` | Basic text extraction |
-| Audio | `.mp3`, `.wav`, `.m4a`, `.flac`, `.ogg`, `.aac` | Placeholder for transcription |
+| Images | `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.webp` | Metadata extraction |
 
 ### MCP Tools
 

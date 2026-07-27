@@ -4,10 +4,12 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use anyhow::Result;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use super::PermanentMemoryStats;
+use crate::database::queries;
 use crate::memory::types::{MemoryItem, MemoryLayer, MemoryStatus, MemoryType};
 
 /// Permanent Memory - Per Architecture §6.3
@@ -302,6 +304,62 @@ impl PermanentMemory {
         type_index.clear();
         tag_index.clear();
         graph_index.clear();
+    }
+
+    /// Load Permanent layer memories from SQLite into the cache
+    /// This restores the cache from persistent storage on startup
+    pub async fn load_from_database(&self, db: &Arc<crate::database::sqlite::SqliteDatabase>) -> Result<usize> {
+        let conn = db.connection()?;
+        let cards = queries::list_memories_by_layer(&conn, "permanent", self.max_cache_size)?;
+
+        let mut count = 0;
+        for card in cards {
+            let item = MemoryItem::from(&card);
+            
+            // Store in cache
+            let mut cache = self.cache.write().await;
+            cache.insert(item.id, item.clone());
+            
+            // Rebuild indexes
+            {
+                let mut type_index = self.type_index.write().await;
+                type_index.entry(item.memory_type).or_insert_with(Vec::new).push(item.id);
+            }
+            for tag in &item.tags {
+                let mut tag_index = self.tag_index.write().await;
+                tag_index.entry(tag.clone()).or_insert_with(Vec::new).push(item.id);
+            }
+            for related_id in &item.related_ids {
+                let mut graph_index = self.graph_index.write().await;
+                graph_index.entry(item.id).or_insert_with(Vec::new).push(*related_id);
+            }
+            
+            count += 1;
+        }
+
+        tracing::info!("Loaded {} memories from Permanent layer into cache", count);
+        Ok(count)
+    }
+
+    /// Checkpoint all cached items to SQLite for persistence
+    /// This saves the current state of permanent memory to the database
+    pub async fn checkpoint_to_database(&self, db: &Arc<crate::database::sqlite::SqliteDatabase>) -> Result<usize> {
+        let items: Vec<MemoryItem> = {
+            let cache = self.cache.read().await;
+            cache.values().cloned().collect()
+        };
+
+        let conn = db.connection()?;
+        let mut count = 0;
+
+        for item in items {
+            let card = crate::database::models::MemoryCard::from(item);
+            queries::insert_memory(&conn, &card)?;
+            count += 1;
+        }
+
+        tracing::debug!("Checkpointed {} items from Permanent memory cache to database", count);
+        Ok(count)
     }
 }
 

@@ -116,4 +116,24 @@ impl McpContext {
             },
         }
     }
+
+    /// Get reference to the working memory cache (fast, volatile, in-memory)
+    pub fn working_memory(&self) -> &Arc<WorkingMemory> {
+        &self.working_memory
+    }
+
+    /// Get reference to permanent memory cache (curated, indexed, in-memory)
+    pub fn permanent_memory(&self) -> &Arc<PermanentMemory> {
+        &self.permanent_memory
+    }
+
+    /// Get reference to the memory retrieval service
+    pub fn memory_retrieval(&self) -> &Arc<MemoryRetrieval> {
+        &self.memory_retrieval
+    }
+
+    /// Get database connection
+    pub fn database(&self) -> &Arc<SqliteDatabase> {
+        &self.database
+    }
 }

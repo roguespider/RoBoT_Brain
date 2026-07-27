@@ -48,7 +48,7 @@ async fn store_memory(
         return enforcement_error_to_content(e);
     }
 
-    match tools::memory::execute_store_memory(input, &self.context.database).await {
+    match tools::memory::execute_store_memory(input, &self.context.database, &self.context.working_memory).await {
         Ok(result) => {
             self.record_tool_execution("store_memory", None).await;
             tool_output_to_content(result)
@@ -69,7 +69,7 @@ async fn search_memory(
     }
 
     let query = Some(input.query.clone());
-    match tools::memory::execute_search_memory(input, &self.context.database).await {
+    match tools::memory::execute_search_memory(input, &self.context.database, &self.context.memory_retrieval).await {
         Ok(result) => {
             self.record_tool_execution("search_memory", query).await;
             tool_output_to_content(result)
@@ -89,7 +89,7 @@ async fn get_memory(
         return enforcement_error_to_content(e);
     }
 
-    match tools::memory::execute_get_memory(input, &self.context.database).await {
+    match tools::memory::execute_get_memory(input, &self.context.database, &self.context.memory_retrieval).await {
         Ok(result) => {
             self.record_tool_execution("get_memory", None).await;
             tool_output_to_content(result)
@@ -109,7 +109,7 @@ async fn list_memories(
         return enforcement_error_to_content(e);
     }
 
-    match tools::memory::execute_list_memories(input, &self.context.database).await {
+    match tools::memory::execute_list_memories(input, &self.context.database, &self.context.memory_retrieval).await {
         Ok(result) => {
             self.record_tool_execution("list_memories", None).await;
             tool_output_to_content(result)
@@ -362,7 +362,7 @@ async fn get_reputation(
         Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
 }
-#[tool(
+	    #[tool(
     name = "ingest_files",
     description = "Ingest files from a folder into memory"
 )]
@@ -376,7 +376,12 @@ async fn ingest_files(
         return enforcement_error_to_content(e);
     }
 
-    match tools::ingestor::ingest_file(input, Arc::clone(&self.context.database)).await {
+    // Per Architecture §6.3: Store ingested memories in Working Memory cache
+    match tools::ingestor::ingest_file(
+        input, 
+        Arc::clone(&self.context.database),
+        Arc::clone(&self.context.working_memory),
+    ).await {
         Ok(result) => {
             self.record_tool_execution("ingest_files", None).await;
             tool_output_to_content(result)
@@ -402,29 +407,6 @@ async fn list_importable(
     match tools::ingestor::execute_list_importable(input).await {
         Ok(result) => {
             self.record_tool_execution("list_importable", None).await;
-            tool_output_to_content(result)
-        }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
-    }
-}
-
-#[tool(
-    name = "transcribe_audio",
-    description = "Transcribe an audio file to text"
-)]
-async fn transcribe_audio(
-    &self,
-    Parameters(input): Parameters<tools::ingestor::TranscribeAudioInput>,
-) -> ContentBlock {
-    // Check workflow enforcement first
-    if let Err(e) = self.check_workflow_enforcement("transcribe_audio").await {
-        tracing::warn!("Workflow enforcement blocked transcribe_audio: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-
-    match tools::ingestor::execute_transcribe_audio(input).await {
-        Ok(result) => {
-            self.record_tool_execution("transcribe_audio", None).await;
             tool_output_to_content(result)
         }
         Err(e) => tool_output_to_content(ToolOutput::error(e)),

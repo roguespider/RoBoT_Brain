@@ -1,7 +1,27 @@
 #![allow(dead_code)]
 
 // /src/experience/scheduler.rs
-// Background job scheduler for learning tasks
+//! Background job scheduler for learning tasks
+//!
+//! This module implements the Background Workers pattern from Chapter 22.
+//!
+//! ## Task Types
+//! - Reflection: Run reflection on recent experiences
+//! - HypothesisEvaluation: Run hypothesis evaluation
+//! - ExplorationAnalysis: Run exploration analysis
+//! - Cleanup: Clean up old data
+//! - MetricsCollection: Run metrics collection
+//! - EvolutionMaintenance: Run evolution maintenance
+//! - ReputationDecay: Run reputation decay
+//! - MemoryConsolidation: Consolidate working memory to permanent memory
+//! - MemoryCheckpoint: Checkpoint in-memory caches to database
+//!
+//! ## Scheduling
+//! - Interval: Run at fixed intervals
+//! - Daily: Run at specific times
+//! - Weekly: Run on specific days
+//! - Once: Run once at specific time
+//! - Manual: Manual trigger only
 
 use std::pin::Pin;
 use std::sync::Arc;
@@ -72,6 +92,9 @@ pub enum TaskType {
 
     /// Consolidate working memory to permanent
     MemoryConsolidation,
+
+    /// Checkpoint in-memory caches to database
+    MemoryCheckpoint,
 
     /// Custom task
     Custom,
