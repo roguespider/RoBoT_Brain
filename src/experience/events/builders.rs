@@ -12,7 +12,7 @@ use uuid::Uuid;
 use super::{EventPayload, ExperienceEvent, ExperienceEventType};
 use crate::experience::types::{Experience, ExperienceScore};
 use crate::experience::reflection::reflection::Reflection;
-use crate::experience::hypothesis::core::Hypothesis;
+use crate::experience::hypothesis::core::hypothesis::Hypothesis;
 
 impl ExperienceEvent {
     /// Create an event indicating a new experience was recorded.

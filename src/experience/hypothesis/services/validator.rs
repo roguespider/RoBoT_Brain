@@ -17,7 +17,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::experience::hypothesis::core::{Hypothesis, HypothesisStatus};
+use crate::experience::hypothesis::core::hypothesis::{Hypothesis, HypothesisStatus};
 
 /// ============================================================================
 /// VALIDATOR
@@ -161,9 +161,9 @@ pub enum ValidationIssueType {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ConflictReport {
-    pub first_id: crate::experience::hypothesis::core::HypothesisId,
+    pub first_id: crate::experience::hypothesis::core::hypothesis::HypothesisId,
 
-    pub second_id: crate::experience::hypothesis::core::HypothesisId,
+    pub second_id: crate::experience::hypothesis::core::hypothesis::HypothesisId,
 
     pub similarity: f32,
 

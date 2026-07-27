@@ -20,6 +20,7 @@
 
 
 pub mod core;
+pub mod services;
 pub mod support;
 
 pub use core::evaluator::HypothesisEvaluator;

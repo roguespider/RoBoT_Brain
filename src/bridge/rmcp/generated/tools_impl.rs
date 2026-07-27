@@ -208,36 +208,6 @@ async fn get_experience(
         Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
 }
-
-#[tool(
-    name = "transcribe_audio",
-    description = "TRANSCRIBE AUDIO FILE. Transcribes an audio file (WAV, MP3, M4A, FLAC, etc.) to text using Whisper AI. The transcription is automatically stored as memory for later retrieval. Audio files in files_to_import will be automatically transcribed when ingested."
-)]
-async fn transcribe_audio(
-    &self,
-    Parameters(input): Parameters<tools::ingestor::TranscribeAudioInput>,
-) -> ContentBlock {
-    // Check workflow enforcement first
-    if let Err(e) = self.check_workflow_enforcement("transcribe_audio").await {
-        tracing::warn!("Workflow enforcement blocked transcribe_audio: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-
-    match tools::ingestor::execute_transcribe_audio(
-        input,
-        self.context.database.clone(),
-        self.context.working_memory.clone(),
-    )
-    .await
-    {
-        Ok(result) => {
-            self.record_tool_execution("transcribe_audio", None).await;
-            tool_output_to_content(result)
-        }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
-    }
-}
-
 #[tool(
     name = "get_insights",
     description = "Get actionable insights from reflections"
@@ -437,6 +407,29 @@ async fn list_importable(
     match tools::ingestor::execute_list_importable(input).await {
         Ok(result) => {
             self.record_tool_execution("list_importable", None).await;
+            tool_output_to_content(result)
+        }
+        Err(e) => tool_output_to_content(ToolOutput::error(e)),
+    }
+}
+
+#[tool(
+    name = "transcribe_audio",
+    description = "Transcribe an audio file to text"
+)]
+async fn transcribe_audio(
+    &self,
+    Parameters(input): Parameters<tools::ingestor::TranscribeAudioInput>,
+) -> ContentBlock {
+    // Check workflow enforcement first
+    if let Err(e) = self.check_workflow_enforcement("transcribe_audio").await {
+        tracing::warn!("Workflow enforcement blocked transcribe_audio: {}", e.message);
+        return enforcement_error_to_content(e);
+    }
+
+    match tools::ingestor::execute_transcribe_audio(input, self.context.database.clone(), self.context.working_memory.clone()).await {
+        Ok(result) => {
+            self.record_tool_execution("transcribe_audio", None).await;
             tool_output_to_content(result)
         }
         Err(e) => tool_output_to_content(ToolOutput::error(e)),

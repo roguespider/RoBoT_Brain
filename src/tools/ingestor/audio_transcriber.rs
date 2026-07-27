@@ -3,26 +3,51 @@
 //! 
 //! This module provides audio transcription capabilities using whisper-rs,
 //! a Rust binding for OpenAI's Whisper model.
+//! 
+//! Enable with --features whisper (requires libclang for native compilation)
 
 use std::path::Path;
 use std::sync::Arc;
 
-use anyhow::{Context, Result};
+use anyhow::Result;
+
+#[cfg(feature = "whisper")]
 use whisper_rs::{FullParams, SamplingStrategy, WhisperContext};
 
+#[cfg(feature = "whisper")]
 use crate::database::models::MemoryCard;
+#[cfg(feature = "whisper")]
 use crate::database::sqlite::SqliteDatabase;
+#[cfg(feature = "whisper")]
 use crate::memory::pipeline::MemoryPipeline;
+#[cfg(feature = "whisper")]
 use crate::memory::types::MemoryItem;
+#[cfg(feature = "whisper")]
 use crate::memory::WorkingMemory;
 
+/// Get supported audio extensions
+pub fn get_supported_extensions() -> &'static [&'static str] {
+    &["mp3", "wav", "m4a", "flac", "ogg", "aac", "wma", "opus"]
+}
+
+/// Check if a file is a supported audio format
+pub fn is_audio_file(path: &Path) -> bool {
+    path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| get_supported_extensions().contains(&e.to_lowercase().as_str()))
+        .unwrap_or(false)
+}
+
+#[cfg(feature = "whisper")]
 /// Model size to download - options: tiny, tiny.en, base, base.en, small, small.en, 
 /// medium, medium.en, large-v1, large-v2, large
 const DEFAULT_MODEL_SIZE: &str = "base.en";
 
+#[cfg(feature = "whisper")]
 /// Global whisper context (lazily initialized)
 static WHISPER_CONTEXT: std::sync::OnceLock<Arc<WhisperContext>> = std::sync::OnceLock::new();
 
+#[cfg(feature = "whisper")]
 /// Initialize whisper model - downloads if not cached
 pub fn init_whisper_model() -> Result<&'static WhisperContext> {
     WHISPER_CONTEXT
@@ -47,6 +72,7 @@ pub fn init_whisper_model() -> Result<&'static WhisperContext> {
         .map_err(|e| anyhow::anyhow!("Failed to initialize Whisper: {}", e))
 }
 
+#[cfg(feature = "whisper")]
 /// Get the path where Whisper models are stored
 fn get_model_path() -> std::path::PathBuf {
     let cache_dir = dirs::cache_dir()
@@ -55,6 +81,7 @@ fn get_model_path() -> std::path::PathBuf {
     cache_dir.join("whisper-rs").join(format!("{}.bin", DEFAULT_MODEL_SIZE))
 }
 
+#[cfg(feature = "whisper")]
 /// Download a Whisper model
 fn download_model(model_name: &str, dest_path: &Path) -> Result<()> {
     // Create parent directory
@@ -82,22 +109,16 @@ fn download_model(model_name: &str, dest_path: &Path) -> Result<()> {
     Ok(())
 }
 
+#[cfg(feature = "whisper")]
 /// Check if whisper model is available
 pub fn is_model_available() -> bool {
     get_model_path().exists() || WHISPER_CONTEXT.get().is_some()
 }
 
-/// Get supported audio extensions
-pub fn get_supported_extensions() -> &'static [&'static str] {
-    &["mp3", "wav", "m4a", "flac", "ogg", "aac", "wma", "opus"]
-}
-
-/// Check if a file is a supported audio format
-pub fn is_audio_file(path: &Path) -> bool {
-    path.extension()
-        .and_then(|e| e.to_str())
-        .map(|e| get_supported_extensions().contains(&e.to_lowercase().as_str()))
-        .unwrap_or(false)
+#[cfg(not(feature = "whisper"))]
+/// Check if whisper model is available (always false without feature)
+pub fn is_model_available() -> bool {
+    false
 }
 
 /// Transcription result
@@ -117,7 +138,8 @@ pub struct TranscriptionSegment {
     pub end: f32,
 }
 
-/// Transcribe an audio file to text
+#[cfg(feature = "whisper")]
+/// Transcribe an audio file to text using Whisper
 pub fn transcribe_audio(path: &Path) -> Result<TranscriptionResult> {
     let ctx = init_whisper_model()?;
     
@@ -189,6 +211,17 @@ pub fn transcribe_audio(path: &Path) -> Result<TranscriptionResult> {
     })
 }
 
+#[cfg(not(feature = "whisper"))]
+/// Transcribe an audio file to text (placeholder without whisper feature)
+pub fn transcribe_audio(path: &Path) -> Result<TranscriptionResult> {
+    anyhow::bail!(
+        "Audio transcription requires the 'whisper' feature.\n\
+        Build with: cargo build --features whisper\n\
+        Note: Whisper requires libclang to be installed."
+    )
+}
+
+#[cfg(feature = "whisper")]
 /// Load audio file and convert to 16kHz mono PCM samples
 fn load_audio_file(path: &Path) -> Result<Vec<f32>> {
     let extension = path
@@ -200,11 +233,9 @@ fn load_audio_file(path: &Path) -> Result<Vec<f32>> {
     match extension.as_str() {
         "wav" => load_wav(path),
         "mp3" | "m4a" | "aac" | "ogg" | "flac" | "opus" | "wma" => {
-            // For compressed formats, we'd need additional libraries
-            // For now, fall back to a placeholder or error
             anyhow::bail!(
                 "Compressed audio format '{}' not directly supported. \
-                Please convert to WAV format first, or use a pre-converted file.",
+                Please convert to WAV format first.",
                 extension
             )
         }
@@ -212,6 +243,7 @@ fn load_audio_file(path: &Path) -> Result<Vec<f32>> {
     }
 }
 
+#[cfg(feature = "whisper")]
 /// Load WAV file and convert to 16kHz mono PCM samples
 fn load_wav(path: &Path) -> Result<Vec<f32>> {
     use hound::{WavReader, WavSpec, SampleFormat};
@@ -247,11 +279,14 @@ fn load_wav(path: &Path) -> Result<Vec<f32>> {
     Ok(samples)
 }
 
+#[cfg(feature = "whisper")]
 /// Resample audio to 16kHz mono
 fn resample_audio(
     reader: hound::WavReader<std::io::BufReader<std::fs::File>>,
     spec: hound::WavSpec,
 ) -> Result<Vec<f32>> {
+    use hound::SampleFormat;
+    
     let target_rate = 16000u32;
     
     // Calculate resampling ratio
@@ -330,7 +365,7 @@ pub fn format_transcription_as_memory(
     );
     
     // Add segment timestamps
-    for (i, segment) in result.segments.iter().enumerate() {
+    for segment in &result.segments {
         content.push_str(&format!(
             "[{:.1}s - {:.1}s] {}\n",
             segment.start, segment.end, segment.text
@@ -341,6 +376,7 @@ pub fn format_transcription_as_memory(
 }
 
 /// Store transcribed audio as memory
+#[cfg(feature = "whisper")]
 pub async fn store_transcription_as_memory(
     transcription: &TranscriptionResult,
     filename: &str,
@@ -363,6 +399,20 @@ pub async fn store_transcription_as_memory(
     working_memory.store(memory_item).await;
     
     Ok(vec![memory.id.to_string()])
+}
+
+#[cfg(not(feature = "whisper"))]
+pub async fn store_transcription_as_memory(
+    _transcription: &TranscriptionResult,
+    _filename: &str,
+    _source_path: &str,
+    _db: Arc<crate::database::sqlite::SqliteDatabase>,
+    _working_memory: Arc<crate::memory::WorkingMemory>,
+) -> Result<Vec<String>> {
+    anyhow::bail!(
+        "Audio transcription requires the 'whisper' feature.\n\
+        Build with: cargo build --features whisper"
+    )
 }
 
 #[cfg(test)]

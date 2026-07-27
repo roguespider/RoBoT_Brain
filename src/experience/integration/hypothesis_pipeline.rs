@@ -10,12 +10,11 @@ use anyhow::Result;
 use uuid::Uuid;
 
 use crate::experience::bus::ExperienceBus;
-use crate::experience::events::{ExperienceEvent, ExperienceEventType};
+use crate::experience::events::ExperienceEvent;
 use crate::experience::types::Experience;
 use crate::experience::hypothesis::HypothesisEngine;
-use crate::experience::hypothesis::core::{Hypothesis, HypothesisCategory, HypothesisConfidence, HypothesisStatus};
+use crate::experience::hypothesis::core::hypothesis::{Hypothesis, HypothesisCategory, HypothesisConfidence, HypothesisStatus};
 use crate::experience::hypothesis::services::generator::HypothesisGenerator;
-use crate::experience::exploration::Exploration;
 
 /// Configuration for hypothesis generation
 #[derive(Debug, Clone)]

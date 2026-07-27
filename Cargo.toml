@@ -30,10 +30,15 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 futures = "0.3"
 
-# Audio transcription with whisper-rs
-whisper-rs = { version = "1.0", features = ["download-model"] }
-hound = "3.5"
-ureq = "2"
+# Audio transcription - whisper-rs is optional (requires native compilation with libclang)
+# Enable with --features whisper on platforms with libclang installed
+whisper-rs = { version = "0.16", optional = true }
+hound = { version = "3.5", optional = true }
+ureq = { version = "2", optional = true }
+
+[features]
+default = []
+whisper = ["dep:whisper-rs", "dep:hound", "dep:ureq"]
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = [
