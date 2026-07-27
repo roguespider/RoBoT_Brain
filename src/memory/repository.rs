@@ -4,8 +4,6 @@
 //! Provides persistence layer for memory items using SQLite.
 //! Bridges in-memory structures with database storage.
 
-#![allow(dead_code)]
-
 use anyhow::Result;
 use chrono::{DateTime, Utc};
 use uuid::Uuid;
