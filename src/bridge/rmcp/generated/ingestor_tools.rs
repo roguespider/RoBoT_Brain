@@ -63,7 +63,7 @@
             return enforcement_error_to_content(e);
         }
         
-        match tools::ingestor::execute_transcribe_audio(input).await {
+        match tools::ingestor::execute_transcribe_audio(input, self.context.database.clone(), self.context.working_memory.clone()).await {
             Ok(result) => {
                 self.record_tool_execution("transcribe_audio", None).await;
                 tool_output_to_content(result)
