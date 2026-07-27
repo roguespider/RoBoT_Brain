@@ -1,4 +1,5 @@
 // src/main.rs
+#![allow(dead_code)]
 
 mod database;
 mod experience;

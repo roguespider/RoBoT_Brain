@@ -23,11 +23,3 @@ pub mod matcher;
 pub mod repository;
 pub mod validator;
 
-// Re-export commonly used services.
-
-pub use analytics::*;
-pub use generator::*;
-pub use matcher::*;
-pub use repository::*;
-pub use validator::*;
-

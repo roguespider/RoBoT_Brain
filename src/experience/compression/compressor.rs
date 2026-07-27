@@ -5,7 +5,7 @@
 //! It provides functionality to compress multiple similar experiences into a single
 //! representation with aggregated confidence and exception tracking.
 
-#![allow(dead_code)]
+
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

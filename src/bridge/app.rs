@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+
 
 // src/bridge/app.rs
 // Root application container per Architecture §03

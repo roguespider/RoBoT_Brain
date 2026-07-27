@@ -369,7 +369,6 @@ impl MemoryCard {
     }
 
     /// Create a new memory in Permanent layer (LTM)
-    #[allow(dead_code)]
     pub fn new_permanent(content: String, memory_type: MemoryType) -> Self {
         let now = Utc::now();
         Self {

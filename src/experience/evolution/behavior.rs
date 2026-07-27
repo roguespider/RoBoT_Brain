@@ -1,7 +1,7 @@
 // /src/experience/evolution/behavior.rs
 // Represents a behavior that can be adopted by the agent
 
-#![allow(dead_code)]
+
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

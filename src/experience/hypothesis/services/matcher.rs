@@ -11,7 +11,7 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::experience::hypothesis::core::Hypothesis;
+use crate::experience::hypothesis::core::hypothesis::Hypothesis;
 
 use crate::experience::types::Experience;
 
@@ -141,7 +141,7 @@ impl Default for HypothesisMatcher {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HypothesisMatch {
-    pub hypothesis_id: crate::experience::hypothesis::core::HypothesisId,
+    pub hypothesis_id: crate::experience::hypothesis::core::hypothesis::HypothesisId,
 
     /// Similarity score 0.0 - 1.0.
     pub score: f32,

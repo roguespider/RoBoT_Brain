@@ -10,7 +10,7 @@ use anyhow::Result;
 use uuid::Uuid;
 
 use crate::experience::bus::ExperienceBus;
-use crate::experience::events::{ExperienceEvent, ExperienceEventType};
+use crate::experience::events::ExperienceEvent;
 use crate::experience::types::Experience;
 use crate::experience::reflection::{ReflectionEngine, ReflectionType, ReflectionStatus};
 use crate::experience::reflection::reflection::Reflection;
@@ -74,7 +74,7 @@ impl ReflectionPipeline {
         );
         let _ = self.bus.publish(event);
 
-        tracing::info!("Generated {} reflection for experience {}", reflection_type, experience.id);
+        tracing::info!("Generated {:?} reflection for experience {}", reflection_type, experience.id);
         Ok(Some(reflection))
     }
 
@@ -90,10 +90,11 @@ impl ReflectionPipeline {
 
     /// Determine reflection type from experience outcome
     fn determine_reflection_type(&self, experience: &Experience) -> ReflectionType {
-        match &experience.outcome {
-            crate::experience::types::ExperienceOutcome::Success => ReflectionType::Success,
-            crate::experience::types::ExperienceOutcome::Failure { .. } => ReflectionType::Failure,
-            crate::experience::types::ExperienceOutcome::Interrupted => ReflectionType::Improvement,
+        use crate::experience::types::outcome::OutcomeKind;
+        match experience.outcome.kind {
+            OutcomeKind::Success => ReflectionType::Success,
+            OutcomeKind::Failure => ReflectionType::Failure,
+            OutcomeKind::Interrupted => ReflectionType::Improvement,
             _ => ReflectionType::General,
         }
     }
@@ -129,7 +130,7 @@ impl ReflectionPipeline {
             ReflectionType::Failure => {
                 desc.push_str("What went wrong:\n");
                 desc.push_str(&format!("- {}\n", experience.description));
-                if let crate::experience::types::ExperienceOutcome::Failure { reason, .. } = &experience.outcome {
+                if let Some(reason) = &experience.outcome.error {
                     desc.push_str(&format!("\nFailure reason: {}\n", reason));
                 }
             }
@@ -143,17 +144,20 @@ impl ReflectionPipeline {
 
     /// Extract lessons from experience
     fn extract_lessons(&self, experience: &Experience) -> Vec<String> {
+        use crate::experience::types::outcome::OutcomeKind;
         let mut lessons = Vec::new();
 
         // Add outcome-based lessons
-        match &experience.outcome {
-            crate::experience::types::ExperienceOutcome::Success => {
+        match experience.outcome.kind {
+            OutcomeKind::Success => {
                 lessons.push("successful_outcome".to_string());
             }
-            crate::experience::types::ExperienceOutcome::Failure { reason, .. } => {
+            OutcomeKind::Failure => {
                 lessons.push("failed_outcome".to_string());
-                if !reason.is_empty() {
-                    lessons.push(format!("failure_reason:{}", reason));
+                if let Some(reason) = &experience.outcome.error {
+                    if !reason.is_empty() {
+                        lessons.push(format!("failure_reason:{}", reason));
+                    }
                 }
             }
             _ => {}

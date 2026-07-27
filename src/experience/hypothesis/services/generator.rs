@@ -12,7 +12,7 @@
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
-use crate::experience::hypothesis::core::{Hypothesis, HypothesisCategory, HypothesisPriority};
+use crate::experience::hypothesis::core::hypothesis::{Hypothesis, HypothesisCategory, HypothesisPriority};
 
 use crate::experience::types::Experience;
 

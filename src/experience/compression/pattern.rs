@@ -1,7 +1,7 @@
 // src/experience/compression/pattern.rs
 //! Pattern detection for experience compression
 
-#![allow(dead_code)]
+
 
 use std::collections::HashMap;
 use chrono::{DateTime, Utc};

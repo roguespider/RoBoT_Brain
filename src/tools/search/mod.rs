@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+
 
 // src/tools/search/mod.rs
 // Search-related MCP tools

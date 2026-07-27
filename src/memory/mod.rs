@@ -21,7 +21,7 @@ pub mod pipeline;
 
 pub use working::WorkingMemory;
 pub use permanent::PermanentMemory;
-pub use retrieval::{MemoryRetrieval, ConsolidationStats};
+pub use retrieval::MemoryRetrieval;
 
 // Exported for future integration (will be used when wiring up persistence)
 #[allow(unused_imports)]

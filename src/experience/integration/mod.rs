@@ -10,6 +10,3 @@ pub mod event_subscriber;
 pub mod learning_coordinator;
 pub mod reflection_pipeline;
 pub mod hypothesis_pipeline;
-
-pub use event_subscriber::EventSubscriber;
-pub use learning_coordinator::LearningCoordinator;

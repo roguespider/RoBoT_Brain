@@ -19,9 +19,8 @@ pub mod memory_state;
 pub mod promotion;
 
 pub use memory_state::{MemoryState, StateTransition, StateTransitionRecord};
-pub use promotion::{PromotionPolicy, PromotionEvaluation};
+pub use promotion::PromotionPolicy;
 pub use store::WorkingMemory;
-pub use store::MemoryStats;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

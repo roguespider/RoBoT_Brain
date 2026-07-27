@@ -2,7 +2,6 @@
 //! Promotion policies for working memory items
 
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Utc};
 
 use super::memory_state::MemoryState;
 use super::WorkingMemoryItem;

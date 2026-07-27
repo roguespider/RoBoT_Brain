@@ -1,7 +1,7 @@
 // /src/experience/evolution/engine.rs
 // The main engine that transforms insights into behaviors
 
-#![allow(dead_code)]
+
 
 use anyhow::Result;
 use chrono::Utc;

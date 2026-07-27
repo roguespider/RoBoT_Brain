@@ -1,7 +1,7 @@
 // /src/experience/evolution/evidence.rs
 // Evidence for behavior evaluation
 
-#![allow(dead_code)]
+
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

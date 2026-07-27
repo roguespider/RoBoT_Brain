@@ -17,9 +17,10 @@
 
 //! NOTE: This module is implemented but not yet fully integrated.
 
-#![allow(dead_code)]
+
 
 pub mod core;
+pub mod services;
 pub mod support;
 
 pub use core::evaluator::HypothesisEvaluator;

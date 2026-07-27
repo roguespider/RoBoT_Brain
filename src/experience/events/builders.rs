@@ -4,7 +4,7 @@
 //! Per Architecture §4.04:
 //! ExperienceRecorded → Reflection observes → Hypothesis evaluates → Knowledge updates → Reputation adjusts
 
-#![allow(dead_code)]
+
 
 use chrono::Utc;
 use uuid::Uuid;
@@ -12,7 +12,7 @@ use uuid::Uuid;
 use super::{EventPayload, ExperienceEvent, ExperienceEventType};
 use crate::experience::types::{Experience, ExperienceScore};
 use crate::experience::reflection::reflection::Reflection;
-use crate::experience::hypothesis::core::Hypothesis;
+use crate::experience::hypothesis::core::hypothesis::Hypothesis;
 
 impl ExperienceEvent {
     /// Create an event indicating a new experience was recorded.
@@ -213,7 +213,7 @@ impl ExperienceEvent {
     }
 
     /// Create an event when a pattern is detected.
-    pub fn pattern_detected(experience_id: Uuid, pattern: String) -> Self {
+    pub fn pattern_detected(experience_id: Uuid, _pattern: String) -> Self {
         Self {
             id: Uuid::new_v4(),
             experience_id,
@@ -224,7 +224,7 @@ impl ExperienceEvent {
     }
 
     /// Create an event when a lesson is learned.
-    pub fn lesson_learned(experience_id: Uuid, lesson: String) -> Self {
+    pub fn lesson_learned(experience_id: Uuid, _lesson: String) -> Self {
         Self {
             id: Uuid::new_v4(),
             experience_id,
@@ -235,7 +235,7 @@ impl ExperienceEvent {
     }
 
     /// Create an event when confidence changes.
-    pub fn confidence_changed(experience_id: Uuid, previous: f32, current: f32) -> Self {
+    pub fn confidence_changed(experience_id: Uuid, _previous: f32, _current: f32) -> Self {
         Self {
             id: Uuid::new_v4(),
             experience_id,
