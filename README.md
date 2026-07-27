@@ -1,10 +1,17 @@
-================================================================================
+|---------|---------|---------|---------|---------|---------|---------|---------||---------|---------|---------|---------|---------|---------|---------|---------| 
+
 # RoBoT_Brain
 
 A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with persistent memory, experience-based learning, and structured knowledge storage.
 
-> **Status:** v0.7.1 (fix-and-repair) — Memory System implemented per Architecture §4.08, §6.3 with Working Memory, Permanent Memory, and Memory Retrieval. Full event catalog per Architecture §4.04. Learning Pipeline per Architecture §9. Database layer with 8 migrations. All 54 unit tests and 103 integration tests passing. 0 errors, 0 warnings.
-
+> **Status:** v0.7.1 (fix-and-repair) — Memory System implemented per Architecture §4.08, §6.3 with Working Memory, Permanent Memory, and Memory Retrieval.
+> Full event catalog per Architecture §4.04. Learning Pipeline per Architecture §9. Database layer with 8 migrations. All 54 unit tests and 103 integration
+> tests passing. 0 errors, 0 warnings.
+---
+To Build
+install rust 
+run -> "cargo build --release"
+tested on Linux, and Windows 
 ---
 
 ## Objective
@@ -603,13 +610,9 @@ Lives longer.
 Examples:
 
 Current coding project
-
 Current Rust file
-
 Current bug
-
 Current design discussion
-
 Current constraints
 
 This survives while the task remains active.
@@ -633,18 +636,14 @@ Planner:
 Need:
 
 Rust knowledge
-
 Database architecture
-
 Current repository decisions
 
 Ignore:
-
 Weather
-
 Recipes
-
 Old conversations
+
 Memory Retriever
 
 Planner decides.
@@ -667,9 +666,7 @@ Example:
 Raw memory
 
 4000 tokens
-
 ↓
-
 Summary
 
 120 tokens
@@ -678,25 +675,15 @@ Prompt Assembler
 Final prompt construction.
 
 System Prompt
-
 +
-
 Current Question
-
 +
-
 Current Code
-
 +
-
 Retrieved Memory
-
 +
-
 Tools
-
 ↓
-
 LLM
 
 Nothing else touches the prompt.
@@ -708,17 +695,11 @@ A hard budget.
 Example
 
 2048 Tokens
-
 220 System
-
 180 User
-
 850 Code
-
 300 Memory
-
 250 Tool Results
-
 248 Reserve
 
 If overflow happens
