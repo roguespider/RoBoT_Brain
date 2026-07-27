@@ -1,6 +1,6 @@
-#![allow(dead_code)]
-#![allow(unused_variables)]
-#![allow(unused_imports)]
+
+
+
 
 //! Experience tool tests
 use crate::TestMcpClient;

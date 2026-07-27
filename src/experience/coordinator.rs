@@ -1,4 +1,5 @@
 // /src/experience/coordinator.rs
+#![allow(dead_code)]
 // Experience system coordinator per Architecture §07
 
 
@@ -45,7 +46,6 @@ impl ExperienceCoordinator {
         // Record metrics
         use crate::experience::metrics::metric_names;
         let metrics_clone = self.metrics.clone();
-        let experience_id = experience.id;
         let outcome_kind = experience.outcome.kind;
         tokio::spawn(async move {
             metrics_clone.increment(metric_names::EXPERIENCES_RECORDED).await;

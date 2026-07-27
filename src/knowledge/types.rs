@@ -1,4 +1,5 @@
 // src/knowledge/types.rs
+#![allow(dead_code)]
 //! Core types for the Knowledge System
 
 

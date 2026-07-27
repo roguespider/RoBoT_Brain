@@ -1,4 +1,5 @@
 // src/memory/permanent/store.rs
+#![allow(dead_code)]
 //! PermanentMemory implementation
 
 use std::collections::HashMap;

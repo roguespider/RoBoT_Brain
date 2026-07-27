@@ -3,6 +3,8 @@
 // src/bridge/app.rs
 // Root application container per Architecture §03
 
+#![allow(dead_code)]
+
 use std::sync::Arc;
 
 use anyhow::Result;
@@ -13,6 +15,7 @@ use crate::bridge::rmcp::run_stdio_server;
 use crate::database::sqlite::SqliteDatabase;
 use crate::experience::bus::ExperienceBus;
 use crate::experience::coordinator::ExperienceCoordinator;
+use crate::experience::encounter_recorder::ExperienceRecorder;
 use crate::experience::event_handler::EventHandler;
 use crate::experience::evolution::EvolutionEngine;
 use crate::experience::hypothesis::HypothesisEngine;
@@ -21,14 +24,12 @@ use crate::experience::metrics::MetricsCollector;
 use crate::experience::reflection::ReflectionEngine;
 use crate::experience::scheduler::{Scheduler, TaskSchedule, TaskType};
 use crate::experience::scorer::ExperienceScorer;
-use crate::experience::worker::{ExperienceWorker, ObserverJob};
 use crate::knowledge::KnowledgeStore;
 use crate::learning::{LineageTracker, WorkingMemory};
 use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory as MemWorkingMemory};
 use crate::planner::{Planner, PolicyEngine};
 use crate::tools;
 use crate::workflows::engine::WorkflowEngine;
-use tokio::sync::mpsc;
 
 /// Root application container.
 ///
@@ -43,8 +44,14 @@ pub struct App {
     /// Experience system coordinator.
     coordinator: Arc<ExperienceCoordinator>,
 
+    /// Experience recorder for structured experience creation.
+    experience_recorder: Arc<ExperienceRecorder>,
+
     /// Background task scheduler.
     scheduler: Arc<Scheduler>,
+    
+    /// Memory pipeline for working→permanent consolidation.
+    memory_pipeline: Arc<crate::memory::pipeline::MemoryPipeline>,
 
     /// MCP context shared with bridge - owns all subsystems.
     mcp_context: Arc<McpContext>,
@@ -61,6 +68,9 @@ impl App {
         let metrics = Arc::new(MetricsCollector::new());
         let scorer = ExperienceScorer::new();
         let coordinator = Arc::new(ExperienceCoordinator::new(scorer, bus.clone(), metrics.clone()));
+        
+        // Create experience recorder for structured experience creation (Architecture §07)
+        let experience_recorder = Arc::new(ExperienceRecorder::new(database.clone()));
 
         // Start event handler to process events from the bus
         let event_handler = EventHandler::new(bus.clone());
@@ -77,6 +87,7 @@ impl App {
         tokio::spawn(async move {
             let mut receiver = scorer_bus.subscribe();
             tracing::info!("Experience scorer observer started, listening for events");
+            tracing::debug!("Event bus subscriber count: {}", scorer_bus.subscriber_count());
             while let Ok(event) = receiver.recv().await {
                 if scorer_observer.accepts(&event) {
                     if let Err(e) = scorer_observer.observe(&event) {
@@ -84,8 +95,9 @@ impl App {
                     }
                 }
             }
+            scorer_bus.unsubscribe();
         });
-        tracing::info!("Experience scorer observer subscribed to bus");
+        tracing::info!("Experience scorer observer subscribed to bus (total subscribers: {})", bus.subscriber_count());
 
         // Create learning engines
         let reflection_engine = Arc::new(ReflectionEngine::new());
@@ -117,6 +129,9 @@ impl App {
             working_memory_core.clone(),
             permanent_memory.clone(),
         ));
+        
+        // Create memory pipeline for working→permanent consolidation (Architecture §6.3, §07)
+        let memory_pipeline = Arc::new(crate::memory::pipeline::MemoryPipeline::new(database.clone()));
 
         // Load memories from database into in-memory caches on startup
         // This restores the caches from persistent storage
@@ -196,7 +211,9 @@ impl App {
             _database: database,
             bus,
             coordinator,
+            experience_recorder,
             scheduler,
+            memory_pipeline,
             mcp_context,
         })
     }

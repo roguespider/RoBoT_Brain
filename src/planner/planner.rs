@@ -8,6 +8,8 @@
 //! Per Architecture §5.7 Decision Flow:
 //! Goal → Planning → Memory Retrieval → Knowledge Retrieval → Experience Retrieval → Confidence Evaluation → Action Selection → Execution → Outcome Recording
 
+#![allow(dead_code)]
+
 use std::sync::Arc;
 use std::collections::HashMap;
 

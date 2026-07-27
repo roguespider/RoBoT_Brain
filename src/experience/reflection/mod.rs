@@ -97,9 +97,10 @@ pub struct ReflectionConfidence {
 }
 
 /// ============================================================================
-/// Traits
+/// Traits (defined for future extensibility)
 /// ============================================================================
 /// Produces reflections from one or more experiences.
+#[allow(dead_code)]
 pub trait Reflector {
     type Input;
     type Output;
@@ -108,6 +109,7 @@ pub trait Reflector {
 }
 
 /// Something that can be validated over time.
+#[allow(dead_code)]
 pub trait ValidatableReflection {
     fn confidence(&self) -> f32;
 
@@ -117,6 +119,7 @@ pub trait ValidatableReflection {
 }
 
 /// Anything capable of producing insights.
+#[allow(dead_code)]
 pub trait InsightProducer {
     fn generate_insights(&self) -> Vec<String>;
 }

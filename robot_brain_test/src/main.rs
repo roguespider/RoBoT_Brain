@@ -3,9 +3,9 @@
 //! This test suite comprehensively tests ALL 57+ MCP tools available in the RoBoT Brain server.
 //! It simulates real agent usage scenarios with success and failure cases.
 
-#![allow(dead_code)]
-#![allow(unused_variables)]
-#![allow(unused_imports)]
+
+
+
 
 use std::path::{Path, PathBuf};
 use std::process::Stdio;

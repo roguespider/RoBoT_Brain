@@ -1,5 +1,6 @@
 // robot/src/experience/reflection/reflection.rs
 
+#![allow(dead_code)]
 
 // Proposed structure
 //    ├── metadata
@@ -16,13 +17,15 @@ use serde::{Deserialize, Serialize};
 
 use super::{ReflectionConfidence, ReflectionMetadata, ReflectionStatus, ReflectionType};
 
-/// Type alias for experience ID
+/// Type alias for experience ID (used in reflection module)
 pub type ExperienceId = String;
 
 /// Type alias for evidence ID
+#[allow(dead_code)]
 pub type EvidenceId = String;
 
 /// Type alias for insight ID
+#[allow(dead_code)]
 pub type InsightId = String;
 
 /// ============================================================================

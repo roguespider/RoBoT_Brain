@@ -4,7 +4,7 @@
 // NOTE: This module is a placeholder for future multi-agent communication.
 // Currently unused but kept for future expansion.
 
-
+#![allow(dead_code)]
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
@@ -167,7 +167,8 @@ pub enum AcpErrorCode {
     InternalError,
 }
 
-/// ACP channel for sending and receiving messages
+/// ACP channel for sending and receiving messages (scaffolding for future use)
+#[allow(dead_code)]
 pub trait AcpChannel: Send + Sync {
     /// Send a message through the channel
     fn send(&self, message: AcpMessage) -> Result<()>;
@@ -179,7 +180,8 @@ pub trait AcpChannel: Send + Sync {
     fn recv(&self) -> Result<AcpMessage>;
 }
 
-/// ACP agent trait
+/// ACP agent trait (scaffolding for future use)
+#[allow(dead_code)]
 pub trait AcpAgent: Send + Sync {
     /// Get the agent's ID
     fn id(&self) -> &AcpAgentId;

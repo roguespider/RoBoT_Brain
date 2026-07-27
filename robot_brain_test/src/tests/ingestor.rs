@@ -1,6 +1,6 @@
-#![allow(dead_code)]
-#![allow(unused_variables)]
-#![allow(unused_imports)]
+
+
+
 
 //! Ingestor tool tests
 use crate::test_environment::TestEnvironment;

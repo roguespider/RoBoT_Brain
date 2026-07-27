@@ -1,7 +1,7 @@
 // /src/experience/evolution/engine.rs
 // The main engine that transforms insights into behaviors
 
-
+#![allow(dead_code)]
 
 use anyhow::Result;
 use chrono::Utc;
@@ -49,7 +49,8 @@ impl Default for EvolutionConfig {
     }
 }
 
-/// Trait for evolution engine implementations
+/// Trait for evolution engine implementations (scaffolding for future use)
+#[allow(dead_code)]
 pub trait EvolutionEngineTrait: Send + Sync {
     /// Create a behavior from an insight
     fn create_behavior_from_insight(&self, insight: &Insight) -> impl std::future::Future<Output = Result<Behavior>> + Send;
