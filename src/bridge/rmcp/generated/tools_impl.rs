@@ -118,7 +118,10 @@ async fn list_memories(
     }
 }
 
-#[tool(name = "cleanup_memories", description = "Delete specific memories by ID (requires explicit user confirmation)")]
+#[tool(
+    name = "cleanup_memories",
+    description = "Delete specific memories by ID (requires explicit user confirmation)"
+)]
 async fn cleanup_memories(
     &self,
     Parameters(input): Parameters<tools::memory::CleanupMemoriesInput>,
