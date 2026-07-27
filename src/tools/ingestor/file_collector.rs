@@ -42,7 +42,6 @@ pub const SKIP_PATTERNS: &[&str] = &[
 ];
 
 pub const ARCHIVE_EXTENSIONS: &[&str] = &["zip", "tar", "gz", "tgz", "tar.gz", "bz2", "xz", "7z", "rar"];
-pub const AUDIO_EXTENSIONS: &[&str] = &["mp3", "wav", "m4a", "flac", "ogg", "aac", "wma", "opus"];
 pub const IMAGE_EXTENSIONS: &[&str] = &["jpg", "jpeg", "png", "gif", "bmp", "webp", "ico", "tiff", "svg"];
 pub const VIDEO_EXTENSIONS: &[&str] = &["mp4", "avi", "mkv", "mov", "wmv", "flv", "webm", "m4v", "mpeg", "mpg"];
 pub const DOC_EXTENSIONS: &[&str] = &["pdf", "doc", "docx", "odt", "rtf", "epub"];
@@ -114,8 +113,6 @@ fn detect_file_type(path: &Path) -> String {
         "text".to_string()
     } else if is_supported_extension(path, ARCHIVE_EXTENSIONS) {
         "archive".to_string()
-    } else if is_supported_extension(path, AUDIO_EXTENSIONS) {
-        "audio".to_string()
     } else if is_supported_extension(path, IMAGE_EXTENSIONS) {
         "image".to_string()
     } else if is_supported_extension(path, VIDEO_EXTENSIONS) {

@@ -4,7 +4,6 @@
 // Ingestor module - file ingestion for short-term memory
 
 pub mod archive_handler;
-pub mod audio;
 pub mod core;
 pub mod definitions;
 pub mod file_collector;
@@ -16,9 +15,9 @@ pub mod workflow;
 // Re-export main types and functions
 pub use core::{
     execute_delete_ingested_files, execute_list_importable,
-    execute_list_ingested_files, execute_transcribe_audio, ingest_file,
+    execute_list_ingested_files, ingest_file,
     IngestFilesInput, ListImportableInput,
-    DeleteIngestedFilesInput, ListIngestedFilesInput, TranscribeAudioInput,
+    DeleteIngestedFilesInput, ListIngestedFilesInput,
     can_delete_files, clear_ingest_tracker, can_verify_deletion,
 };
 

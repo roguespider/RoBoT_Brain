@@ -2450,22 +2450,6 @@ The ingestor tools allow you to import files from a `files_to_import/` folder in
 | JSON | `.json`, `.jsonl` | Pretty-printed for search |
 | PDF | `.pdf` | Basic text extraction |
 | Images | `.jpg`, `.jpeg`, `.png`, `.gif`, `.bmp`, `.webp` | Metadata extraction |
-| Audio | `.mp3`, `.wav`, `.m4a`, `.flac`, `.ogg`, `.aac`, `.wma`, `.opus` | Whisper transcription → stored in memory |
-
-### Audio Transcription
-
-Audio files are automatically transcribed using the `whisper` CLI tool. The transcribed text is stored as memory content with metadata about the original file.
-
-**Requirements:**
-- `whisper` CLI must be installed:
-  ```bash
-  pip install whisper  # or: brew install whisper
-  ```
-
-**Flow:**
-```
-Audio File → whisper transcription → MemoryCard → Working Memory + SQLite
-```
 
 ### MCP Tools
 

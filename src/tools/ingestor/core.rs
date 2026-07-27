@@ -20,7 +20,7 @@ use crate::tools::ToolOutput;
 use crate::tools::ingestor::archive_handler::{
     create_archive_temp_dir, delete_empty_folders, process_archive,
 };
-use crate::tools::ingestor::file_collector::{collect_all_files_recursive, collect_importable_files, collect_importable_files_with_recursive, get_import_folder, is_supported_extension, AUDIO_EXTENSIONS, JSON_EXTENSIONS, ARCHIVE_EXTENSIONS, TEXT_EXTENSIONS, IMAGE_EXTENSIONS};
+use crate::tools::ingestor::file_collector::{collect_all_files_recursive, collect_importable_files, collect_importable_files_with_recursive, get_import_folder, is_supported_extension, JSON_EXTENSIONS, ARCHIVE_EXTENSIONS, TEXT_EXTENSIONS, IMAGE_EXTENSIONS};
 use crate::tools::ingestor::text_extractor::{extract_text, extract_image_metadata, validate_text_quality};
 use crate::tools::ingestor::semantic_chunker::{parse_document, get_file_type};
 use crate::tools::ingestor::json_importer::import_json_file;
@@ -30,7 +30,6 @@ pub use super::workflow::{
     execute_delete_ingested_files, execute_list_importable, execute_list_ingested_files,
     find_empty_folders_after_deletion,
 };
-pub use super::audio::execute_transcribe_audio;
 
 /// Default chunk size for text splitting
 pub const DEFAULT_CHUNK_SIZE: usize = 1000;
@@ -239,13 +238,6 @@ pub struct ListImportableInput {
     /// List all files without limit (default: false)
     /// Set to true to show all files instead of just the first few
     pub list_all: Option<bool>,
-}
-
-/// Tool: Transcribe an audio file
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-pub struct TranscribeAudioInput {
-    pub path: String,
-    pub output: Option<String>,
 }
 
 /// Tool: Delete successfully imported files
@@ -927,11 +919,6 @@ async fn ingest_single_file(
         return ingest_json_file(path, 0, memory_type, db, working_memory).await;
     }
 
-    // Check if this is an audio file - transcribe first
-    if is_supported_extension(path, AUDIO_EXTENSIONS) {
-        return ingest_audio_file(path, memory_type, db, working_memory).await;
-    }
-
     // Extract text content for other file types
     let text = extract_text(path)
         .with_context(|| format!("Failed to extract text from {}", filename))?;
@@ -1189,128 +1176,6 @@ async fn ingest_image_file(
         success: true,
         chunks_created: 1,
         chunk_size_used: chunk_size,
-        memory_ids: vec![memory.id.to_string()],
-        error: None,
-        remaining_count: 0,
-    })
-}
-
-/// Ingest an audio file by transcribing it to text first
-/// Per Architecture §6.3: Stores transcribed text in Working Memory
-async fn ingest_audio_file(
-    path: &Path,
-    memory_type: MemoryType,
-    db: Arc<SqliteDatabase>,
-    working_memory: Arc<WorkingMemory>,
-) -> Result<IngestResult> {
-    let filename = path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("unknown")
-        .to_string();
-
-    tracing::info!("Transcribing audio file: {}", filename);
-
-    // Create transcription input
-    let input = super::TranscribeAudioInput {
-        path: path.to_string_lossy().to_string(),
-        output: None,
-    };
-
-    // Transcribe the audio file
-    let output = match super::audio::execute_transcribe_audio(input).await {
-        Ok(out) => out,
-        Err(e) => {
-            return Ok(IngestResult {
-                filename,
-                file_path: path.to_string_lossy().to_string(),
-                success: false,
-                chunks_created: 0,
-                chunk_size_used: 0,
-                memory_ids: vec![],
-                error: Some(format!("Audio transcription failed: {}", e)),
-                remaining_count: 0,
-            });
-        }
-    };
-
-    // Check if transcription was successful
-    if !output.success {
-        return Ok(IngestResult {
-            filename,
-            file_path: path.to_string_lossy().to_string(),
-            success: false,
-            chunks_created: 0,
-            chunk_size_used: 0,
-            memory_ids: vec![],
-            error: output.error.or(Some("Unknown error".to_string())),
-            remaining_count: 0,
-        });
-    }
-
-    // Parse the transcription JSON to get the text
-    let data = &output.data;
-    let transcription_text = if let Some(text) = data.get("text").and_then(|v| v.as_str()) {
-        text.to_string()
-    } else if let Some(transcription) = data.get("transcription").and_then(|v| v.as_str()) {
-        // Also try 'transcription' field (some whisper outputs use this)
-        transcription.to_string()
-    } else {
-        // Fallback: serialize the whole response as text
-        serde_json::to_string(data).unwrap_or_default()
-    };
-
-    if transcription_text.trim().is_empty() {
-        return Ok(IngestResult {
-            filename,
-            file_path: path.to_string_lossy().to_string(),
-            success: false,
-            chunks_created: 0,
-            chunk_size_used: 0,
-            memory_ids: vec![],
-            error: Some("Transcription produced empty text".to_string()),
-            remaining_count: 0,
-        });
-    }
-
-    // Create metadata about the audio file
-    let audio_metadata = format!(
-        "[Audio Transcription] File: {} | Format: {:?} | Transcription:\n{}",
-        filename,
-        path.extension().and_then(|e| e.to_str()),
-        transcription_text
-    );
-
-    // Store the transcription as a MemoryCard
-    let memory = MemoryCard::new(audio_metadata, memory_type);
-    let pipeline = MemoryPipeline::new(db.clone());
-    
-    // Store in pipeline (for SQLite persistence)
-    if let Err(e) = pipeline.store_working(&memory) {
-        return Ok(IngestResult {
-            filename,
-            file_path: path.to_string_lossy().to_string(),
-            success: false,
-            chunks_created: 0,
-            chunk_size_used: 0,
-            memory_ids: vec![],
-            error: Some(format!("Failed to store audio transcription: {}", e)),
-            remaining_count: 0,
-        });
-    }
-    
-    // Store in Working Memory cache (Architecture §6.3)
-    let memory_item = MemoryItem::from(&memory);
-    working_memory.store(memory_item).await;
-
-    tracing::info!("Audio file transcribed and stored: {} chars", transcription_text.len());
-
-    Ok(IngestResult {
-        filename,
-        file_path: path.to_string_lossy().to_string(),
-        success: true,
-        chunks_created: 1,
-        chunk_size_used: 0,
         memory_ids: vec![memory.id.to_string()],
         error: None,
         remaining_count: 0,
