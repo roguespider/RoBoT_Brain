@@ -4,6 +4,7 @@
 // Ingestor module - file ingestion for short-term memory
 
 pub mod archive_handler;
+pub mod audio_transcriber;
 pub mod core;
 pub mod definitions;
 pub mod file_collector;

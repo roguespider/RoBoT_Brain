@@ -7,6 +7,7 @@ pub const INGEST_FILES: &str = "ingest_files";
 pub const LIST_IMPORTABLE: &str = "list_importable";
 pub const LIST_INGESTED_FILES: &str = "list_ingested_files";
 pub const DELETE_INGESTED_FILES: &str = "delete_ingested_files";
+pub const TRANSCRIBE_AUDIO: &str = "transcribe_audio";
 
 pub fn all() -> Vec<McpTool> {
     vec![
@@ -66,6 +67,24 @@ pub fn all() -> Vec<McpTool> {
                         "description": "Search subfolders recursively (default: true). Set to false to only look in the root folder."
                     }
                 }
+            }),
+        },
+        McpTool {
+            name: TRANSCRIBE_AUDIO.to_string(),
+            description: "TRANSCRIBE AUDIO FILE. Transcribes an audio file (MP3, WAV, M4A, FLAC, etc.) to text using Whisper AI. The transcription is automatically stored as memory for later retrieval. Audio files in files_to_import will be automatically transcribed when ingested.".to_string(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "path": {
+                        "type": "string",
+                        "description": "Full path to the audio file to transcribe. Example: 'C:\\robot_brain\\files_to_import\\recording.wav'"
+                    },
+                    "store_as_memory": {
+                        "type": "boolean",
+                        "description": "Whether to store the transcription as memory (default: true)"
+                    }
+                },
+                "required": ["path"]
             }),
         },
         McpTool {

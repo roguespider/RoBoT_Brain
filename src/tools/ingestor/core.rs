@@ -24,6 +24,10 @@ use crate::tools::ingestor::file_collector::{collect_all_files_recursive, collec
 use crate::tools::ingestor::text_extractor::{extract_text, extract_image_metadata, validate_text_quality};
 use crate::tools::ingestor::semantic_chunker::{parse_document, get_file_type};
 use crate::tools::ingestor::json_importer::import_json_file;
+use crate::tools::ingestor::audio_transcriber::{
+    self, format_transcription_as_memory, is_audio_file, store_transcription_as_memory,
+    TranscriptionResult,
+};
 
 // Re-export for convenience (via parent module)
 pub use super::workflow::{
@@ -240,11 +244,12 @@ pub struct ListImportableInput {
     pub list_all: Option<bool>,
 }
 
-/// Tool: Transcribe an audio file (placeholder - not currently implemented)
+/// Tool: Transcribe an audio file
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct TranscribeAudioInput {
     pub path: String,
-    pub output: Option<String>,
+    /// Whether to store the transcription as memory (default: true)
+    pub store_as_memory: Option<bool>,
 }
 
 /// Tool: Delete successfully imported files
@@ -926,9 +931,9 @@ async fn ingest_single_file(
         return ingest_json_file(path, 0, memory_type, db, working_memory).await;
     }
 
-    // Check if this is an audio file - placeholder for future audio processing
+    // Check if this is an audio file - use Whisper transcription
     if is_supported_extension(path, AUDIO_EXTENSIONS) {
-        return ingest_audio_file_placeholder(path).await;
+        return ingest_audio_file(path, 0, memory_type, db, working_memory).await;
     }
 
     // Extract text content for other file types
@@ -1224,4 +1229,170 @@ async fn ingest_audio_file_placeholder(path: &Path) -> Result<IngestResult> {
         error: Some("Audio processing not currently available".to_string()),
         remaining_count: 0,
     })
+}
+
+/// Transcribe an audio file and store as memory
+async fn ingest_audio_file(
+    path: &Path,
+    _chunk_size: usize,
+    memory_type: MemoryType,
+    db: Arc<SqliteDatabase>,
+    working_memory: Arc<WorkingMemory>,
+) -> Result<IngestResult> {
+    let filename = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+
+    let file_path_str = path.to_string_lossy().to_string();
+
+    tracing::info!("Transcribing audio file: {}", filename);
+
+    // Transcribe the audio
+    let transcription = match audio_transcriber::transcribe_audio(path) {
+        Ok(t) => t,
+        Err(e) => {
+            tracing::error!("Failed to transcribe audio: {}", e);
+            return Ok(IngestResult {
+                filename,
+                file_path: file_path_str,
+                success: false,
+                chunks_created: 0,
+                chunk_size_used: 0,
+                memory_ids: vec![],
+                error: Some(format!("Transcription failed: {}", e)),
+                remaining_count: 0,
+            });
+        }
+    };
+
+    // Store the transcription as memory
+    let memory_ids = match store_transcription_as_memory(
+        &transcription,
+        &filename,
+        &file_path_str,
+        db,
+        working_memory,
+    )
+    .await
+    {
+        Ok(ids) => ids,
+        Err(e) => {
+            tracing::error!("Failed to store transcription as memory: {}", e);
+            return Ok(IngestResult {
+                filename,
+                file_path: file_path_str,
+                success: false,
+                chunks_created: 0,
+                chunk_size_used: 0,
+                memory_ids: vec![],
+                error: Some(format!("Failed to store memory: {}", e)),
+                remaining_count: 0,
+            });
+        }
+    };
+
+    Ok(IngestResult {
+        filename,
+        file_path: file_path_str,
+        success: true,
+        chunks_created: memory_ids.len(),
+        chunk_size_used: 0,
+        memory_ids,
+        error: None,
+        remaining_count: 0,
+    })
+}
+
+/// Tool: Transcribe an audio file
+pub async fn execute_transcribe_audio(
+    input: TranscribeAudioInput,
+    db: Arc<SqliteDatabase>,
+    working_memory: Arc<WorkingMemory>,
+) -> Result<ToolOutput> {
+    let path = Path::new(&input.path);
+
+    if !path.exists() {
+        return Ok(ToolOutput::error(format!(
+            "Audio file not found: {}",
+            input.path
+        )));
+    }
+
+    if !is_audio_file(path) {
+        return Ok(ToolOutput::error(format!(
+            "Not a supported audio file: {}",
+            input.path
+        )));
+    }
+
+    let filename = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+
+    tracing::info!("Transcribing audio file: {}", filename);
+
+    // Check if whisper model is available
+    if !audio_transcriber::is_model_available() {
+        return Ok(ToolOutput::error(
+            "Whisper model not available. Please ensure the model is downloaded.".to_string(),
+        ));
+    }
+
+    // Transcribe the audio
+    let transcription = match audio_transcriber::transcribe_audio(path) {
+        Ok(t) => t,
+        Err(e) => {
+            return Ok(ToolOutput::error(format!(
+                "Transcription failed: {}",
+                e
+            )));
+        }
+    };
+
+    // Store as memory if requested
+    let memory_ids = if input.store_as_memory.unwrap_or(true) {
+        match store_transcription_as_memory(
+            &transcription,
+            &filename,
+            &input.path,
+            db,
+            working_memory,
+        )
+        .await
+        {
+            Ok(ids) => ids,
+            Err(e) => {
+                tracing::warn!("Failed to store as memory: {}", e);
+                vec![]
+            }
+        }
+    } else {
+        vec![]
+    };
+
+    Ok(ToolOutput::success(serde_json::json!({
+        "success": true,
+        "filename": filename,
+        "path": input.path,
+        "language": transcription.language,
+        "duration_seconds": transcription.duration_seconds,
+        "text": transcription.text,
+        "segments": transcription.segments.iter().map(|s| {
+            serde_json::json!({
+                "text": s.text,
+                "start": s.start,
+                "end": s.end
+            })
+        }).collect::<Vec<_>>(),
+        "memory_ids": memory_ids,
+        "message": format!(
+            "Successfully transcribed {:.1}s audio to {} characters",
+            transcription.duration_seconds,
+            transcription.text.len()
+        )
+    })))
 }
