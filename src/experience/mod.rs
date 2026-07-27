@@ -1,5 +1,5 @@
 // src/experience/mod.rs
-//! Experience System - Per Architecture §2.1, §5, §07
+//! Experience System - Per Architecture §2.1, §5, §07, §22
 //!
 //! The Experience System is the foundation of learning.
 //! It records events, observations, actions, outcomes, and environmental changes.
@@ -31,3 +31,4 @@ pub mod scheduler;
 pub mod scorer;
 pub mod types;
 pub mod worker;
+pub mod worker_manager;

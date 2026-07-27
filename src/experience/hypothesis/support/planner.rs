@@ -8,7 +8,7 @@
 //!
 //! This module helps RoBoT plan actions based on high-confidence hypotheses.
 
-#![allow(dead_code)]
+
 
 use serde::{Deserialize, Serialize};
 

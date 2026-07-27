@@ -14,7 +14,7 @@
 //! - Every experience originates from observations
 //! - Consolidation creates experiences that feed into reflection
 
-#![allow(dead_code)]
+
 
 use std::sync::Arc;
 use chrono::{Duration, Utc};

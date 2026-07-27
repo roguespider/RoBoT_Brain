@@ -52,11 +52,6 @@ impl ExperienceBus {
     pub fn subscriber_count(&self) -> usize {
         self.subscriber_count.load(Ordering::SeqCst)
     }
-
-    /// Create a broadcast sender for external use
-    pub fn sender(&self) -> broadcast::Sender<ExperienceEvent> {
-        self.sender.clone()
-    }
 }
 
 impl Default for ExperienceBus {

@@ -1,5 +1,5 @@
 // src/experience/compression/compressor.rs
-#![allow(dead_code)]
+
 //! Core experience compression logic
 //!
 //! NOTE: This module is implemented but not yet integrated into the experience system.

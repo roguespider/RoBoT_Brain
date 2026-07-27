@@ -8,7 +8,7 @@
 //!
 //! This module simulates the implications of trusting or acting on hypotheses.
 
-#![allow(dead_code)]
+
 
 use serde::{Deserialize, Serialize};
 

@@ -1,5 +1,5 @@
 // src/learning/candidates.rs
-#![allow(dead_code)]
+
 //! Candidate actions and behavior generation
 
 use std::sync::Arc;

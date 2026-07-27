@@ -1,7 +1,7 @@
 // src/learning/working_memory/promotion.rs
 //! Promotion policies for working memory items
 
-#![allow(dead_code)]
+
 
 use serde::{Deserialize, Serialize};
 

@@ -1,5 +1,5 @@
 // src/bridge/mcp/client.rs
-#![allow(dead_code)]
+
 // MCP Client for connecting to external MCP servers
 
 use std::sync::Arc;

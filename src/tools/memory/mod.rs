@@ -4,7 +4,7 @@
 // Memory-related MCP tools
 // Per Architecture §07: Every experience originates from observations
 
-#![allow(dead_code)]
+
 
 use std::sync::Arc;
 
@@ -160,6 +160,38 @@ pub mod definitions {
                             "type": "number",
                             "description": "Maximum number of results",
                             "default": 20
+                        }
+                    }
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: CLEANUP_MEMORIES.to_string(),
+                description: "Delete specific memories by ID (requires explicit user confirmation)".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "ids": {
+                            "type": "array",
+                            "items": { "type": "string" },
+                            "description": "List of memory UUIDs to delete"
+                        },
+                        "confirmation": {
+                            "type": "string",
+                            "description": "User confirmation: must be 'yes' to proceed with deletion"
+                        }
+                    },
+                    "required": ["ids", "confirmation"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: LIST_IMAGE_MEMORIES.to_string(),
+                description: "List image memories and detect garbage".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "include_garbage": {
+                            "type": "boolean",
+                            "description": "Include garbage memories (binary data stored as text)"
                         }
                     }
                 }),

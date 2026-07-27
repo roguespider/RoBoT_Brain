@@ -1,6 +1,6 @@
 // robot/src/experience/hypothesis/services/generator.rs
 
-#![allow(dead_code)]
+
 
 //! ============================================================================
 //! HYPOTHESIS GENERATOR

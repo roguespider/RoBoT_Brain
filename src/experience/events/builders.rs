@@ -1,5 +1,5 @@
 // /src/experience/events/builders.rs
-#![allow(dead_code)]
+
 //! Event builders for creating ExperienceEvents
 //!
 //! Per Architecture §4.04:

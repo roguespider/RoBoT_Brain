@@ -1,5 +1,5 @@
 // src/tools/hypothesis/execute.rs
-#![allow(dead_code)]
+
 // Tool execution functions for the Hypothesis Engine
 
 use std::sync::Arc;

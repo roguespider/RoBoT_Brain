@@ -1,5 +1,5 @@
 // robot/src/experience/hypothesis/support/graph/graph_algorithms.rs
-#![allow(dead_code)]
+
 
 //! Graph algorithm implementations for hypothesis graphs.
 

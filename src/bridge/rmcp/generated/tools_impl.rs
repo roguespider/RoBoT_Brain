@@ -117,6 +117,27 @@ async fn list_memories(
         Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
 }
+
+#[tool(name = "cleanup_memories", description = "Delete specific memories by ID (requires explicit user confirmation)")]
+async fn cleanup_memories(
+    &self,
+    Parameters(input): Parameters<tools::memory::CleanupMemoriesInput>,
+) -> ContentBlock {
+    // Check workflow enforcement first
+    if let Err(e) = self.check_workflow_enforcement("cleanup_memories").await {
+        tracing::warn!("Workflow enforcement blocked cleanup_memories: {}", e.message);
+        return enforcement_error_to_content(e);
+    }
+
+    match tools::memory::execute_cleanup_memories(input, &self.context.database).await {
+        Ok(result) => {
+            self.record_tool_execution("cleanup_memories", None).await;
+            tool_output_to_content(result)
+        }
+        Err(e) => tool_output_to_content(ToolOutput::error(e)),
+    }
+}
+
 #[tool(name = "record_experience", description = "Record a new experience")]
 async fn record_experience(
     &self,

@@ -2,7 +2,7 @@
 
 //! Type definitions for the hypothesis graph.
 
-#![allow(dead_code)]
+
 
 use serde::{Deserialize, Serialize};
 

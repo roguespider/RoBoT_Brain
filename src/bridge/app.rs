@@ -3,7 +3,7 @@
 // src/bridge/app.rs
 // Root application container per Architecture §03
 
-#![allow(dead_code)]
+
 
 use std::sync::Arc;
 
@@ -20,10 +20,12 @@ use crate::experience::event_handler::EventHandler;
 use crate::experience::evolution::EvolutionEngine;
 use crate::experience::hypothesis::HypothesisEngine;
 use crate::experience::integration::event_subscriber::{EventSubscriber, start_event_subscriber};
+use crate::experience::integration::reflection_pipeline::ReflectionPipeline;
 use crate::experience::metrics::MetricsCollector;
 use crate::experience::reflection::ReflectionEngine;
 use crate::experience::scheduler::{Scheduler, TaskSchedule, TaskType};
 use crate::experience::scorer::ExperienceScorer;
+use crate::experience::worker_manager::WorkerManager;
 use crate::knowledge::KnowledgeStore;
 use crate::learning::{LineageTracker, WorkingMemory};
 use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory as MemWorkingMemory};
@@ -41,11 +43,20 @@ pub struct App {
     /// Event bus for pub/sub.
     bus: Arc<ExperienceBus>,
 
+    /// Worker manager for background job processing (Architecture §22).
+    worker_manager: Arc<WorkerManager>,
+
     /// Experience system coordinator.
     coordinator: Arc<ExperienceCoordinator>,
 
+    /// Hypothesis engine for belief management.
+    hypothesis_engine: Arc<std::sync::Mutex<HypothesisEngine>>,
+
     /// Experience recorder for structured experience creation.
     experience_recorder: Arc<ExperienceRecorder>,
+
+    /// Reflection pipeline for processing experiences into insights.
+    reflection_pipeline: Arc<ReflectionPipeline>,
 
     /// Background task scheduler.
     scheduler: Arc<Scheduler>,
@@ -77,31 +88,42 @@ impl App {
         event_handler.start();
         tracing::info!("Event handler started");
 
+        // Create WorkerManager for background job processing per Architecture §22
+        // Design: Experience → Recorder → Bus → Job Queue → Workers → Observers
+        let worker_manager = Arc::new(WorkerManager::new(bus.clone()));
+
         // Wire ExperienceScorer as an observer that scores experiences
-        // Create a separate scorer instance for the observer
         let scorer_for_observer = ExperienceScorer::new();
         let scorer_observer: Arc<dyn crate::experience::observer::ExperienceObserver> = Arc::new(scorer_for_observer);
         
-        // Subscribe scorer to events (it will score experiences)
-        let scorer_bus = bus.clone();
+        // Register scorer with WorkerManager - creates dedicated worker
+        worker_manager.register_observer(scorer_observer.clone()).await?;
+        tracing::info!("ExperienceScorer registered with WorkerManager");
+
+        // Start worker manager background task - subscribes to bus and enqueues jobs
+        let manager_clone = worker_manager.clone();
+        let manager_bus = bus.clone();
         tokio::spawn(async move {
-            let mut receiver = scorer_bus.subscribe();
-            tracing::info!("Experience scorer observer started, listening for events");
-            tracing::debug!("Event bus subscriber count: {}", scorer_bus.subscriber_count());
+            let mut receiver = manager_bus.subscribe();
+            tracing::info!("Worker manager started, listening for events");
+            tracing::debug!("Event bus subscriber count: {}", manager_bus.subscriber_count());
             while let Ok(event) = receiver.recv().await {
-                if scorer_observer.accepts(&event) {
-                    if let Err(e) = scorer_observer.observe(&event) {
-                        tracing::error!("Scorer observer error: {}", e);
-                    }
+                // Broadcast to all workers - they filter based on accepts()
+                if let Err(e) = manager_clone.broadcast_event(event).await {
+                    tracing::error!("Worker manager broadcast error: {}", e);
                 }
             }
-            scorer_bus.unsubscribe();
+            manager_bus.unsubscribe();
         });
-        tracing::info!("Experience scorer observer subscribed to bus (total subscribers: {})", bus.subscriber_count());
+        tracing::info!("Worker manager subscribed to bus (total subscribers: {})", bus.subscriber_count());
 
         // Create learning engines
         let reflection_engine = Arc::new(ReflectionEngine::new());
-        let hypothesis_engine = Arc::new(HypothesisEngine::new());
+        // hypothesis_engine for event subscriber (immutable reference)
+        let hypothesis_engine_for_subscriber = Arc::new(HypothesisEngine::new());
+        // Store a separate hypothesis_engine for mutable operations (process_experience)
+        use std::sync::Mutex;
+        let hypothesis_engine = Arc::new(Mutex::new(HypothesisEngine::new()));
         let evolution_engine = Arc::new(EvolutionEngine::new());
 
         // Create working memory, lineage tracker, and knowledge store
@@ -111,11 +133,19 @@ impl App {
 
         // Create event subscriber for the learning pipeline
         // Per Architecture §4.04: Experience → Reflection → Hypothesis → Knowledge → Reputation
-        let event_subscriber = Arc::new(EventSubscriber::new(
+        let event_subscriber = Arc::new(EventSubscriber::with_coordinator(
+            coordinator.clone(),
+            metrics.clone(),
             reflection_engine.clone(),
-            hypothesis_engine.clone(),
+            hypothesis_engine_for_subscriber.clone(),
             evolution_engine.clone(),
             knowledge_store.clone(),
+        ));
+        
+        // Create reflection pipeline for processing experiences into insights
+        let reflection_pipeline = Arc::new(ReflectionPipeline::new(
+            reflection_engine.clone(),
+            bus.clone(),
         ));
         
         // Start the event subscriber background task
@@ -186,7 +216,7 @@ impl App {
             bus.clone(),
             coordinator.clone(),
             reflection_engine.clone(),
-            hypothesis_engine.clone(),
+            hypothesis_engine_for_subscriber.clone(),
             evolution_engine.clone(),
             scheduler.clone(),
             metrics.clone(),
@@ -210,8 +240,11 @@ impl App {
         Ok(Self {
             _database: database,
             bus,
+            worker_manager,
             coordinator,
+            hypothesis_engine,
             experience_recorder,
+            reflection_pipeline,
             scheduler,
             memory_pipeline,
             mcp_context,
@@ -465,6 +498,11 @@ impl App {
         &self.bus
     }
 
+    /// Get the worker manager for observer job processing (Architecture §22)
+    pub fn worker_manager(&self) -> &Arc<WorkerManager> {
+        &self.worker_manager
+    }
+
     /// Get the experience coordinator for testing/admin
     pub fn experience_coordinator(&self) -> &Arc<ExperienceCoordinator> {
         &self.coordinator
@@ -478,5 +516,60 @@ impl App {
     /// Record an experience through the coordinator
     pub fn process_experience(&self, experience: crate::experience::types::Experience) -> crate::experience::types::Experience {
         self.coordinator.process(experience)
+    }
+
+    /// Record a successful experience using the recorder
+    pub fn record_success(
+        &self,
+        experience_type: crate::experience::types::ExperienceType,
+        title: impl Into<String>,
+        description: impl Into<String>,
+    ) -> anyhow::Result<String> {
+        self.experience_recorder.success(experience_type, title, description)
+    }
+
+    /// Record a failed experience using the recorder
+    pub fn record_failure(
+        &self,
+        experience_type: crate::experience::types::ExperienceType,
+        title: impl Into<String>,
+        description: impl Into<String>,
+        reason: impl Into<String>,
+    ) -> anyhow::Result<String> {
+        self.experience_recorder.failure(experience_type, title, description, reason)
+    }
+
+    /// Process an experience through the reflection pipeline
+    pub async fn reflect_on_experience(
+        &self,
+        experience: &crate::experience::types::Experience,
+    ) -> anyhow::Result<Option<crate::experience::reflection::reflection::Reflection>> {
+        self.reflection_pipeline.process(experience).await
+    }
+
+    /// Analyze patterns across multiple experiences
+    pub async fn detect_patterns(
+        &self,
+        experiences: &[crate::experience::types::Experience],
+    ) -> anyhow::Result<Vec<String>> {
+        self.reflection_pipeline.analyze_patterns(experiences).await
+    }
+
+    /// Process an experience through the hypothesis engine
+    pub fn process_experience_for_hypothesis(
+        &self,
+        experience: &crate::experience::types::Experience,
+    ) -> anyhow::Result<()> {
+        let mut engine = self.hypothesis_engine.lock().unwrap();
+        engine.process_experience(experience)
+    }
+
+    /// Observe an experience for hypothesis updates
+    pub fn observe_experience_for_hypothesis(
+        &self,
+        experience: &crate::experience::types::Experience,
+    ) -> anyhow::Result<()> {
+        let engine = self.hypothesis_engine.lock().unwrap();
+        engine.observe(experience)
     }
 }

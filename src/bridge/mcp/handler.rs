@@ -6,7 +6,7 @@ use anyhow::Result;
 use super::types::{McpCapabilities, McpNotification, McpRequest, McpResponse, McpServerInfo};
 
 /// Trait for MCP protocol handlers (defined for future extensibility)
-#[allow(dead_code)]
+
 pub trait McpHandler: Send + Sync {
     /// Handle an MCP request
     fn handle_request(&self, request: McpRequest) -> Result<McpResponse>;

@@ -1,6 +1,6 @@
 // robot/src/experience/hypothesis/services/analytics.rs
 
-#![allow(dead_code)]
+
 
 //! ============================================================================
 //! HYPOTHESIS ANALYTICS

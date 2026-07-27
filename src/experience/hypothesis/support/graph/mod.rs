@@ -1,5 +1,5 @@
 // robot/src/experience/hypothesis/support/graph/mod.rs
-#![allow(dead_code)]
+
 
 //! ============================================================================
 //! HYPOTHESIS GRAPH

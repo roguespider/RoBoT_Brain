@@ -1,7 +1,7 @@
 // src/planner/policy.rs
 //! Policy engine for decision-making rules
 
-#![allow(dead_code)]
+
 
 use std::sync::Arc;
 

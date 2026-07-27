@@ -1,5 +1,5 @@
 // /src/experience/reflection/pattern.rs
-#![allow(dead_code)]
+
 // Pattern detection and representation
 
 

@@ -10,7 +10,7 @@
 //! - Knowledge: "I know SQL." (information)
 //! - Skill: "I can optimize a query." (capability)
 
-#![allow(dead_code)]
+
 
 use std::sync::Arc;
 

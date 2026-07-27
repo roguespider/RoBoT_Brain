@@ -15,7 +15,7 @@
 //! - LLM validation
 //! - domain-specific rules
 
-#![allow(dead_code)]
+
 
 use serde::{Deserialize, Serialize};
 
