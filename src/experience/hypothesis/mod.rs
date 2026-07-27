@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 // robot/src/experience/hypothesis/mod.rs
 
 //! ============================================================================
@@ -15,10 +14,6 @@
 //! - Provide querying and analytics.
 //!
 //! This module acts as the public interface for the entire hypothesis subsystem.
-
-//! NOTE: This module is implemented but not yet fully integrated.
-
-
 
 pub mod core;
 pub mod services;

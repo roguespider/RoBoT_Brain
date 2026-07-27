@@ -1,7 +1,5 @@
-#![allow(dead_code)]
 // /src/experience/evolution/engine.rs
 // The main engine that transforms insights into behaviors
-
 
 
 use anyhow::Result;

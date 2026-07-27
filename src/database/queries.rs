@@ -549,3 +549,141 @@ pub fn link_observation_to_experience(conn: &Connection, observation_id: Uuid, e
     Ok(())
 }
 
+// ==========================================================
+// EXPERIENCE OPERATIONS (for scheduler use)
+// ==========================================================
+
+use crate::experience::types::{Experience, ExperienceContext, ExperienceOutcome, ExperienceScore, ExperienceType};
+use crate::experience::types::maturity::KnowledgeMaturity;
+
+/// List recent experiences from the database
+pub fn list_experiences(conn: &Connection, limit: usize) -> Result<Vec<Experience>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, title, description, experience_type, context, outcome, score, timestamp, observation_ids, encounter_ids, maturity, confidence, lessons, evidence_count, tags, committed, archived, archived_at, metadata
+         FROM experiences
+         ORDER BY timestamp DESC
+         LIMIT ?1"
+    )?;
+    
+    let experiences = stmt.query_map(params![limit], |row| {
+        let id_str: String = row.get(0)?;
+        let title: String = row.get(1)?;
+        let description: String = row.get(2)?;
+        let experience_type_json: String = row.get(3)?;
+        let context_json: String = row.get(4)?;
+        let outcome_json: String = row.get(5)?;
+        let score_json: String = row.get(6)?;
+        let timestamp_str: String = row.get(7)?;
+        let observation_ids_json: String = row.get(8)?;
+        let encounter_ids_json: String = row.get(9)?;
+        let maturity_json: String = row.get(10)?;
+        let confidence: f32 = row.get(11)?;
+        let lessons_json: String = row.get(12)?;
+        let evidence_count: usize = row.get(13)?;
+        let tags_json: String = row.get(14)?;
+        let committed: bool = row.get(15)?;
+        let archived: bool = row.get(16)?;
+        let archived_at_str: Option<String> = row.get(17)?;
+        let metadata_json: String = row.get(18)?;
+        
+        let context: ExperienceContext = serde_json::from_str(&context_json)
+            .unwrap_or_default();
+        let outcome: ExperienceOutcome = serde_json::from_str(&outcome_json)
+            .unwrap_or_else(|_| ExperienceOutcome::failure("Failed to parse outcome"));
+        let score: Option<ExperienceScore> = serde_json::from_str(&score_json).ok();
+        let timestamp = DateTime::parse_from_rfc3339(&timestamp_str)
+            .map(|dt| dt.with_timezone(&Utc))
+            .unwrap_or_else(|_| Utc::now());
+        let observation_ids: Vec<Uuid> = serde_json::from_str(&observation_ids_json).unwrap_or_default();
+        let encounter_ids: Vec<Uuid> = serde_json::from_str(&encounter_ids_json).unwrap_or_default();
+        let maturity: KnowledgeMaturity = serde_json::from_str(&maturity_json)
+            .unwrap_or(KnowledgeMaturity::Emerging);
+        let lessons: Vec<String> = serde_json::from_str(&lessons_json).unwrap_or_default();
+        let tags: Vec<String> = serde_json::from_str(&tags_json).unwrap_or_default();
+        let metadata: std::collections::HashMap<String, String> = serde_json::from_str(&metadata_json).unwrap_or_default();
+        let archived_at = archived_at_str.and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc)));
+        
+        Ok(Experience {
+            id: Uuid::parse_str(&id_str).unwrap_or_else(|_| Uuid::new_v4()),
+            timestamp,
+            observation_ids,
+            experience_type: serde_json::from_str(&experience_type_json)
+                .unwrap_or(ExperienceType::ToolExecution),
+            title,
+            description,
+            context,
+            outcome,
+            score,
+            encounter_ids,
+            maturity,
+            confidence,
+            lessons,
+            evidence_count,
+            tags,
+            committed,
+            archived,
+            archived_at,
+            metadata,
+        })
+    })?.filter_map(|r| r.ok()).collect();
+    
+    Ok(experiences)
+}
+
+// ==========================================================
+// REPUTATION OPERATIONS (for scheduler use)
+// ==========================================================
+
+use crate::experience::reputation::reputation::Reputation;
+
+/// List all reputations from the database
+pub fn list_reputations(conn: &Connection) -> Result<Vec<Reputation>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, score, observations, successes, failures, updated_at
+         FROM reputations"
+    )?;
+    
+    let reputations = stmt.query_map(params![], |row| {
+        let id: String = row.get(0)?;
+        let score: f64 = row.get(1)?;
+        let observations: u64 = row.get(2)?;
+        let successes: u64 = row.get(3)?;
+        let failures: u64 = row.get(4)?;
+        let updated_at_str: String = row.get(5)?;
+        let updated_at = DateTime::parse_from_rfc3339(&updated_at_str)
+            .map(|dt| dt.with_timezone(&Utc))
+            .unwrap_or_else(|_| Utc::now());
+        
+        Ok(Reputation {
+            id,
+            score,
+            factors: Vec::new(), // Factors not stored in this table structure
+            observations,
+            successes,
+            failures,
+            updated_at,
+            history: Vec::new(),
+        })
+    })?.filter_map(|r| r.ok()).collect();
+    
+    Ok(reputations)
+}
+
+/// Insert or update a reputation
+pub fn insert_reputation(conn: &Connection, reputation: &Reputation) -> Result<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO reputations
+         (id, score, observations, successes, failures, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![
+            reputation.id,
+            reputation.score,
+            reputation.observations,
+            reputation.successes,
+            reputation.failures,
+            reputation.updated_at.to_rfc3339(),
+        ],
+    )?;
+    Ok(())
+}
+

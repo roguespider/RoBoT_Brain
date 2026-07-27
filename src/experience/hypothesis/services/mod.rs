@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 // robot\src\experience\hypothesis\services\mod.rs
 
 //! ============================================================================

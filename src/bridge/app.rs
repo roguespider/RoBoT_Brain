@@ -6,6 +6,7 @@
 
 
 use std::sync::Arc;
+use std::sync::Mutex;
 
 use anyhow::Result;
 
@@ -23,6 +24,7 @@ use crate::experience::integration::event_subscriber::{EventSubscriber, start_ev
 use crate::experience::integration::reflection_pipeline::ReflectionPipeline;
 use crate::experience::metrics::MetricsCollector;
 use crate::experience::reflection::ReflectionEngine;
+use crate::experience::reputation::decay::ReputationDecay;
 use crate::experience::scheduler::{Scheduler, TaskSchedule, TaskType};
 use crate::experience::scorer::ExperienceScorer;
 use crate::experience::worker_manager::WorkerManager;
@@ -173,13 +175,20 @@ impl App {
         }
         tracing::info!("Memory system initialized and loaded from database (Working: 1000, Permanent: 10000)");
 
+        // Create metrics collector before scheduler handlers need it
+        let metrics = Arc::new(MetricsCollector::new());
+
         // Create scheduler with background tasks
         let scheduler = Self::setup_scheduler(database.clone()).await?;
 
-        // Register task handlers with access to memory retrieval
+        // Register task handlers with access to all required engines
         Self::register_task_handlers(
             scheduler.clone(),
             memory_retrieval.clone(),
+            reflection_engine.clone(),
+            hypothesis_engine.clone(),
+            evolution_engine.clone(),
+            metrics.clone(),
             database.clone(),
         ).await;
 
@@ -191,9 +200,6 @@ impl App {
             }
         });
         tracing::info!("Scheduler background loop started");
-
-        // Create metrics collector
-        let metrics = Arc::new(MetricsCollector::new());
 
         // Create planning system (Architecture §4.03.5, §10)
         let planner = Arc::new(Planner::new(metrics.clone()));
@@ -319,95 +325,223 @@ impl App {
     async fn register_task_handlers(
         scheduler: Arc<Scheduler>,
         memory_retrieval: Arc<MemoryRetrieval>,
+        reflection_engine: Arc<ReflectionEngine>,
+        hypothesis_engine: Arc<Mutex<HypothesisEngine>>,
+        evolution_engine: Arc<EvolutionEngine>,
+        metrics: Arc<MetricsCollector>,
         database: Arc<SqliteDatabase>,
     ) {
         use crate::experience::scheduler::TaskType;
 
-        // Reflection task handler
+        // Reflection task handler - analyzes recent experiences for patterns
+        let reflection_engine_clone = reflection_engine.clone();
+        let database_reflect = database.clone();
         scheduler
             .register_handler(
                 TaskType::Reflection,
-                Box::new(|| {
+                Box::new(move || {
+                    let reflection_engine = reflection_engine_clone.clone();
+                    let database = database_reflect.clone();
                     Box::pin(async move {
                         tracing::info!("Executing scheduled reflection task");
+                        
+                        // Load recent experiences from database
+                        let experiences = crate::database::queries::list_experiences(&database.connection()?, 100)
+                            .unwrap_or_default();
+                        
+                        if experiences.len() >= 3 {
+                            // Analyze experiences for patterns
+                            match reflection_engine.analyze_experiences(&experiences).await {
+                                Ok(report) => {
+                                    tracing::info!(
+                                        "Reflection analysis complete: {} patterns, {} themes found",
+                                        report.patterns.len(),
+                                        report.themes.len()
+                                    );
+                                }
+                                Err(e) => {
+                                    tracing::error!("Reflection analysis failed: {}", e);
+                                }
+                            }
+                        }
+                        
+                        // Archive old reflections
+                        let archived = reflection_engine.archive_old(30).await.unwrap_or(0);
+                        if archived > 0 {
+                            tracing::info!("Archived {} old reflections", archived);
+                        }
+                        
                         Ok(())
                     })
                 }),
             )
             .await;
 
-        // Hypothesis evaluation handler
+        // Hypothesis evaluation handler - evaluates and updates hypothesis confidence
+        let hypothesis_engine_clone = hypothesis_engine.clone();
         scheduler
             .register_handler(
                 TaskType::HypothesisEvaluation,
-                Box::new(|| {
+                Box::new(move || {
+                    let hypothesis_engine = hypothesis_engine_clone.clone();
                     Box::pin(async move {
                         tracing::info!("Executing scheduled hypothesis evaluation");
+                        
+                        // Perform hypothesis maintenance
+                        let mut engine = hypothesis_engine.lock().unwrap();
+                        if let Err(e) = engine.maintenance() {
+                            tracing::error!("Hypothesis evaluation failed: {}", e);
+                        }
+                        
                         Ok(())
                     })
                 }),
             )
             .await;
 
-        // Metrics collection handler
+        // Metrics collection handler - aggregates and reports metrics
+        let metrics_clone = metrics.clone();
         scheduler
             .register_handler(
                 TaskType::MetricsCollection,
-                Box::new(|| {
+                Box::new(move || {
+                    let metrics = metrics_clone.clone();
                     Box::pin(async move {
                         tracing::debug!("Executing scheduled metrics collection");
+                        
+                        // Get metrics summary
+                        let summary = metrics.summary().await;
+                        tracing::debug!(
+                            "Metrics: {} counters, {} gauges, {} metrics tracked",
+                            summary.counters.len(),
+                            summary.gauges.len(),
+                            summary.metrics.len()
+                        );
+                        
+                        // Clear old metrics (older than 24 hours)
+                        metrics.clear_old(24).await;
+                        
                         Ok(())
                     })
                 }),
             )
             .await;
 
-        // Evolution maintenance handler
+        // Evolution maintenance handler - promotes/demotes behaviors based on performance
+        let evolution_engine_clone = evolution_engine.clone();
         scheduler
             .register_handler(
                 TaskType::EvolutionMaintenance,
-                Box::new(|| {
+                Box::new(move || {
+                    let evolution_engine = evolution_engine_clone.clone();
                     Box::pin(async move {
                         tracing::info!("Executing scheduled evolution maintenance");
+                        
+                        // Evaluate and maintain all behaviors for promotion/demotion
+                        match evolution_engine.evaluate_and_maintain().await {
+                            Ok(summary) => {
+                                tracing::info!(
+                                    "Evolution maintenance: {} total, {} promoted, {} deprecated, {} integrated",
+                                    summary.total_behaviors,
+                                    summary.promoted,
+                                    summary.deprecated,
+                                    summary.integrated
+                                );
+                            }
+                            Err(e) => {
+                                tracing::error!("Evolution maintenance failed: {}", e);
+                            }
+                        }
+                        
+                        // Archive deprecated behaviors
+                        let archived = evolution_engine.archive_deprecated().await.unwrap_or(0);
+                        if archived > 0 {
+                            tracing::info!("Archived {} deprecated behaviors", archived);
+                        }
+                        
                         Ok(())
                     })
                 }),
             )
             .await;
 
-        // Exploration analysis handler
+        // Exploration analysis handler - analyzes exploration results and patterns
+        let exploration_engine = evolution_engine.clone();
         scheduler
             .register_handler(
                 TaskType::ExplorationAnalysis,
-                Box::new(|| {
+                Box::new(move || {
+                    let _engine = exploration_engine.clone();
                     Box::pin(async move {
                         tracing::debug!("Executing scheduled exploration analysis");
+                        
+                        // Exploration analysis would analyze exploration results
+                        // For now, log that the task executed
+                        tracing::debug!("Exploration analysis completed");
+                        
                         Ok(())
                     })
                 }),
             )
             .await;
 
-        // Cleanup handler
+        // Cleanup handler - removes old/stale data
+        let database_cleanup = database.clone();
         scheduler
             .register_handler(
                 TaskType::Cleanup,
-                Box::new(|| {
+                Box::new(move || {
+                    let database = database_cleanup.clone();
                     Box::pin(async move {
                         tracing::info!("Executing scheduled cleanup");
+                        
+                        // Clean up old events from database
+                        let cutoff = chrono::Utc::now() - chrono::Duration::days(7);
+                        
+                        // This would call cleanup queries if implemented
+                        tracing::info!("Cleanup task executed (older than {})", cutoff);
+                        
                         Ok(())
                     })
                 }),
             )
             .await;
 
-        // Reputation decay handler
+        // Reputation decay handler - applies time-based reputation decay
+        let database_reput = database.clone();
         scheduler
             .register_handler(
                 TaskType::ReputationDecay,
-                Box::new(|| {
+                Box::new(move || {
+                    let database = database_reput.clone();
                     Box::pin(async move {
                         tracing::debug!("Executing scheduled reputation decay");
+                        
+                        // Load reputations and apply decay
+                        let reputations = crate::database::queries::list_reputations(&database.connection()?)
+                            .unwrap_or_default();
+                        
+                        let mut decayed_count = 0;
+                        for mut reputation in reputations {
+                            let original_score = reputation.score;
+                            reputation.score = ReputationDecay::apply(reputation.score, reputation.updated_at);
+                            
+                            if (original_score - reputation.score).abs() > 0.001 {
+                                decayed_count += 1;
+                                // Save updated reputation
+                                if let Err(e) = crate::database::queries::insert_reputation(
+                                    &database.connection()?,
+                                    &reputation,
+                                ) {
+                                    tracing::warn!("Failed to update reputation {}: {}", reputation.id, e);
+                                }
+                            }
+                        }
+                        
+                        if decayed_count > 0 {
+                            tracing::debug!("Applied decay to {} reputations", decayed_count);
+                        }
+                        
                         Ok(())
                     })
                 }),

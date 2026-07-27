@@ -66,8 +66,8 @@ impl WorkerManager {
         // Create channel for this worker
         let (sender, receiver) = mpsc::channel(MAX_QUEUE_DEPTH);
 
-        // Create the worker
-        let worker = ExperienceWorker::new(observer, receiver);
+        // Create the worker with sender so it can re-queue retries
+        let worker = ExperienceWorker::new(observer, receiver, sender.clone());
         let stats = worker.stats();
 
         // Clone name for the async task

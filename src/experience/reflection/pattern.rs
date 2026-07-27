@@ -187,7 +187,6 @@ impl Pattern {
 }
 
 /// Compares patterns by confidence for sorting
-#[allow(clippy::derive_ord_xor_partial_ord)]
 impl Ord for Pattern {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.confidence

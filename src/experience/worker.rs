@@ -22,6 +22,7 @@ const MAX_RETRIES: u32 = 3;
 const BASE_BACKOFF_MS: u64 = 100;
 
 /// A job for the worker to process, with retry tracking
+#[derive(Debug, Clone)]
 pub struct ObserverJob {
     /// The event to process
     pub event: ExperienceEvent,
@@ -37,6 +38,15 @@ impl ObserverJob {
         Self {
             event,
             retry_count: 0,
+            job_id: Uuid::new_v4(),
+        }
+    }
+
+    /// Create a retry job with incremented retry count
+    pub fn with_retry(event: ExperienceEvent, original_job: &ObserverJob) -> Self {
+        Self {
+            event,
+            retry_count: original_job.retry_count + 1,
             job_id: Uuid::new_v4(),
         }
     }
@@ -77,6 +87,7 @@ impl Clone for WorkerStats {
 pub struct ExperienceWorker {
     observer: Arc<dyn ExperienceObserver>,
     receiver: mpsc::Receiver<ObserverJob>,
+    sender: mpsc::Sender<ObserverJob>,
     stats: Arc<WorkerStats>,
 }
 
@@ -84,11 +95,13 @@ impl ExperienceWorker {
     pub fn new(
         observer: Arc<dyn ExperienceObserver>,
         receiver: mpsc::Receiver<ObserverJob>,
+        sender: mpsc::Sender<ObserverJob>,
     ) -> Self {
         let observer_name = observer.name().to_string();
         Self {
             observer,
             receiver,
+            sender,
             stats: Arc::new(WorkerStats::new(observer_name)),
         }
     }
@@ -141,7 +154,7 @@ impl ExperienceWorker {
         Ok(())
     }
 
-    /// Handle a failed job with retry logic
+    /// Handle a failed job with retry logic - re-queues with backoff if retries remaining
     async fn handle_failure(&self, job: ObserverJob, error: String) {
         let observer_name = self.observer.name().to_string();
         let job_id = job.job_id;
@@ -163,6 +176,21 @@ impl ExperienceWorker {
             );
 
             self.stats.jobs_retried.fetch_add(1, Ordering::SeqCst);
+
+            // Create retry job with incremented retry count
+            let retry_job = ObserverJob::with_retry(job.event.clone(), &job);
+            
+            // Wait for backoff delay then re-queue
+            tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
+            
+            if let Err(e) = self.sender.send(retry_job).await {
+                tracing::error!(
+                    "Worker {} failed to re-queue job {} after retry: {}",
+                    observer_name,
+                    job_id,
+                    e
+                );
+            }
         } else {
             tracing::error!(
                 "Worker {} job {} permanently failed after {} attempts: {}",

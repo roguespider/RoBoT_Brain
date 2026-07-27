@@ -47,7 +47,6 @@ impl DefaultMcpHandler {
     }
 
     /// Handle a tool call request
-    #[allow(unused_variables)]
     fn handle_tool_call(&self, params: serde_json::Value) -> Result<serde_json::Value> {
         // This would be wired up to the tool executor in a full implementation
         Ok(serde_json::json!({

@@ -1,8 +1,6 @@
-#![allow(dead_code)]
 // /src/experience/evolution/evidence.rs
 
 // Evidence for behavior evaluation
-
 
 
 use chrono::{DateTime, Utc};

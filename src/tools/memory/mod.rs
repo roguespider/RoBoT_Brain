@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 
 
 // src/tools/memory/mod.rs

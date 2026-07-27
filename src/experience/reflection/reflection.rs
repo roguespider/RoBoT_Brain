@@ -1,7 +1,5 @@
 // robot/src/experience/reflection/reflection.rs
 
-
-
 // Proposed structure
 //    ├── metadata
 //    ├── summary
@@ -12,7 +10,6 @@
 //    ├── status
 //    └── lifecycle methods
 
-#![allow(dead_code)]
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
