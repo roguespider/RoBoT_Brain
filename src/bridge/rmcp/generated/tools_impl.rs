@@ -673,6 +673,29 @@ async fn list_hypotheses(
 }
 
 #[tool(
+    name = "get_observation",
+    description = "Get a specific observation by ID."
+)]
+async fn get_observation(
+    &self,
+    Parameters(input): Parameters<tools::hypothesis::GetObservationInput>,
+) -> ContentBlock {
+    // Check workflow enforcement first
+    if let Err(e) = self.check_workflow_enforcement("get_observation").await {
+        tracing::warn!("Workflow enforcement blocked get_observation: {}", e.message);
+        return enforcement_error_to_content(e);
+    }
+
+    match tools::hypothesis::execute_get_observation(input, &self.context.database).await {
+        Ok(result) => {
+            self.record_tool_execution("get_observation", None).await;
+            tool_output_to_content(result)
+        }
+        Err(e) => tool_output_to_content(ToolOutput::error(e)),
+    }
+}
+
+#[tool(
     name = "list_observations",
     description = "List recorded observations."
 )]
