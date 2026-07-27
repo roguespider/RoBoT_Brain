@@ -10,33 +10,5 @@ pub mod candidates;
 pub mod lineage;
 pub mod pipeline;
 
-pub use working_memory::{
-    WorkingMemory, 
-    WorkingMemoryItem, 
-    MemoryItemType, 
-    MemoryStats,
-    MemoryState,
-    StateTransition,
-    StateTransitionRecord,
-    PromotionPolicy,
-    PromotionEvaluation,
-};
-pub use hypothesis::{Hypothesis, HypothesisEvidence, HypothesisStatus};
-pub use candidates::{Candidate, CandidateGenerator, CandidateScore};
-pub use lineage::{
-    MemoryLineage,
-    LineageTracker,
-    LineageSummary,
-    EvidenceRef,
-    EvidenceType,
-    ObservationRef,
-    ObservationType,
-    ObservationOutcome,
-    Refinement,
-    RefinementType,
-    Contradiction,
-    ContradictionResolution,
-    Confirmation,
-    ConfirmationSource,
-};
-pub use pipeline::{LearningPipeline, PipelineStage, PipelineRecord, PipelineStats};
+pub use working_memory::WorkingMemory;
+pub use lineage::LineageTracker;

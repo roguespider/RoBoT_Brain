@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 //! Ingestor tool tests
 use crate::test_environment::TestEnvironment;
 use crate::TestMcpClient;
@@ -21,18 +20,7 @@ pub async fn run_ingestor_tests(
     test_list_ingested_files(client, stats).await?;
     
     // Test deletion (may fail - admin required)
-    match client.call_tool("delete_ingested_files", serde_json::json!({
-        "file_ids": ["test_file_1"]
-    })).await {
-        Ok(_) => {
-            println!("  ? delete_ingested_files (rejected) - Tool accepted deletion");
-            stats.skipped += 1;
-        }
-        Err(_) => {
-            println!("  ? delete_ingested_files (rejected) - Expected failure");
-            stats.skipped += 1;
-        }
-    }
+    test_delete_ingested_files(client, stats, vec!["test_file_1"]).await?;
     
     // Confirm deletion was blocked
     match client.call_tool("list_ingested_files", serde_json::json!({})).await {

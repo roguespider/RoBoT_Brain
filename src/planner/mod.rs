@@ -6,4 +6,4 @@ pub mod planner;
 pub mod policy;
 
 pub use planner::Planner;
-pub use policy::{Policy, PolicyEngine, PolicyRule, PolicyContext};
+pub use policy::PolicyEngine;

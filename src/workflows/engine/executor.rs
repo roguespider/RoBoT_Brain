@@ -11,7 +11,7 @@ use crate::experience::types::OutcomeKind;
 use crate::tools::{self, ToolOutput};
 use crate::workflows::engine::types::{WorkflowEngine, WorkflowStatus};
 
-use super::experience::{build_experience_description, build_search_query, map_action_to_experience_type};
+use super::experience::{build_experience_description, map_action_to_experience_type};
 use crate::workflows::engine::SKIP_MEMORY_READ;
 
 impl WorkflowEngine {
@@ -249,8 +249,8 @@ impl WorkflowEngine {
     /// Automatically read relevant memories before executing an action
     pub async fn read_memory_before_action(
         &self,
-        action: &str,
-        params: &HashMap<String, String>,
+        _action: &str,
+        _params: &HashMap<String, String>,
     ) -> Option<ToolOutput> {
         // Workflow engine doesn't have memory_retrieval, so skip memory read
         // This is a limitation - workflow execution won't have context from working memory

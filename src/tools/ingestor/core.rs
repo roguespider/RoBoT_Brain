@@ -25,8 +25,7 @@ use crate::tools::ingestor::text_extractor::{extract_text, extract_image_metadat
 use crate::tools::ingestor::semantic_chunker::{parse_document, get_file_type};
 use crate::tools::ingestor::json_importer::import_json_file;
 use crate::tools::ingestor::audio_transcriber::{
-    self, format_transcription_as_memory, is_audio_file, store_transcription_as_memory,
-    TranscriptionResult,
+    self, is_audio_file, store_transcription_as_memory,
 };
 
 // Re-export for convenience (via parent module)
@@ -1235,7 +1234,7 @@ async fn ingest_audio_file_placeholder(path: &Path) -> Result<IngestResult> {
 async fn ingest_audio_file(
     path: &Path,
     _chunk_size: usize,
-    memory_type: MemoryType,
+    _memory_type: MemoryType,
     db: Arc<SqliteDatabase>,
     working_memory: Arc<WorkingMemory>,
 ) -> Result<IngestResult> {

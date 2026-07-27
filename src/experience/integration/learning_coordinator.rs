@@ -13,7 +13,7 @@ use chrono::{Duration, Utc};
 use uuid::Uuid;
 
 use crate::experience::bus::ExperienceBus;
-use crate::experience::types::{Experience, ExperienceOutcome};
+use crate::experience::types::Experience;
 use crate::experience::events::ExperienceEvent;
 use crate::experience::reflection::ReflectionEngine;
 use crate::experience::hypothesis::HypothesisEngine;
@@ -328,7 +328,7 @@ impl LearningCoordinator {
     /// Start exploration for a hypothesis
     pub async fn start_exploration(
         &self,
-        hypothesis_id: String,
+        _hypothesis_id: String,
         title: String,
         purpose: String,
     ) -> Result<String> {
@@ -372,7 +372,7 @@ impl LearningCoordinator {
         let mut store = self.explorations.write().await;
         let mut archived = 0;
 
-        store.retain(|id, exp| {
+        store.retain(|_id, exp| {
             if let Some(completed) = exp.completed_at {
                 if completed < cutoff {
                     archived += 1;

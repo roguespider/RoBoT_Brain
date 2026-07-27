@@ -213,7 +213,7 @@ pub fn transcribe_audio(path: &Path) -> Result<TranscriptionResult> {
 
 #[cfg(not(feature = "whisper"))]
 /// Transcribe an audio file to text (placeholder without whisper feature)
-pub fn transcribe_audio(path: &Path) -> Result<TranscriptionResult> {
+pub fn transcribe_audio(_path: &Path) -> Result<TranscriptionResult> {
     anyhow::bail!(
         "Audio transcription requires the 'whisper' feature.\n\
         Build with: cargo build --features whisper\n\

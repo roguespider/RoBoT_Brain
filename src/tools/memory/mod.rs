@@ -7,7 +7,6 @@
 use std::sync::Arc;
 
 use anyhow::Result;
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
@@ -463,7 +462,7 @@ pub async fn execute_get_memory(
 /// Per Architecture §6.3: Uses MemoryRetrieval service
 pub async fn execute_list_memories(
     input: ListMemoriesInput,
-    database: &Arc<SqliteDatabase>,
+    _database: &Arc<SqliteDatabase>,
     memory_retrieval: &Arc<MemoryRetrieval>,
 ) -> Result<ToolOutput> {
     let limit = input.limit.unwrap_or(20);

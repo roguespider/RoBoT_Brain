@@ -219,7 +219,7 @@ impl EventSubscriber {
     }
 
     /// Generate hypothesis from experience
-    async fn generate_hypothesis(&self, experience: &Experience) -> Result<()> {
+    async fn generate_hypothesis(&self, _experience: &Experience) -> Result<()> {
         // Use hypothesis engine to process the experience
         
         

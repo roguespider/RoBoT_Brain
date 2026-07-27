@@ -3,4 +3,3 @@
 
 pub mod registry;
 
-pub use registry::{Skill, SkillRegistry, SkillMetadata, SkillCategory};
