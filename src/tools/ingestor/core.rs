@@ -1225,28 +1225,6 @@ fn parse_memory_type(s: &str) -> MemoryType {
     }
 }
 
-/// Placeholder for audio file ingestion - audio processing not currently available
-async fn ingest_audio_file_placeholder(path: &Path) -> Result<IngestResult> {
-    let filename = path
-        .file_name()
-        .and_then(|n| n.to_str())
-        .unwrap_or("unknown")
-        .to_string();
-
-    tracing::info!("Audio file skipped (not currently supported): {}", filename);
-
-    Ok(IngestResult {
-        filename,
-        file_path: path.to_string_lossy().to_string(),
-        success: false,
-        chunks_created: 0,
-        chunk_size_used: 0,
-        memory_ids: vec![],
-        error: Some("Audio processing not currently available".to_string()),
-        remaining_count: 0,
-    })
-}
-
 /// Transcribe an audio file and store as memory
 async fn ingest_audio_file(
     path: &Path,
@@ -1351,14 +1329,8 @@ pub async fn execute_transcribe_audio(
 
     tracing::info!("Transcribing audio file: {}", filename);
 
-    // Check if whisper model is available
-    if !audio_transcriber::is_model_available() {
-        return Ok(ToolOutput::error(
-            "Whisper model not available. Please ensure the model is downloaded.".to_string(),
-        ));
-    }
-
-    // Transcribe the audio
+    // Transcribe the audio (audio analysis works without Whisper model)
+    // Full Whisper transcription requires enabling Candle dependencies
     let transcription = match audio_transcriber::transcribe_audio(path) {
         Ok(t) => t,
         Err(e) => {

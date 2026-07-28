@@ -127,13 +127,6 @@ impl AudioAnalysis {
     }
 }
 
-/// Check if Whisper model is available (requires Candle dependencies)
-pub fn is_model_available() -> bool {
-    // Would check for initialized Candle Whisper model here
-    // Requires: candle-core, candle-transformers, hf-hub, tokenizers
-    false
-}
-
 /// Transcribe an audio file to text
 /// 
 /// This function performs audio transcription. With Candle dependencies enabled:
