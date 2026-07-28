@@ -22,7 +22,7 @@ use crate::experience::hypothesis::core::hypothesis::HypothesisId;
 
 // Re-export types for public API
 pub use graph_types::{
-    EdgeId, HypothesisEdge, HypothesisNode, HypothesisRelationship, NodeMetadata,
+    EdgeId, GraphStats, HypothesisEdge, HypothesisNode, HypothesisRelationship, NodeMetadata,
 };
 
 /// ============================================================================

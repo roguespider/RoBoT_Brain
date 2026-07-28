@@ -11,6 +11,7 @@ use uuid::Uuid;
 
 use super::PermanentMemoryStats;
 use crate::database::queries;
+use crate::database::sqlite::SqliteDatabase;
 use crate::memory::types::{MemoryItem, MemoryLayer, MemoryStatus, MemoryType};
 
 /// Permanent Memory - Per Architecture §6.3
@@ -23,6 +24,7 @@ pub struct PermanentMemory {
     tag_index: Arc<RwLock<HashMap<String, Vec<Uuid>>>>,
     graph_index: Arc<RwLock<HashMap<Uuid, Vec<Uuid>>>>,
     max_cache_size: usize,
+    database: Option<Arc<SqliteDatabase>>,
 }
 
 impl PermanentMemory {
@@ -33,6 +35,19 @@ impl PermanentMemory {
             tag_index: Arc::new(RwLock::new(HashMap::new())),
             graph_index: Arc::new(RwLock::new(HashMap::new())),
             max_cache_size,
+            database: None,
+        }
+    }
+    
+    /// Create with database connection for relationship persistence
+    pub fn with_database(max_cache_size: usize, database: Arc<SqliteDatabase>) -> Self {
+        Self {
+            cache: Arc::new(RwLock::new(HashMap::new())),
+            type_index: Arc::new(RwLock::new(HashMap::new())),
+            tag_index: Arc::new(RwLock::new(HashMap::new())),
+            graph_index: Arc::new(RwLock::new(HashMap::new())),
+            max_cache_size,
+            database: Some(database),
         }
     }
 
@@ -241,8 +256,37 @@ impl PermanentMemory {
     }
 
     pub async fn add_relationship(&self, from_id: &Uuid, to_id: &Uuid) {
-        let mut graph_index = self.graph_index.write().await;
-        graph_index.entry(*from_id).or_insert_with(Vec::new).push(*to_id);
+        // Update in-memory index
+        {
+            let mut graph_index = self.graph_index.write().await;
+            graph_index.entry(*from_id).or_insert_with(Vec::new).push(*to_id);
+        }
+        
+        // Persist to database
+        let relationship = crate::database::models::MemoryRelationship::new(
+            *from_id,
+            *to_id,
+            crate::database::models::MemoryRelationshipType::Related,
+        );
+        if let Err(e) = self.save_relationship_to_db(&relationship) {
+            tracing::warn!("Failed to persist relationship to database: {}", e);
+        }
+    }
+    
+    /// Save a relationship to the database
+    fn save_relationship_to_db(&self, relationship: &crate::database::models::MemoryRelationship) -> Result<()> {
+        let db = self.database.as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Database not configured"))?;
+        let conn = db.connection()?;
+        crate::database::queries::insert_memory_relationship(&conn, relationship)?;
+        Ok(())
+    }
+    
+    /// Get database reference
+    fn get_database(&self) -> Result<Arc<SqliteDatabase>> {
+        self.database.as_ref()
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("Database not configured"))
     }
 
     pub async fn update_confidence(&self, id: &Uuid, confidence: f32) -> bool {

@@ -436,5 +436,71 @@ impl MemoryCard {
     }
 }
 
+// ==========================================================
+// MEMORY RELATIONSHIP
+// ==========================================================
+
+/// Relationship type between memories
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+pub enum MemoryRelationshipType {
+    /// General related relationship
+    Related,
+    /// Causal relationship (A causes B)
+    Causes,
+    /// Enables relationship (A enables B)
+    Enables,
+    /// Contradicts relationship (A contradicts B)
+    Contradicts,
+    /// Similar relationship (A is similar to B)
+    Similar,
+    /// Derived from relationship (A is derived from B)
+    DerivedFrom,
+}
+
+impl Default for MemoryRelationshipType {
+    fn default() -> Self {
+        MemoryRelationshipType::Related
+    }
+}
+
+impl std::fmt::Display for MemoryRelationshipType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let s = match self {
+            MemoryRelationshipType::Related => "related",
+            MemoryRelationshipType::Causes => "causes",
+            MemoryRelationshipType::Enables => "enables",
+            MemoryRelationshipType::Contradicts => "contradicts",
+            MemoryRelationshipType::Similar => "similar",
+            MemoryRelationshipType::DerivedFrom => "derived_from",
+        };
+        write!(f, "{}", s)
+    }
+}
+
+/// A relationship between two memories
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemoryRelationship {
+    /// Unique identifier
+    pub id: Uuid,
+    /// Source memory ID
+    pub memory_id: Uuid,
+    /// Target memory ID
+    pub related_id: Uuid,
+    /// Type of relationship
+    pub relationship_type: MemoryRelationshipType,
+}
+
+impl MemoryRelationship {
+    /// Create a new memory relationship
+    pub fn new(memory_id: Uuid, related_id: Uuid, relationship_type: MemoryRelationshipType) -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            memory_id,
+            related_id,
+            relationship_type,
+        }
+    }
+}
+
 
 
