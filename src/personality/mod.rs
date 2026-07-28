@@ -5,7 +5,6 @@
 //! Per Architecture: Defines the behavioral characteristics of the AI system,
 //! influencing decision-making, communication style, and learning preferences.
 
-#![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

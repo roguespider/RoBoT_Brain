@@ -3,7 +3,6 @@
 // src/bridge/rmcp/types.rs
 // McpServerHandler struct definition
 
-#![allow(dead_code)]
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};

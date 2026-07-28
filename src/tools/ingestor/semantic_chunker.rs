@@ -2,7 +2,6 @@
 // Semantic document chunking - splits documents at natural boundaries
 // preserving full document structure for hierarchical storage
 
-#![allow(dead_code)]
 
 use crate::database::models::HierarchyLevel;
 use crate::database::models::MemoryType;

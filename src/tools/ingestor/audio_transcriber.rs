@@ -1,6 +1,5 @@
 // src/tools/ingestor/audio_transcriber.rs
 
-#![allow(dead_code)]
 
 //! Audio transcription for RoBoT Brain
 //! 

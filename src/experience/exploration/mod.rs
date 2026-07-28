@@ -19,7 +19,6 @@
 //!     ExplorationRepository, InMemoryExplorationRepository,
 //! };
 
-#![allow(dead_code)]
 //! ```
 
 pub mod attempt;

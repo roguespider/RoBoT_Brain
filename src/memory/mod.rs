@@ -11,7 +11,6 @@
 //! - Working Memory: Short lifespan, high volatility, context focused
 //! - Permanent Memory: Indexed, connected, confidence weighted, relationship aware
 
-#![allow(dead_code)]
 
 pub mod types;
 pub mod working;

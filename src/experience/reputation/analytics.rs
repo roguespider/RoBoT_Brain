@@ -1,6 +1,5 @@
 // /src/experience/reputation/analytics.rs
 
-#![allow(dead_code)]
 
 use super::reputation::Reputation;
 

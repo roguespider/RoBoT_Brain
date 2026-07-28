@@ -3,7 +3,6 @@
 // src/tools/hypothesis/mod.rs
 // Hypothesis Engine: Observation -> Hypothesis -> Test -> Evidence -> Knowledge
 
-#![allow(dead_code)]
 
 mod db;
 mod execute;

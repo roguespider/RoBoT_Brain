@@ -1,7 +1,6 @@
 // src/tools/ingestor/archive_handler.rs
 // Archive extraction and temp folder management
 
-#![allow(dead_code)]
 
 use std::fs;
 use std::path::{Path, PathBuf};

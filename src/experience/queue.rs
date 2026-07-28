@@ -1,6 +1,5 @@
 // /src/experience/queue.rs
 
-#![allow(dead_code)]
 
 use std::collections::HashMap;
 
