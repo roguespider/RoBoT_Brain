@@ -1,4 +1,5 @@
 // src/skills/registry.rs
+#![allow(dead_code)]
 //! Skill registry for managing available skills
 //!
 //! Per Architecture §2.9, §12, §15:
@@ -709,23 +710,10 @@ impl SkillExecutor {
             ));
         }
         
-        // Get mastery before execution
-        let mastery_before = skill.mastery;
-        
         // Execute the skill logic based on category
         let result = self.execute_by_category(&skill, context).await;
         
         let duration_ms = start.elapsed().as_millis() as u64;
-        
-        // Calculate mastery change
-        let mastery_delta = if result.success {
-            // Improvement based on mastery level (diminishing returns)
-            let improvement = (0.1 * (1.0 - mastery_before)).min(0.05);
-            improvement
-        } else {
-            // Failure penalty
-            -0.05
-        };
         
         // Record execution
         self.record_execution(skill_id, &result, duration_ms).await;

@@ -1,4 +1,5 @@
 // src/planner/planner.rs
+#![allow(dead_code)]
 //! Core planning engine for task decomposition and execution
 //!
 //! Per Architecture §2.8, §10:
@@ -479,7 +480,7 @@ impl Planner {
     /// - Context changes significantly
     /// - A better approach is discovered
     pub async fn replan(&self, plan_id: &str, reason: ReplanReason) -> Result<Option<Plan>> {
-        let mut plans = self.active_plans.write().await;
+        let plans = self.active_plans.read().await;
         
         let existing_plan = match plans.get(plan_id) {
             Some(plan) => plan.clone(),

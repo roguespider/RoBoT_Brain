@@ -1,4 +1,5 @@
 // src/learning/working_memory/store.rs
+#![allow(dead_code)]
 
 //! WorkingMemory store implementation
 

@@ -1,4 +1,5 @@
 
+#![allow(dead_code)]
 
 // src/bridge/rmcp/types.rs
 // McpServerHandler struct definition

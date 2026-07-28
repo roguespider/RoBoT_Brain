@@ -1,4 +1,5 @@
 // /src/experience/observers.rs
+#![allow(dead_code)]
 //! Observer implementations for the learning subsystems
 //!
 //! Per Architecture §22 - Background Workers:
@@ -21,8 +22,6 @@ use crate::experience::observer::ExperienceObserver;
 use crate::experience::reputation::reputation::Reputation;
 use crate::experience::reputation::factors::ReputationFactor;
 use crate::experience::hypothesis::HypothesisEngine;
-use crate::experience::reflection::ReflectionEngine;
-use crate::experience::evolution::EvolutionEngine;
 use crate::experience::metrics::MetricsCollector;
 
 /// ============================================================================

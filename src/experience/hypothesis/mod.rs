@@ -1,4 +1,5 @@
 // robot/src/experience/hypothesis/mod.rs
+#![allow(dead_code)]
 
 //! ============================================================================
 //! HYPOTHESIS ENGINE
@@ -195,7 +196,7 @@ impl HypothesisEngine {
         tracing::info!("Running hypothesis engine maintenance");
         
         {
-            let mut graph = self.graph.lock().unwrap();
+            let graph = self.graph.lock().unwrap();
             let cycles = graph.detect_cycles();
             
             for cycle in cycles {

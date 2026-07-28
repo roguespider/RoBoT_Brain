@@ -1,4 +1,5 @@
 // src/experience/integration/learning_coordinator.rs
+#![allow(dead_code)]
 //! Learning Coordinator - Orchestrates the complete learning pipeline
 //!
 //! Per Architecture §9 - Learning Engine:
@@ -582,11 +583,14 @@ impl LearningCoordinator {
         let mut result = GeneralizationResult::default();
         
         // Collect experiences
-        let mut experiences = Vec::new();
-        for id in &experience_ids {
-            // In real implementation, would fetch from repository
-            tracing::debug!("Would fetch experience {}", id);
-        }
+        let experiences: Vec<_> = experience_ids.iter()
+            .map(|id| {
+                // In real implementation, would fetch from repository
+                tracing::debug!("Would fetch experience {}", id);
+                None
+            })
+            .filter_map(|e| e)
+            .collect();
         
         // Find common patterns
         let patterns = self.extract_common_patterns(&experiences).await;

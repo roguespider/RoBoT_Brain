@@ -1,4 +1,5 @@
 // src/learning/working_memory/memory_state.rs
+#![allow(dead_code)]
 
 //! Memory state machine types
 

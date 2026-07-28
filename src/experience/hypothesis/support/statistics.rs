@@ -1,4 +1,5 @@
 // robot/src/experience/hypothesis/support/statistics.rs
+#![allow(dead_code)]
 
 
 //! ============================================================================

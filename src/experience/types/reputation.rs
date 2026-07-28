@@ -1,4 +1,5 @@
 // src/experience/types/reputation.rs
+#![allow(dead_code)]
 // Reputation types
 
 

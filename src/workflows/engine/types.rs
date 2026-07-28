@@ -1,4 +1,5 @@
 // src/workflows/engine/types.rs
+#![allow(dead_code)]
 //! Type definitions for workflow engine
 
 use std::collections::{HashMap, HashSet};

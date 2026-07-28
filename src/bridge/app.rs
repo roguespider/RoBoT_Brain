@@ -1,4 +1,5 @@
 
+#![allow(dead_code)]
 
 // src/bridge/app.rs
 // Root application container per Architecture §03
@@ -499,12 +500,10 @@ impl App {
             .await;
 
         // Cleanup handler - removes old/stale data
-        let database_cleanup = database.clone();
         scheduler
             .register_handler(
                 TaskType::Cleanup,
                 Box::new(move || {
-                    let database = database_cleanup.clone();
                     Box::pin(async move {
                         tracing::info!("Executing scheduled cleanup");
                         

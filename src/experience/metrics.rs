@@ -1,4 +1,5 @@
 // /src/experience/metrics.rs
+#![allow(dead_code)]
 // Metrics collection for performance and learning tracking
 
 
@@ -7,7 +8,6 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
-use uuid::Uuid;
 
 /// A single metric data point
 #[derive(Debug, Clone, Serialize, Deserialize)]

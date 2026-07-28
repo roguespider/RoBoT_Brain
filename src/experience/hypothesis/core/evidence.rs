@@ -9,7 +9,7 @@
 //! Evidence is intentionally independent from hypothesis evaluation. It simply
 //! describes what was observed and how trustworthy that observation is.
 
-
+#![allow(dead_code)]
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

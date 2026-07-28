@@ -33,4 +33,5 @@ pub use exploration::{Exploration, ExplorationStatus};
 pub use attempt::ExplorationAttempt;
 pub use finding::ExplorationFinding;
 pub use hypothesis::{Hypothesis, HypothesisResult};
+#[allow(unused_imports, dead_code)]
 pub use store::{ExplorationRepository, InMemoryExplorationRepository};

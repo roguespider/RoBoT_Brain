@@ -1,4 +1,5 @@
 // src/learning/hypothesis.rs
+#![allow(dead_code)]
 //! Hypothesis management for learning
 
 

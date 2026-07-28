@@ -1,4 +1,5 @@
 // src/knowledge/types.rs
+#![allow(dead_code)]
 
 //! Core types for the Knowledge System
 
@@ -542,14 +543,14 @@ impl KnowledgeVersionInfo {
     
     /// Bump version number
     pub fn bump_major(&mut self) {
-        if let Some((major, minor, patch)) = KnowledgeVersion::parse(&self.current_version) {
+        if let Some((major, _minor, _patch)) = KnowledgeVersion::parse(&self.current_version) {
             let new_ver = format!("{}.{}.{}", major + 1, 0, 0);
             self.create_version(&new_ver, "Major version bump", 0.5);
         }
     }
     
     pub fn bump_minor(&mut self) {
-        if let Some((major, minor, patch)) = KnowledgeVersion::parse(&self.current_version) {
+        if let Some((major, minor, _patch)) = KnowledgeVersion::parse(&self.current_version) {
             let new_ver = format!("{}.{}.{}", major, minor + 1, 0);
             self.create_version(&new_ver, "Minor version bump", 0.5);
         }

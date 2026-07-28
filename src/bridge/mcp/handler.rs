@@ -1,4 +1,5 @@
 // src/bridge/mcp/handler.rs
+#![allow(dead_code)]
 // MCP protocol handler trait
 
 use anyhow::Result;
@@ -47,7 +48,7 @@ impl DefaultMcpHandler {
     }
 
     /// Handle a tool call request
-    fn handle_tool_call(&self, params: serde_json::Value) -> Result<serde_json::Value> {
+    fn handle_tool_call(&self, _params: serde_json::Value) -> Result<serde_json::Value> {
         // This would be wired up to the tool executor in a full implementation
         Ok(serde_json::json!({
             "error": "Tool execution not yet implemented in handler"

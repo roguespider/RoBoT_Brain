@@ -1,4 +1,5 @@
 // src/bridge/mcp/context.rs
+#![allow(dead_code)]
 
 // MCP context for sharing state across handlers
 

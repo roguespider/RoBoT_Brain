@@ -1,4 +1,5 @@
 // /src/experience/worker_manager.rs
+#![allow(dead_code)]
 //! Worker Manager - manages workers per observer per Architecture §22
 //!
 //! Design per README.md Pipeline Design:

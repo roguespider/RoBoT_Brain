@@ -1,4 +1,5 @@
 // src/database/queries.rs
+#![allow(dead_code)]
 
 
 

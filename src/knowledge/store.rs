@@ -1,4 +1,5 @@
 // src/knowledge/store.rs
+#![allow(dead_code)]
 
 //! Knowledge store - repository for managing knowledge items
 

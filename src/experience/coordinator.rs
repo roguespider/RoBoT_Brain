@@ -1,4 +1,5 @@
 // /src/experience/coordinator.rs
+#![allow(dead_code)]
 
 // Experience system coordinator per Architecture §07
 

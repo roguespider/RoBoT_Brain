@@ -1,4 +1,5 @@
 // src/vector/mod.rs
+#![allow(dead_code)]
 
 //! Vector Index Operations
 //!
@@ -128,7 +129,7 @@ impl VectorIndex {
         // Simple hash-based embedding for demonstration
         // Real implementation would use transformer models
         let words: Vec<&str> = text.split_whitespace().collect();
-        for (i, word) in words.iter().enumerate() {
+        for word in &words {
             let hash = self.simple_hash(word);
             let idx = hash % self.dimension;
             vector[idx] += 1.0;
@@ -294,8 +295,6 @@ impl VectorIndex {
 
 /// Vector operations utilities
 pub mod utils {
-    use super::*;
-    
     /// Compute cosine similarity between two vectors
     pub fn cosine_similarity(a: &[f32], b: &[f32]) -> f32 {
         if a.len() != b.len() || a.is_empty() {

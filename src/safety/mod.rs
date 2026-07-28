@@ -5,6 +5,8 @@
 //! Per Architecture: Provides safety checks, validation, and constraint enforcement
 //! to prevent harmful or unintended actions.
 
+#![allow(dead_code)]
+
 use serde::{Deserialize, Serialize};
 use std::collections::HashSet;
 

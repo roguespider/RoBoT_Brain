@@ -1,4 +1,5 @@
 // src/performance/mod.rs
+#![allow(dead_code)]
 
 //! Performance Layer
 //!

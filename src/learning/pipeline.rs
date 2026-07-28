@@ -1,4 +1,5 @@
 // src/learning/pipeline.rs
+#![allow(dead_code)]
 
 //! Learning Pipeline - Per Architecture §9
 //!

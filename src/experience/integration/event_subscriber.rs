@@ -1,4 +1,5 @@
 // src/experience/integration/event_subscriber.rs
+#![allow(dead_code)]
 
 //! Event subscriber that listens to experience events and triggers learning pipeline
 //!

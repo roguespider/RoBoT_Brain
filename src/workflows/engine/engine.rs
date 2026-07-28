@@ -1,4 +1,5 @@
 // src/workflows/engine/engine.rs
+#![allow(dead_code)]
 
 //! Workflow engine core implementation
 
