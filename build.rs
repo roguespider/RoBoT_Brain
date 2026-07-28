@@ -23,6 +23,7 @@ fn main() {
         "src/bridge/rmcp/generated/planner_tools.rs",
         "src/bridge/rmcp/generated/workflow_tools.rs",
         "src/bridge/rmcp/generated/exploration_tools.rs",
+        "src/bridge/rmcp/generated/skills_tools.rs",
     ];
     
     let mut combined = String::new();

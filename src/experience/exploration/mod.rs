@@ -27,11 +27,7 @@ pub mod hypothesis;
 pub mod store;
 
 // Re-export all exploration types for convenient access
-// Note: exploration.rs re-exports from sibling modules
-// These re-exports allow external consumers to import from this module
 pub use exploration::{Exploration, ExplorationStatus};
 pub use attempt::ExplorationAttempt;
 pub use finding::ExplorationFinding;
 pub use hypothesis::{Hypothesis, HypothesisResult};
-#[allow(unused_imports, dead_code)]
-pub use store::{ExplorationRepository, InMemoryExplorationRepository};

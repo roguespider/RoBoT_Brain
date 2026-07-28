@@ -1,5 +1,4 @@
 // src/bridge/mcp/context.rs
-#![allow(dead_code)]
 
 // MCP context for sharing state across handlers
 
@@ -9,13 +8,13 @@ use crate::database::sqlite::SqliteDatabase;
 use crate::experience::bus::ExperienceBus;
 use crate::experience::coordinator::ExperienceCoordinator;
 use crate::experience::evolution::EvolutionEngine;
-use crate::experience::hypothesis::HypothesisEngine;
 use crate::experience::metrics::MetricsCollector;
 use crate::experience::reflection::ReflectionEngine;
 use crate::experience::scheduler::Scheduler;
 use crate::knowledge::KnowledgeStore;
 use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory};
 use crate::planner::{Planner, PolicyEngine};
+use crate::skills::registry::SkillRegistry;
 use crate::workflows::engine::WorkflowEngine;
 
 use super::types::{McpCapabilities, McpEmpty, McpResourcesCapability, McpServerInfo};
@@ -33,9 +32,6 @@ pub struct McpContext {
 
     /// Reflection engine (used by reflection tools)
     pub reflection: Arc<ReflectionEngine>,
-
-    /// Hypothesis engine (used by hypothesis tools)
-    pub hypothesis: Arc<HypothesisEngine>,
 
     /// Evolution engine
     pub evolution: Arc<EvolutionEngine>,
@@ -67,6 +63,9 @@ pub struct McpContext {
     /// Workflow engine - structured workflow execution
     pub workflow_engine: Arc<WorkflowEngine>,
 
+    /// Skill registry - manages reusable capabilities (per Architecture §15)
+    pub skills: Arc<SkillRegistry>,
+
     /// Server info
     pub server_info: McpServerInfo,
 
@@ -80,7 +79,6 @@ impl McpContext {
         bus: Arc<ExperienceBus>,
         coordinator: Arc<ExperienceCoordinator>,
         reflection: Arc<ReflectionEngine>,
-        hypothesis: Arc<HypothesisEngine>,
         evolution: Arc<EvolutionEngine>,
         scheduler: Arc<Scheduler>,
         metrics: Arc<MetricsCollector>,
@@ -91,13 +89,13 @@ impl McpContext {
         permanent_memory: Arc<PermanentMemory>,
         memory_retrieval: Arc<MemoryRetrieval>,
         workflow_engine: Arc<WorkflowEngine>,
+        skills: Arc<SkillRegistry>,
     ) -> Self {
         Self {
             database,
             bus,
             coordinator,
             reflection,
-            hypothesis,
             evolution,
             scheduler,
             metrics,
@@ -108,6 +106,7 @@ impl McpContext {
             permanent_memory,
             memory_retrieval,
             workflow_engine,
+            skills,
             server_info: McpServerInfo {
                 name: env!("CARGO_PKG_NAME").to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),
@@ -122,25 +121,5 @@ impl McpContext {
                 logging: Some(McpEmpty),
             },
         }
-    }
-
-    /// Get reference to the working memory cache (fast, volatile, in-memory)
-    pub fn working_memory(&self) -> &Arc<WorkingMemory> {
-        &self.working_memory
-    }
-
-    /// Get reference to permanent memory cache (curated, indexed, in-memory)
-    pub fn permanent_memory(&self) -> &Arc<PermanentMemory> {
-        &self.permanent_memory
-    }
-
-    /// Get reference to the memory retrieval service
-    pub fn memory_retrieval(&self) -> &Arc<MemoryRetrieval> {
-        &self.memory_retrieval
-    }
-
-    /// Get database connection
-    pub fn database(&self) -> &Arc<SqliteDatabase> {
-        &self.database
     }
 }
