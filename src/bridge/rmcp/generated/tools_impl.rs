@@ -1611,10 +1611,10 @@ impl rmcp::handler::server::ServerHandler for McpServerHandler {
     fn get_info(&self) -> rmcp::model::ServerInfo {
         use rmcp::model::ServerCapabilitiesBuilder;
 
-        #[allow(deprecated)]
         let capabilities = ServerCapabilitiesBuilder::default()
             .enable_experimental()
             .enable_extensions()
+            // Note: Logging is deprecated in MCP spec SEP-2577, but required for builder type inference
             .enable_logging()
             .enable_completions()
             .enable_prompts()

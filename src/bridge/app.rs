@@ -244,7 +244,6 @@ impl App {
             bus.clone(),
             coordinator.clone(),
             reflection_engine.clone(),
-            hypothesis_engine_for_subscriber.clone(),
             evolution_engine.clone(),
             scheduler.clone(),
             metrics.clone(),
