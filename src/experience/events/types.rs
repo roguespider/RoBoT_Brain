@@ -95,6 +95,9 @@ pub enum ExperienceEventType {
     /// Knowledge deprecated or weakened.
     KnowledgeDeprecated,
     
+    /// Knowledge transferred between domains.
+    KnowledgeTransferred,
+    
     // ===== Reputation Events (Architecture §4.04)
     
     /// Reputation changed for a target (Architecture §4.04).
@@ -166,6 +169,7 @@ impl ExperienceEventType {
             ExperienceEventType::KnowledgeUpdated => "Knowledge Updated",
             ExperienceEventType::KnowledgePromoted => "Knowledge Promoted",
             ExperienceEventType::KnowledgeDeprecated => "Knowledge Deprecated",
+            ExperienceEventType::KnowledgeTransferred => "Knowledge Transferred",
             ExperienceEventType::ReputationUpdated => "Reputation Updated",
             ExperienceEventType::SourceTrustChanged => "Source Trust Changed",
             ExperienceEventType::ExplorationStarted => "Exploration Started",

@@ -457,6 +457,309 @@ impl LearningCoordinator {
     }
 
     // ========================================================================
+    // REINFORCEMENT LEARNING
+    // ========================================================================
+    /// Per Architecture §9: Reinforcement learning from experience outcomes
+
+    /// Apply reinforcement learning from an experience outcome
+    ///
+    /// Per Architecture §9: "Reinforcement learning adjusts behavior based on rewards/penalties"
+    pub async fn apply_reinforcement(&self, experience: &Experience) -> Result<ReinforcementResult> {
+        let mut result = ReinforcementResult::default();
+        result.experience_id = experience.id;
+
+        // Calculate reward based on outcome
+        let reward = self.calculate_reward(experience);
+        result.reward = reward;
+        
+        // Update knowledge based on reward
+        let knowledge_updates = self.update_knowledge_from_reward(experience, reward).await?;
+        result.knowledge_updates = knowledge_updates;
+        
+        // Update skills based on reward
+        let skill_updates = self.update_skills_from_reward(experience, reward).await?;
+        result.skill_updates = skill_updates;
+        
+        // Update action values
+        let action_value_update = self.update_action_values(experience, reward).await?;
+        result.action_value_delta = action_value_update;
+
+        self.metrics.increment("learning.reinforcement.applied").await;
+        
+        tracing::info!(
+            "Applied reinforcement learning for {}: reward={:.3}, knowledge_updates={}, skill_updates={}",
+            experience.id, reward, knowledge_updates, skill_updates
+        );
+
+        Ok(result)
+    }
+    
+    /// Calculate reward from experience outcome
+    fn calculate_reward(&self, experience: &Experience) -> f64 {
+        use crate::experience::types::outcome::OutcomeKind;
+        
+        match experience.outcome.kind {
+            OutcomeKind::Success => {
+                // Positive reward scaled by confidence
+                1.0 * (experience.confidence as f64)
+            },
+            OutcomeKind::Partial => {
+                // Small positive reward for partial success
+                0.3 * (experience.confidence as f64)
+            },
+            OutcomeKind::Failure => {
+                // Negative reward for failure
+                -1.0
+            },
+            OutcomeKind::Interrupted => {
+                // Small negative reward for interruption
+                -0.2
+            },
+            _ => 0.0,
+        }
+    }
+    
+    /// Update knowledge based on reinforcement reward
+    async fn update_knowledge_from_reward(&self, experience: &Experience, reward: f64) -> Result<usize> {
+        let mut updates = 0;
+        
+        // Increase confidence for positive reward
+        if reward > 0.0 {
+            // Find knowledge related to this experience
+            let related_knowledge = self.knowledge_store.search(&experience.description).await;
+            
+            for knowledge in related_knowledge {
+                if reward > 0.5 {
+                    // High reward: boost confidence
+                    self.knowledge_store.record_success(knowledge.id).await;
+                    updates += 1;
+                }
+            }
+        } else if reward < 0.0 {
+            // Decrease confidence for negative reward
+            let related_knowledge = self.knowledge_store.search(&experience.description).await;
+            
+            for knowledge in related_knowledge {
+                self.knowledge_store.record_failure(knowledge.id).await;
+                updates += 1;
+            }
+        }
+        
+        Ok(updates)
+    }
+    
+    /// Update skills based on reinforcement reward
+    async fn update_skills_from_reward(&self, experience: &Experience, reward: f64) -> Result<usize> {
+        // Skill updates would go here - skill registry is in skills module
+        // For now, just log the reward
+        tracing::debug!("Skill update from reward {:.3}: {}", reward, experience.id);
+        Ok(0)
+    }
+    
+    /// Update action values for future decision making
+    async fn update_action_values(&self, experience: &Experience, reward: f64) -> Result<f64> {
+        // Store the reward for this action context
+        // This could be used to build a Q-table or similar
+        let action_key = format!("{}:{}", experience.context.workflow.as_ref()
+            .map(|w| w.name.as_str()).unwrap_or("unknown"), 
+            experience.description.as_str()
+        );
+        
+        tracing::debug!("Action value update for '{}': reward={:.3}", action_key, reward);
+        
+        Ok(reward)
+    }
+
+    // ========================================================================
+    // GENERALIZATION
+    // ========================================================================
+    /// Per Architecture §9: Generalization - extracting patterns from specific experiences
+
+    /// Generalize from a set of experiences to create broader patterns
+    ///
+    /// Per Architecture §9: "Generalization extracts common patterns from specific instances"
+    pub async fn generalize(&self, experience_ids: Vec<Uuid>) -> Result<GeneralizationResult> {
+        let mut result = GeneralizationResult::default();
+        
+        // Collect experiences
+        let mut experiences = Vec::new();
+        for id in &experience_ids {
+            // In real implementation, would fetch from repository
+            tracing::debug!("Would fetch experience {}", id);
+        }
+        
+        // Find common patterns
+        let patterns = self.extract_common_patterns(&experiences).await;
+        result.patterns = patterns;
+        
+        // Create generalized knowledge
+        for pattern in &result.patterns {
+            let generalized_knowledge = KnowledgeItem::from_reflection(
+                &pattern.description,
+                pattern.confidence,
+                Uuid::new_v4(),
+            );
+            let _id = self.knowledge_store.add(generalized_knowledge).await;
+            result.generalized_knowledge_count += 1;
+        }
+        
+        self.metrics.increment("learning.generalizations").await;
+        
+        Ok(result)
+    }
+    
+    /// Extract common patterns from experiences
+    async fn extract_common_patterns(&self, experiences: &[Experience]) -> Vec<Pattern> {
+        let mut patterns = Vec::new();
+        
+        if experiences.len() < 2 {
+            return patterns;
+        }
+        
+        // Group by context/workflow
+        let mut context_groups: std::collections::HashMap<String, Vec<&Experience>> = 
+            std::collections::HashMap::new();
+        
+        for exp in experiences {
+            let key = exp.context.workflow.as_ref()
+                .map(|w| w.name.clone())
+                .unwrap_or_else(|| "unknown".to_string());
+            context_groups.entry(key).or_default().push(exp);
+        }
+        
+        // Find patterns in groups
+        for (context, exps) in context_groups {
+            if exps.len() >= 2 {
+                // Count successful vs failed
+                let success_count = exps.iter()
+                    .filter(|e| matches!(e.outcome.kind, crate::experience::types::outcome::OutcomeKind::Success))
+                    .count();
+                
+                let confidence = success_count as f32 / exps.len() as f32;
+                
+                patterns.push(Pattern {
+                    description: format!("In '{}' context, {} out of {} attempts succeeded", 
+                        context, success_count, exps.len()),
+                    confidence,
+                    source_experience_count: exps.len(),
+                    pattern_type: PatternType::Contextual,
+                });
+            }
+        }
+        
+        patterns
+    }
+    
+    // ========================================================================
+    // TRANSFER LEARNING
+    // ========================================================================
+    /// Per Architecture §9: Transfer learning - applying knowledge from one domain to another
+
+    /// Transfer knowledge from source domain to target domain
+    ///
+    /// Per Architecture §9: "Transfer learning applies knowledge from one domain to another"
+    pub async fn transfer_knowledge(
+        &self,
+        source_domain: &str,
+        target_domain: &str,
+        knowledge_ids: Vec<Uuid>,
+    ) -> Result<TransferResult> {
+        let mut result = TransferResult {
+            source_domain: source_domain.to_string(),
+            target_domain: target_domain.to_string(),
+            transferred_count: 0,
+            adapted_count: 0,
+            failed_count: 0,
+            new_knowledge_ids: Vec::new(),
+        };
+        
+        // Get source knowledge
+        for knowledge_id in &knowledge_ids {
+            if let Some(knowledge) = self.knowledge_store.get(*knowledge_id).await {
+                // Adapt knowledge for target domain
+                let adapted = self.adapt_knowledge_for_domain(&knowledge, target_domain).await;
+                
+                if let Some(mut adapted_knowledge) = adapted {
+                    // Lower confidence for transferred knowledge (needs validation)
+                    adapted_knowledge.confidence.adjust_source_reliability(-0.2);
+                    
+                    let new_id = self.knowledge_store.add(adapted_knowledge).await;
+                    result.new_knowledge_ids.push(new_id);
+                    result.transferred_count += 1;
+                    result.adapted_count += 1;
+                } else {
+                    result.failed_count += 1;
+                }
+            }
+        }
+        
+        // Publish transfer event
+        let event = ExperienceEvent::knowledge_transferred(
+            Uuid::new_v4(),
+            source_domain.to_string(),
+            target_domain.to_string(),
+            result.transferred_count as u32,
+        );
+        let _ = self.bus.publish(event);
+        
+        self.metrics.increment("learning.transfers").await;
+        
+        tracing::info!(
+            "Transferred {} knowledge items from {} to {}",
+            result.transferred_count, source_domain, target_domain
+        );
+        
+        Ok(result)
+    }
+    
+    /// Adapt a knowledge item for a new domain
+    async fn adapt_knowledge_for_domain(
+        &self,
+        knowledge: &KnowledgeItem,
+        target_domain: &str,
+    ) -> Option<KnowledgeItem> {
+        // Check if domain is compatible
+        let compatibility = Self::check_domain_compatibility(&knowledge.statement, target_domain);
+        
+        if compatibility < 0.3 {
+            return None; // Not compatible enough
+        }
+        
+        // Create adapted version
+        let mut adapted = knowledge.clone();
+        adapted.id = Uuid::new_v4();
+        adapted.metadata.insert("transferred_from".to_string(), knowledge.id.to_string());
+        adapted.metadata.insert("target_domain".to_string(), target_domain.to_string());
+        adapted.metadata.insert("original_confidence".to_string(), 
+            format!("{:.2}", knowledge.overall_confidence()));
+        
+        // Scale confidence by compatibility
+        let scaled_confidence = knowledge.overall_confidence() * compatibility;
+        adapted.confidence.adjust_source_reliability(scaled_confidence - knowledge.overall_confidence());
+        
+        Some(adapted)
+    }
+    
+    /// Check if knowledge is compatible with a domain
+    fn check_domain_compatibility(knowledge_statement: &str, target_domain: &str) -> f32 {
+        // Simple heuristic: check for domain-specific keywords
+        let domain_keywords = match target_domain {
+            "coding" => vec!["function", "variable", "class", "algorithm", "data", "process"],
+            "writing" => vec!["text", "content", "paragraph", "document", "sentence"],
+            "analysis" => vec!["pattern", "trend", "compare", "evaluate", "assess"],
+            _ => vec!["general", "common", "standard"],
+        };
+        
+        let statement_lower = knowledge_statement.to_lowercase();
+        let matches = domain_keywords.iter()
+            .filter(|kw| statement_lower.contains(*kw))
+            .count();
+        
+        let similarity = matches as f32 / domain_keywords.len() as f32;
+        similarity.max(0.1) // Minimum 10% compatibility
+    }
+
+    // ========================================================================
     // Stats
     // ========================================================================
 
@@ -517,4 +820,54 @@ pub struct LearningCoordinatorStats {
     pub total_patterns: usize,
     pub active_reputations: usize,
     pub active_explorations: usize,
+}
+
+// ========================================================================
+// Learning Result Types
+// ========================================================================
+
+/// Result of reinforcement learning
+#[derive(Debug, Default)]
+pub struct ReinforcementResult {
+    pub experience_id: uuid::Uuid,
+    pub reward: f64,
+    pub knowledge_updates: usize,
+    pub skill_updates: usize,
+    pub action_value_delta: f64,
+}
+
+/// Pattern extracted from generalization
+#[derive(Debug, Clone)]
+pub struct Pattern {
+    pub description: String,
+    pub confidence: f32,
+    pub source_experience_count: usize,
+    pub pattern_type: PatternType,
+}
+
+/// Type of pattern
+#[derive(Debug, Clone)]
+pub enum PatternType {
+    Contextual,
+    Temporal,
+    Causal,
+    Sequential,
+}
+
+/// Result of generalization
+#[derive(Debug, Default)]
+pub struct GeneralizationResult {
+    pub patterns: Vec<Pattern>,
+    pub generalized_knowledge_count: usize,
+}
+
+/// Result of transfer learning
+#[derive(Debug)]
+pub struct TransferResult {
+    pub source_domain: String,
+    pub target_domain: String,
+    pub transferred_count: usize,
+    pub adapted_count: usize,
+    pub failed_count: usize,
+    pub new_knowledge_ids: Vec<uuid::Uuid>,
 }

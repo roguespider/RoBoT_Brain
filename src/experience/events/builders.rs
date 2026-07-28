@@ -132,4 +132,24 @@ impl ExperienceEvent {
             payload: EventPayload::KnowledgeRecord { knowledge_id },
         }
     }
+    
+    /// Create an event when knowledge is transferred between domains.
+    pub fn knowledge_transferred(
+        experience_id: Uuid,
+        source_domain: String,
+        target_domain: String,
+        count: u32,
+    ) -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            experience_id,
+            timestamp: Utc::now(),
+            event_type: ExperienceEventType::KnowledgeTransferred,
+            payload: EventPayload::KnowledgeTransfer {
+                source_domain,
+                target_domain,
+                count,
+            },
+        }
+    }
 }

@@ -156,4 +156,11 @@ pub enum EventPayload {
 
     /// Exploration tied to an ID.
     Exploration { exploration_id: Uuid },
+    
+    /// Knowledge transfer between domains.
+    KnowledgeTransfer {
+        source_domain: String,
+        target_domain: String,
+        count: u32,
+    },
 }

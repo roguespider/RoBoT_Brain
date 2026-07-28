@@ -8,7 +8,7 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use super::types::{KnowledgeItem, KnowledgeStatus, KnowledgeType, RelationType};
+use super::types::{KnowledgeItem, KnowledgeStatus, KnowledgeType, RelationType, KnowledgeDependency, DependencyType, KnowledgeVersionInfo};
 
 /// Knowledge store - manages all knowledge items
 pub struct KnowledgeStore {
@@ -21,6 +21,15 @@ pub struct KnowledgeStore {
     /// Index by tag for fast lookup
     by_tag: Arc<RwLock<HashMap<String, Vec<Uuid>>>>,
     
+    /// Dependency index: knowledge_id -> list of dependencies
+    dependencies: Arc<RwLock<HashMap<Uuid, Vec<KnowledgeDependency>>>>,
+    
+    /// Reverse dependency index: knowledge_id -> list of dependents
+    dependents: Arc<RwLock<HashMap<Uuid, Vec<Uuid>>>>,
+    
+    /// Version info for each knowledge item
+    versions: Arc<RwLock<HashMap<Uuid, KnowledgeVersionInfo>>>,
+    
     /// Maximum items to retain
     max_items: usize,
 }
@@ -32,6 +41,9 @@ impl KnowledgeStore {
             items: Arc::new(RwLock::new(HashMap::new())),
             by_type: Arc::new(RwLock::new(HashMap::new())),
             by_tag: Arc::new(RwLock::new(HashMap::new())),
+            dependencies: Arc::new(RwLock::new(HashMap::new())),
+            dependents: Arc::new(RwLock::new(HashMap::new())),
+            versions: Arc::new(RwLock::new(HashMap::new())),
             max_items,
         }
     }
@@ -331,6 +343,282 @@ impl KnowledgeStore {
             average_confidence: avg_confidence,
         }
     }
+
+    // ========================================================================
+    // DEPENDENCY TRACKING
+    // ========================================================================
+
+    /// Add a dependency to a knowledge item
+    /// 
+    /// Per Architecture: Knowledge dependencies track which knowledge items
+    /// rely on other knowledge items to function correctly.
+    pub async fn add_dependency(
+        &self,
+        knowledge_id: Uuid,
+        depends_on_id: Uuid,
+        dependency_type: DependencyType,
+    ) -> bool {
+        // Verify both items exist
+        {
+            let items = self.items.read().await;
+            if !items.contains_key(&knowledge_id) || !items.contains_key(&depends_on_id) {
+                return false;
+            }
+        }
+        
+        let dependency = KnowledgeDependency::new(knowledge_id, depends_on_id, dependency_type);
+        
+        // Add to dependency index
+        {
+            let mut deps = self.dependencies.write().await;
+            deps.entry(knowledge_id)
+                .or_insert_with(Vec::new)
+                .push(dependency);
+        }
+        
+        // Add to reverse index (dependents)
+        {
+            let mut rev = self.dependents.write().await;
+            rev.entry(depends_on_id)
+                .or_insert_with(Vec::new)
+                .push(knowledge_id);
+        }
+        
+        tracing::debug!("Added dependency: {} -> {}", knowledge_id, depends_on_id);
+        true
+    }
+    
+    /// Remove a dependency
+    pub async fn remove_dependency(&self, knowledge_id: &Uuid, depends_on_id: &Uuid) -> bool {
+        let mut deps = self.dependencies.write().await;
+        let mut rev = self.dependents.write().await;
+        
+        // Remove from dependency index
+        if let Some(d) = deps.get_mut(knowledge_id) {
+            d.retain(|dep| dep.dependency_id != *depends_on_id);
+        }
+        
+        // Remove from reverse index
+        if let Some(r) = rev.get_mut(depends_on_id) {
+            r.retain(|&id| id != *knowledge_id);
+        }
+        
+        true
+    }
+    
+    /// Get all dependencies for a knowledge item
+    pub async fn get_dependencies(&self, knowledge_id: &Uuid) -> Vec<KnowledgeDependency> {
+        let deps = self.dependencies.read().await;
+        deps.get(knowledge_id).cloned().unwrap_or_default()
+    }
+    
+    /// Get all items that depend on this knowledge item
+    pub async fn get_dependents(&self, knowledge_id: &Uuid) -> Vec<Uuid> {
+        let rev = self.dependents.read().await;
+        rev.get(knowledge_id).cloned().unwrap_or_default()
+    }
+    
+    /// Check if a knowledge item's dependencies are satisfied
+    pub async fn check_dependencies(&self, knowledge_id: &Uuid) -> DependencyCheckResult {
+        let deps = self.dependencies.read().await;
+        let items = self.items.read().await;
+        
+        let mut result = DependencyCheckResult {
+            satisfied: Vec::new(),
+            unsatisfied: Vec::new(),
+            conflicts: Vec::new(),
+        };
+        
+        if let Some(deps) = deps.get(knowledge_id) {
+            for dep in deps {
+                match dep.dependency_type {
+                    DependencyType::Required => {
+                        if items.contains_key(&dep.dependency_id) {
+                            // Check version constraint if present
+                            if let Some(ref constraint) = dep.version_constraint {
+                                if let Some(versions) = self.versions.read().await.get(&dep.dependency_id) {
+                                    if let Some(ver) = versions.get_active() {
+                                        if ver.satisfies_constraint(constraint) {
+                                            result.satisfied.push(dep.dependency_id);
+                                        } else {
+                                            result.unsatisfied.push(dep.dependency_id);
+                                        }
+                                    } else {
+                                        result.unsatisfied.push(dep.dependency_id);
+                                    }
+                                } else {
+                                    result.satisfied.push(dep.dependency_id); // No version info, assume satisfied
+                                }
+                            } else {
+                                result.satisfied.push(dep.dependency_id);
+                            }
+                        } else {
+                            result.unsatisfied.push(dep.dependency_id);
+                        }
+                    },
+                    DependencyType::Conflict => {
+                        if items.contains_key(&dep.dependency_id) {
+                            result.conflicts.push(dep.dependency_id);
+                        }
+                    },
+                    _ => {
+                        // Optional dependencies are always satisfied if present
+                        if items.contains_key(&dep.dependency_id) {
+                            result.satisfied.push(dep.dependency_id);
+                        }
+                    }
+                }
+            }
+        }
+        
+        result
+    }
+    
+    /// Get all items that would be affected if this knowledge item changed
+    pub async fn get_impact_set(&self, knowledge_id: &Uuid) -> Vec<Uuid> {
+        let mut impact = Vec::new();
+        let mut visited = std::collections::HashSet::new();
+        let mut queue = vec![*knowledge_id];
+        
+        while let Some(current) = queue.pop() {
+            if visited.insert(current) {
+                let dependents = self.get_dependents(&current).await;
+                for dep in dependents {
+                    if !visited.contains(&dep) {
+                        impact.push(dep);
+                        queue.push(dep);
+                    }
+                }
+            }
+        }
+        
+        impact
+    }
+    
+    /// Validate all dependencies in the knowledge store
+    pub async fn validate_all_dependencies(&self) -> Vec<DependencyValidation> {
+        let mut validations = Vec::new();
+        let items = self.items.read().await;
+        
+        for id in items.keys() {
+            let result = self.check_dependencies(id).await;
+            if !result.unsatisfied.is_empty() || !result.conflicts.is_empty() {
+                validations.push(DependencyValidation {
+                    knowledge_id: *id,
+                    check_result: result,
+                });
+            }
+        }
+        
+        validations
+    }
+
+    // ========================================================================
+    // VERSION TRACKING
+    // ========================================================================
+
+    /// Initialize version tracking for a knowledge item
+    pub async fn init_version(&self, knowledge_id: Uuid, initial_version: &str) -> bool {
+        let items = self.items.read().await;
+        if !items.contains_key(&knowledge_id) {
+            return false;
+        }
+        drop(items);
+        
+        let version_info = KnowledgeVersionInfo::new(initial_version);
+        let mut versions = self.versions.write().await;
+        versions.insert(knowledge_id, version_info);
+        
+        tracing::debug!("Initialized version {} for knowledge {}", initial_version, knowledge_id);
+        true
+    }
+    
+    /// Create a new version of a knowledge item
+    pub async fn create_version(
+        &self,
+        knowledge_id: Uuid,
+        version: &str,
+        changelog: &str,
+        new_confidence: f32,
+    ) -> bool {
+        // Update version info
+        {
+            let mut versions = self.versions.write().await;
+            if let Some(info) = versions.get_mut(&knowledge_id) {
+                info.create_version(version, changelog, new_confidence);
+            } else {
+                // Initialize if not exists
+                let mut info = KnowledgeVersionInfo::new(version);
+                info.create_version(version, changelog, new_confidence);
+                versions.insert(knowledge_id, info);
+            }
+        }
+        
+        // Update the knowledge item's confidence
+        {
+            let mut items = self.items.write().await;
+            if let Some(item) = items.get_mut(&knowledge_id) {
+                item.confidence.adjust_source_reliability(new_confidence - item.overall_confidence());
+            }
+        }
+        
+        tracing::info!("Created version {} for knowledge {}", version, knowledge_id);
+        true
+    }
+    
+    /// Get version info for a knowledge item
+    pub async fn get_version_info(&self, knowledge_id: &Uuid) -> Option<KnowledgeVersionInfo> {
+        let versions = self.versions.read().await;
+        versions.get(knowledge_id).cloned()
+    }
+    
+    /// Bump version number for a knowledge item
+    pub async fn bump_version(&self, knowledge_id: &Uuid, bump_type: VersionBumpType) -> bool {
+        let mut versions = self.versions.write().await;
+        if let Some(info) = versions.get_mut(knowledge_id) {
+            let current = info.current_version.clone();
+            match bump_type {
+                VersionBumpType::Major => info.bump_major(),
+                VersionBumpType::Minor => info.bump_minor(),
+                VersionBumpType::Patch => info.bump_patch(),
+            }
+            tracing::info!("Bumped version {} -> {} for knowledge {}", current, info.current_version, knowledge_id);
+            true
+        } else {
+            // Initialize with 0.0.1
+            let mut info = KnowledgeVersionInfo::new("0.0.1");
+            match bump_type {
+                VersionBumpType::Major => info.bump_major(),
+                VersionBumpType::Minor => info.bump_minor(),
+                VersionBumpType::Patch => info.bump_patch(),
+            }
+            versions.insert(*knowledge_id, info);
+            true
+        }
+    }
+}
+
+/// Result of checking dependencies
+#[derive(Debug, Clone)]
+pub struct DependencyCheckResult {
+    pub satisfied: Vec<Uuid>,
+    pub unsatisfied: Vec<Uuid>,
+    pub conflicts: Vec<Uuid>,
+}
+
+/// Validation result for a dependency
+#[derive(Debug, Clone)]
+pub struct DependencyValidation {
+    pub knowledge_id: Uuid,
+    pub check_result: DependencyCheckResult,
+}
+
+/// Type of version bump
+#[derive(Debug, Clone, Copy)]
+pub enum VersionBumpType {
+    Major,
+    Minor,
+    Patch,
 }
 
 /// Knowledge statistics
