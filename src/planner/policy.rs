@@ -1,5 +1,4 @@
 // src/planner/policy.rs
-#![allow(dead_code)]
 //! Policy engine for decision-making rules
 
 

@@ -1,5 +1,4 @@
 // src/learning/working_memory/promotion.rs
-#![allow(dead_code)]
 //! Promotion policies for working memory items
 
 

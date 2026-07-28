@@ -1,5 +1,4 @@
 // src/tools/ingestor/core.rs
-#![allow(dead_code)]
 // Core file ingestion logic
 
 use std::collections::HashSet;

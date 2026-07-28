@@ -2,7 +2,6 @@
 
 //! Candidate actions and behavior generation
 
-#![allow(dead_code)]
 
 use std::sync::Arc;
 

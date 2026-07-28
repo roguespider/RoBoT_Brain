@@ -1,5 +1,4 @@
 // src/memory/working.rs
-#![allow(dead_code)]
 //! Working Memory - Per Architecture §6.3
 //!
 //! Working Memory contains temporary information used during active tasks.

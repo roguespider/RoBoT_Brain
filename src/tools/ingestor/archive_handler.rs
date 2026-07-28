@@ -1,5 +1,4 @@
 // src/tools/ingestor/archive_handler.rs
-#![allow(dead_code)]
 // Archive extraction and temp folder management
 
 use std::fs;

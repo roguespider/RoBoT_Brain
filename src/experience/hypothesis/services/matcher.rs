@@ -1,5 +1,4 @@
 // robot/src/experience/hypothesis/services/matcher.rs
-#![allow(dead_code)]
 
 
 //! ============================================================================

@@ -1,5 +1,4 @@
 // robot/src/experience/reflection/reflection.rs
-#![allow(dead_code)]
 
 // Proposed structure
 //    ├── metadata

@@ -1,5 +1,4 @@
 // /src/experience/metrics.rs
-#![allow(dead_code)]
 // Metrics collection for performance and learning tracking
 
 

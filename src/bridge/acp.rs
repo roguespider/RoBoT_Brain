@@ -1,5 +1,4 @@
 // src/bridge/acp.rs
-#![allow(dead_code)]
 // ACP (Agent Communication Protocol) for agent-to-agent communication
 //
 // NOTE: This module is a placeholder for future multi-agent communication.

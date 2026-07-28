@@ -1,5 +1,4 @@
 // src/planner/planner.rs
-#![allow(dead_code)]
 //! Core planning engine for task decomposition and execution
 //!
 //! Per Architecture §2.8, §10:

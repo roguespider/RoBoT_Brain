@@ -1,5 +1,4 @@
 // src/database/models.rs
-#![allow(dead_code)]
 
 
 use chrono::{DateTime, Utc};

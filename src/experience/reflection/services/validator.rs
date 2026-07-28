@@ -1,5 +1,4 @@
 // /src/experience/reflection/services/validator.rs
-#![allow(dead_code)]
 
 // Validates reflections for quality and consistency
 

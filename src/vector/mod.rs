@@ -1,5 +1,4 @@
 // src/vector/mod.rs
-#![allow(dead_code)]
 
 //! Vector Index Operations
 //!

@@ -1,5 +1,4 @@
 // src/skills/registry.rs
-#![allow(dead_code)]
 //! Skill registry for managing available skills
 //!
 //! Per Architecture §2.9, §12, §15:

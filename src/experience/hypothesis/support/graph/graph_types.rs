@@ -1,5 +1,4 @@
 // robot/src/experience/hypothesis/support/graph/graph_types.rs
-#![allow(dead_code)]
 
 //! Type definitions for the hypothesis graph.
 

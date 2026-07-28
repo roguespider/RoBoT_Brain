@@ -1,5 +1,4 @@
 // /src/experience/reflection/engine.rs
-#![allow(dead_code)]
 // The main Reflection Engine that orchestrates all reflection services
 
 

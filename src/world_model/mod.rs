@@ -5,7 +5,6 @@
 //! Per Architecture: Represents the system's understanding of the world,
 //! including entities, relationships, and causal connections.
 
-#![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
 use std::collections::{HashMap, HashSet};

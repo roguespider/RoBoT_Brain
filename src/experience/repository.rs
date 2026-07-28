@@ -1,7 +1,6 @@
 // src/experience/repository.rs
 // Repository functions for experience persistence
 
-#![allow(dead_code)]
 
 use crate::database::models::MemoryCard;
 use crate::database::queries;

@@ -1,5 +1,4 @@
 // src/bridge/mcp/handler.rs
-#![allow(dead_code)]
 // MCP protocol handler trait
 
 use anyhow::Result;

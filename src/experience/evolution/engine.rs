@@ -1,5 +1,4 @@
 // /src/experience/evolution/engine.rs
-#![allow(dead_code)]
 // The main engine that transforms insights into behaviors
 
 

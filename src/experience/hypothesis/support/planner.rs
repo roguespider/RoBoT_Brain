@@ -1,5 +1,4 @@
 // robot/src/experience/hypothesis/support/planner.rs
-#![allow(dead_code)]
 
 //! ============================================================================
 //! HYPOTHESIS PLANNER

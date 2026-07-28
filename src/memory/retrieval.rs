@@ -1,5 +1,4 @@
 // src/memory/retrieval.rs
-#![allow(dead_code)]
 
 //! Memory Retrieval - Per Architecture §6.3
 //!
