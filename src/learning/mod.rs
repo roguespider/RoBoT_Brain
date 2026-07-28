@@ -4,6 +4,8 @@
 //! Per Architecture §9 - Learning Pipeline:
 //! Input → Observation → Memory → Experience → Knowledge → Planning → Decision → Action → Reflection
 
+#![allow(dead_code)]
+
 pub mod working_memory;
 pub mod hypothesis;
 pub mod candidates;

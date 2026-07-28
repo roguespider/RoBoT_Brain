@@ -2,6 +2,8 @@
 
 // Smart JSON importer that extracts structured data into memories
 
+#![allow(dead_code)]
+
 use std::path::Path;
 
 use anyhow::{Context, Result};

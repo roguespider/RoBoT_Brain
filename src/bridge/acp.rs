@@ -4,6 +4,8 @@
 // NOTE: This module is a placeholder for future multi-agent communication.
 // Currently unused but kept for future expansion.
 
+#![allow(dead_code)]
+
 
 
 use anyhow::Result;

@@ -1,6 +1,8 @@
 // src/bridge/mcp/handler.rs
 // MCP protocol handler trait
 
+#![allow(dead_code)]
+
 use anyhow::Result;
 
 use super::types::{McpCapabilities, McpNotification, McpRequest, McpResponse, McpServerInfo};

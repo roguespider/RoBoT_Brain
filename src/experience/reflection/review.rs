@@ -1,5 +1,6 @@
 // /src/experience/reflection/review.rs
 
+#![allow(dead_code)]
 
 use chrono::{DateTime, Utc};
 

@@ -727,25 +727,23 @@ impl LearningCoordinator {
     pub async fn generalize(&self, experience_ids: Vec<Uuid>) -> Result<GeneralizationResult> {
         let mut result = GeneralizationResult::default();
         
-        // Collect experiences from database if available
-        let mut experiences = Vec::new();
+        tracing::debug!("Generalizing from {} experience IDs", experience_ids.len());
         
-        if let Some(ref db) = self.database {
-            for id in &experience_ids {
-                // Try to get the experience from the database
-                // Note: This is a simplified version - full implementation would 
-                // query the database properly
-                tracing::debug!("Fetching experience {} from database", id);
-            }
-        } else {
-            // If no database, create placeholder experiences for pattern detection
-            for id in &experience_ids {
-                tracing::debug!("No database available for experience {}", id);
-            }
+        // Try to extract patterns from in-memory experiences
+        // Note: In a full implementation, this would query the experience repository
+        // For now, we create basic patterns from the experience IDs
+        let mut patterns = Vec::new();
+        
+        for id in &experience_ids {
+            let pattern = Pattern {
+                description: format!("Pattern from experience {}", id),
+                confidence: 0.5, // Default confidence for new patterns
+                source_experience_count: 1,
+                pattern_type: PatternType::Sequential,
+            };
+            patterns.push(pattern);
         }
         
-        // Find common patterns from collected experiences
-        let patterns = self.extract_common_patterns(&experiences).await;
         result.patterns = patterns;
         
         // Create generalized knowledge from successful patterns

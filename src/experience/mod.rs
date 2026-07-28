@@ -4,6 +4,8 @@
 //! The Experience System is the foundation of learning.
 //! It records events, observations, actions, outcomes, and environmental changes.
 
+#![allow(dead_code)]
+
 pub mod bus;
 pub mod coordinator;
 pub mod encounter_recorder;

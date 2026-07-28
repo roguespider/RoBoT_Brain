@@ -333,7 +333,7 @@ mod tests {
         );
         working.store(item).await;
 
-        let results = retrieval.from_working("Python").await;
+        let results = retrieval.get_from_working("Python").await;
         assert_eq!(results.len(), 1);
         assert!(results[0].item.content.contains("Python"));
     }
@@ -353,7 +353,7 @@ mod tests {
         item.add_tag("rust");
         permanent.store(item).await;
 
-        let results = retrieval.from_permanent("Rust").await;
+        let results = retrieval.get_from_permanent("Rust").await;
         assert_eq!(results.len(), 1);
         assert!(results[0].item.content.contains("Rust"));
     }

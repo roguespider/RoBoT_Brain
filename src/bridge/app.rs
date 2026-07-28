@@ -3,7 +3,7 @@
 // src/bridge/app.rs
 // Root application container per Architecture §03
 
-
+#![allow(dead_code)]
 
 use std::sync::Arc;
 use std::sync::Mutex;

@@ -17,6 +17,8 @@
 //! - Rejection: Discarding a behavior candidate that fails validation
 //! - Decay: Behaviors that aren't practiced over time fade away
 
+#![allow(dead_code)]
+
 pub mod behavior;
 pub mod engine;
 pub mod evidence;

@@ -1,4 +1,7 @@
 // src/tools/ingestor/audio_transcriber.rs
+
+#![allow(dead_code)]
+
 //! Audio transcription for RoBoT Brain
 //! 
 //! This module provides audio transcription capabilities.
@@ -12,7 +15,7 @@
 //! 4. Return structured transcription result
 //! 
 //! ## Candle Integration
-//! 
+//!
 //! Full Whisper transcription requires Candle ML framework with model downloads:
 //! ```toml
 //! # In Cargo.toml - uncomment to enable Whisper inference
@@ -389,6 +392,7 @@ pub async fn store_transcription_as_memory(
 #[cfg(test)]
 mod tests {
     use std::path::Path;
+    use super::*;
 
     #[test]
     fn test_is_audio_file() {

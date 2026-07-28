@@ -68,8 +68,8 @@ pub fn insert_memory(conn: &Connection, memory: &MemoryCard) -> Result<()> {
     Ok(())
 }
 
-/// Delete memories by their IDs
-pub fn delete_memories(conn: &Connection, ids: &[Uuid]) -> Result<usize> {
+/// Delete memories by their IDs (internal helper)
+pub(crate) fn delete_memories(conn: &Connection, ids: &[Uuid]) -> Result<usize> {
     if ids.is_empty() {
         return Ok(0);
     }
@@ -90,6 +90,7 @@ pub fn delete_memories(conn: &Connection, ids: &[Uuid]) -> Result<usize> {
 }
 
 /// Delete memories by their string IDs (convenience function)
+#[allow(dead_code)]
 pub fn delete_memories_by_string_ids(conn: &Connection, ids: &[String]) -> Result<usize> {
     if ids.is_empty() {
         return Ok(0);
@@ -484,7 +485,7 @@ pub fn insert_observation(conn: &Connection, observation: &Observation) -> Resul
 }
 
 /// Get an observation by ID
-
+#[allow(dead_code)]
 pub fn get_observation(conn: &Connection, id: Uuid) -> Result<Option<Observation>> {
     let mut stmt = conn.prepare(
         "SELECT id, content, context, observation_type, related_experiences, triggered_hypothesis, created_at
@@ -540,7 +541,7 @@ pub fn list_observations(conn: &Connection, limit: usize) -> Result<Vec<Observat
 }
 
 /// Link an observation to an experience
-
+#[allow(dead_code)]
 pub fn link_observation_to_experience(conn: &Connection, observation_id: Uuid, experience_id: Uuid) -> Result<()> {
     if let Some(mut obs) = get_observation(conn, observation_id)? {
         obs.related_experiences.push(experience_id);
@@ -691,9 +692,10 @@ pub fn insert_reputation(conn: &Connection, reputation: &Reputation) -> Result<(
 // MEMORY RELATIONSHIP OPERATIONS
 // ==========================================================
 
-use crate::database::models::{MemoryRelationship, MemoryRelationshipType};
+use crate::database::models::MemoryRelationship;
 
 /// Insert a new memory relationship
+#[allow(dead_code)]
 pub fn insert_memory_relationship(conn: &Connection, relationship: &MemoryRelationship) -> Result<()> {
     conn.execute(
         "INSERT OR REPLACE INTO memory_relationships
@@ -707,146 +709,5 @@ pub fn insert_memory_relationship(conn: &Connection, relationship: &MemoryRelati
         ],
     )?;
     Ok(())
-}
-
-/// Get all relationships for a memory
-pub fn get_memory_relationships(conn: &Connection, memory_id: &Uuid) -> Result<Vec<MemoryRelationship>> {
-    let mut stmt = conn.prepare(
-        "SELECT id, memory_id, related_id, relationship_type
-         FROM memory_relationships
-         WHERE memory_id = ?1"
-    )?;
-
-    let relationships = stmt.query_map(params![memory_id.to_string()], |row| {
-        let id_str: String = row.get(0)?;
-        let memory_id_str: String = row.get(1)?;
-        let related_id_str: String = row.get(2)?;
-        let rel_type_str: String = row.get(3)?;
-
-        let relationship_type = match rel_type_str.as_str() {
-            "causes" => MemoryRelationshipType::Causes,
-            "enables" => MemoryRelationshipType::Enables,
-            "contradicts" => MemoryRelationshipType::Contradicts,
-            "similar" => MemoryRelationshipType::Similar,
-            "derived_from" => MemoryRelationshipType::DerivedFrom,
-            _ => MemoryRelationshipType::Related,
-        };
-
-        Ok(MemoryRelationship {
-            id: Uuid::parse_str(&id_str).unwrap_or_else(|_| Uuid::new_v4()),
-            memory_id: Uuid::parse_str(&memory_id_str).unwrap_or_else(|_| Uuid::new_v4()),
-            related_id: Uuid::parse_str(&related_id_str).unwrap_or_else(|_| Uuid::new_v4()),
-            relationship_type,
-        })
-    })?.filter_map(|r| r.ok()).collect();
-
-    Ok(relationships)
-}
-
-/// Get relationships for a memory by type
-pub fn get_memory_relationships_by_type(
-    conn: &Connection, 
-    memory_id: &Uuid, 
-    relationship_type: &MemoryRelationshipType
-) -> Result<Vec<MemoryRelationship>> {
-    let mut stmt = conn.prepare(
-        "SELECT id, memory_id, related_id, relationship_type
-         FROM memory_relationships
-         WHERE memory_id = ?1 AND relationship_type = ?2"
-    )?;
-
-    let rel_type_str = relationship_type.to_string();
-    let relationships = stmt.query_map(params![memory_id.to_string(), rel_type_str], |row| {
-        let id_str: String = row.get(0)?;
-        let memory_id_str: String = row.get(1)?;
-        let related_id_str: String = row.get(2)?;
-        let rel_type_str: String = row.get(3)?;
-
-        let relationship_type = match rel_type_str.as_str() {
-            "causes" => MemoryRelationshipType::Causes,
-            "enables" => MemoryRelationshipType::Enables,
-            "contradicts" => MemoryRelationshipType::Contradicts,
-            "similar" => MemoryRelationshipType::Similar,
-            "derived_from" => MemoryRelationshipType::DerivedFrom,
-            _ => MemoryRelationshipType::Related,
-        };
-
-        Ok(MemoryRelationship {
-            id: Uuid::parse_str(&id_str).unwrap_or_else(|_| Uuid::new_v4()),
-            memory_id: Uuid::parse_str(&memory_id_str).unwrap_or_else(|_| Uuid::new_v4()),
-            related_id: Uuid::parse_str(&related_id_str).unwrap_or_else(|_| Uuid::new_v4()),
-            relationship_type,
-        })
-    })?.filter_map(|r| r.ok()).collect();
-
-    Ok(relationships)
-}
-
-/// Delete a specific relationship
-pub fn delete_memory_relationship(conn: &Connection, memory_id: &Uuid, related_id: &Uuid) -> Result<()> {
-    conn.execute(
-        "DELETE FROM memory_relationships WHERE memory_id = ?1 AND related_id = ?2",
-        params![memory_id.to_string(), related_id.to_string()],
-    )?;
-    Ok(())
-}
-
-/// Delete all relationships for a memory
-pub fn delete_memory_relationships(conn: &Connection, memory_id: &Uuid) -> Result<usize> {
-    let count = conn.execute(
-        "DELETE FROM memory_relationships WHERE memory_id = ?1 OR related_id = ?1",
-        params![memory_id.to_string()],
-    )?;
-    Ok(count)
-}
-
-/// Get all memories related to a given memory (both directions)
-pub fn get_related_memory_ids(conn: &Connection, memory_id: &Uuid) -> Result<Vec<Uuid>> {
-    let mut stmt = conn.prepare(
-        "SELECT related_id FROM memory_relationships WHERE memory_id = ?1
-         UNION
-         SELECT memory_id FROM memory_relationships WHERE related_id = ?1"
-    )?;
-
-    let ids = stmt.query_map(params![memory_id.to_string()], |row| {
-        let id_str: String = row.get(0)?;
-        Ok(Uuid::parse_str(&id_str).unwrap_or_else(|_| Uuid::new_v4()))
-    })?.filter_map(|r| r.ok()).collect();
-
-    Ok(ids)
-}
-
-/// List all relationships in the database
-pub fn list_all_memory_relationships(conn: &Connection, limit: usize) -> Result<Vec<MemoryRelationship>> {
-    let mut stmt = conn.prepare(
-        "SELECT id, memory_id, related_id, relationship_type
-         FROM memory_relationships
-         LIMIT ?1"
-    )?;
-
-    let relationships = stmt.query_map(params![limit as i64], |row| {
-        let id_str: String = row.get(0)?;
-        let memory_id_str: String = row.get(1)?;
-        let related_id_str: String = row.get(2)?;
-        let rel_type_str: String = row.get(3)?;
-
-        let relationship_type = match rel_type_str.as_str() {
-            "causes" => MemoryRelationshipType::Causes,
-            "enables" => MemoryRelationshipType::Enables,
-            "contradicts" => MemoryRelationshipType::Contradicts,
-            "similar" => MemoryRelationshipType::Similar,
-            "derived_from" => MemoryRelationshipType::DerivedFrom,
-            _ => MemoryRelationshipType::Related,
-        };
-
-        Ok(MemoryRelationship {
-            id: Uuid::parse_str(&id_str).unwrap_or_else(|_| Uuid::new_v4()),
-            memory_id: Uuid::parse_str(&memory_id_str).unwrap_or_else(|_| Uuid::new_v4()),
-            related_id: Uuid::parse_str(&related_id_str).unwrap_or_else(|_| Uuid::new_v4()),
-            relationship_type,
-        })
-    })?.filter_map(|r| r.ok()).collect();
-
-    Ok(relationships)
 }
 

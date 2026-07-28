@@ -360,29 +360,8 @@ impl MemoryCard {
         }
     }
 
-    /// Create a new memory in Permanent layer (LTM)
-    pub fn new_permanent(content: String, memory_type: MemoryType) -> Self {
-        let now = Utc::now();
-        Self {
-            id: Uuid::new_v4(),
-            content,
-            memory_type,
-            layer: MemoryLayer::Permanent,
-            parent_id: None,
-            hierarchy_level: HierarchyLevel::Document,
-            order_index: 0,
-            path: String::new(),
-            file_source: None,
-            access_count: 0,
-            last_accessed: None,
-            confidence: 0.7,  // Higher default confidence for promoted memories
-            importance: 0.7,
-            created_at: now,
-            updated_at: now,
-        }
-    }
-
     /// Create a new hierarchical memory card
+    #[allow(dead_code)]
     pub fn new_hierarchical(
         content: String,
         memory_type: MemoryType,
@@ -411,19 +390,6 @@ impl MemoryCard {
             created_at: now,
             updated_at: now,
         }
-    }
-
-    /// Promote this memory to Permanent layer (Working → Permanent)
-    pub fn promote_to_permanent(&mut self) {
-        self.layer = MemoryLayer::Permanent;
-        self.confidence = (self.confidence + 0.2).min(1.0);  // Boost confidence
-        self.updated_at = Utc::now();
-    }
-
-    /// Record an access for consolidation tracking
-    pub fn record_access(&mut self) {
-        self.access_count += 1;
-        self.last_accessed = Some(Utc::now());
     }
 }
 
