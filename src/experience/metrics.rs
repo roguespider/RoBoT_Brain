@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
+use uuid::Uuid;
 
 /// A single metric data point
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -34,6 +35,223 @@ pub struct AggregatedMetric {
     pub max: f64,
     pub avg: f64,
     pub std_dev: Option<f64>,
+}
+
+/// System-wide metrics collection
+/// 
+/// Per Architecture: Provides centralized metrics for monitoring system health,
+/// learning progress, and performance characteristics.
+pub struct Metrics {
+    /// Internal metrics collector
+    collector: Arc<MetricsCollector>,
+    
+    /// Experience count gauge
+    experience_count: Arc<RwLock<u64>>,
+    
+    /// Knowledge count gauge  
+    knowledge_count: Arc<RwLock<u64>>,
+    
+    /// Learning rate (insights per experience)
+    learning_rate: Arc<RwLock<f64>>,
+    
+    /// Reputation scores by source
+    reputation_scores: Arc<RwLock<HashMap<String, f64>>>,
+}
+
+impl Metrics {
+    /// Create new metrics instance
+    pub fn new() -> Self {
+        Self {
+            collector: Arc::new(MetricsCollector::new()),
+            experience_count: Arc::new(RwLock::new(0)),
+            knowledge_count: Arc::new(RwLock::new(0)),
+            learning_rate: Arc::new(RwLock::new(0.0)),
+            reputation_scores: Arc::new(RwLock::new(HashMap::new())),
+        }
+    }
+    
+    /// Collect all system metrics
+    ///
+    /// Per Architecture §4: Gather current state of all subsystems
+    pub async fn collect(&self) -> SystemMetrics {
+        let counters = self.collector.get_all_counters().await;
+        let gauges = self.collector.get_all_gauges().await;
+        let summary = self.collector.summary().await;
+        
+        // Get subsystem-specific metrics
+        let experience_count = *self.experience_count.read().await;
+        let knowledge_count = *self.knowledge_count.read().await;
+        let learning_rate = *self.learning_rate.read().await;
+        let reputation_scores = self.reputation_scores.read().await.clone();
+        
+        SystemMetrics {
+            timestamp: Utc::now(),
+            experience_count,
+            knowledge_count,
+            learning_rate,
+            reputation_scores,
+            counters,
+            gauges,
+            aggregated: summary.metrics,
+        }
+    }
+    
+    /// Record experience count
+    pub async fn set_experience_count(&self, count: u64) {
+        let mut exp_count = self.experience_count.write().await;
+        *exp_count = count;
+        self.collector.set_gauge("system.experiences.total", count as f64).await;
+    }
+    
+    /// Increment experience count
+    pub async fn increment_experience_count(&self) {
+        let mut exp_count = self.experience_count.write().await;
+        *exp_count += 1;
+        self.collector.set_gauge("system.experiences.total", *exp_count as f64).await;
+        self.collector.increment("experiences.recorded").await;
+    }
+    
+    /// Get experience count
+    pub async fn get_experience_count(&self) -> u64 {
+        *self.experience_count.read().await
+    }
+    
+    /// Record knowledge count
+    pub async fn set_knowledge_count(&self, count: u64) {
+        let mut know_count = self.knowledge_count.write().await;
+        *know_count = count;
+        self.collector.set_gauge("system.knowledge.total", count as f64).await;
+    }
+    
+    /// Increment knowledge count
+    pub async fn increment_knowledge_count(&self) {
+        let mut know_count = self.knowledge_count.write().await;
+        *know_count += 1;
+        self.collector.set_gauge("system.knowledge.total", *know_count as f64).await;
+        self.collector.increment("knowledge.created").await;
+    }
+    
+    /// Get knowledge count
+    pub async fn get_knowledge_count(&self) -> u64 {
+        *self.knowledge_count.read().await
+    }
+    
+    /// Update learning rate (insights generated per experience)
+    pub async fn update_learning_rate(&self, insights: u64, experiences: u64) {
+        let rate = if experiences > 0 {
+            insights as f64 / experiences as f64
+        } else {
+            0.0
+        };
+        
+        let mut lr = self.learning_rate.write().await;
+        *lr = rate;
+        
+        self.collector.record("learning.rate", rate).await;
+        self.collector.set_gauge("learning.rate.current", rate).await;
+    }
+    
+    /// Get current learning rate
+    pub async fn get_learning_rate(&self) -> f64 {
+        *self.learning_rate.read().await
+    }
+    
+    /// Update reputation score for a source
+    pub async fn update_reputation_score(&self, source: &str, score: f64) {
+        let mut scores = self.reputation_scores.write().await;
+        scores.insert(source.to_string(), score);
+        
+        let key = format!("reputation.{}", source);
+        self.collector.set_gauge(&key, score).await;
+    }
+    
+    /// Get all reputation scores
+    pub async fn get_reputation_scores(&self) -> HashMap<String, f64> {
+        self.reputation_scores.read().await.clone()
+    }
+    
+    /// Get reputation score for a specific source
+    pub async fn get_reputation_score(&self, source: &str) -> Option<f64> {
+        self.reputation_scores.read().await.get(source).copied()
+    }
+    
+    /// Record metric for a specific subsystem
+    pub async fn record(&self, name: &str, value: f64) {
+        self.collector.record(name, value).await;
+    }
+    
+    /// Increment counter
+    pub async fn increment(&self, name: &str) {
+        self.collector.increment(name).await;
+    }
+    
+    /// Get internal collector for direct access
+    pub fn collector(&self) -> Arc<MetricsCollector> {
+        Arc::clone(&self.collector)
+    }
+    
+    /// Get aggregated metric
+    pub async fn get_aggregated(&self, name: &str) -> Option<AggregatedMetric> {
+        self.collector.aggregate(name).await
+    }
+    
+    /// Calculate and return learning statistics
+    pub async fn get_learning_stats(&self) -> LearningMetrics {
+        let counters = self.collector.get_all_counters().await;
+        
+        let reflections = *counters.get("reflections.created").unwrap_or(&0);
+        let insights = *counters.get("insights.generated").unwrap_or(&0);
+        let hypotheses = *counters.get("hypotheses.generated").unwrap_or(&0);
+        let validated = *counters.get("hypotheses.confirmed").unwrap_or(&0);
+        let rejected = *counters.get("hypotheses.rejected").unwrap_or(&0);
+        
+        let validation_rate = if hypotheses > 0 {
+            validated as f64 / hypotheses as f64
+        } else {
+            0.0
+        };
+        
+        LearningMetrics {
+            reflections_generated: reflections,
+            insights_extracted: insights,
+            hypotheses_formed: hypotheses,
+            hypotheses_confirmed: validated,
+            hypotheses_rejected: rejected,
+            validation_rate,
+            learning_rate: *self.learning_rate.read().await,
+        }
+    }
+}
+
+impl Default for Metrics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// System-wide metrics snapshot
+#[derive(Debug, Clone)]
+pub struct SystemMetrics {
+    pub timestamp: DateTime<Utc>,
+    pub experience_count: u64,
+    pub knowledge_count: u64,
+    pub learning_rate: f64,
+    pub reputation_scores: HashMap<String, f64>,
+    pub counters: HashMap<String, u64>,
+    pub gauges: HashMap<String, f64>,
+    pub aggregated: HashMap<String, AggregatedMetric>,
+}
+
+/// Learning-specific metrics
+#[derive(Debug, Clone)]
+pub struct LearningMetrics {
+    pub reflections_generated: u64,
+    pub insights_extracted: u64,
+    pub hypotheses_formed: u64,
+    pub hypotheses_confirmed: u64,
+    pub hypotheses_rejected: u64,
+    pub validation_rate: f64,
+    pub learning_rate: f64,
 }
 
 /// Metrics collector for tracking system performance
