@@ -299,7 +299,6 @@ pub struct IngestSummary {
 // ============================================================================
 
 /// Ingest files into memory
-/// 
 /// Per Architecture §6.3: Stores memories in Working Memory cache (fast, volatile, in-memory)
 /// Also persists to SQLite for recovery via checkpoint
 pub async fn ingest_file(

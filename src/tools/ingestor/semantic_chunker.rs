@@ -166,7 +166,7 @@ fn parse_markdown(content: &str, file_name: &str) -> HierarchyNode {
                 current_paragraph.clear();
             }
 
-            let header_level = trimmed.find('#').map(|i| i).unwrap_or(0);
+            let header_level = trimmed.find('#').unwrap_or(0);
             let header_text = trimmed.trim_start_matches('#').trim().to_string();
             // Treat level 1 and 2 headers as sections for test compatibility
             let level = if header_level <= 2 { HierarchyLevel::Section } else { HierarchyLevel::Subsection };

@@ -205,7 +205,7 @@ impl PerformanceLayer {
     
     /// Record a request
     pub fn record_request(&mut self, endpoint: &str) {
-        let stats = self.request_stats.entry(endpoint.to_string()).or_insert_with(RequestStats::default);
+        let stats = self.request_stats.entry(endpoint.to_string()).or_default();
         stats.total_requests += 1;
         stats.last_request = Instant::now();
     }

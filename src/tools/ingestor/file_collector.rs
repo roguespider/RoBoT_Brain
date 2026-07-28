@@ -19,13 +19,13 @@ pub fn normalize_path(path: PathBuf) -> PathBuf {
     // Strip Windows extended-length path prefix if present
     // canonicalize() on Windows returns \\?\E:\... style paths which can
     // cause issues when used with std::fs operations in certain contexts
-    if path_str.starts_with("\\\\?\\") {
+    if let Some(stripped) = path_str.strip_prefix("\\\\?\\") {
         // For UNC paths (\\?\UNC\server\share), keep the UNC part
-        if path_str.starts_with("\\\\?\\UNC\\") {
-            PathBuf::from(&path_str[4..]) // Keep \\ but remove ?\
+        if stripped.starts_with("UNC\\") {
+            PathBuf::from("\\".to_string() + stripped)
         } else {
             // For local paths (\\?\E:\...), just remove the prefix
-            PathBuf::from(&path_str[4..])
+            PathBuf::from(stripped)
         }
     } else {
         path

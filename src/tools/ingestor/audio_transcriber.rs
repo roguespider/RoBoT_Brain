@@ -128,13 +128,11 @@ impl AudioAnalysis {
 }
 
 /// Transcribe an audio file to text
-/// 
 /// This function performs audio transcription. With Candle dependencies enabled:
 /// - Downloads and loads Whisper model from HuggingFace
 /// - Converts audio to mel spectrogram
 /// - Runs transformer inference
 /// - Returns transcribed text
-/// 
 /// Without Candle, returns detailed audio analysis metrics.
 pub fn transcribe_audio(path: &Path) -> Result<TranscriptionResult> {
     let samples = load_audio_file(path)?;

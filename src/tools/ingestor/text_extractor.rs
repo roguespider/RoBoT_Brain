@@ -249,7 +249,7 @@ fn extract_chroma_text(content: &str) -> Result<String> {
     result.push_str("# Chroma Database Export\n\n");
     
     for (i, doc) in documents.iter().enumerate() {
-        result.push_str(&"---\n".to_string());
+        result.push_str("---\n");
         
         // Add ID if available
         if let Some(id) = ids.get(i) {
@@ -398,7 +398,7 @@ pub fn strip_xml_tags(xml: &str) -> String {
     let mut result = String::new();
     let mut in_content = true;
     
-    let mut chars = xml.chars().peekable();
+    let chars = xml.chars().peekable();
     for c in chars {
         if c == '<' {
             in_content = false;

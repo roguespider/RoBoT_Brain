@@ -189,9 +189,7 @@ impl Pattern {
 
 /// Compares patterns by confidence for sorting
 impl PartialOrd for Pattern {
-    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
-        self.confidence.partial_cmp(&other.confidence)
-    }
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> { Some(self.cmp(other)) }
 }
 
 impl Ord for Pattern {

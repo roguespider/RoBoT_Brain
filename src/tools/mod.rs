@@ -200,7 +200,6 @@ pub fn register_tools(context: &Arc<McpContext>) {
 }
 
 /// Get all registered tools (sync version for use outside async context)
-/// 
 /// This is the preferred method when you're in a synchronous context
 /// (e.g., CLI commands, non-async handlers). For async contexts,
 /// prefer `get_tools_async()` which properly yields without blocking.

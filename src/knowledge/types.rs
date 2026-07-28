@@ -430,17 +430,17 @@ impl KnowledgeVersion {
             let op_full = format!("={}", op);
             return self.satisfies_single_constraint(&op_full, ver);
         }
-        if constraint.starts_with(">=") {
-            return self.satisfies_single_constraint(">=", &constraint[2..]);
+        if let Some(stripped) = constraint.strip_prefix(">=") {
+            return self.satisfies_single_constraint(">=", stripped);
         }
-        if constraint.starts_with("<=") {
-            return self.satisfies_single_constraint("<=", &constraint[2..]);
+        if let Some(stripped) = constraint.strip_prefix("<=") {
+            return self.satisfies_single_constraint("<=", stripped);
         }
-        if constraint.starts_with('>') {
-            return self.satisfies_single_constraint(">", &constraint[1..]);
+        if let Some(stripped) = constraint.strip_prefix('>') {
+            return self.satisfies_single_constraint(">", stripped);
         }
-        if constraint.starts_with('<') {
-            return self.satisfies_single_constraint("<", &constraint[1..]);
+        if let Some(stripped) = constraint.strip_prefix('<') {
+            return self.satisfies_single_constraint("<", stripped);
         }
         // Exact match
         self.version == constraint

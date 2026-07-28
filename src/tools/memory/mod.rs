@@ -217,7 +217,6 @@ fn parse_memory_type(s: &str) -> MemoryType {
 }
 
 /// Execute store memory tool
-/// 
 /// Per Architecture §07: Every experience originates from observations
 /// Per Architecture §1: Memory is a component. Experience is the source of learning.
 /// Per Architecture §4: "Actions, observations, decisions, successes, failures, 
@@ -336,7 +335,6 @@ fn convert_memory_type_to_memory(dt: MemoryType) -> crate::memory::types::Memory
 }
 
 /// Execute search memory tool
-/// 
 /// Per Architecture §07: Memory access generates observations for the learning pipeline.
 /// Per Architecture §4: Memory retrieval is part of the event system.
 /// Per Architecture §6.3: Uses MemoryRetrieval service (queries both Working and Permanent memory)
@@ -415,7 +413,6 @@ pub async fn execute_search_memory(
 }
 
 /// Execute get memory tool
-/// 
 /// Per Architecture §07: Memory access generates observations for the learning pipeline.
 /// Per Architecture §6.3: Uses MemoryRetrieval service
 pub async fn execute_get_memory(
@@ -664,8 +661,8 @@ pub async fn execute_list_image_memories(
 /// Extract a field value from content
 fn extract_field_from_content(content: &str, field_name: &str) -> String {
     for line in content.lines() {
-        if line.starts_with(field_name) {
-            return line[field_name.len()..].trim().to_string();
+        if let Some(stripped) = line.strip_prefix(field_name) {
+            return stripped.trim().to_string();
         }
     }
     "unknown".to_string()

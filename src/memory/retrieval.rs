@@ -62,7 +62,7 @@ impl MemoryRetrieval {
     }
 
     /// Retrieve from working memory only
-    pub async fn from_working(&self, query: &str) -> Vec<RetrievalResult> {
+    pub async fn get_from_working(&self, query: &str) -> Vec<RetrievalResult> {
         let items = self.working.search(query).await;
         items
             .into_iter()
@@ -75,7 +75,7 @@ impl MemoryRetrieval {
     }
 
     /// Retrieve from permanent memory only
-    pub async fn from_permanent(&self, query: &str) -> Vec<RetrievalResult> {
+    pub async fn get_from_permanent(&self, query: &str) -> Vec<RetrievalResult> {
         let items = self.permanent.search(query).await;
         items
             .into_iter()
@@ -92,11 +92,11 @@ impl MemoryRetrieval {
         let mut results = Vec::new();
 
         // Search working memory
-        let working_results = self.from_working(query).await;
+        let working_results = self.get_from_working(query).await;
         results.extend(working_results);
 
         // Search permanent memory
-        let permanent_results = self.from_permanent(query).await;
+        let permanent_results = self.get_from_permanent(query).await;
         results.extend(permanent_results);
 
         // Sort by relevance
@@ -137,7 +137,7 @@ impl MemoryRetrieval {
     /// Get context from memory (recent working items)
     pub async fn get_context(&self, limit: usize) -> Vec<MemoryItem> {
         let mut items = self.working.get_all().await;
-        items.sort_by(|a, b| b.accessed_at.cmp(&a.accessed_at));
+        items.sort_by_key(|b| std::cmp::Reverse(b.accessed_at));
         items.truncate(limit);
         items
     }
