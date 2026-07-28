@@ -92,6 +92,7 @@ pub mod memory;
 pub mod planner;
 pub mod reflection;
 pub mod search;
+pub mod skills;
 pub mod workflow;
 
 /// Global tool registry (lazily initialized, using Mutex since only written once at startup)
@@ -169,6 +170,13 @@ pub fn register_tools(context: &Arc<McpContext>) {
     let tools = workflow::definitions::all();
     tracing::info!("Registered {} workflow tools", tools.len());
 
+    // Register skills tools (Architecture §15)
+    let tools = skills::definitions::all();
+    tracing::info!("Registered {} skills tools", tools.len());
+    
+    // Wire up skills for use by tools
+    let _ = &context.skills;
+
     // Collect all tools
     let all_tools = memory::definitions::all()
         .into_iter()
@@ -182,6 +190,7 @@ pub fn register_tools(context: &Arc<McpContext>) {
         .chain(knowledge::definitions::all())
         .chain(planner::definitions::all())
         .chain(workflow::definitions::all())
+        .chain(skills::definitions::all())
         .collect();
 
     // Update registry using mutex lock

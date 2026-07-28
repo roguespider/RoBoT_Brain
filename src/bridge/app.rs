@@ -36,6 +36,7 @@ use crate::knowledge::KnowledgeStore;
 use crate::learning::{LineageTracker, WorkingMemory};
 use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory as MemWorkingMemory};
 use crate::planner::{Planner, PolicyEngine};
+use crate::skills::registry::SkillRegistry;
 use crate::tools;
 use crate::workflows::engine::WorkflowEngine;
 
@@ -149,6 +150,11 @@ impl App {
         let _working_memory = Arc::new(WorkingMemory::new(1000));
         let _lineage_tracker = Arc::new(LineageTracker::new());
         let knowledge_store = Arc::new(KnowledgeStore::new(10000));
+        
+        // Create skills registry - manages reusable capabilities (Architecture §15)
+        let skills_registry = Arc::new(SkillRegistry::new());
+        skills_registry.load_defaults().await;
+        tracing::info!("Skills registry initialized with default skills");
 
         // Create event subscriber for the learning pipeline
         // Per Architecture §4.04: Experience → Reflection → Hypothesis → Knowledge → Reputation
@@ -249,6 +255,7 @@ impl App {
             permanent_memory.clone(),
             memory_retrieval.clone(),
             workflow_engine.clone(),
+            skills_registry.clone(),
         ));
 
         // Register MCP tools

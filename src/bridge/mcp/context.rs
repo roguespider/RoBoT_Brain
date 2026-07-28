@@ -1,5 +1,4 @@
 // src/bridge/mcp/context.rs
-#![allow(dead_code)]
 
 // MCP context for sharing state across handlers
 
@@ -16,6 +15,7 @@ use crate::experience::scheduler::Scheduler;
 use crate::knowledge::KnowledgeStore;
 use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory};
 use crate::planner::{Planner, PolicyEngine};
+use crate::skills::registry::SkillRegistry;
 use crate::workflows::engine::WorkflowEngine;
 
 use super::types::{McpCapabilities, McpEmpty, McpResourcesCapability, McpServerInfo};
@@ -67,6 +67,9 @@ pub struct McpContext {
     /// Workflow engine - structured workflow execution
     pub workflow_engine: Arc<WorkflowEngine>,
 
+    /// Skill registry - manages reusable capabilities (per Architecture §15)
+    pub skills: Arc<SkillRegistry>,
+
     /// Server info
     pub server_info: McpServerInfo,
 
@@ -91,6 +94,7 @@ impl McpContext {
         permanent_memory: Arc<PermanentMemory>,
         memory_retrieval: Arc<MemoryRetrieval>,
         workflow_engine: Arc<WorkflowEngine>,
+        skills: Arc<SkillRegistry>,
     ) -> Self {
         Self {
             database,
@@ -108,6 +112,7 @@ impl McpContext {
             permanent_memory,
             memory_retrieval,
             workflow_engine,
+            skills,
             server_info: McpServerInfo {
                 name: env!("CARGO_PKG_NAME").to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),
