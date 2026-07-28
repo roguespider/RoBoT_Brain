@@ -244,7 +244,7 @@ impl WorkflowEngine {
 
     /// Check if action should skip memory read
     pub fn should_skip_memory_read(action: &str) -> bool {
-        SKIP_MEMORY_READ.iter().any(|&s| s == action)
+        SKIP_MEMORY_READ.contains(&action)
     }
 
     /// Automatically read relevant memories before executing an action

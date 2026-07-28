@@ -205,14 +205,14 @@ impl PerformanceLayer {
     
     /// Record a request
     pub fn record_request(&mut self, endpoint: &str) {
-        let stats = self.request_stats.entry(endpoint.to_string()).or_insert_with(|| RequestStats::default());
+        let stats = self.request_stats.entry(endpoint.to_string()).or_insert_with(RequestStats::default);
         stats.total_requests += 1;
         stats.last_request = Instant::now();
     }
     
     /// Record request duration
     pub fn record_duration(&mut self, operation: &str, duration: Duration) {
-        let timings = self.operation_timings.entry(operation.to_string()).or_insert_with(Vec::new);
+        let timings = self.operation_timings.entry(operation.to_string()).or_default();
         timings.push(duration);
         
         // Keep only last 1000 timings

@@ -250,7 +250,7 @@ impl SafetyLayer {
         let now = std::time::Instant::now();
         let one_minute_ago = now - std::time::Duration::from_secs(60);
         
-        let times = self.request_counts.entry(source.to_string()).or_insert_with(Vec::new);
+        let times = self.request_counts.entry(source.to_string()).or_default();
         times.retain(|&t| t > one_minute_ago);
         times.push(now);
     }

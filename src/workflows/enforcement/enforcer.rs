@@ -118,12 +118,12 @@ impl WorkflowEnforcer {
 
     /// Check if a tool is exempt from enforcement
     pub fn is_exempt(tool_name: &str) -> bool {
-        EXEMPT_TOOLS.iter().any(|&t| t == tool_name)
+        EXEMPT_TOOLS.contains(&tool_name)
     }
 
     /// Check if a tool counts as memory search
     pub fn is_memory_search(tool_name: &str) -> bool {
-        MEMORY_SEARCH_TOOLS.iter().any(|&t| t == tool_name)
+        MEMORY_SEARCH_TOOLS.contains(&tool_name)
     }
 
     /// Main enforcement check - returns error if tool should be blocked

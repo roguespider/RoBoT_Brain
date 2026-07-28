@@ -421,7 +421,7 @@ impl LearningCoordinator {
             _ => (0.0, "Unknown outcome".to_string()),
         };
 
-        let _ = reputation.apply(
+        reputation.apply(
             experience.id.to_string(),
             crate::experience::reputation::factors::ReputationFactor::Accuracy,
             impact,
@@ -589,7 +589,7 @@ impl LearningCoordinator {
                 tracing::debug!("Would fetch experience {}", id);
                 None
             })
-            .filter_map(|e| e)
+            .flatten()
             .collect();
         
         // Find common patterns

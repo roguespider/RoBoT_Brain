@@ -419,7 +419,7 @@ impl Scheduler {
             }
 
             // Periodically log stats (every 10 cycles = 5 minutes)
-            if cycle_count % 10 == 0 {
+            if cycle_count.is_multiple_of(10) {
                 if let Ok(stats) = self.get_stats().await {
                     tracing::debug!(
                         "Scheduler stats: {} total tasks, {} failures",
@@ -430,7 +430,7 @@ impl Scheduler {
             }
 
             // Periodically cleanup disabled tasks older than 7 days (every 20 cycles = 10 minutes)
-            if cycle_count % 20 == 0 {
+            if cycle_count.is_multiple_of(20) {
                 self.cleanup_old_disabled_tasks().await;
             }
         }

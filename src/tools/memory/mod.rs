@@ -687,7 +687,7 @@ fn content_looks_like_garbage(content: &str) -> bool {
     }
     
     // Check ratio of printable characters
-    let printable = bytes.iter().filter(|&&b| (b >= 32 && b < 127) || b >= 128).count();
+    let printable = bytes.iter().filter(|&&b| (32..127).contains(&b) || b >= 128).count();
     let ratio = printable as f64 / bytes.len() as f64;
     if ratio < 0.3 {
         return true;

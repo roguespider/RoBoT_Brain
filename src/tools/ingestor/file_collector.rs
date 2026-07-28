@@ -9,6 +9,29 @@ use anyhow::Result;
 /// Default folder name for files to import
 pub const DEFAULT_IMPORT_FOLDER: &str = "files_to_import";
 
+/// Normalize a path by stripping Windows extended-length path prefix (\\?\)
+/// This ensures consistent path handling across platforms and prevents issues
+/// where canonicalize() returns paths with \\?\ prefix that can cause
+/// "File not found" errors when later accessed.
+pub fn normalize_path(path: PathBuf) -> PathBuf {
+    let path_str = path.to_string_lossy();
+    
+    // Strip Windows extended-length path prefix if present
+    // canonicalize() on Windows returns \\?\E:\... style paths which can
+    // cause issues when used with std::fs operations in certain contexts
+    if path_str.starts_with("\\\\?\\") {
+        // For UNC paths (\\?\UNC\server\share), keep the UNC part
+        if path_str.starts_with("\\\\?\\UNC\\") {
+            PathBuf::from(&path_str[4..]) // Keep \\ but remove ?\
+        } else {
+            // For local paths (\\?\E:\...), just remove the prefix
+            PathBuf::from(&path_str[4..])
+        }
+    } else {
+        path
+    }
+}
+
 /// Maximum file size for text files (50MB) - larger files may cause timeouts
 pub const MAX_TEXT_FILE_SIZE: u64 = 50 * 1024 * 1024;
 
@@ -183,8 +206,8 @@ fn collect_importable_files_internal(folder: &Path, recursive: bool) -> Result<V
         let size = fs::metadata(folder)?.len();
         let skip_reason = check_file_size_limits(folder, &file_type, size);
         
-        // Always use canonical/absolute path
-        let absolute_path = folder.canonicalize().unwrap_or_else(|_| folder.to_path_buf());
+        // Always use canonical/absolute path, then normalize for cross-platform compatibility
+        let absolute_path = normalize_path(folder.canonicalize().unwrap_or_else(|_| folder.to_path_buf()));
         
         return Ok(vec![ImportableFile {
             path: absolute_path.to_string_lossy().to_string(),
@@ -244,9 +267,9 @@ fn collect_files_recursive(dir: &Path, recursive: bool, files: &mut Vec<Importab
             check_file_size_limits(&path, &file_type, size)
         };
         
-        // Always use canonical/absolute path to avoid confusion
-        let absolute_path = path.canonicalize()
-            .unwrap_or_else(|_| path.clone());
+        // Always use canonical/absolute path, then normalize for cross-platform compatibility
+        let absolute_path = normalize_path(path.canonicalize()
+            .unwrap_or_else(|_| path.clone()));
         
         files.push(ImportableFile {
             path: absolute_path.to_string_lossy().to_string(),

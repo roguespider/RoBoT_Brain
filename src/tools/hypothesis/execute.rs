@@ -465,7 +465,7 @@ pub async fn execute_extract_knowledge(
     if hypothesis.status != HypothesisStatus::Supported {
         return Ok(ToolOutput::error(format!(
             "Can only extract knowledge from supported hypotheses. Current status: {}",
-            hypothesis.status.to_string()
+            hypothesis.status
         )));
     }
     

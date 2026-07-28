@@ -57,12 +57,12 @@ impl ExtractedJsonData {
         if !self.sibling_context.is_empty() {
             content.push_str("\n\n[Context: ");
             content.push_str(&self.sibling_context);
-            content.push_str("]");
+            content.push(']');
         }
         
         content.push_str("\n\n[Source: ");
         content.push_str(&self.json_path);
-        content.push_str("]");
+        content.push(']');
         
         content
     }
@@ -522,13 +522,13 @@ fn extract_embeddings_export(
             let (docs_array, ids_array, metadatas_array) = if let Value::Array(arr) = docs {
                 // Documents might be nested in arrays (Chroma format: [[doc1, doc2]])
                 if let Some(Value::Array(inner)) = arr.first() {
-                    let ids = obj.get("ids").and_then(|v| v.as_array()).map(|a| a.clone());
-                    let metadatas = obj.get("metadatas").and_then(|v| v.as_array()).map(|a| a.clone());
+                    let ids = obj.get("ids").and_then(|v| v.as_array()).cloned();
+                    let metadatas = obj.get("metadatas").and_then(|v| v.as_array()).cloned();
                     (inner.clone(), ids, metadatas)
                 } else {
                     // Direct array of documents
-                    let ids = obj.get("ids").and_then(|v| v.as_array()).map(|a| a.clone());
-                    let metadatas = obj.get("metadatas").and_then(|v| v.as_array()).map(|a| a.clone());
+                    let ids = obj.get("ids").and_then(|v| v.as_array()).cloned();
+                    let metadatas = obj.get("metadatas").and_then(|v| v.as_array()).cloned();
                     (arr.clone(), ids, metadatas)
                 }
             } else {

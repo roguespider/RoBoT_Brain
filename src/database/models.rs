@@ -12,8 +12,10 @@ use uuid::Uuid;
 
 /// Status of a hypothesis
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Default)]
 pub enum HypothesisStatus {
     /// Hypothesis is being tested
+    #[default]
     Testing,
     /// Evidence supports the hypothesis
     Supported,
@@ -25,11 +27,6 @@ pub enum HypothesisStatus {
     Superseded,
 }
 
-impl Default for HypothesisStatus {
-    fn default() -> Self {
-        HypothesisStatus::Testing
-    }
-}
 
 impl std::fmt::Display for HypothesisStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -239,18 +236,15 @@ impl std::fmt::Display for MemoryType {
 /// - Working: Short-term, volatile, context-focused
 /// - Permanent: Long-term, curated, indexed
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub enum MemoryLayer {
     /// Short-term memory - temporary, high volatility
+    #[default]
     Working,
     /// Long-term memory - curated, persistent, indexed
     Permanent,
 }
 
-impl Default for MemoryLayer {
-    fn default() -> Self {
-        MemoryLayer::Working
-    }
-}
 
 impl std::fmt::Display for MemoryLayer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -268,8 +262,10 @@ impl std::fmt::Display for MemoryLayer {
 
 /// Level in the document hierarchy
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Default)]
 pub enum HierarchyLevel {
     /// Root level - whole document/file
+    #[default]
     Document,
     /// Major section (h1, ## header, chapter)
     Section,
@@ -281,11 +277,6 @@ pub enum HierarchyLevel {
     Sentence,
 }
 
-impl Default for HierarchyLevel {
-    fn default() -> Self {
-        HierarchyLevel::Document
-    }
-}
 
 impl std::fmt::Display for HierarchyLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -443,8 +434,10 @@ impl MemoryCard {
 
 /// Relationship type between memories
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub enum MemoryRelationshipType {
     /// General related relationship
+    #[default]
     Related,
     /// Causal relationship (A causes B)
     Causes,
@@ -458,11 +451,6 @@ pub enum MemoryRelationshipType {
     DerivedFrom,
 }
 
-impl Default for MemoryRelationshipType {
-    fn default() -> Self {
-        MemoryRelationshipType::Related
-    }
-}
 
 impl std::fmt::Display for MemoryRelationshipType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {

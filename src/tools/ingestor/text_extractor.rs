@@ -249,7 +249,7 @@ fn extract_chroma_text(content: &str) -> Result<String> {
     result.push_str("# Chroma Database Export\n\n");
     
     for (i, doc) in documents.iter().enumerate() {
-        result.push_str(&format!("---\n"));
+        result.push_str(&"---\n".to_string());
         
         // Add ID if available
         if let Some(id) = ids.get(i) {
@@ -399,7 +399,7 @@ pub fn strip_xml_tags(xml: &str) -> String {
     let mut in_content = true;
     
     let mut chars = xml.chars().peekable();
-    while let Some(c) = chars.next() {
+    for c in chars {
         if c == '<' {
             in_content = false;
         } else if c == '>' {
@@ -470,7 +470,7 @@ pub fn validate_text_quality(content: &str) -> (bool, String) {
         } else if byte < 32 && byte != 9 && byte != 10 && byte != 13 {
             // Allow tab, newline, carriage return
             control_count += 1;
-        } else if byte >= 32 && byte < 127 || byte >= 128 {
+        } else if (32..127).contains(&byte) || byte >= 128 {
             printable_count += 1;
         }
     }

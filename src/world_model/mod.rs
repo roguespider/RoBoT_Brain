@@ -148,7 +148,7 @@ impl WorldModel {
         // Update type index
         self.by_type
             .entry(entity.entity_type.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(id);
         
         self.entities.insert(id, entity);
@@ -209,7 +209,7 @@ impl WorldModel {
         // Update type index
         self.by_relation_type
             .entry(relationship.relation_type.clone())
-            .or_insert_with(Vec::new)
+            .or_default()
             .push(id);
         
         // Update entity relationship lists

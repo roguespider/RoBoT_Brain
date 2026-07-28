@@ -7,7 +7,7 @@ use std::path::{Path, PathBuf};
 use anyhow::Result;
 
 use crate::tools::ToolOutput;
-use crate::tools::ingestor::file_collector::{collect_importable_files, collect_importable_files_with_recursive, get_import_folder};
+use crate::tools::ingestor::file_collector::{collect_importable_files, collect_importable_files_with_recursive, get_import_folder, normalize_path};
 
 use super::ListImportableInput;
 use super::ListIngestedFilesInput;
@@ -94,15 +94,15 @@ pub async fn execute_list_importable(
         Some(input.limit.unwrap_or(3))
     };
     
-    // Get exe directory for reference (canonicalize for absolute path)
+    // Get exe directory for reference (canonicalize for absolute path, then normalize)
     let exe_dir = std::env::current_exe()
         .ok()
         .and_then(|p| p.parent().map(|p| p.to_path_buf()))
-        .map(|p| p.canonicalize().unwrap_or(p))
+        .map(|p| normalize_path(p.canonicalize().unwrap_or(p)))
         .unwrap_or_else(|| std::path::PathBuf::from("."));
     
-    // Canonicalize the import folder to absolute path
-    let folder = folder.canonicalize().unwrap_or(folder);
+    // Canonicalize and normalize the import folder to absolute path
+    let folder = normalize_path(folder.canonicalize().unwrap_or(folder));
     
     let folder_display = folder.to_string_lossy().to_string();
     let exe_dir_display = exe_dir.to_string_lossy().to_string();

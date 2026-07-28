@@ -804,7 +804,7 @@ impl SkillExecutor {
         
         // Update local metrics
         let mut metrics = self.metrics.lock().unwrap();
-        let metrics_entry = metrics.entry(skill_id.to_string()).or_insert_with(|| ExecutionMetrics::new());
+        let metrics_entry = metrics.entry(skill_id.to_string()).or_insert_with(ExecutionMetrics::new);
         if result.success {
             metrics_entry.record_success(duration_ms);
         } else {

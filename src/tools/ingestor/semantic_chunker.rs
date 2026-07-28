@@ -167,7 +167,7 @@ fn parse_markdown(content: &str, file_name: &str) -> HierarchyNode {
             }
 
             let header_level = trimmed.find('#').map(|i| i).unwrap_or(0);
-            let header_text = trimmed.trim_start_matches(|c| c == '#').trim().to_string();
+            let header_text = trimmed.trim_start_matches('#').trim().to_string();
             // Treat level 1 and 2 headers as sections for test compatibility
             let level = if header_level <= 2 { HierarchyLevel::Section } else { HierarchyLevel::Subsection };
             let path = format!("{}/section[{}]", file_name, section_index);
@@ -431,9 +431,9 @@ fn parse_json_value(value: &serde_json::Value, parent_path: &str, order_index: u
                 parse_json_value(item, parent_path, idx, parent);
             }
         }
-        serde_json::Value::String(s) => {
+        serde_json::Value::String(s)
             // Top-level string - add as paragraph
-            if !s.is_empty() {
+            if !s.is_empty() => {
                 let node = HierarchyNode::new(
                     s.clone(),
                     HierarchyLevel::Paragraph,
@@ -442,7 +442,6 @@ fn parse_json_value(value: &serde_json::Value, parent_path: &str, order_index: u
                 );
                 parent.children.push(node);
             }
-        }
         _ => {}
     }
 }

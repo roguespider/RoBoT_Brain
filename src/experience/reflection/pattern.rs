@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Represents a detected pattern from analyzing experiences
-#[derive(Debug, Clone, Serialize, Deserialize, PartialOrd, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct Pattern {
     /// Unique identifier
     pub id: String,
@@ -188,6 +188,12 @@ impl Pattern {
 }
 
 /// Compares patterns by confidence for sorting
+impl PartialOrd for Pattern {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.confidence.partial_cmp(&other.confidence)
+    }
+}
+
 impl Ord for Pattern {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         self.confidence
