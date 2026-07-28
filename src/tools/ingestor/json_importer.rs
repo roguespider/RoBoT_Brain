@@ -1,5 +1,6 @@
 // src/tools/ingestor/json_importer.rs
 #![allow(dead_code)]
+
 // Smart JSON importer that extracts structured data into memories
 
 use std::path::Path;

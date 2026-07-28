@@ -1,4 +1,5 @@
 // robot/src/experience/hypothesis/support/simulation.rs
+#![allow(dead_code)]
 
 //! ============================================================================
 //! HYPOTHESIS SIMULATION
@@ -8,7 +9,7 @@
 //!
 //! This module simulates the implications of trusting or acting on hypotheses.
 
-#![allow(dead_code)]
+
 
 use serde::{Deserialize, Serialize};
 

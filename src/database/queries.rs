@@ -1,6 +1,7 @@
 // src/database/queries.rs
-
 #![allow(dead_code)]
+
+
 
 use anyhow::Result;
 use chrono::{DateTime, Utc};
@@ -547,5 +548,306 @@ pub fn link_observation_to_experience(conn: &Connection, observation_id: Uuid, e
         insert_observation(conn, &obs)?;
     }
     Ok(())
+}
+
+// ==========================================================
+// EXPERIENCE OPERATIONS (for scheduler use)
+// ==========================================================
+
+use crate::experience::types::{Experience, ExperienceContext, ExperienceOutcome, ExperienceScore, ExperienceType};
+use crate::experience::types::maturity::KnowledgeMaturity;
+
+/// List recent experiences from the database
+pub fn list_experiences(conn: &Connection, limit: usize) -> Result<Vec<Experience>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, title, description, experience_type, context, outcome, score, timestamp, observation_ids, encounter_ids, maturity, confidence, lessons, evidence_count, tags, committed, archived, archived_at, metadata
+         FROM experiences
+         ORDER BY timestamp DESC
+         LIMIT ?1"
+    )?;
+    
+    let experiences = stmt.query_map(params![limit], |row| {
+        let id_str: String = row.get(0)?;
+        let title: String = row.get(1)?;
+        let description: String = row.get(2)?;
+        let experience_type_json: String = row.get(3)?;
+        let context_json: String = row.get(4)?;
+        let outcome_json: String = row.get(5)?;
+        let score_json: String = row.get(6)?;
+        let timestamp_str: String = row.get(7)?;
+        let observation_ids_json: String = row.get(8)?;
+        let encounter_ids_json: String = row.get(9)?;
+        let maturity_json: String = row.get(10)?;
+        let confidence: f32 = row.get(11)?;
+        let lessons_json: String = row.get(12)?;
+        let evidence_count: usize = row.get(13)?;
+        let tags_json: String = row.get(14)?;
+        let committed: bool = row.get(15)?;
+        let archived: bool = row.get(16)?;
+        let archived_at_str: Option<String> = row.get(17)?;
+        let metadata_json: String = row.get(18)?;
+        
+        let context: ExperienceContext = serde_json::from_str(&context_json)
+            .unwrap_or_default();
+        let outcome: ExperienceOutcome = serde_json::from_str(&outcome_json)
+            .unwrap_or_else(|_| ExperienceOutcome::failure("Failed to parse outcome"));
+        let score: Option<ExperienceScore> = serde_json::from_str(&score_json).ok();
+        let timestamp = DateTime::parse_from_rfc3339(&timestamp_str)
+            .map(|dt| dt.with_timezone(&Utc))
+            .unwrap_or_else(|_| Utc::now());
+        let observation_ids: Vec<Uuid> = serde_json::from_str(&observation_ids_json).unwrap_or_default();
+        let encounter_ids: Vec<Uuid> = serde_json::from_str(&encounter_ids_json).unwrap_or_default();
+        let maturity: KnowledgeMaturity = serde_json::from_str(&maturity_json)
+            .unwrap_or(KnowledgeMaturity::Emerging);
+        let lessons: Vec<String> = serde_json::from_str(&lessons_json).unwrap_or_default();
+        let tags: Vec<String> = serde_json::from_str(&tags_json).unwrap_or_default();
+        let metadata: std::collections::HashMap<String, String> = serde_json::from_str(&metadata_json).unwrap_or_default();
+        let archived_at = archived_at_str.and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc)));
+        
+        Ok(Experience {
+            id: Uuid::parse_str(&id_str).unwrap_or_else(|_| Uuid::new_v4()),
+            timestamp,
+            observation_ids,
+            experience_type: serde_json::from_str(&experience_type_json)
+                .unwrap_or(ExperienceType::ToolExecution),
+            title,
+            description,
+            context,
+            outcome,
+            score,
+            encounter_ids,
+            maturity,
+            confidence,
+            lessons,
+            evidence_count,
+            tags,
+            committed,
+            archived,
+            archived_at,
+            metadata,
+        })
+    })?.filter_map(|r| r.ok()).collect();
+    
+    Ok(experiences)
+}
+
+// ==========================================================
+// REPUTATION OPERATIONS (for scheduler use)
+// ==========================================================
+
+use crate::experience::reputation::reputation::Reputation;
+
+/// List all reputations from the database
+pub fn list_reputations(conn: &Connection) -> Result<Vec<Reputation>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, score, observations, successes, failures, updated_at
+         FROM reputations"
+    )?;
+    
+    let reputations = stmt.query_map(params![], |row| {
+        let id: String = row.get(0)?;
+        let score: f64 = row.get(1)?;
+        let observations: u64 = row.get(2)?;
+        let successes: u64 = row.get(3)?;
+        let failures: u64 = row.get(4)?;
+        let updated_at_str: String = row.get(5)?;
+        let updated_at = DateTime::parse_from_rfc3339(&updated_at_str)
+            .map(|dt| dt.with_timezone(&Utc))
+            .unwrap_or_else(|_| Utc::now());
+        
+        Ok(Reputation {
+            id,
+            score,
+            factors: Vec::new(), // Factors not stored in this table structure
+            observations,
+            successes,
+            failures,
+            updated_at,
+            history: Vec::new(),
+        })
+    })?.filter_map(|r| r.ok()).collect();
+    
+    Ok(reputations)
+}
+
+/// Insert or update a reputation
+pub fn insert_reputation(conn: &Connection, reputation: &Reputation) -> Result<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO reputations
+         (id, score, observations, successes, failures, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+        params![
+            reputation.id,
+            reputation.score,
+            reputation.observations,
+            reputation.successes,
+            reputation.failures,
+            reputation.updated_at.to_rfc3339(),
+        ],
+    )?;
+    Ok(())
+}
+
+// ==========================================================
+// MEMORY RELATIONSHIP OPERATIONS
+// ==========================================================
+
+use crate::database::models::{MemoryRelationship, MemoryRelationshipType};
+
+/// Insert a new memory relationship
+pub fn insert_memory_relationship(conn: &Connection, relationship: &MemoryRelationship) -> Result<()> {
+    conn.execute(
+        "INSERT OR REPLACE INTO memory_relationships
+         (id, memory_id, related_id, relationship_type)
+         VALUES (?1, ?2, ?3, ?4)",
+        params![
+            relationship.id.to_string(),
+            relationship.memory_id.to_string(),
+            relationship.related_id.to_string(),
+            relationship.relationship_type.to_string(),
+        ],
+    )?;
+    Ok(())
+}
+
+/// Get all relationships for a memory
+pub fn get_memory_relationships(conn: &Connection, memory_id: &Uuid) -> Result<Vec<MemoryRelationship>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, memory_id, related_id, relationship_type
+         FROM memory_relationships
+         WHERE memory_id = ?1"
+    )?;
+
+    let relationships = stmt.query_map(params![memory_id.to_string()], |row| {
+        let id_str: String = row.get(0)?;
+        let memory_id_str: String = row.get(1)?;
+        let related_id_str: String = row.get(2)?;
+        let rel_type_str: String = row.get(3)?;
+
+        let relationship_type = match rel_type_str.as_str() {
+            "causes" => MemoryRelationshipType::Causes,
+            "enables" => MemoryRelationshipType::Enables,
+            "contradicts" => MemoryRelationshipType::Contradicts,
+            "similar" => MemoryRelationshipType::Similar,
+            "derived_from" => MemoryRelationshipType::DerivedFrom,
+            _ => MemoryRelationshipType::Related,
+        };
+
+        Ok(MemoryRelationship {
+            id: Uuid::parse_str(&id_str).unwrap_or_else(|_| Uuid::new_v4()),
+            memory_id: Uuid::parse_str(&memory_id_str).unwrap_or_else(|_| Uuid::new_v4()),
+            related_id: Uuid::parse_str(&related_id_str).unwrap_or_else(|_| Uuid::new_v4()),
+            relationship_type,
+        })
+    })?.filter_map(|r| r.ok()).collect();
+
+    Ok(relationships)
+}
+
+/// Get relationships for a memory by type
+pub fn get_memory_relationships_by_type(
+    conn: &Connection, 
+    memory_id: &Uuid, 
+    relationship_type: &MemoryRelationshipType
+) -> Result<Vec<MemoryRelationship>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, memory_id, related_id, relationship_type
+         FROM memory_relationships
+         WHERE memory_id = ?1 AND relationship_type = ?2"
+    )?;
+
+    let rel_type_str = relationship_type.to_string();
+    let relationships = stmt.query_map(params![memory_id.to_string(), rel_type_str], |row| {
+        let id_str: String = row.get(0)?;
+        let memory_id_str: String = row.get(1)?;
+        let related_id_str: String = row.get(2)?;
+        let rel_type_str: String = row.get(3)?;
+
+        let relationship_type = match rel_type_str.as_str() {
+            "causes" => MemoryRelationshipType::Causes,
+            "enables" => MemoryRelationshipType::Enables,
+            "contradicts" => MemoryRelationshipType::Contradicts,
+            "similar" => MemoryRelationshipType::Similar,
+            "derived_from" => MemoryRelationshipType::DerivedFrom,
+            _ => MemoryRelationshipType::Related,
+        };
+
+        Ok(MemoryRelationship {
+            id: Uuid::parse_str(&id_str).unwrap_or_else(|_| Uuid::new_v4()),
+            memory_id: Uuid::parse_str(&memory_id_str).unwrap_or_else(|_| Uuid::new_v4()),
+            related_id: Uuid::parse_str(&related_id_str).unwrap_or_else(|_| Uuid::new_v4()),
+            relationship_type,
+        })
+    })?.filter_map(|r| r.ok()).collect();
+
+    Ok(relationships)
+}
+
+/// Delete a specific relationship
+pub fn delete_memory_relationship(conn: &Connection, memory_id: &Uuid, related_id: &Uuid) -> Result<()> {
+    conn.execute(
+        "DELETE FROM memory_relationships WHERE memory_id = ?1 AND related_id = ?2",
+        params![memory_id.to_string(), related_id.to_string()],
+    )?;
+    Ok(())
+}
+
+/// Delete all relationships for a memory
+pub fn delete_memory_relationships(conn: &Connection, memory_id: &Uuid) -> Result<usize> {
+    let count = conn.execute(
+        "DELETE FROM memory_relationships WHERE memory_id = ?1 OR related_id = ?1",
+        params![memory_id.to_string()],
+    )?;
+    Ok(count)
+}
+
+/// Get all memories related to a given memory (both directions)
+pub fn get_related_memory_ids(conn: &Connection, memory_id: &Uuid) -> Result<Vec<Uuid>> {
+    let mut stmt = conn.prepare(
+        "SELECT related_id FROM memory_relationships WHERE memory_id = ?1
+         UNION
+         SELECT memory_id FROM memory_relationships WHERE related_id = ?1"
+    )?;
+
+    let ids = stmt.query_map(params![memory_id.to_string()], |row| {
+        let id_str: String = row.get(0)?;
+        Ok(Uuid::parse_str(&id_str).unwrap_or_else(|_| Uuid::new_v4()))
+    })?.filter_map(|r| r.ok()).collect();
+
+    Ok(ids)
+}
+
+/// List all relationships in the database
+pub fn list_all_memory_relationships(conn: &Connection, limit: usize) -> Result<Vec<MemoryRelationship>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, memory_id, related_id, relationship_type
+         FROM memory_relationships
+         LIMIT ?1"
+    )?;
+
+    let relationships = stmt.query_map(params![limit as i64], |row| {
+        let id_str: String = row.get(0)?;
+        let memory_id_str: String = row.get(1)?;
+        let related_id_str: String = row.get(2)?;
+        let rel_type_str: String = row.get(3)?;
+
+        let relationship_type = match rel_type_str.as_str() {
+            "causes" => MemoryRelationshipType::Causes,
+            "enables" => MemoryRelationshipType::Enables,
+            "contradicts" => MemoryRelationshipType::Contradicts,
+            "similar" => MemoryRelationshipType::Similar,
+            "derived_from" => MemoryRelationshipType::DerivedFrom,
+            _ => MemoryRelationshipType::Related,
+        };
+
+        Ok(MemoryRelationship {
+            id: Uuid::parse_str(&id_str).unwrap_or_else(|_| Uuid::new_v4()),
+            memory_id: Uuid::parse_str(&memory_id_str).unwrap_or_else(|_| Uuid::new_v4()),
+            related_id: Uuid::parse_str(&related_id_str).unwrap_or_else(|_| Uuid::new_v4()),
+            relationship_type,
+        })
+    })?.filter_map(|r| r.ok()).collect();
+
+    Ok(relationships)
 }
 

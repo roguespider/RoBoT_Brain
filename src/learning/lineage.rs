@@ -1,7 +1,8 @@
 // src/learning/lineage.rs
+#![allow(dead_code)]
 //! Memory lineage tracking - stores the full history and evolution of memories
 
-#![allow(dead_code)]
+
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

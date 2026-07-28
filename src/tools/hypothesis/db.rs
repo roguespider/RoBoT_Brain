@@ -34,43 +34,6 @@ pub async fn record_observation(db: &Arc<SqliteDatabase>, obs: &Observation) -> 
     Ok(())
 }
 
-/// Get observation by ID
-pub async fn get_observation_by_id(db: &Arc<SqliteDatabase>, id: &Uuid) -> Result<Option<Observation>> {
-    let conn = db.connection()?;
-    let mut stmt = conn.prepare(
-        "SELECT id, content, context, observation_type, related_experiences, triggered_hypothesis, created_at
-         FROM observations WHERE id = ?1"
-    )?;
-    
-    let result = stmt.query_row([id.to_string()], |row| {
-        let id_str: String = row.get(0)?;
-        let content: String = row.get(1)?;
-        let context: String = row.get(2)?;
-        let observation_type: String = row.get(3)?;
-        let related_experiences_str: String = row.get(4)?;
-        let triggered_hypothesis: Option<String> = row.get(5)?;
-        let created_at_str: String = row.get(6)?;
-        
-        Ok(Observation {
-            id: Uuid::parse_str(&id_str).unwrap_or_default(),
-            content,
-            context,
-            observation_type,
-            related_experiences: serde_json::from_str(&related_experiences_str).unwrap_or_default(),
-            triggered_hypothesis: triggered_hypothesis.and_then(|s| Uuid::parse_str(&s).ok()),
-            created_at: chrono::DateTime::parse_from_rfc3339(&created_at_str)
-                .map(|dt| dt.with_timezone(&chrono::Utc))
-                .unwrap_or_else(|_| chrono::Utc::now()),
-        })
-    });
-    
-    match result {
-        Ok(obs) => Ok(Some(obs)),
-        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
-        Err(e) => Err(e.into()),
-    }
-}
-
 /// Create a hypothesis in the database
 pub async fn create_hypothesis(db: &Arc<SqliteDatabase>, hyp: &Hypothesis) -> Result<()> {
     let conn = db.connection()?;

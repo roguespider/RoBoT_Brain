@@ -1,4 +1,5 @@
 // src/planner/planner.rs
+#![allow(dead_code)]
 //! Core planning engine for task decomposition and execution
 //!
 //! Per Architecture §2.8, §10:
@@ -8,7 +9,7 @@
 //! Per Architecture §5.7 Decision Flow:
 //! Goal → Planning → Memory Retrieval → Knowledge Retrieval → Experience Retrieval → Confidence Evaluation → Action Selection → Execution → Outcome Recording
 
-#![allow(dead_code)]
+
 
 use std::sync::Arc;
 use std::collections::HashMap;
@@ -466,6 +467,236 @@ impl Planner {
             total_experiences_used: total_experiences,
         }
     }
+
+    // ========================================================================
+    // REPLANNING
+    // ========================================================================
+
+    /// Replan an existing plan when circumstances change
+    ///
+    /// Per Architecture: Replanning occurs when:
+    /// - A step fails
+    /// - New knowledge becomes available
+    /// - Context changes significantly
+    /// - A better approach is discovered
+    pub async fn replan(&self, plan_id: &str, reason: ReplanReason) -> Result<Option<Plan>> {
+        let plans = self.active_plans.read().await;
+        
+        let existing_plan = match plans.get(plan_id) {
+            Some(plan) => plan.clone(),
+            None => return Ok(None),
+        };
+        
+        tracing::info!("Replanning {} because: {:?}", plan_id, reason);
+        drop(plans); // Release lock before metrics
+        self.metrics.increment("planner.replans").await;
+        
+        // Determine what to keep from the old plan - use references
+        let completed_step_ids: Vec<String> = existing_plan.steps
+            .iter()
+            .filter(|s| s.status == StepStatus::Completed)
+            .map(|s| s.id.clone())
+            .collect();
+        
+        // Create new plan preserving completed steps
+        let mut new_plan = Plan {
+            id: Uuid::new_v4().to_string(),
+            goal: existing_plan.goal.clone(),
+            steps: Vec::new(),
+            status: PlanStatus::Pending,
+            created_at: chrono::Utc::now(),
+            completed_at: None,
+            knowledge_used: existing_plan.knowledge_used.clone(),
+            experiences_used: existing_plan.experiences_used.clone(),
+            confidence: existing_plan.confidence * 0.9, // Slight confidence penalty for replanning
+        };
+        
+        // Carry forward completed steps as already done
+        for step in &existing_plan.steps {
+            if step.status == StepStatus::Completed {
+                new_plan.steps.push(PlanStep {
+                    id: step.id.clone(),
+                    description: step.description.clone(),
+                    action: step.action.clone(),
+                    dependencies: step.dependencies.clone(),
+                    status: StepStatus::Completed,
+                    result: step.result.clone(),
+                    supporting_knowledge: step.supporting_knowledge.clone(),
+                    past_experiences: step.past_experiences.clone(),
+                });
+            }
+        }
+        
+        // Update old plan status
+        let mut plans = self.active_plans.write().await;
+        if let Some(old_plan) = plans.get_mut(plan_id) {
+            old_plan.status = PlanStatus::Cancelled;
+        }
+        
+        // Store new plan
+        plans.insert(new_plan.id.clone(), new_plan.clone());
+        
+        tracing::info!(
+            "Created new plan {} from {} with {} completed steps",
+            new_plan.id, plan_id, completed_step_ids.len()
+        );
+        
+        Ok(Some(new_plan))
+    }
+    
+    /// Retry failed steps in a plan
+    ///
+    /// Per Architecture: After a step fails, retry with different approach
+    pub async fn retry_failed_steps(&self, plan_id: &str) -> Result<usize> {
+        let mut plans = self.active_plans.write().await;
+        
+        let plan = match plans.get_mut(plan_id) {
+            Some(plan) => plan,
+            None => return Ok(0),
+        };
+        
+        let mut retried_count = 0;
+        
+        for step in plan.steps.iter_mut() {
+            if step.status == StepStatus::Failed {
+                step.status = StepStatus::Ready;
+                step.result = None; // Clear previous failure
+                retried_count += 1;
+            }
+        }
+        
+        if retried_count > 0 {
+            plan.status = PlanStatus::InProgress;
+            self.metrics.increment("planner.step_retries").await;
+            tracing::info!("Reset {} failed steps for plan {}", retried_count, plan_id);
+        }
+        
+        Ok(retried_count)
+    }
+    
+    /// Adapt a plan based on new knowledge or experience
+    ///
+    /// Per Architecture: Plans should adapt when new information becomes available
+    pub async fn adapt_plan(
+        &self,
+        plan_id: &str,
+        new_knowledge: Vec<uuid::Uuid>,
+        new_experiences: Vec<uuid::Uuid>,
+    ) -> Result<bool> {
+        let mut plans = self.active_plans.write().await;
+        
+        let plan = match plans.get_mut(plan_id) {
+            Some(plan) => plan,
+            None => return Ok(false),
+        };
+        
+        // Add new knowledge and experiences
+        plan.knowledge_used.extend(new_knowledge);
+        plan.experiences_used.extend(new_experiences);
+        
+        // Recalculate confidence with new information
+        let policy = self.policy.read().await;
+        let knowledge_bonus = if !plan.knowledge_used.is_empty() {
+            policy.knowledge_weight * (plan.knowledge_used.len() as f32 * 0.1).min(0.4)
+        } else {
+            0.0
+        };
+        let experience_bonus = if plan.experiences_used.len() >= policy.min_experience_count as usize {
+            policy.experience_weight * (plan.experiences_used.len() as f32 * 0.05).min(0.3)
+        } else {
+            0.0
+        };
+        
+        plan.confidence = (0.5 + knowledge_bonus + experience_bonus).clamp(0.0, 1.0);
+        
+        self.metrics.increment("planner.plan_adaptations").await;
+        tracing::info!("Adapted plan {} with new knowledge and experiences", plan_id);
+        
+        Ok(true)
+    }
+    
+    /// Analyze a failed plan to understand what went wrong
+    pub async fn analyze_failure(&self, plan_id: &str) -> Result<PlanFailureAnalysis> {
+        let plans = self.active_plans.read().await;
+        
+        let plan = match plans.get(plan_id) {
+            Some(plan) => plan,
+            None => return Ok(PlanFailureAnalysis::default()),
+        };
+        
+        let failed_steps: Vec<_> = plan.steps
+            .iter()
+            .filter(|s| s.status == StepStatus::Failed)
+            .collect();
+        
+        let mut analysis = PlanFailureAnalysis {
+            plan_id: plan_id.to_string(),
+            failed_step_count: failed_steps.len(),
+            total_steps: plan.steps.len(),
+            reasons: Vec::new(),
+            suggestions: Vec::new(),
+        };
+        
+        // Analyze each failed step
+        for step in &failed_steps {
+            if let Some(ref result) = step.result {
+                analysis.reasons.push(format!("Step '{}' failed: {}", step.description, result));
+            }
+            
+            // Generate suggestions based on failed step characteristics
+            if step.supporting_knowledge.is_empty() {
+                analysis.suggestions.push(
+                    "Consider adding supporting knowledge for step: ".to_string() + &step.description
+                );
+            }
+            if step.past_experiences.is_empty() {
+                analysis.suggestions.push(
+                    "Look for similar past experiences for step: ".to_string() + &step.description
+                );
+            }
+        }
+        
+        // General suggestions
+        if plan.knowledge_used.is_empty() {
+            analysis.suggestions.push(
+                "This plan has no supporting knowledge. Consider gathering relevant knowledge first.".to_string()
+            );
+        }
+        if plan.confidence < 0.5 {
+            analysis.suggestions.push(
+                "Plan confidence is low. Consider gathering more evidence before executing.".to_string()
+            );
+        }
+        
+        Ok(analysis)
+    }
+}
+
+/// Reason for replanning
+#[derive(Debug, Clone)]
+pub enum ReplanReason {
+    /// A step in the plan failed
+    StepFailed(String),
+    /// New knowledge became available
+    NewKnowledge(Vec<uuid::Uuid>),
+    /// Context changed significantly
+    ContextChanged,
+    /// User requested replan
+    UserRequested,
+    /// Better approach discovered
+    BetterApproachDiscovered,
+    /// Timeout occurred
+    Timeout,
+}
+
+/// Analysis of why a plan failed
+#[derive(Debug, Clone, Default)]
+pub struct PlanFailureAnalysis {
+    pub plan_id: String,
+    pub failed_step_count: usize,
+    pub total_steps: usize,
+    pub reasons: Vec<String>,
+    pub suggestions: Vec<String>,
 }
 
 /// Action candidate for selection

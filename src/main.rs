@@ -15,6 +15,11 @@ mod learning;
 mod knowledge;
 mod memory;
 mod cli;
+mod personality;
+mod world_model;
+mod safety;
+mod performance;
+mod vector;
 
 use bridge::app::App;
 use bridge::logging::init_logging;

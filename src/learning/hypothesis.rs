@@ -1,7 +1,8 @@
 // src/learning/hypothesis.rs
+#![allow(dead_code)]
 //! Hypothesis management for learning
 
-#![allow(dead_code)]
+
 
 use std::sync::Arc;
 

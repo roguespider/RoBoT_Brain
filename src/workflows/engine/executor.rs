@@ -274,6 +274,15 @@ impl WorkflowEngine {
             None => return,
         };
 
+        // Use the shared coordinator if available, otherwise skip event recording
+        let coordinator = match &self.coordinator {
+            Some(c) => c,
+            None => {
+                tracing::trace!("[Experience] No coordinator available, skipping experience recording");
+                return;
+            }
+        };
+
         let outcome_kind = if result.success {
             OutcomeKind::Success
         } else {
@@ -293,14 +302,8 @@ impl WorkflowEngine {
             context: None,
         };
 
-        let scorer = crate::experience::scorer::ExperienceScorer::new();
-        let bus = Arc::new(crate::experience::bus::ExperienceBus::new());
-        let metrics = Arc::new(crate::experience::metrics::MetricsCollector::new());
-        let coordinator = Arc::new(crate::experience::coordinator::ExperienceCoordinator::new(
-            scorer, bus, metrics,
-        ));
-
-        match tools::experience::execute_record_experience(input, &coordinator, db).await {
+        // Use the shared coordinator - events will flow to WorkerManager and EventSubscriber
+        match tools::experience::execute_record_experience(input, coordinator, db).await {
             Ok(_) => {
                 tracing::debug!(
                     "[Experience] Recorded for future reflection/curation: action='{}'",

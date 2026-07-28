@@ -1,5 +1,5 @@
 // src/tools/hypothesis/execute.rs
-#![allow(dead_code)]
+
 // Tool execution functions for the Hypothesis Engine
 
 use std::sync::Arc;
@@ -13,13 +13,14 @@ use crate::database::models::{Hypothesis, HypothesisStatus, Knowledge};
 use super::db::{
     record_observation, create_hypothesis, get_hypothesis_by_id, update_hypothesis,
     add_evidence, get_evidence_for_hypothesis, create_knowledge, get_knowledge,
-    get_observation_by_id,
 };
+use crate::database::queries::{get_observation, list_observations, link_observation_to_experience};
 use crate::database::models::{Observation, Evidence};
 use crate::tools::hypothesis::{
     RecordObservationInput, CreateHypothesisInput, AddEvidenceInput,
     GetHypothesisInput, GetObservationInput, ListHypothesesInput, ListObservationsInput,
     EvaluateHypothesisInput, GetKnowledgeInput, ExtractKnowledgeInput,
+    LinkObservationToExperienceInput,
 };
 
 // ============================================================================
@@ -175,8 +176,8 @@ pub async fn execute_get_observation(
     let observation_id = Uuid::parse_str(&input.observation_id)
         .map_err(|e| anyhow::anyhow!("Invalid observation ID: {}", e))?;
     
-    let observation = get_observation_by_id(db, &observation_id)
-        .await?
+    let conn = db.connection()?;
+    let observation = get_observation(&conn, observation_id)?
         .ok_or_else(|| anyhow::anyhow!("Observation not found"))?;
     
     Ok(ToolOutput::success(serde_json::json!({
@@ -302,61 +303,58 @@ pub async fn execute_list_observations(
     db: &Arc<SqliteDatabase>,
 ) -> Result<ToolOutput> {
     let conn = db.connection()?;
-    let limit = input.limit.unwrap_or(10) as i64;
+    let limit = input.limit.unwrap_or(10);
     
-    let query = if input.observation_type.is_some() {
-        "SELECT id, content, context, observation_type, created_at FROM observations WHERE observation_type = ?1 ORDER BY created_at DESC LIMIT ?2"
+    // Use queries.rs list_observations which handles the full observation retrieval
+    let observations = list_observations(&conn, limit)?;
+    
+    // Filter by observation_type if specified
+    let results: Vec<_> = if let Some(ref obs_type) = input.observation_type {
+        observations
+            .into_iter()
+            .filter(|o| o.observation_type == *obs_type)
+            .map(|o| serde_json::json!({
+                "id": o.id.to_string(),
+                "content": o.content,
+                "context": o.context,
+                "observation_type": o.observation_type,
+                "created_at": o.created_at.to_rfc3339()
+            }))
+            .collect()
     } else {
-        "SELECT id, content, context, observation_type, created_at FROM observations ORDER BY created_at DESC LIMIT ?1"
+        observations
+            .into_iter()
+            .map(|o| serde_json::json!({
+                "id": o.id.to_string(),
+                "content": o.content,
+                "context": o.context,
+                "observation_type": o.observation_type,
+                "created_at": o.created_at.to_rfc3339()
+            }))
+            .collect()
     };
-    
-    let mut results = Vec::new();
-    
-    if let Some(obs_type) = input.observation_type {
-        let mut stmt = conn.prepare(query)?;
-        let iter = stmt.query_map((obs_type.as_str(), limit), |row| {
-            let id_str: String = row.get(0)?;
-            let content: String = row.get(1)?;
-            let context: String = row.get(2)?;
-            let observation_type: String = row.get(3)?;
-            let created_at_str: String = row.get(4)?;
-            
-            Ok(serde_json::json!({
-                "id": id_str,
-                "content": content,
-                "context": context,
-                "observation_type": observation_type,
-                "created_at": created_at_str
-            }))
-        })?;
-        for o in iter {
-            results.push(o?);
-        }
-    } else {
-        let mut stmt = conn.prepare(query)?;
-        let iter = stmt.query_map([limit], |row| {
-            let id_str: String = row.get(0)?;
-            let content: String = row.get(1)?;
-            let context: String = row.get(2)?;
-            let observation_type: String = row.get(3)?;
-            let created_at_str: String = row.get(4)?;
-            
-            Ok(serde_json::json!({
-                "id": id_str,
-                "content": content,
-                "context": context,
-                "observation_type": observation_type,
-                "created_at": created_at_str
-            }))
-        })?;
-        for o in iter {
-            results.push(o?);
-        }
-    }
     
     Ok(ToolOutput::success(serde_json::json!({
         "observations": results,
         "count": results.len()
+    })))
+}
+
+pub async fn execute_link_observation_to_experience(
+    input: LinkObservationToExperienceInput,
+    db: &Arc<SqliteDatabase>,
+) -> Result<ToolOutput> {
+    let observation_id = Uuid::parse_str(&input.observation_id)
+        .map_err(|e| anyhow::anyhow!("Invalid observation ID: {}", e))?;
+    let experience_id = Uuid::parse_str(&input.experience_id)
+        .map_err(|e| anyhow::anyhow!("Invalid experience ID: {}", e))?;
+    
+    let conn = db.connection()?;
+    link_observation_to_experience(&conn, observation_id, experience_id)?;
+    
+    Ok(ToolOutput::success(serde_json::json!({
+        "success": true,
+        "message": format!("Observation {} linked to experience {}", input.observation_id, input.experience_id)
     })))
 }
 

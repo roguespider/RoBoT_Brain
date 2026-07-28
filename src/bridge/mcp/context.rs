@@ -1,5 +1,6 @@
 // src/bridge/mcp/context.rs
 #![allow(dead_code)]
+
 // MCP context for sharing state across handlers
 
 use std::sync::Arc;
@@ -74,7 +75,6 @@ pub struct McpContext {
 }
 
 impl McpContext {
-    #[allow(clippy::too_many_arguments)]
     pub fn new(
         database: Arc<SqliteDatabase>,
         bus: Arc<ExperienceBus>,

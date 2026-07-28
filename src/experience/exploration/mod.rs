@@ -20,8 +20,6 @@
 //! };
 //! ```
 
-#![allow(clippy::module_inception)]
-
 pub mod attempt;
 pub mod exploration;
 pub mod finding;
@@ -31,13 +29,9 @@ pub mod store;
 // Re-export all exploration types for convenient access
 // Note: exploration.rs re-exports from sibling modules
 // These re-exports allow external consumers to import from this module
-#[allow(unused_imports)]
 pub use exploration::{Exploration, ExplorationStatus};
-#[allow(unused_imports)]
 pub use attempt::ExplorationAttempt;
-#[allow(unused_imports)]
 pub use finding::ExplorationFinding;
-#[allow(unused_imports)]
 pub use hypothesis::{Hypothesis, HypothesisResult};
-#[allow(unused_imports)]
+#[allow(unused_imports, dead_code)]
 pub use store::{ExplorationRepository, InMemoryExplorationRepository};

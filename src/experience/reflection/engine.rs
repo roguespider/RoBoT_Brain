@@ -1,7 +1,8 @@
 // /src/experience/reflection/engine.rs
+#![allow(dead_code)]
 // The main Reflection Engine that orchestrates all reflection services
 
-#![allow(dead_code)]
+
 
 use chrono::Utc;
 use std::collections::HashMap;

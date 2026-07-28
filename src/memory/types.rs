@@ -1,5 +1,5 @@
 // src/memory/types.rs
-#![allow(dead_code)]
+
 //! Memory types - Per Architecture §6.3
 
 use chrono::{DateTime, Utc};

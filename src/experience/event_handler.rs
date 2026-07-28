@@ -8,6 +8,7 @@ use crate::experience::events::types::ExperienceEvent;
 use std::sync::Arc;
 
 /// Event handler that subscribes to the event bus and processes events.
+#[derive(Clone)]
 pub struct EventHandler {
     bus: Arc<ExperienceBus>,
 }
@@ -21,7 +22,7 @@ impl EventHandler {
     /// Start the event handler - subscribes to events and logs them.
     /// This runs in the background processing events.
     pub fn start(&self) {
-        let bus = self.bus.clone();
+        let handler = self.clone();
         let mut receiver = self.bus.subscribe();
 
         tokio::spawn(async move {
@@ -35,7 +36,8 @@ impl EventHandler {
                     _ = tokio::time::sleep(tokio::time::Duration::from_secs(60)) => {
                         // Periodically log subscriber count for monitoring
                         tick_count += 1;
-                        let count = bus.subscriber_count();
+                        // Use self.subscriber_count() to wire up the method
+                        let count = handler.subscriber_count();
                         tracing::debug!(
                             "Event bus health: {} subscribers, {} ticks",
                             count,

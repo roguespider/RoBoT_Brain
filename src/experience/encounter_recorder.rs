@@ -1,9 +1,9 @@
 // \src\experience\encounter_recorder.rs
+#![allow(dead_code)]
 //! Experience recording with observation tracking per Architecture §07
 //!
 //! NOTE: This module is implemented but not yet integrated into the coordinator.
 //! It provides structured experience recording with observation tracking.
-
 
 
 use std::sync::Arc;

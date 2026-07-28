@@ -1,4 +1,5 @@
 //! ExplorationRepository - persistence for explorations.
+#![allow(dead_code)]
 //!
 //! Per Architecture §4.06 (Repository Pattern), persistence is isolated
 //! through repositories. The cognitive layer should not know SQL queries
@@ -14,7 +15,7 @@ use super::Exploration;
 use super::exploration::ExplorationStatus;
 
 /// Trait for exploration storage (scaffolding for future use)
-#[allow(dead_code)]
+
 pub trait ExplorationRepository: Send + Sync {
     /// Create a new exploration
     fn create(&self, exploration: &Exploration) -> Result<()>;

@@ -1,4 +1,5 @@
 // robot/src/experience/hypothesis/support/graph/graph_builder.rs
+#![allow(dead_code)]
 
 //! Builder pattern for creating hypothesis graphs.
 

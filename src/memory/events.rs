@@ -4,7 +4,7 @@
 //! Provides event-driven integration for memory system.
 //! Events flow into memory per the data flow architecture.
 
-#![allow(dead_code)]
+
 
 use std::sync::Arc;
 use tokio::sync::broadcast;
@@ -58,7 +58,7 @@ pub enum MemoryEvent {
 }
 
 /// Memory event handler trait (scaffolding for future use)
-#[allow(dead_code)]
+
 pub trait MemoryEventHandler: Send + Sync {
     /// Handle a memory event
     fn handle(&self, event: &MemoryEvent);

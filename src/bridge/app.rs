@@ -1,11 +1,13 @@
 
+#![allow(dead_code)]
 
 // src/bridge/app.rs
 // Root application container per Architecture §03
 
-#![allow(dead_code)]
+
 
 use std::sync::Arc;
+use std::sync::Mutex;
 
 use anyhow::Result;
 
@@ -20,10 +22,16 @@ use crate::experience::event_handler::EventHandler;
 use crate::experience::evolution::EvolutionEngine;
 use crate::experience::hypothesis::HypothesisEngine;
 use crate::experience::integration::event_subscriber::{EventSubscriber, start_event_subscriber};
+use crate::experience::integration::reflection_pipeline::ReflectionPipeline;
 use crate::experience::metrics::MetricsCollector;
+use crate::experience::observers::{
+    ReputationObserver, HypothesisObserver, MetricsObserver,
+};
 use crate::experience::reflection::ReflectionEngine;
+use crate::experience::reputation::decay::ReputationDecay;
 use crate::experience::scheduler::{Scheduler, TaskSchedule, TaskType};
 use crate::experience::scorer::ExperienceScorer;
+use crate::experience::worker_manager::WorkerManager;
 use crate::knowledge::KnowledgeStore;
 use crate::learning::{LineageTracker, WorkingMemory};
 use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory as MemWorkingMemory};
@@ -41,11 +49,20 @@ pub struct App {
     /// Event bus for pub/sub.
     bus: Arc<ExperienceBus>,
 
+    /// Worker manager for background job processing (Architecture §22).
+    worker_manager: Arc<WorkerManager>,
+
     /// Experience system coordinator.
     coordinator: Arc<ExperienceCoordinator>,
 
+    /// Hypothesis engine for belief management.
+    hypothesis_engine: Arc<std::sync::Mutex<HypothesisEngine>>,
+
     /// Experience recorder for structured experience creation.
     experience_recorder: Arc<ExperienceRecorder>,
+
+    /// Reflection pipeline for processing experiences into insights.
+    reflection_pipeline: Arc<ReflectionPipeline>,
 
     /// Background task scheduler.
     scheduler: Arc<Scheduler>,
@@ -77,32 +94,56 @@ impl App {
         event_handler.start();
         tracing::info!("Event handler started");
 
-        // Wire ExperienceScorer as an observer that scores experiences
-        // Create a separate scorer instance for the observer
-        let scorer_for_observer = ExperienceScorer::new();
-        let scorer_observer: Arc<dyn crate::experience::observer::ExperienceObserver> = Arc::new(scorer_for_observer);
-        
-        // Subscribe scorer to events (it will score experiences)
-        let scorer_bus = bus.clone();
+        // Create learning engines first (needed for observers)
+        let reflection_engine = Arc::new(ReflectionEngine::new());
+        let hypothesis_engine_for_subscriber = Arc::new(HypothesisEngine::new());
+        let hypothesis_engine = Arc::new(Mutex::new(HypothesisEngine::new()));
+        let evolution_engine = Arc::new(EvolutionEngine::new());
+        let metrics = Arc::new(MetricsCollector::new());
+
+        // Create WorkerManager for background job processing per Architecture §22
+        // Design: Experience → Recorder → Bus → Job Queue → Workers → Observers
+        let worker_manager = Arc::new(WorkerManager::new(bus.clone()));
+
+        // Register all observers with WorkerManager per Architecture §22
+        // Each observer runs in its own dedicated worker
+
+        // 1. ExperienceScorer - scores experiences
+        let scorer = Arc::new(ExperienceScorer::new()) as Arc<dyn crate::experience::observer::ExperienceObserver>;
+        worker_manager.register_observer(scorer).await?;
+        tracing::info!("ExperienceScorer registered with WorkerManager");
+
+        // 2. ReputationObserver - updates entity reputations
+        let reputation_observer = Arc::new(ReputationObserver::new()) as Arc<dyn crate::experience::observer::ExperienceObserver>;
+        worker_manager.register_observer(reputation_observer).await?;
+        tracing::info!("ReputationObserver registered with WorkerManager");
+
+        // 3. HypothesisObserver - generates and evaluates hypotheses
+        let hypothesis_observer = Arc::new(HypothesisObserver::new(hypothesis_engine.clone())) as Arc<dyn crate::experience::observer::ExperienceObserver>;
+        worker_manager.register_observer(hypothesis_observer).await?;
+        tracing::info!("HypothesisObserver registered with WorkerManager");
+
+        // 4. MetricsObserver - collects metrics from all events
+        let metrics_observer = Arc::new(MetricsObserver::new(metrics.clone())) as Arc<dyn crate::experience::observer::ExperienceObserver>;
+        worker_manager.register_observer(metrics_observer).await?;
+        tracing::info!("MetricsObserver registered with WorkerManager");
+
+        // Start worker manager background task - subscribes to bus and enqueues jobs
+        let manager_clone = worker_manager.clone();
+        let manager_bus = bus.clone();
         tokio::spawn(async move {
-            let mut receiver = scorer_bus.subscribe();
-            tracing::info!("Experience scorer observer started, listening for events");
-            tracing::debug!("Event bus subscriber count: {}", scorer_bus.subscriber_count());
+            let mut receiver = manager_bus.subscribe();
+            tracing::info!("Worker manager started, listening for events");
+            tracing::debug!("Event bus subscriber count: {}", manager_bus.subscriber_count());
             while let Ok(event) = receiver.recv().await {
-                if scorer_observer.accepts(&event) {
-                    if let Err(e) = scorer_observer.observe(&event) {
-                        tracing::error!("Scorer observer error: {}", e);
-                    }
+                // Broadcast to all workers - they filter based on accepts()
+                if let Err(e) = manager_clone.broadcast_event(event).await {
+                    tracing::error!("Worker manager broadcast error: {}", e);
                 }
             }
-            scorer_bus.unsubscribe();
+            manager_bus.unsubscribe();
         });
-        tracing::info!("Experience scorer observer subscribed to bus (total subscribers: {})", bus.subscriber_count());
-
-        // Create learning engines
-        let reflection_engine = Arc::new(ReflectionEngine::new());
-        let hypothesis_engine = Arc::new(HypothesisEngine::new());
-        let evolution_engine = Arc::new(EvolutionEngine::new());
+        tracing::info!("Worker manager subscribed to bus (total subscribers: {})", bus.subscriber_count());
 
         // Create working memory, lineage tracker, and knowledge store
         let _working_memory = Arc::new(WorkingMemory::new(1000));
@@ -111,11 +152,19 @@ impl App {
 
         // Create event subscriber for the learning pipeline
         // Per Architecture §4.04: Experience → Reflection → Hypothesis → Knowledge → Reputation
-        let event_subscriber = Arc::new(EventSubscriber::new(
+        let event_subscriber = Arc::new(EventSubscriber::with_coordinator(
+            coordinator.clone(),
+            metrics.clone(),
             reflection_engine.clone(),
-            hypothesis_engine.clone(),
+            hypothesis_engine_for_subscriber.clone(),
             evolution_engine.clone(),
             knowledge_store.clone(),
+        ));
+        
+        // Create reflection pipeline for processing experiences into insights
+        let reflection_pipeline = Arc::new(ReflectionPipeline::new(
+            reflection_engine.clone(),
+            bus.clone(),
         ));
         
         // Start the event subscriber background task
@@ -143,13 +192,17 @@ impl App {
         }
         tracing::info!("Memory system initialized and loaded from database (Working: 1000, Permanent: 10000)");
 
-        // Create scheduler with background tasks
+        // Create scheduler with background tasks (metrics already created above)
         let scheduler = Self::setup_scheduler(database.clone()).await?;
 
-        // Register task handlers with access to memory retrieval
+        // Register task handlers with access to all required engines
         Self::register_task_handlers(
             scheduler.clone(),
             memory_retrieval.clone(),
+            reflection_engine.clone(),
+            hypothesis_engine.clone(),
+            evolution_engine.clone(),
+            metrics.clone(),
             database.clone(),
         ).await;
 
@@ -162,9 +215,6 @@ impl App {
         });
         tracing::info!("Scheduler background loop started");
 
-        // Create metrics collector
-        let metrics = Arc::new(MetricsCollector::new());
-
         // Create planning system (Architecture §4.03.5, §10)
         let planner = Arc::new(Planner::new(metrics.clone()));
         let policy_engine = Arc::new(PolicyEngine::new());
@@ -173,12 +223,14 @@ impl App {
         policy_engine.load_defaults().await;
         tracing::info!("Policy engine loaded with default rules");
 
-        // Create workflow engine with database access
-        let workflow_engine = Arc::new(WorkflowEngine::with_database(
+        // Create workflow engine with database access and coordinator for event integration
+        // This ensures workflow experiences flow to WorkerManager and EventSubscriber
+        let workflow_engine = Arc::new(WorkflowEngine::with_database_and_coordinator(
             metrics.clone(),
             database.clone(),
+            coordinator.clone(),
         ));
-        tracing::info!("Workflow engine initialized");
+        tracing::info!("Workflow engine initialized with coordinator");
 
         // Create MCP context with all systems
         let mcp_context = Arc::new(McpContext::new(
@@ -186,7 +238,7 @@ impl App {
             bus.clone(),
             coordinator.clone(),
             reflection_engine.clone(),
-            hypothesis_engine.clone(),
+            hypothesis_engine_for_subscriber.clone(),
             evolution_engine.clone(),
             scheduler.clone(),
             metrics.clone(),
@@ -210,8 +262,11 @@ impl App {
         Ok(Self {
             _database: database,
             bus,
+            worker_manager,
             coordinator,
+            hypothesis_engine,
             experience_recorder,
+            reflection_pipeline,
             scheduler,
             memory_pipeline,
             mcp_context,
@@ -284,95 +339,221 @@ impl App {
     async fn register_task_handlers(
         scheduler: Arc<Scheduler>,
         memory_retrieval: Arc<MemoryRetrieval>,
+        reflection_engine: Arc<ReflectionEngine>,
+        hypothesis_engine: Arc<Mutex<HypothesisEngine>>,
+        evolution_engine: Arc<EvolutionEngine>,
+        metrics: Arc<MetricsCollector>,
         database: Arc<SqliteDatabase>,
     ) {
         use crate::experience::scheduler::TaskType;
 
-        // Reflection task handler
+        // Reflection task handler - analyzes recent experiences for patterns
+        let reflection_engine_clone = reflection_engine.clone();
+        let database_reflect = database.clone();
         scheduler
             .register_handler(
                 TaskType::Reflection,
-                Box::new(|| {
+                Box::new(move || {
+                    let reflection_engine = reflection_engine_clone.clone();
+                    let database = database_reflect.clone();
                     Box::pin(async move {
                         tracing::info!("Executing scheduled reflection task");
+                        
+                        // Load recent experiences from database
+                        let experiences = crate::database::queries::list_experiences(&database.connection()?, 100)
+                            .unwrap_or_default();
+                        
+                        if experiences.len() >= 3 {
+                            // Analyze experiences for patterns
+                            match reflection_engine.analyze_experiences(&experiences).await {
+                                Ok(report) => {
+                                    tracing::info!(
+                                        "Reflection analysis complete: {} patterns, {} themes found",
+                                        report.patterns.len(),
+                                        report.themes.len()
+                                    );
+                                }
+                                Err(e) => {
+                                    tracing::error!("Reflection analysis failed: {}", e);
+                                }
+                            }
+                        }
+                        
+                        // Archive old reflections
+                        let archived = reflection_engine.archive_old(30).await.unwrap_or(0);
+                        if archived > 0 {
+                            tracing::info!("Archived {} old reflections", archived);
+                        }
+                        
                         Ok(())
                     })
                 }),
             )
             .await;
 
-        // Hypothesis evaluation handler
+        // Hypothesis evaluation handler - evaluates and updates hypothesis confidence
+        let hypothesis_engine_clone = hypothesis_engine.clone();
         scheduler
             .register_handler(
                 TaskType::HypothesisEvaluation,
-                Box::new(|| {
+                Box::new(move || {
+                    let hypothesis_engine = hypothesis_engine_clone.clone();
                     Box::pin(async move {
                         tracing::info!("Executing scheduled hypothesis evaluation");
+                        
+                        // Perform hypothesis maintenance
+                        let mut engine = hypothesis_engine.lock().unwrap();
+                        if let Err(e) = engine.maintenance() {
+                            tracing::error!("Hypothesis evaluation failed: {}", e);
+                        }
+                        
                         Ok(())
                     })
                 }),
             )
             .await;
 
-        // Metrics collection handler
+        // Metrics collection handler - aggregates and reports metrics
+        let metrics_clone = metrics.clone();
         scheduler
             .register_handler(
                 TaskType::MetricsCollection,
-                Box::new(|| {
+                Box::new(move || {
+                    let metrics = metrics_clone.clone();
                     Box::pin(async move {
                         tracing::debug!("Executing scheduled metrics collection");
+                        
+                        // Get metrics summary
+                        let summary = metrics.summary().await;
+                        tracing::debug!(
+                            "Metrics: {} counters, {} gauges, {} metrics tracked",
+                            summary.counters.len(),
+                            summary.gauges.len(),
+                            summary.metrics.len()
+                        );
+                        
+                        // Clear old metrics (older than 24 hours)
+                        metrics.clear_old(24).await;
+                        
                         Ok(())
                     })
                 }),
             )
             .await;
 
-        // Evolution maintenance handler
+        // Evolution maintenance handler - promotes/demotes behaviors based on performance
+        let evolution_engine_clone = evolution_engine.clone();
         scheduler
             .register_handler(
                 TaskType::EvolutionMaintenance,
-                Box::new(|| {
+                Box::new(move || {
+                    let evolution_engine = evolution_engine_clone.clone();
                     Box::pin(async move {
                         tracing::info!("Executing scheduled evolution maintenance");
+                        
+                        // Evaluate and maintain all behaviors for promotion/demotion
+                        match evolution_engine.evaluate_and_maintain().await {
+                            Ok(summary) => {
+                                tracing::info!(
+                                    "Evolution maintenance: {} total, {} promoted, {} deprecated, {} integrated",
+                                    summary.total_behaviors,
+                                    summary.promoted,
+                                    summary.deprecated,
+                                    summary.integrated
+                                );
+                            }
+                            Err(e) => {
+                                tracing::error!("Evolution maintenance failed: {}", e);
+                            }
+                        }
+                        
+                        // Archive deprecated behaviors
+                        let archived = evolution_engine.archive_deprecated().await.unwrap_or(0);
+                        if archived > 0 {
+                            tracing::info!("Archived {} deprecated behaviors", archived);
+                        }
+                        
                         Ok(())
                     })
                 }),
             )
             .await;
 
-        // Exploration analysis handler
+        // Exploration analysis handler - analyzes exploration results and patterns
+        let exploration_engine = evolution_engine.clone();
         scheduler
             .register_handler(
                 TaskType::ExplorationAnalysis,
-                Box::new(|| {
+                Box::new(move || {
+                    let _engine = exploration_engine.clone();
                     Box::pin(async move {
                         tracing::debug!("Executing scheduled exploration analysis");
+                        
+                        // Exploration analysis would analyze exploration results
+                        // For now, log that the task executed
+                        tracing::debug!("Exploration analysis completed");
+                        
                         Ok(())
                     })
                 }),
             )
             .await;
 
-        // Cleanup handler
+        // Cleanup handler - removes old/stale data
         scheduler
             .register_handler(
                 TaskType::Cleanup,
-                Box::new(|| {
+                Box::new(move || {
                     Box::pin(async move {
                         tracing::info!("Executing scheduled cleanup");
+                        
+                        // Clean up old events from database
+                        let cutoff = chrono::Utc::now() - chrono::Duration::days(7);
+                        
+                        // This would call cleanup queries if implemented
+                        tracing::info!("Cleanup task executed (older than {})", cutoff);
+                        
                         Ok(())
                     })
                 }),
             )
             .await;
 
-        // Reputation decay handler
+        // Reputation decay handler - applies time-based reputation decay
+        let database_reput = database.clone();
         scheduler
             .register_handler(
                 TaskType::ReputationDecay,
-                Box::new(|| {
+                Box::new(move || {
+                    let database = database_reput.clone();
                     Box::pin(async move {
                         tracing::debug!("Executing scheduled reputation decay");
+                        
+                        // Load reputations and apply decay
+                        let reputations = crate::database::queries::list_reputations(&database.connection()?)
+                            .unwrap_or_default();
+                        
+                        let mut decayed_count = 0;
+                        for mut reputation in reputations {
+                            let original_score = reputation.score;
+                            reputation.score = ReputationDecay::apply(reputation.score, reputation.updated_at);
+                            
+                            if (original_score - reputation.score).abs() > 0.001 {
+                                decayed_count += 1;
+                                // Save updated reputation
+                                if let Err(e) = crate::database::queries::insert_reputation(
+                                    &database.connection()?,
+                                    &reputation,
+                                ) {
+                                    tracing::warn!("Failed to update reputation {}: {}", reputation.id, e);
+                                }
+                            }
+                        }
+                        
+                        if decayed_count > 0 {
+                            tracing::debug!("Applied decay to {} reputations", decayed_count);
+                        }
+                        
                         Ok(())
                     })
                 }),
@@ -465,6 +646,11 @@ impl App {
         &self.bus
     }
 
+    /// Get the worker manager for observer job processing (Architecture §22)
+    pub fn worker_manager(&self) -> &Arc<WorkerManager> {
+        &self.worker_manager
+    }
+
     /// Get the experience coordinator for testing/admin
     pub fn experience_coordinator(&self) -> &Arc<ExperienceCoordinator> {
         &self.coordinator
@@ -478,5 +664,60 @@ impl App {
     /// Record an experience through the coordinator
     pub fn process_experience(&self, experience: crate::experience::types::Experience) -> crate::experience::types::Experience {
         self.coordinator.process(experience)
+    }
+
+    /// Record a successful experience using the recorder
+    pub fn record_success(
+        &self,
+        experience_type: crate::experience::types::ExperienceType,
+        title: impl Into<String>,
+        description: impl Into<String>,
+    ) -> anyhow::Result<String> {
+        self.experience_recorder.success(experience_type, title, description)
+    }
+
+    /// Record a failed experience using the recorder
+    pub fn record_failure(
+        &self,
+        experience_type: crate::experience::types::ExperienceType,
+        title: impl Into<String>,
+        description: impl Into<String>,
+        reason: impl Into<String>,
+    ) -> anyhow::Result<String> {
+        self.experience_recorder.failure(experience_type, title, description, reason)
+    }
+
+    /// Process an experience through the reflection pipeline
+    pub async fn reflect_on_experience(
+        &self,
+        experience: &crate::experience::types::Experience,
+    ) -> anyhow::Result<Option<crate::experience::reflection::reflection::Reflection>> {
+        self.reflection_pipeline.process(experience).await
+    }
+
+    /// Analyze patterns across multiple experiences
+    pub async fn detect_patterns(
+        &self,
+        experiences: &[crate::experience::types::Experience],
+    ) -> anyhow::Result<Vec<String>> {
+        self.reflection_pipeline.analyze_patterns(experiences).await
+    }
+
+    /// Process an experience through the hypothesis engine
+    pub fn process_experience_for_hypothesis(
+        &self,
+        experience: &crate::experience::types::Experience,
+    ) -> anyhow::Result<()> {
+        let mut engine = self.hypothesis_engine.lock().unwrap();
+        engine.process_experience(experience)
+    }
+
+    /// Observe an experience for hypothesis updates
+    pub fn observe_experience_for_hypothesis(
+        &self,
+        experience: &crate::experience::types::Experience,
+    ) -> anyhow::Result<()> {
+        let engine = self.hypothesis_engine.lock().unwrap();
+        engine.observe(experience)
     }
 }

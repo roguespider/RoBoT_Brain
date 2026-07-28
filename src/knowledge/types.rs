@@ -1,5 +1,6 @@
 // src/knowledge/types.rs
 #![allow(dead_code)]
+
 //! Core types for the Knowledge System
 
 
@@ -338,5 +339,227 @@ pub enum RelationType {
 impl Default for RelationType {
     fn default() -> Self {
         RelationType::Related
+    }
+}
+
+// ============================================================================
+/// KNOWLEDGE DEPENDENCIES
+// ============================================================================
+/// Dependency tracking for knowledge items
+
+/// A dependency relationship between knowledge items
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KnowledgeDependency {
+    /// ID of the knowledge item that depends on another
+    pub depends_on_id: Uuid,
+    /// ID of the knowledge item being depended upon
+    pub dependency_id: Uuid,
+    /// Type of dependency
+    pub dependency_type: DependencyType,
+    /// Version constraint (e.g., ">=1.0.0")
+    pub version_constraint: Option<String>,
+}
+
+impl KnowledgeDependency {
+    pub fn new(depends_on_id: Uuid, dependency_id: Uuid, dependency_type: DependencyType) -> Self {
+        Self {
+            depends_on_id,
+            dependency_id,
+            dependency_type,
+            version_constraint: None,
+        }
+    }
+    
+    pub fn with_version(mut self, version: impl Into<String>) -> Self {
+        self.version_constraint = Some(version.into());
+        self
+    }
+}
+
+/// Types of dependencies between knowledge items
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum DependencyType {
+    /// Knowledge requires this to function
+    Required,
+    /// Knowledge is enhanced by this
+    Optional,
+    /// Knowledge conflicts with this
+    Conflict,
+    /// Knowledge replaces this
+    Replaces,
+}
+
+impl Default for DependencyType {
+    fn default() -> Self {
+        DependencyType::Required
+    }
+}
+
+// ============================================================================
+/// KNOWLEDGE VERSION
+// ============================================================================
+/// Version tracking for knowledge items
+
+/// A version of a knowledge item
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KnowledgeVersion {
+    /// Version identifier (semver format: major.minor.patch)
+    pub version: String,
+    /// When this version was created
+    pub created_at: DateTime<Utc>,
+    /// What changed in this version
+    pub changelog: String,
+    /// Confidence at time of version creation
+    pub confidence: f32,
+    /// Whether this version is the current active one
+    pub is_active: bool,
+}
+
+impl KnowledgeVersion {
+    pub fn new(version: &str, changelog: &str, confidence: f32) -> Self {
+        Self {
+            version: version.to_string(),
+            created_at: Utc::now(),
+            changelog: changelog.to_string(),
+            confidence,
+            is_active: false,
+        }
+    }
+    
+    /// Parse and validate semver version string
+    pub fn parse(version: &str) -> Option<(u32, u32, u32)> {
+        let parts: Vec<&str> = version.split('.').collect();
+        if parts.len() != 3 {
+            return None;
+        }
+        let major = parts[0].parse().ok()?;
+        let minor = parts[1].parse().ok()?;
+        let patch = parts[2].parse().ok()?;
+        Some((major, minor, patch))
+    }
+    
+    /// Check if this version satisfies a constraint
+    pub fn satisfies_constraint(&self, constraint: &str) -> bool {
+        // Simple constraint checking (supports >=, <=, =, >, <)
+        if let Some((op, ver)) = constraint.split_at(1).1.split_once('=') {
+            let op_full = format!("={}", op);
+            return self.satisfies_single_constraint(&op_full, ver);
+        }
+        if constraint.starts_with(">=") {
+            return self.satisfies_single_constraint(">=", &constraint[2..]);
+        }
+        if constraint.starts_with("<=") {
+            return self.satisfies_single_constraint("<=", &constraint[2..]);
+        }
+        if constraint.starts_with('>') {
+            return self.satisfies_single_constraint(">", &constraint[1..]);
+        }
+        if constraint.starts_with('<') {
+            return self.satisfies_single_constraint("<", &constraint[1..]);
+        }
+        // Exact match
+        self.version == constraint
+    }
+    
+    fn satisfies_single_constraint(&self, op: &str, other_ver: &str) -> bool {
+        let (Some((s_major, s_minor, s_patch)), Some((o_major, o_minor, o_patch))) = 
+            (Self::parse(&self.version), Self::parse(other_ver)) else {
+            return false;
+        };
+        
+        match op {
+            ">=" => {
+                (s_major, s_minor, s_patch) >= (o_major, o_minor, o_patch)
+            },
+            "<=" => {
+                (s_major, s_minor, s_patch) <= (o_major, o_minor, o_patch)
+            },
+            ">" => {
+                (s_major, s_minor, s_patch) > (o_major, o_minor, o_patch)
+            },
+            "<" => {
+                (s_major, s_minor, s_patch) < (o_major, o_minor, o_patch)
+            },
+            "=" => {
+                (s_major, s_minor, s_patch) == (o_major, o_minor, o_patch)
+            },
+            _ => false,
+        }
+    }
+    
+    /// Compare two versions
+    pub fn compare(&self, other: &str) -> std::cmp::Ordering {
+        let (Some((s_maj, s_min, s_pat)), Some((o_maj, o_min, o_pat))) = 
+            (Self::parse(&self.version), Self::parse(other)) else {
+            return std::cmp::Ordering::Equal;
+        };
+        
+        (s_maj, s_min, s_pat).cmp(&(o_maj, o_min, o_pat))
+    }
+}
+
+/// Extension to KnowledgeItem for version tracking
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct KnowledgeVersionInfo {
+    /// Current version string (semver)
+    pub current_version: String,
+    /// All versions of this knowledge item
+    pub versions: Vec<KnowledgeVersion>,
+    /// Version that was active before current
+    pub previous_version: Option<String>,
+}
+
+impl KnowledgeVersionInfo {
+    pub fn new(initial_version: &str) -> Self {
+        let version = KnowledgeVersion::new(initial_version, "Initial version", 0.5);
+        Self {
+            current_version: initial_version.to_string(),
+            versions: vec![version],
+            previous_version: None,
+        }
+    }
+    
+    /// Create a new version, deactivating the current one
+    pub fn create_version(&mut self, version: &str, changelog: &str, confidence: f32) {
+        // Deactivate current version
+        if let Some(current) = self.versions.iter_mut().find(|v| v.version == self.current_version) {
+            current.is_active = false;
+        }
+        
+        // Store previous
+        self.previous_version = Some(self.current_version.clone());
+        
+        // Create new version
+        let mut new_ver = KnowledgeVersion::new(version, changelog, confidence);
+        new_ver.is_active = true;
+        self.versions.push(new_ver);
+        self.current_version = version.to_string();
+    }
+    
+    /// Get the active version
+    pub fn get_active(&self) -> Option<&KnowledgeVersion> {
+        self.versions.iter().find(|v| v.is_active)
+    }
+    
+    /// Bump version number
+    pub fn bump_major(&mut self) {
+        if let Some((major, _minor, _patch)) = KnowledgeVersion::parse(&self.current_version) {
+            let new_ver = format!("{}.{}.{}", major + 1, 0, 0);
+            self.create_version(&new_ver, "Major version bump", 0.5);
+        }
+    }
+    
+    pub fn bump_minor(&mut self) {
+        if let Some((major, minor, _patch)) = KnowledgeVersion::parse(&self.current_version) {
+            let new_ver = format!("{}.{}.{}", major, minor + 1, 0);
+            self.create_version(&new_ver, "Minor version bump", 0.5);
+        }
+    }
+    
+    pub fn bump_patch(&mut self) {
+        if let Some((major, minor, patch)) = KnowledgeVersion::parse(&self.current_version) {
+            let new_ver = format!("{}.{}.{}", major, minor, patch + 1);
+            self.create_version(&new_ver, "Patch version bump", 0.5);
+        }
     }
 }

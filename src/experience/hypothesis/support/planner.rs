@@ -1,4 +1,5 @@
 // robot/src/experience/hypothesis/support/planner.rs
+#![allow(dead_code)]
 
 //! ============================================================================
 //! HYPOTHESIS PLANNER
@@ -8,7 +9,7 @@
 //!
 //! This module helps RoBoT plan actions based on high-confidence hypotheses.
 
-#![allow(dead_code)]
+
 
 use serde::{Deserialize, Serialize};
 

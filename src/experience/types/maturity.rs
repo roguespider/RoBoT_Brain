@@ -1,4 +1,5 @@
 // src/experience/types/maturity.rs
+#![allow(dead_code)]
 // Maturity and importance types
 
 use serde::{Deserialize, Serialize};

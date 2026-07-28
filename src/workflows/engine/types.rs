@@ -1,4 +1,5 @@
 // src/workflows/engine/types.rs
+#![allow(dead_code)]
 //! Type definitions for workflow engine
 
 use std::collections::{HashMap, HashSet};
@@ -54,6 +55,7 @@ pub struct WorkflowEngine {
     pub(crate) workflows: Arc<RwLock<HashMap<String, Workflow>>>,
     pub(crate) executing: Arc<RwLock<HashSet<String>>>,
     pub(crate) database: Option<Arc<crate::database::sqlite::SqliteDatabase>>,
+    pub(crate) coordinator: Option<Arc<crate::experience::coordinator::ExperienceCoordinator>>,
 }
 
 /// Experience record for learning from workflow execution
@@ -76,6 +78,7 @@ impl Clone for WorkflowEngine {
             workflows: self.workflows.clone(),
             executing: self.executing.clone(),
             database: self.database.clone(),
+            coordinator: self.coordinator.clone(),
         }
     }
 }

@@ -1,4 +1,5 @@
 
+#![allow(dead_code)]
 
 // /src/experience/scheduler.rs
 //! Background job scheduler for learning tasks
@@ -23,7 +24,7 @@
 //! - Once: Run once at specific time
 //! - Manual: Manual trigger only
 
-#![allow(dead_code)]
+
 
 use std::pin::Pin;
 use std::sync::Arc;

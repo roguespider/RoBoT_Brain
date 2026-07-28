@@ -1,4 +1,5 @@
 // robot/src/experience/hypothesis/services/validator.rs
+#![allow(dead_code)]
 
 //! ============================================================================
 //! HYPOTHESIS VALIDATOR
@@ -15,7 +16,7 @@
 //! - LLM validation
 //! - domain-specific rules
 
-#![allow(dead_code)]
+
 
 use serde::{Deserialize, Serialize};
 

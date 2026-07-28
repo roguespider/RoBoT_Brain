@@ -1,7 +1,8 @@
 // src/experience/types/reputation.rs
+#![allow(dead_code)]
 // Reputation types
 
-#![allow(dead_code)]
+
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

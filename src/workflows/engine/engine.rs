@@ -1,5 +1,6 @@
 // src/workflows/engine/engine.rs
 #![allow(dead_code)]
+
 //! Workflow engine core implementation
 
 use std::collections::HashMap;
@@ -31,6 +32,7 @@ impl WorkflowEngine {
             workflows: Arc::new(RwLock::new(HashMap::new())),
             executing: Arc::new(RwLock::new(HashSet::new())),
             database: None,
+            coordinator: None,
         }
     }
 
@@ -44,6 +46,36 @@ impl WorkflowEngine {
             workflows: Arc::new(RwLock::new(HashMap::new())),
             executing: Arc::new(RwLock::new(HashSet::new())),
             database: Some(database),
+            coordinator: None,
+        }
+    }
+
+    /// Create a new workflow engine with coordinator for event integration
+    pub fn with_coordinator(
+        metrics: Arc<MetricsCollector>,
+        coordinator: Arc<crate::experience::coordinator::ExperienceCoordinator>,
+    ) -> Self {
+        Self {
+            metrics,
+            workflows: Arc::new(RwLock::new(HashMap::new())),
+            executing: Arc::new(RwLock::new(HashSet::new())),
+            database: None,
+            coordinator: Some(coordinator),
+        }
+    }
+
+    /// Create a new workflow engine with database and coordinator
+    pub fn with_database_and_coordinator(
+        metrics: Arc<MetricsCollector>,
+        database: Arc<crate::database::sqlite::SqliteDatabase>,
+        coordinator: Arc<crate::experience::coordinator::ExperienceCoordinator>,
+    ) -> Self {
+        Self {
+            metrics,
+            workflows: Arc::new(RwLock::new(HashMap::new())),
+            executing: Arc::new(RwLock::new(HashSet::new())),
+            database: Some(database),
+            coordinator: Some(coordinator),
         }
     }
 

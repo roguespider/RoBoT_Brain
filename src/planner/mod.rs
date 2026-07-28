@@ -1,4 +1,3 @@
-#![allow(clippy::module_inception)]
 // src/planner/mod.rs
 //! Planning and decision-making module
 

@@ -1,4 +1,5 @@
 // src/experience/types/encounter.rs
+#![allow(dead_code)]
 // Encounter types
 
 use chrono::{DateTime, Utc};

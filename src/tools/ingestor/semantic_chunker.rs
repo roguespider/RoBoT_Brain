@@ -1,4 +1,5 @@
 // src/tools/ingestor/semantic_chunker.rs
+#![allow(dead_code)]
 // Semantic document chunking - splits documents at natural boundaries
 // preserving full document structure for hierarchical storage
 

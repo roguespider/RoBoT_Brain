@@ -1,4 +1,5 @@
 // src/knowledge/query.rs
+#![allow(dead_code)]
 //! Knowledge querying for reasoning and planning
 
 

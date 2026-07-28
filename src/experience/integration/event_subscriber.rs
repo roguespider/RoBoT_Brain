@@ -1,5 +1,6 @@
 // src/experience/integration/event_subscriber.rs
 #![allow(dead_code)]
+
 //! Event subscriber that listens to experience events and triggers learning pipeline
 //!
 //! Per Architecture §4.04:
@@ -14,7 +15,9 @@ use tokio::sync::broadcast;
 use anyhow::Result;
 
 use crate::experience::bus::ExperienceBus;
+use crate::experience::coordinator::ExperienceCoordinator;
 use crate::experience::events::{ExperienceEvent, ExperienceEventType};
+use crate::experience::metrics::MetricsCollector;
 use crate::experience::types::Experience;
 use crate::experience::reflection::ReflectionEngine;
 use crate::experience::hypothesis::HypothesisEngine;
@@ -53,6 +56,8 @@ impl Default for EventSubscriberConfig {
 /// per Architecture §4.04: Experience → Reflection → Hypothesis → Knowledge → Reputation
 pub struct EventSubscriber {
     config: EventSubscriberConfig,
+    coordinator: Option<Arc<ExperienceCoordinator>>,
+    metrics: Arc<MetricsCollector>,
     reflection_engine: Arc<ReflectionEngine>,
     hypothesis_engine: Arc<HypothesisEngine>,
     evolution_engine: Arc<EvolutionEngine>,
@@ -63,6 +68,7 @@ pub struct EventSubscriber {
 impl EventSubscriber {
     /// Create a new event subscriber with dependencies
     pub fn new(
+        metrics: Arc<MetricsCollector>,
         reflection_engine: Arc<ReflectionEngine>,
         hypothesis_engine: Arc<HypothesisEngine>,
         evolution_engine: Arc<EvolutionEngine>,
@@ -70,6 +76,29 @@ impl EventSubscriber {
     ) -> Self {
         Self {
             config: EventSubscriberConfig::default(),
+            coordinator: None,
+            metrics,
+            reflection_engine,
+            hypothesis_engine,
+            evolution_engine,
+            knowledge_store,
+            reputation_store: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
+        }
+    }
+
+    /// Create with coordinator for wiring to experience system
+    pub fn with_coordinator(
+        coordinator: Arc<ExperienceCoordinator>,
+        metrics: Arc<MetricsCollector>,
+        reflection_engine: Arc<ReflectionEngine>,
+        hypothesis_engine: Arc<HypothesisEngine>,
+        evolution_engine: Arc<EvolutionEngine>,
+        knowledge_store: Arc<KnowledgeStore>,
+    ) -> Self {
+        Self {
+            config: EventSubscriberConfig::default(),
+            coordinator: Some(coordinator),
+            metrics,
             reflection_engine,
             hypothesis_engine,
             evolution_engine,
@@ -81,6 +110,7 @@ impl EventSubscriber {
     /// Create with custom config
     pub fn with_config(
         config: EventSubscriberConfig,
+        metrics: Arc<MetricsCollector>,
         reflection_engine: Arc<ReflectionEngine>,
         hypothesis_engine: Arc<HypothesisEngine>,
         evolution_engine: Arc<EvolutionEngine>,
@@ -88,6 +118,8 @@ impl EventSubscriber {
     ) -> Self {
         Self {
             config,
+            coordinator: None,
+            metrics,
             reflection_engine,
             hypothesis_engine,
             evolution_engine,
@@ -136,14 +168,9 @@ impl EventSubscriber {
 
         // Extract experience from payload
         if let EventPayload::ExperienceRecord { experience, .. } = &event.payload {
-            // Step 2: Reflection observes the experience
-            if self.config.auto_reflect {
-                self.generate_reflection(experience).await?;
-            }
-
-            // Step 3: Hypothesis evaluates the experience
-            if self.config.auto_hypothesize {
-                self.generate_hypothesis(experience).await?;
+            // Call coordinator to record the experience (wires metrics and events)
+            if let Some(coordinator) = &self.coordinator {
+                coordinator.record_experience(experience.id);
             }
         }
 
@@ -154,10 +181,13 @@ impl EventSubscriber {
     async fn on_reflection_completed(&self, event: &ExperienceEvent) -> Result<()> {
         tracing::info!("Processing ReflectionCompleted event: {}", event.id);
 
-        // Extract reflection insights and update knowledge
-        if self.config.auto_update_knowledge {
-            if let EventPayload::ReflectionRecord { reflection, .. } = &event.payload {
-                self.update_knowledge_from_reflection(reflection).await?;
+        // Extract reflection and call coordinator
+        if let EventPayload::ReflectionRecord { reflection, .. } = &event.payload {
+            if let Some(coordinator) = &self.coordinator {
+                // Convert String to Uuid
+                if let Ok(id) = uuid::Uuid::parse_str(&reflection.id) {
+                    coordinator.complete_reflection(id);
+                }
             }
         }
 
@@ -167,7 +197,17 @@ impl EventSubscriber {
     /// Step 3: Hypothesis generated → Trigger exploration
     async fn on_hypothesis_generated(&self, event: &ExperienceEvent) -> Result<()> {
         tracing::info!("Processing HypothesisGenerated event: {}", event.id);
-        // Hypotheses trigger exploration - handled by exploration system
+
+        // Extract hypothesis and call coordinator
+        if let EventPayload::HypothesisRecord { hypothesis, .. } = &event.payload {
+            if let Some(coordinator) = &self.coordinator {
+                // Convert HypothesisId to Uuid
+                if let Ok(id) = uuid::Uuid::parse_str(&hypothesis.id.0) {
+                    coordinator.generate_hypothesis(id);
+                }
+            }
+        }
+
         Ok(())
     }
 
@@ -177,6 +217,19 @@ impl EventSubscriber {
 
         if let EventPayload::HypothesisValidation { hypothesis_id, result } = &event.payload {
             tracing::debug!("Hypothesis {} validated: {}", hypothesis_id, result);
+            // Wire metrics for hypothesis validation
+            use crate::experience::metrics::metric_names;
+            let metrics = self.metrics.clone();
+            let result = result.clone();
+            tokio::spawn(async move {
+                metrics.increment(metric_names::HYPOTHESES_GENERATED).await;
+                // Track confirmed/rejected based on result
+                if result.to_lowercase().contains("confirm") || result.to_lowercase().contains("support") {
+                    metrics.increment(metric_names::HYPOTHESES_CONFIRMED).await;
+                } else if result.to_lowercase().contains("reject") {
+                    metrics.increment(metric_names::HYPOTHESES_REJECTED).await;
+                }
+            });
         }
 
         Ok(())
@@ -185,7 +238,12 @@ impl EventSubscriber {
     /// Step 5: Knowledge updated → Update reputation
     async fn on_knowledge_updated(&self, event: &ExperienceEvent) -> Result<()> {
         tracing::debug!("Processing KnowledgeUpdated event: {}", event.id);
-        // Reputation adjusts based on knowledge updates
+        // Wire metrics for knowledge updates
+        use crate::experience::metrics::metric_names;
+        let metrics = self.metrics.clone();
+        tokio::spawn(async move {
+            metrics.increment(metric_names::KNOWLEDGE_CONFIDENCE).await;
+        });
         Ok(())
     }
 
