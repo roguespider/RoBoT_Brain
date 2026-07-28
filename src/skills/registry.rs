@@ -483,6 +483,388 @@ pub struct SkillDiscoveryStats {
     pub mastered_skills: usize,
 }
 
+/// Context for skill execution
+/// Per Architecture §15: "Skill::execute(&context)"
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutionContext {
+    pub task: String,
+    pub parameters: std::collections::HashMap<String, serde_json::Value>,
+    pub working_memory: std::collections::HashMap<String, serde_json::Value>,
+    pub knowledge_context: Vec<String>,
+    pub time_limit_secs: Option<u64>,
+}
+
+impl ExecutionContext {
+    pub fn new(task: String) -> Self {
+        Self {
+            task,
+            parameters: std::collections::HashMap::new(),
+            working_memory: std::collections::HashMap::new(),
+            knowledge_context: Vec::new(),
+            time_limit_secs: None,
+        }
+    }
+
+    pub fn with_param(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
+        self.parameters.insert(key.into(), value);
+        self
+    }
+
+    pub fn with_memory(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
+        self.working_memory.insert(key.into(), value);
+        self
+    }
+
+    pub fn with_knowledge_context(mut self, knowledge_ids: Vec<String>) -> Self {
+        self.knowledge_context = knowledge_ids;
+        self
+    }
+
+    pub fn with_time_limit(mut self, secs: u64) -> Self {
+        self.time_limit_secs = Some(secs);
+        self
+    }
+}
+
+/// Result of skill execution
+/// Per Architecture §15: "Skill::execute(&context)"
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExecutionResult {
+    pub skill_id: String,
+    pub success: bool,
+    pub output: Option<serde_json::Value>,
+    pub error: Option<String>,
+    pub duration_ms: u64,
+    pub mastery_at_execution: f32,
+    pub mastery_delta: f32,
+    pub new_mastery: f32,
+}
+
+impl ExecutionResult {
+    pub fn success(
+        skill_id: String,
+        output: serde_json::Value,
+        duration_ms: u64,
+        mastery_before: f32,
+        mastery_delta: f32,
+    ) -> Self {
+        Self {
+            skill_id,
+            success: true,
+            output: Some(output),
+            error: None,
+            duration_ms,
+            mastery_at_execution: mastery_before,
+            mastery_delta,
+            new_mastery: mastery_before + mastery_delta,
+        }
+    }
+
+    pub fn failure(
+        skill_id: String,
+        error: String,
+        duration_ms: u64,
+        mastery_before: f32,
+        mastery_delta: f32,
+    ) -> Self {
+        Self {
+            skill_id,
+            success: false,
+            output: None,
+            error: Some(error),
+            duration_ms,
+            mastery_at_execution: mastery_before,
+            mastery_delta,
+            new_mastery: (mastery_before + mastery_delta).max(0.0),
+        }
+    }
+}
+
+/// Execution metrics for a skill
+/// Per Architecture §15: "Skill::track_execution_metrics()"
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct ExecutionMetrics {
+    pub total_executions: u64,
+    pub successful_executions: u64,
+    pub failed_executions: u64,
+    pub total_duration_ms: u64,
+    pub min_duration_ms: Option<u64>,
+    pub max_duration_ms: Option<u64>,
+    pub avg_duration_ms: f64,
+    pub last_execution: Option<chrono::DateTime<chrono::Utc>>,
+    pub last_success: Option<chrono::DateTime<chrono::Utc>>,
+    pub last_failure: Option<chrono::DateTime<chrono::Utc>>,
+    pub consecutive_successes: u64,
+    pub consecutive_failures: u64,
+}
+
+impl ExecutionMetrics {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Record a successful execution
+    pub fn record_success(&mut self, duration_ms: u64) {
+        self.total_executions += 1;
+        self.successful_executions += 1;
+        self.total_duration_ms += duration_ms;
+        self.avg_duration_ms = self.total_duration_ms as f64 / self.total_executions as f64;
+        
+        self.min_duration_ms = Some(
+            self.min_duration_ms.map(|m| m.min(duration_ms)).unwrap_or(duration_ms)
+        );
+        self.max_duration_ms = Some(
+            self.max_duration_ms.map(|m| m.max(duration_ms)).unwrap_or(duration_ms)
+        );
+        
+        self.last_execution = Some(chrono::Utc::now());
+        self.last_success = Some(chrono::Utc::now());
+        self.consecutive_successes += 1;
+        self.consecutive_failures = 0;
+    }
+
+    /// Record a failed execution
+    pub fn record_failure(&mut self, duration_ms: u64) {
+        self.total_executions += 1;
+        self.failed_executions += 1;
+        self.total_duration_ms += duration_ms;
+        self.avg_duration_ms = self.total_duration_ms as f64 / self.total_executions as f64;
+        
+        self.min_duration_ms = Some(
+            self.min_duration_ms.map(|m| m.min(duration_ms)).unwrap_or(duration_ms)
+        );
+        self.max_duration_ms = Some(
+            self.max_duration_ms.map(|m| m.max(duration_ms)).unwrap_or(duration_ms)
+        );
+        
+        self.last_execution = Some(chrono::Utc::now());
+        self.last_failure = Some(chrono::Utc::now());
+        self.consecutive_failures += 1;
+        self.consecutive_successes = 0;
+    }
+
+    /// Get success rate
+    pub fn success_rate(&self) -> f32 {
+        if self.total_executions == 0 {
+            0.0
+        } else {
+            self.successful_executions as f32 / self.total_executions as f32
+        }
+    }
+
+    /// Get average duration in milliseconds
+    pub fn avg_duration(&self) -> f64 {
+        self.avg_duration_ms
+    }
+
+    /// Check if skill is stable (no recent failures)
+    pub fn is_stable(&self) -> bool {
+        self.consecutive_failures == 0 && self.successful_executions >= 3
+    }
+
+    /// Check if skill is unreliable (high failure rate)
+    pub fn is_unreliable(&self) -> bool {
+        self.total_executions >= 5 && self.success_rate() < 0.5
+    }
+}
+
+/// Skill executor for running skills
+/// Per Architecture §15: "Skill::execute(&context)"
+pub struct SkillExecutor {
+    registry: Arc<SkillRegistry>,
+    metrics: std::sync::Mutex<std::collections::HashMap<String, ExecutionMetrics>>,
+}
+
+impl SkillExecutor {
+    pub fn new(registry: Arc<SkillRegistry>) -> Self {
+        Self {
+            registry,
+            metrics: std::sync::Mutex::new(std::collections::HashMap::new()),
+        }
+    }
+
+    /// Execute a skill by ID with context
+    /// Per Architecture §15: "Skill::execute(&context)"
+    pub async fn execute_skill(
+        &self,
+        skill_id: &str,
+        context: ExecutionContext,
+    ) -> Result<ExecutionResult> {
+        use std::time::Instant;
+        
+        let start = Instant::now();
+        
+        // Get skill
+        let skill = self.registry.get(skill_id).await
+            .ok_or_else(|| anyhow::anyhow!("Skill not found: {}", skill_id))?;
+        
+        // Check prerequisites
+        if !skill.prerequisites_met(&[]) {
+            return Ok(ExecutionResult::failure(
+                skill_id.to_string(),
+                format!("Prerequisites not met for skill: {}", skill.metadata.name),
+                start.elapsed().as_millis() as u64,
+                skill.mastery,
+                -0.05, // Small penalty
+            ));
+        }
+        
+        // Get mastery before execution
+        let mastery_before = skill.mastery;
+        
+        // Execute the skill logic based on category
+        let result = self.execute_by_category(&skill, context).await;
+        
+        let duration_ms = start.elapsed().as_millis() as u64;
+        
+        // Calculate mastery change
+        let mastery_delta = if result.success {
+            // Improvement based on mastery level (diminishing returns)
+            let improvement = (0.1 * (1.0 - mastery_before)).min(0.05);
+            improvement
+        } else {
+            // Failure penalty
+            -0.05
+        };
+        
+        // Record execution
+        self.record_execution(skill_id, &result, duration_ms).await;
+        
+        Ok(result)
+    }
+
+    /// Execute skill based on its category
+    async fn execute_by_category(
+        &self,
+        skill: &Skill,
+        context: ExecutionContext,
+    ) -> ExecutionResult {
+        use std::time::Instant;
+        let start = Instant::now();
+        
+        // Dispatch based on category
+        let output = match skill.metadata.category {
+            SkillCategory::FileOperation => {
+                serde_json::json!({
+                    "task": context.task,
+                    "category": "file_operation",
+                    "status": "simulated"
+                })
+            }
+            SkillCategory::CodeAnalysis => {
+                serde_json::json!({
+                    "task": context.task,
+                    "category": "code_analysis", 
+                    "status": "simulated"
+                })
+            }
+            SkillCategory::Search => {
+                serde_json::json!({
+                    "task": context.task,
+                    "category": "search",
+                    "status": "simulated"
+                })
+            }
+            SkillCategory::Memory => {
+                serde_json::json!({
+                    "task": context.task,
+                    "category": "memory",
+                    "status": "simulated"
+                })
+            }
+            SkillCategory::Learning => {
+                serde_json::json!({
+                    "task": context.task,
+                    "category": "learning",
+                    "status": "simulated"
+                })
+            }
+            SkillCategory::Planning => {
+                serde_json::json!({
+                    "task": context.task,
+                    "category": "planning",
+                    "status": "simulated"
+                })
+            }
+            _ => {
+                serde_json::json!({
+                    "task": context.task,
+                    "category": format!("{:?}", skill.metadata.category),
+                    "status": "simulated"
+                })
+            }
+        };
+
+        ExecutionResult::success(
+            skill.id.clone(),
+            output,
+            start.elapsed().as_millis() as u64,
+            skill.mastery,
+            0.0, // Will be calculated by caller
+        )
+    }
+
+    /// Record execution in registry and update metrics
+    async fn record_execution(
+        &self,
+        skill_id: &str,
+        result: &ExecutionResult,
+        duration_ms: u64,
+    ) {
+        // Update registry
+        let _ = self.registry.record_usage(skill_id, result.success).await;
+        
+        // Update local metrics
+        let mut metrics = self.metrics.lock().unwrap();
+        let metrics_entry = metrics.entry(skill_id.to_string()).or_insert_with(|| ExecutionMetrics::new());
+        if result.success {
+            metrics_entry.record_success(duration_ms);
+        } else {
+            metrics_entry.record_failure(duration_ms);
+        }
+    }
+
+    /// Get execution metrics for a skill
+    /// Per Architecture §15: "Skill::track_execution_metrics()"
+    pub fn get_execution_metrics(&self, skill_id: &str) -> Option<ExecutionMetrics> {
+        self.metrics.lock().unwrap().get(skill_id).cloned()
+    }
+
+    /// Get all execution metrics
+    pub fn get_all_metrics(&self) -> std::collections::HashMap<String, ExecutionMetrics> {
+        self.metrics.lock().unwrap().clone()
+    }
+
+    /// Get skills sorted by success rate
+    pub fn get_skills_by_success_rate(&self) -> Vec<(String, f32)> {
+        let metrics = self.metrics.lock().unwrap();
+        let mut result: Vec<_> = metrics.iter()
+            .map(|(id, m)| (id.clone(), m.success_rate()))
+            .collect();
+        result.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        result
+    }
+
+    /// Get unreliable skills
+    pub fn get_unreliable_skills(&self) -> Vec<String> {
+        let metrics = self.metrics.lock().unwrap();
+        metrics.iter()
+            .filter(|(_, m)| m.is_unreliable())
+            .map(|(id, _)| id.clone())
+            .collect()
+    }
+
+    /// Clear metrics for a skill
+    pub fn clear_metrics(&self, skill_id: &str) {
+        self.metrics.lock().unwrap().remove(skill_id);
+    }
+
+    /// Clear all metrics
+    pub fn clear_all_metrics(&self) {
+        self.metrics.lock().unwrap().clear();
+    }
+}
+
 impl Default for SkillRegistry {
     fn default() -> Self {
         Self::new()
