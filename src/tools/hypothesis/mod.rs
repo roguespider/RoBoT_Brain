@@ -304,13 +304,9 @@ pub mod definitions {
     }
 }
 
-// Re-export database functions
-
-// Re-export execution functions
-#[allow(unused_imports, dead_code)]
+// Re-export execution functions for use by MCP handlers
 pub use execute::{
     execute_record_observation, execute_create_hypothesis, execute_add_evidence,
-    execute_get_hypothesis, execute_get_observation, execute_list_hypotheses, 
-    execute_list_observations, execute_evaluate_hypothesis, execute_get_knowledge, 
-    execute_extract_knowledge, execute_link_observation_to_experience,
+    execute_get_hypothesis, execute_list_hypotheses, execute_list_observations,
+    execute_evaluate_hypothesis, execute_get_knowledge, execute_extract_knowledge,
 };
