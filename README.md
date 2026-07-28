@@ -9,8 +9,112 @@ A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with p
 
 ## Building
 
+### Prerequisites
+
+| Platform | Requirements |
+|----------|--------------|
+| **All** | Rust 1.70+ (install via [rustup.rs](https://rustup.rs)) |
+| **macOS** | Xcode Command Line Tools (`xcode-select --install`) |
+| **Linux** | GCC/Clang, SQLite development headers |
+| **Windows** | Visual Studio Build Tools or MinGW |
+
+### Build Commands
+
+The build process is the same across all platforms:
+
 ```bash
+# Clone the repository
+git clone https://github.com/roguespider/RoBoT_Brain.git
+cd RoBoT_Brain
+
+# Build release version
 cargo build --release
+
+# Build debug version (faster, for development)
+cargo build
+
+# Run tests
+cargo test
+```
+
+### Platform-Specific Notes
+
+#### macOS
+
+1. Install Rust:
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   ```
+
+2. Install Xcode Command Line Tools (required for SQLite):
+   ```bash
+   xcode-select --install
+   ```
+
+3. Build:
+   ```bash
+   cargo build --release
+   ```
+
+4. Run:
+   ```bash
+   ./target/release/robot_brain
+   ```
+
+#### Linux (Ubuntu/Debian)
+
+1. Install Rust and dependencies:
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   sudo apt update
+   sudo apt install build-essential libsqlite3-dev pkg-config
+   ```
+
+2. Build:
+   ```bash
+   cargo build --release
+   ```
+
+3. Run:
+   ```bash
+   ./target/release/robot_brain
+   ```
+
+#### Linux (Fedora/RHEL)
+
+```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+sudo dnf install gcc sqlite-devel
+cargo build --release
+```
+
+#### Windows
+
+1. Install Rust via [rustup.rs](https://rustup.rs) (includes MSVC toolchain)
+
+2. Open PowerShell or Developer Command Prompt
+
+3. Build:
+   ```powershell
+   cargo build --release
+   ```
+
+4. Run:
+   ```powershell
+   .\target\release\robot_brain.exe
+   ```
+
+### Usage
+
+```bash
+# Run as MCP server (default)
+./target/release/robot_brain
+
+# Run in server mode explicitly
+./target/release/robot_brain server
+
+# Run CLI commands
+./target/release/robot_brain <command>
 ```
 
 Audio transcription is enabled by default using Candle (no extra features or libclang required).
