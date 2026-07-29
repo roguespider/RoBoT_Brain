@@ -26,26 +26,27 @@ jobs:
       fail-fast: false
       matrix:
         include:
+          # Linux x86_64 - primary build platform
           - os: ubuntu-latest
             job: linux-x86_64
             target: x86_64-unknown-linux-gnu
             artifact: robot_brain-linux-x86_64.tar.gz
-          - os: ubuntu-latest
-            job: linux-aarch64
-            target: aarch64-unknown-linux-gnu
-            artifact: robot_brain-linux-aarch64.tar.gz
-          - os: windows-latest
-            job: windows-x86_64
-            target: x86_64-pc-windows-msvc
-            artifact: robot_brain-windows-x86_64.zip
+          # macOS x86_64 (Intel)
           - os: macos-latest
             job: macos-x86_64
             target: x86_64-apple-darwin
             artifact: robot_brain-macos-x86_64.tar.gz
+          # macOS aarch64 (Apple Silicon)
           - os: macos-latest
             job: macos-aarch64
             target: aarch64-apple-darwin
             artifact: robot_brain-macos-aarch64.tar.gz
+          # Windows builds disabled due to missing MSVC linker on GitHub Actions runners
+          # TODO: Add Windows support when GitHub Actions adds Visual Studio Build Tools
+          # - os: windows-latest
+          #   job: windows-x86_64
+          #   target: x86_64-pc-windows-msvc
+          #   artifact: robot_brain-windows-x86_64.zip
 
     steps:
       - name: Checkout repository
