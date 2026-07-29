@@ -3,7 +3,6 @@
 // src/tools/hypothesis/mod.rs
 // Hypothesis Engine: Observation -> Hypothesis -> Test -> Evidence -> Knowledge
 
-#![allow(dead_code)]
 
 mod db;
 mod execute;
@@ -48,6 +47,7 @@ pub struct GetHypothesisInput {
 
 /// Get observation by ID
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[allow(dead_code)]
 pub struct GetObservationInput {
     pub observation_id: String,
 }
@@ -69,6 +69,7 @@ pub struct ListObservationsInput {
 
 /// Link an observation to an experience
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[allow(dead_code)]
 pub struct LinkObservationToExperienceInput {
     pub observation_id: String,
     pub experience_id: String,

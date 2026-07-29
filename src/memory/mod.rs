@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 
 // src/memory/mod.rs
 //! Memory System - Per Architecture §6.3
@@ -12,6 +11,8 @@
 //! Per Architecture §6.3:
 //! - Working Memory: Short lifespan, high volatility, context focused
 //! - Permanent Memory: Indexed, connected, confidence weighted, relationship aware
+
+#![allow(dead_code)]
 
 
 pub mod types;

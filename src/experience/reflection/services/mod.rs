@@ -1,6 +1,7 @@
-#![allow(dead_code)]
 
 // /src/experience/reflection/services/mod.rs
+
+#![allow(dead_code)]
 
 pub mod analyzer;
 pub mod generator;

@@ -4,6 +4,7 @@
 //! The Experience System is the foundation of learning.
 //! It records events, observations, actions, outcomes, and environmental changes.
 
+// Allow dead code in internal modules - components designed but not all wired up yet
 #![allow(dead_code)]
 
 pub mod bus;

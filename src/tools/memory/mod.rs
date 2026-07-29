@@ -4,7 +4,6 @@
 // Memory-related MCP tools
 // Per Architecture §07: Every experience originates from observations
 
-#![allow(dead_code)]
 
 use std::sync::Arc;
 
@@ -52,6 +51,7 @@ pub struct ListMemoriesInput {
 
 /// Tool: Preview memories for deletion (asks user before deleting)
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[allow(dead_code)]
 pub struct CleanupMemoriesInput {
     /// List of memory IDs to delete
     pub ids: Vec<String>,
@@ -61,6 +61,7 @@ pub struct CleanupMemoriesInput {
 
 /// Tool: List all image memories and detect garbage
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[allow(dead_code)]
 pub struct ListImageMemoriesInput {
     /// Show memories that look like garbage image text (binary data stored as text)
     pub include_garbage: Option<bool>,
@@ -525,6 +526,7 @@ pub async fn execute_list_memories(
 }
 
 /// Execute cleanup memories tool - ALWAYS requires user confirmation to delete
+#[allow(dead_code)]
 pub async fn execute_cleanup_memories(
     input: CleanupMemoriesInput,
     database: &Arc<SqliteDatabase>,
@@ -589,6 +591,7 @@ pub async fn execute_cleanup_memories(
 
 /// Execute list image memories tool
 /// Lists all image memories and optionally shows garbage (binary data stored as text)
+#[allow(dead_code)]
 pub async fn execute_list_image_memories(
     input: ListImageMemoriesInput,
     database: &Arc<SqliteDatabase>,
@@ -658,6 +661,7 @@ pub async fn execute_list_image_memories(
 }
 
 /// Extract a field value from content
+#[allow(dead_code)]
 fn extract_field_from_content(content: &str, field_name: &str) -> String {
     for line in content.lines() {
         if let Some(stripped) = line.strip_prefix(field_name) {
@@ -668,6 +672,7 @@ fn extract_field_from_content(content: &str, field_name: &str) -> String {
 }
 
 /// Check if content looks like binary garbage
+#[allow(dead_code)]
 fn content_looks_like_garbage(content: &str) -> bool {
     let bytes = content.as_bytes();
     

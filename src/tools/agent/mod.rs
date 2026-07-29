@@ -2,7 +2,6 @@
 // Agent-related MCP tools
 // Module re-exports for backwards compatibility
 
-#![allow(dead_code)]
 
 pub mod definitions;
 pub mod inputs;

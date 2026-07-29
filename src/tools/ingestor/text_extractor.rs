@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 
 // src/tools/ingestor/text_extractor.rs
 
@@ -427,6 +426,7 @@ pub fn strip_html_tags(html: &str) -> String {
 }
 
 /// Chunk text into smaller pieces with overlap
+#[allow(dead_code)]
 pub fn chunk_text(text: &str, chunk_size: usize, overlap: usize) -> Vec<String> {
     if text.len() <= chunk_size {
         return vec![text.to_string()];

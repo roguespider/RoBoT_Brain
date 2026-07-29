@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 
 // src/learning/working_memory.rs
 
@@ -13,6 +12,10 @@
 //! - State machine transitions (Active → Evaluated → Promoted → Archived)
 //! - Promotion policies for knowledge extraction
 //! - Lineage tracking for memory provenance
+
+#![allow(dead_code)]
+
+
 
 mod store;
 #[cfg(test)]

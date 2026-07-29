@@ -3,7 +3,6 @@
 // src/tools/reflection/mod.rs
 // Reflection-related MCP tools
 
-#![allow(dead_code)]
 
 use std::collections::HashMap;
 use std::sync::Arc;

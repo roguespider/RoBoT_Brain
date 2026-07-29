@@ -3,7 +3,6 @@
 // src/tools/exploration_tools.rs
 //! Exploration MCP tools - wiring up exploration types from experience::exploration
 
-#![allow(dead_code)]
 
 pub mod definitions;
 mod handlers;

@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 
 // src/tools/ingestor/archive_handler.rs
 // Archive extraction and temp folder management
@@ -41,6 +40,7 @@ pub fn create_archive_temp_dir(archive_name: &str) -> PathBuf {
 static LAST_ARCHIVE_FOLDER: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
 
 /// Get the most recently created archive temp folder
+#[allow(dead_code)]
 pub fn get_recent_archive_temp_folder() -> Option<PathBuf> {
     LAST_ARCHIVE_FOLDER.get().cloned()
 }

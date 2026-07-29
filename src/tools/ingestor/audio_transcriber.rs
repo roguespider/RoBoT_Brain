@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 
 // src/tools/ingestor/audio_transcriber.rs
 
@@ -74,6 +73,7 @@ pub struct TranscriptionSegment {
 pub struct AudioAnalysis {
     pub duration_seconds: f32,
     pub sample_rate: u32,
+    #[allow(dead_code)]
     pub channels: u16,
     pub rms_db: f32,
     pub peak_db: f32,

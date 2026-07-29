@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 
 // src/tools/ingestor/json_importer.rs
 
@@ -42,12 +41,14 @@ pub struct ExtractedJsonData {
     /// JSON path in the original file (e.g., "messages[0].content")
     pub json_path: String,
     /// The field name (e.g., "content", "title")
+    #[allow(dead_code)]
     pub field_name: String,
     /// Context from sibling fields (e.g., "role: user, id: 123")
     pub sibling_context: String,
     /// The type of data (conversation, data, metadata, etc.)
     pub data_type: String,
     /// Raw JSON value for reference
+    #[allow(dead_code)]
     pub raw_value: Value,
 }
 
@@ -76,20 +77,28 @@ pub struct JsonImportResult {
     /// All extracted data pieces
     pub items: Vec<ExtractedJsonData>,
     /// Detected type of JSON file
+    #[allow(dead_code)]
     pub json_type: JsonFileType,
     /// Summary statistics
+    #[allow(dead_code)]
     pub stats: ImportStats,
     /// Any warnings
+    #[allow(dead_code)]
     pub warnings: Vec<String>,
 }
 
 /// Statistics about the import
 #[derive(Debug, Default)]
 pub struct ImportStats {
+    #[allow(dead_code)]
     pub total_items: usize,
+    #[allow(dead_code)]
     pub text_items: usize,
+    #[allow(dead_code)]
     pub metadata_items: usize,
+    #[allow(dead_code)]
     pub nested_items: usize,
+    #[allow(dead_code)]
     pub skipped_items: usize,
 }
 
@@ -103,6 +112,7 @@ pub enum JsonFileType {
     /// Single object with mixed fields
     MixedObject,
     /// Key-value pairs / configuration
+    #[allow(dead_code)]
     Config,
     /// Chroma/LangChain export
     EmbeddingsExport,
@@ -708,6 +718,7 @@ fn extract_generic_json(
 }
 
 /// Format import result for display
+#[allow(dead_code)]
 pub fn format_import_summary(result: &JsonImportResult) -> String {
     let mut summary = String::new();
     

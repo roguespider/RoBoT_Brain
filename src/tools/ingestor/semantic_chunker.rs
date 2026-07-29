@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 
 // src/tools/ingestor/semantic_chunker.rs
 // Semantic document chunking - splits documents at natural boundaries
@@ -13,6 +12,7 @@ use uuid::Uuid;
 /// A node in the document hierarchy tree
 #[derive(Debug, Clone)]
 pub struct HierarchyNode {
+    #[allow(dead_code)]
     pub id: Option<Uuid>,            // Set after insertion
     pub content: String,
     pub level: HierarchyLevel,
@@ -61,11 +61,13 @@ impl HierarchyNode {
     }
 
     /// Count total nodes in tree
+    #[allow(dead_code)]
     pub fn count(&self) -> usize {
         1 + self.children.iter().map(|c| c.count()).sum::<usize>()
     }
 
     /// Get max depth of tree
+    #[allow(dead_code)]
     pub fn max_depth(&self) -> usize {
         if self.children.is_empty() {
             1

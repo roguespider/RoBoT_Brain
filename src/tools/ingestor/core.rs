@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 
 // src/tools/ingestor/core.rs
 // Core file ingestion logic
@@ -41,6 +40,7 @@ pub use super::workflow::{
 pub const DEFAULT_CHUNK_SIZE: usize = 1000;
 
 /// Default overlap between chunks
+#[allow(dead_code)]
 pub const DEFAULT_CHUNK_OVERLAP: usize = 100;
 
 /// Resolve a file path string to an actual PathBuf that can be used for file operations.

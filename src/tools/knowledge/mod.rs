@@ -3,7 +3,6 @@
 // src/tools/knowledge/mod.rs
 //! Knowledge system MCP tools
 
-#![allow(dead_code)]
 
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};

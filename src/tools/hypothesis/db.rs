@@ -1,7 +1,6 @@
 // src/tools/hypothesis/db.rs
 // Database operations for the Hypothesis Engine
 
-#![allow(dead_code)]
 
 use std::sync::Arc;
 use anyhow::Result;

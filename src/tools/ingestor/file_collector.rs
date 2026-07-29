@@ -1,4 +1,3 @@
-#![allow(dead_code)]
 
 // src/tools/ingestor/file_collector.rs
 // File collection and import folder management
