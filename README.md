@@ -4,7 +4,7 @@
 
 A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with persistent memory, experience-based learning, and structured knowledge storage.
 
-> **Status:** v0.7.1 (fix-and-repair) — Memory System implemented per Architecture §4.08, §6.3 with Working Memory, Permanent Memory, and Memory Retrieval.
+> **Status:** v0.0.1 (release) — Automated release workflow for Linux, Windows, and macOS. Memory System implemented per Architecture §4.08, §6.3 with Working Memory, Permanent Memory, and Memory Retrieval.
 > Full event catalog per Architecture §4.04. Learning Pipeline per Architecture §9. Database layer with 8 migrations. All 54 unit tests and 103 integration
 > tests passing. 0 errors, 0 warnings.
 >
@@ -139,14 +139,14 @@ Releases are automated via GitHub Actions. To create a new release:
 1. **Update version** in `Cargo.toml`:
    ```toml
    [package]
-   version = "0.8.0"  # Update this
+   version = "0.0.1"  # Update this
    ```
 
 2. **Commit and tag**:
    ```bash
    git add .
-   git commit -m "Release v0.8.0"
-   git tag v0.8.0
+   git commit -m "Release v0.0.1"
+   git tag v0.0.1
    git push origin main --tags
    ```
 
