@@ -275,16 +275,14 @@ fn extract_conversation(
     let message_keys = ["messages", "conversation", "chat", "entries", "history"];
     
     for key in message_keys {
-        if let Some(messages) = obj.get(key) {
-            if let Value::Array(arr) = messages {
-                for (idx, msg) in arr.iter().enumerate() {
-                    let msg_path = if path.is_empty() {
-                        format!("{}[{}]", key, idx)
-                    } else {
-                        format!("{}.{}[{}]", path, key, idx)
-                    };
-                    extract_message_item(msg, &msg_path, config, items);
-                }
+        if let Some(Value::Array(arr)) = obj.get(key) {
+            for (idx, msg) in arr.iter().enumerate() {
+                let msg_path = if path.is_empty() {
+                    format!("{}[{}]", key, idx)
+                } else {
+                    format!("{}.{}[{}]", path, key, idx)
+                };
+                extract_message_item(msg, &msg_path, config, items);
             }
         }
     }
@@ -466,9 +464,7 @@ fn extract_object_as_record(
         .filter_map(|(k, v)| {
             let val_str = if let Some(s) = v.as_str() {
                 s.to_string()
-            } else if v.is_number() {
-                v.to_string()
-            } else if v.is_boolean() {
+            } else if v.is_number() || v.is_boolean() {
                 v.to_string()
             } else {
                 return None;
@@ -571,13 +567,13 @@ fn extract_embeddings_export(
                     .and_then(|v| {
                         if let Value::Object(o) = v {
                             let pairs: Vec<_> = o.iter()
-                                .filter_map(|(k, val)| {
+                                .map(|(k, val)| {
                                     let s = if let Some(str_val) = val.as_str() {
                                         str_val.to_string()
                                     } else {
                                         val.to_string()
                                     };
-                                    Some(format!("{}: {}", k, s))
+                                    format!("{}: {}", k, s)
                                 })
                                 .collect();
                             Some(pairs.join(", "))

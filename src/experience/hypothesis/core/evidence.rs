@@ -17,7 +17,6 @@ use uuid::Uuid;
 use super::hypothesis::HypothesisId;
 
 /// Type alias for experience ID (scaffolding for future use)
-
 pub type ExperienceId = String;
 
 /// ============================================================================

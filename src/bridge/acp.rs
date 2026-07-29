@@ -168,7 +168,6 @@ pub enum AcpErrorCode {
 }
 
 /// ACP channel for sending and receiving messages (scaffolding for future use)
-
 pub trait AcpChannel: Send + Sync {
     /// Send a message through the channel
     fn send(&self, message: AcpMessage) -> Result<()>;
@@ -181,7 +180,6 @@ pub trait AcpChannel: Send + Sync {
 }
 
 /// ACP agent trait (scaffolding for future use)
-
 pub trait AcpAgent: Send + Sync {
     /// Get the agent's ID
     fn id(&self) -> &AcpAgentId;

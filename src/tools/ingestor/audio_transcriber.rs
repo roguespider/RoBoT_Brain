@@ -137,7 +137,7 @@ impl AudioAnalysis {
 /// - Converts audio to mel spectrogram
 /// - Runs transformer inference
 /// - Returns transcribed text
-/// Without Candle, returns detailed audio analysis metrics.
+///   Without Candle, returns detailed audio analysis metrics.
 pub fn transcribe_audio(path: &Path) -> Result<TranscriptionResult> {
     let samples = load_audio_file(path)?;
     let duration_seconds = samples.len() as f32 / 16000.0;

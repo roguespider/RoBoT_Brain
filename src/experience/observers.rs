@@ -27,7 +27,6 @@ use crate::experience::metrics::MetricsCollector;
 /// REPUTATION OBSERVER
 /// ============================================================================
 /// Processes events that affect entity reputation scores
-
 pub struct ReputationObserver {
     reputations: Arc<RwLock<HashMap<String, Reputation>>>,
 }
@@ -111,7 +110,6 @@ impl ExperienceObserver for ReputationObserver {
 /// HYPOTHESIS OBSERVER
 /// ============================================================================
 /// Processes events to generate and validate hypotheses
-
 pub struct HypothesisObserver {
     engine: Arc<Mutex<HypothesisEngine>>,
 }
@@ -157,7 +155,6 @@ impl ExperienceObserver for HypothesisObserver {
 /// METRICS OBSERVER
 /// ============================================================================
 /// Collects metrics from all events for monitoring
-
 pub struct MetricsObserver {
     metrics: Arc<MetricsCollector>,
 }

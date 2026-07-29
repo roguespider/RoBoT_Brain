@@ -362,9 +362,9 @@ async fn get_reputation(
         Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
 }
-	    #[tool(
+    #[tool(
     name = "ingest_files",
-    description = "Ingest files from a folder into memory"
+    description = "Ingest files from files_to_import folder into memory. One file at a time (limit=1). Returns memory IDs for stored content."
 )]
 async fn ingest_files(
     &self,
@@ -392,7 +392,7 @@ async fn ingest_files(
 
 #[tool(
     name = "list_importable",
-    description = "List files available for import"
+    description = "List files available for import from files_to_import folder."
 )]
 async fn list_importable(
     &self,
@@ -415,7 +415,7 @@ async fn list_importable(
 
 #[tool(
     name = "transcribe_audio",
-    description = "Transcribe an audio file to text"
+    description = "Transcribe an audio file to text using Whisper AI."
 )]
 async fn transcribe_audio(
     &self,
@@ -438,7 +438,7 @@ async fn transcribe_audio(
 
 #[tool(
     name = "list_ingested_files",
-    description = "List files that have been ingested"
+    description = "List files that have been successfully ingested."
 )]
 async fn list_ingested_files(
     &self,
@@ -461,7 +461,7 @@ async fn list_ingested_files(
 
 #[tool(
     name = "delete_ingested_files",
-    description = "Delete successfully ingested files"
+    description = "Delete original files after successful ingestion. Requires confirmation='yes'."
 )]
 async fn delete_ingested_files(
     &self,

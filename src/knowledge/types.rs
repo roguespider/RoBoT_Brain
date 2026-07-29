@@ -333,7 +333,6 @@ pub enum RelationType {
 /// KNOWLEDGE DEPENDENCIES
 // ============================================================================
 /// Dependency tracking for knowledge items
-
 /// A dependency relationship between knowledge items
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KnowledgeDependency {
@@ -383,7 +382,6 @@ pub enum DependencyType {
 /// KNOWLEDGE VERSION
 // ============================================================================
 /// Version tracking for knowledge items
-
 /// A version of a knowledge item
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct KnowledgeVersion {

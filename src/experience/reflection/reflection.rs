@@ -19,11 +19,9 @@ use super::{ReflectionConfidence, ReflectionMetadata, ReflectionStatus, Reflecti
 pub type ExperienceId = String;
 
 /// Type alias for evidence ID
-
 pub type EvidenceId = String;
 
 /// Type alias for insight ID
-
 pub type InsightId = String;
 
 /// ============================================================================
