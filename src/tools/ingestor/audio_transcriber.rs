@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/tools/ingestor/audio_transcriber.rs
 
 

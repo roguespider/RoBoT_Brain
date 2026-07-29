@@ -3,6 +3,8 @@
 // src/tools/planner/mod.rs
 //! Planner MCP tools - task decomposition and execution
 
+#![allow(dead_code)]
+
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 

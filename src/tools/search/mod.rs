@@ -3,6 +3,8 @@
 // src/tools/search/mod.rs
 // Search-related MCP tools
 
+#![allow(dead_code)]
+
 use std::sync::Arc;
 
 use anyhow::Result;

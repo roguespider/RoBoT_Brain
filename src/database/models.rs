@@ -1,5 +1,6 @@
 // src/database/models.rs
 
+#![allow(dead_code)]
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -361,7 +362,6 @@ impl MemoryCard {
     }
 
     /// Create a new hierarchical memory card
-    #[allow(dead_code)]
     pub fn new_hierarchical(
         content: String,
         memory_type: MemoryType,

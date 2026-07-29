@@ -3,6 +3,7 @@
 // src/tools/experience/mod.rs
 // Experience-related MCP tools
 
+#![allow(dead_code)]
 
 use std::sync::Arc;
 

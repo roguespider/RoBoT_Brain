@@ -2,7 +2,7 @@
 
 // MCP (Model Context Protocol) core types
 
-
+#![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
 

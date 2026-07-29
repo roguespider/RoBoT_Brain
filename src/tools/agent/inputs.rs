@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/tools/agent/inputs.rs
 // Input structures for agent tools
 

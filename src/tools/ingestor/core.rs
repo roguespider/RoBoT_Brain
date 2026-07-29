@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/tools/ingestor/core.rs
 // Core file ingestion logic
 
@@ -401,7 +403,7 @@ pub async fn ingest_file(
                     }
                 }
             }
-            Err(e) => {
+            Err(_e) => {
                 // Try relative to folder as fallback
                 let relative_path = folder.join(file_path);
                 match resolve_path(&relative_path.to_string_lossy()) {

@@ -1609,8 +1609,22 @@ async fn search_skills(
 #[tool_handler]
 impl rmcp::handler::server::ServerHandler for McpServerHandler {
     fn get_info(&self) -> rmcp::model::ServerInfo {
-        let mut info = rmcp::model::ServerInfo::default();
-        info.server_info = rmcp::model::Implementation::new(&self.name, &self.version);
-        info
+        use rmcp::model::ServerCapabilitiesBuilder;
+
+        #[allow(deprecated)]
+        let capabilities = ServerCapabilitiesBuilder::default()
+            .enable_experimental()
+            .enable_extensions()
+            .enable_logging()
+            .enable_completions()
+            .enable_prompts()
+            .enable_resources()
+            .enable_tasks()
+            .enable_tools()
+            .enable_tool_list_changed()
+            .build();
+
+        rmcp::model::ServerInfo::new(capabilities)
+            .with_server_info(rmcp::model::Implementation::new(&self.name, &self.version))
     }
 }

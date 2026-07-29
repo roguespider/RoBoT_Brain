@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/tools/ingestor/workflow.rs
 // Workflow operations: list/delete imported files
 

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/tools/exploration_tools/handlers.rs
 //! Tool execution handlers
 

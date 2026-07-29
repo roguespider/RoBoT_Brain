@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/tools/ingestor/text_extractor.rs
 
 // Text extraction from various file formats

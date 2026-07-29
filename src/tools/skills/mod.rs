@@ -2,6 +2,8 @@
 //! Skills tool implementations
 //! Per Architecture §15: Skills represent reusable capabilities discovered through experience
 
+#![allow(dead_code)]
+
 use crate::bridge::mcp::McpContext;
 use crate::skills::registry::{Skill, SkillCategory, SkillMetadata, SkillSource, ExecutionContext};
 use crate::tools::ToolOutput;

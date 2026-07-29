@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/workflows/mod.rs
 //! Workflow execution engine
 

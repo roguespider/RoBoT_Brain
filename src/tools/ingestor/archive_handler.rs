@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/tools/ingestor/archive_handler.rs
 // Archive extraction and temp folder management
 

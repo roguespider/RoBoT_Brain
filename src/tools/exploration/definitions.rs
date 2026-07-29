@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/tools/exploration_tools/definitions.rs
 //! Tool definitions for exploration tools
 

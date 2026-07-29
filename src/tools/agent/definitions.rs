@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/tools/agent/definitions.rs
 // Agent tool definitions
 

@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/personality/mod.rs
 
 //! Personality System

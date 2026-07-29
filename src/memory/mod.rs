@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/memory/mod.rs
 //! Memory System - Per Architecture §6.3
 //!

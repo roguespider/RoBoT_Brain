@@ -3,6 +3,8 @@
 // src/tools/workflow/mod.rs
 //! Workflow-related MCP tools - create, manage, and execute workflows
 
+#![allow(dead_code)]
+
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};

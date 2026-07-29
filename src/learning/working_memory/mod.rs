@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/learning/working_memory.rs
 
 //! Learning system's Working Memory with state machine for active context

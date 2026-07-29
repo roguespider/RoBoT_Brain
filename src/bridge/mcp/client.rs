@@ -2,6 +2,7 @@
 
 // MCP Client for connecting to external MCP servers
 
+#![allow(dead_code)]
 
 use std::sync::Arc;
 

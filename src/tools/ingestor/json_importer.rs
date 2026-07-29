@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/tools/ingestor/json_importer.rs
 
 // Smart JSON importer that extracts structured data into memories

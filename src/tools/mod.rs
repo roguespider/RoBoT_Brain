@@ -4,6 +4,7 @@
 // src/tools/mod.rs
 // MCP tools for Zed Editor integration
 
+#![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};

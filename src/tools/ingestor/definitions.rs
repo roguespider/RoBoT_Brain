@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 // src/tools/ingestor/definitions.rs
 // MCP tool definitions with JSON schemas
 
