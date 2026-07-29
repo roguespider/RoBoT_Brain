@@ -29,9 +29,10 @@ impl HypothesisAnalytics {
 
     /// Analyze a collection of hypotheses.
     pub fn analyze(&self, hypotheses: &[Hypothesis]) -> HypothesisAnalyticsReport {
-        let mut report = HypothesisAnalyticsReport::default();
-
-        report.total = hypotheses.len() as u32;
+        let mut report = HypothesisAnalyticsReport {
+            total: hypotheses.len() as u32,
+            ..Default::default()
+        };
 
         for hypothesis in hypotheses {
             match hypothesis.status {

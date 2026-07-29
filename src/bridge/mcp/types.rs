@@ -7,11 +7,9 @@
 use serde::{Deserialize, Serialize};
 
 /// MCP protocol version
-
 pub const MCP_VERSION: &str = "2024-11-05";
 
 /// MCP message types
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum McpMessage {

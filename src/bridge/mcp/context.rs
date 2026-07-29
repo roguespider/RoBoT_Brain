@@ -74,6 +74,7 @@ pub struct McpContext {
 }
 
 impl McpContext {
+    
     pub fn new(
         database: Arc<SqliteDatabase>,
         bus: Arc<ExperienceBus>,

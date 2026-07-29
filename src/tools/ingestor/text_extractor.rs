@@ -425,32 +425,6 @@ pub fn strip_html_tags(html: &str) -> String {
     strip_xml_tags(html) // Same logic
 }
 
-/// Chunk text into smaller pieces with overlap
-#[allow(dead_code)]
-pub fn chunk_text(text: &str, chunk_size: usize, overlap: usize) -> Vec<String> {
-    if text.len() <= chunk_size {
-        return vec![text.to_string()];
-    }
-    
-    let mut chunks = Vec::new();
-    let chars: Vec<char> = text.chars().collect();
-    let mut start = 0;
-    
-    while start < chars.len() {
-        let end = (start + chunk_size).min(chars.len());
-        let chunk: String = chars[start..end].iter().collect();
-        chunks.push(chunk);
-        
-        if end >= chars.len() {
-            break;
-        }
-        
-        start = end - overlap;
-    }
-    
-    chunks
-}
-
 /// Check if content looks like readable text (not binary garbage)
 /// Returns (is_valid, reason) where is_valid is true if content is readable
 pub fn validate_text_quality(content: &str) -> (bool, String) {

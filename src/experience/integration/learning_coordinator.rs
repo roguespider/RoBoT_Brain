@@ -165,8 +165,10 @@ impl LearningCoordinator {
     /// Per Architecture §5.3:
     /// Event → Experience Recorder → Experience Storage → Scoring → Reflection → Learning Signals
     pub async fn process_experience(&self, experience: &Experience) -> Result<LearningResult> {
-        let mut result = LearningResult::default();
-        result.experience_id = experience.id;
+        let mut result = LearningResult {
+            experience_id: experience.id,
+            ..Default::default()
+        };
 
         tracing::info!("Processing experience through learning pipeline: {}", experience.id);
 
@@ -210,8 +212,10 @@ impl LearningCoordinator {
     /// Per Architecture §2.5:
     /// "A hypothesis is a temporary model waiting for evidence"
     pub async fn validate_hypothesis(&self, hypothesis_id: &str) -> Result<ValidationResult> {
-        let mut result = ValidationResult::default();
-        result.hypothesis_id = hypothesis_id.to_string();
+        let result = ValidationResult {
+            hypothesis_id: hypothesis_id.to_string(),
+            ..Default::default()
+        };
 
         // Check hypothesis status in repository
         // This would normally query the hypothesis repository
@@ -576,17 +580,17 @@ impl LearningCoordinator {
     // REINFORCEMENT LEARNING
     // ========================================================================
     /// Per Architecture §9: Reinforcement learning from experience outcomes
-
     /// Apply reinforcement learning from an experience outcome
     ///
     /// Per Architecture §9: "Reinforcement learning adjusts behavior based on rewards/penalties"
     pub async fn apply_reinforcement(&self, experience: &Experience) -> Result<ReinforcementResult> {
-        let mut result = ReinforcementResult::default();
-        result.experience_id = experience.id;
-
-        // Calculate reward based on outcome
         let reward = self.calculate_reward(experience);
-        result.reward = reward;
+
+        let mut result = ReinforcementResult {
+            experience_id: experience.id,
+            reward,
+            ..Default::default()
+        };
         
         // Update knowledge based on reward
         let knowledge_updates = self.update_knowledge_from_reward(experience, reward).await?;
@@ -720,7 +724,6 @@ impl LearningCoordinator {
     // GENERALIZATION
     // ========================================================================
     /// Per Architecture §9: Generalization - extracting patterns from specific experiences
-
     /// Generalize from a set of experiences to create broader patterns
     ///
     /// Per Architecture §9: "Generalization extracts common patterns from specific instances"
@@ -811,7 +814,6 @@ impl LearningCoordinator {
     // TRANSFER LEARNING
     // ========================================================================
     /// Per Architecture §9: Transfer learning - applying knowledge from one domain to another
-
     /// Transfer knowledge from source domain to target domain
     ///
     /// Per Architecture §9: "Transfer learning applies knowledge from one domain to another"

@@ -8,7 +8,7 @@
 //! - Reflection creates new experiences rather than modifying old ones.
 //! - Promotion to Knowledge requires validation.
 //! - Historical data is never destroyed, only archived.
-
+//!
 //! NOTE: This module is implemented but not yet fully integrated.
 
 

@@ -22,6 +22,7 @@
 //! ```
 
 pub mod attempt;
+
 pub mod exploration;
 pub mod finding;
 pub mod hypothesis;

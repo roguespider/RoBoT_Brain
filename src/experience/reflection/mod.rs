@@ -36,6 +36,7 @@ use serde::{Deserialize, Serialize};
 pub mod engine;
 pub mod insight;
 pub mod pattern;
+
 pub mod reflection;
 pub mod review;
 pub mod services;
@@ -98,7 +99,6 @@ pub struct ReflectionConfidence {
 /// Traits (defined for future extensibility)
 /// ============================================================================
 /// Produces reflections from one or more experiences.
-
 pub trait Reflector {
     type Input;
     type Output;
@@ -107,7 +107,6 @@ pub trait Reflector {
 }
 
 /// Something that can be validated over time.
-
 pub trait ValidatableReflection {
     fn confidence(&self) -> f32;
 
@@ -117,7 +116,6 @@ pub trait ValidatableReflection {
 }
 
 /// Anything capable of producing insights.
-
 pub trait InsightProducer {
     fn generate_insights(&self) -> Vec<String>;
 }

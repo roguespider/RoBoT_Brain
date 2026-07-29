@@ -20,7 +20,7 @@ pub enum EventPayload {
     /// A new experience was recorded.
     ExperienceRecord {
         /// The experience that was recorded
-        experience: Experience,
+        experience: Box<Experience>,
     },
 
     /// An existing experience changed.
@@ -54,7 +54,7 @@ pub enum EventPayload {
 
     /// Hypothesis generated (Per Architecture §4.04).
     HypothesisRecord {
-        hypothesis: Hypothesis,
+        hypothesis: Box<Hypothesis>,
     },
 
     /// Hypothesis validated (Per Architecture §4.04).

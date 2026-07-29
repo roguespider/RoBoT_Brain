@@ -454,7 +454,6 @@ pub fn delete_scheduled_task(conn: &Connection, id: &str) -> Result<()> {
 use crate::database::models::Observation;
 
 /// Insert an observation (Per Architecture §07: Every experience originates from observations)
-
 pub fn insert_observation(conn: &Connection, observation: &Observation) -> Result<()> {
     conn.execute(
         "
@@ -513,7 +512,6 @@ pub fn get_observation(conn: &Connection, id: Uuid) -> Result<Option<Observation
 }
 
 /// List recent observations
-
 pub fn list_observations(conn: &Connection, limit: usize) -> Result<Vec<Observation>> {
     let mut stmt = conn.prepare(
         "SELECT id, content, context, observation_type, related_experiences, triggered_hypothesis, created_at

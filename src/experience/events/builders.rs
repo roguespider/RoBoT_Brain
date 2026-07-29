@@ -32,7 +32,7 @@ impl ExperienceEvent {
             experience_id: experience.id,
             timestamp: Utc::now(),
             event_type: ExperienceEventType::ExperienceRecorded,
-            payload: EventPayload::ExperienceRecord { experience },
+            payload: EventPayload::ExperienceRecord { experience: Box::new(experience) },
         }
     }
 

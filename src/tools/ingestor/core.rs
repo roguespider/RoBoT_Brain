@@ -39,10 +39,6 @@ pub use super::workflow::{
 /// Default chunk size for text splitting
 pub const DEFAULT_CHUNK_SIZE: usize = 1000;
 
-/// Default overlap between chunks
-#[allow(dead_code)]
-pub const DEFAULT_CHUNK_OVERLAP: usize = 100;
-
 /// Resolve a file path string to an actual PathBuf that can be used for file operations.
 /// This handles the Windows extended-length path prefix issue where:
 /// 1. canonicalize() returns \\?\E:\... style paths on Windows
@@ -1117,10 +1113,7 @@ async fn ingest_json_file(
             vec![ExtractedJsonData {
                 content: raw_content,
                 json_path: "root".to_string(),
-                field_name: "raw".to_string(),
                 sibling_context: String::new(),
-                data_type: "raw.json".to_string(),
-                raw_value: serde_json::Value::String("raw file content".to_string()),
             }]
         } else {
             return Ok(IngestResult {

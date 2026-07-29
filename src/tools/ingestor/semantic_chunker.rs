@@ -12,8 +12,6 @@ use uuid::Uuid;
 /// A node in the document hierarchy tree
 #[derive(Debug, Clone)]
 pub struct HierarchyNode {
-    #[allow(dead_code)]
-    pub id: Option<Uuid>,            // Set after insertion
     pub content: String,
     pub level: HierarchyLevel,
     pub order_index: usize,
@@ -25,7 +23,6 @@ impl HierarchyNode {
     /// Create a new node
     pub fn new(content: String, level: HierarchyLevel, order_index: usize, path: String) -> Self {
         Self {
-            id: None,
             content,
             level,
             order_index,
@@ -57,22 +54,6 @@ impl HierarchyNode {
         
         for child in &self.children {
             child.flatten_recursive(current_id, memories);
-        }
-    }
-
-    /// Count total nodes in tree
-    #[allow(dead_code)]
-    pub fn count(&self) -> usize {
-        1 + self.children.iter().map(|c| c.count()).sum::<usize>()
-    }
-
-    /// Get max depth of tree
-    #[allow(dead_code)]
-    pub fn max_depth(&self) -> usize {
-        if self.children.is_empty() {
-            1
-        } else {
-            1 + self.children.iter().map(|c| c.max_depth()).max().unwrap_or(1)
         }
     }
 }

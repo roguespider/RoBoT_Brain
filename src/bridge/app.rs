@@ -41,7 +41,7 @@ use crate::workflows::engine::WorkflowEngine;
 /// Root application container.
 ///
 /// Owns long-running services required by RoBoT.
-#[allow(dead_code)]
+
 pub struct App {
     /// Persistent database layer.
     _database: Arc<SqliteDatabase>,
@@ -50,25 +50,25 @@ pub struct App {
     _bus: Arc<ExperienceBus>,
 
     /// Worker manager for background job processing (Architecture §22).
-    worker_manager: Arc<WorkerManager>,
+    _worker_manager: Arc<WorkerManager>,
 
     /// Experience system coordinator.
-    coordinator: Arc<ExperienceCoordinator>,
+    _coordinator: Arc<ExperienceCoordinator>,
 
     /// Hypothesis engine for belief management.
-    hypothesis_engine: Arc<std::sync::Mutex<HypothesisEngine>>,
+    _hypothesis_engine: Arc<std::sync::Mutex<HypothesisEngine>>,
 
     /// Experience recorder for structured experience creation.
-    experience_recorder: Arc<ExperienceRecorder>,
+    _experience_recorder: Arc<ExperienceRecorder>,
 
     /// Reflection pipeline for processing experiences into insights.
-    reflection_pipeline: Arc<ReflectionPipeline>,
+    _reflection_pipeline: Arc<ReflectionPipeline>,
 
     /// Background task scheduler.
-    scheduler: Arc<Scheduler>,
+    _scheduler: Arc<Scheduler>,
     
     /// Memory pipeline for working→permanent consolidation.
-    memory_pipeline: Arc<crate::memory::pipeline::MemoryPipeline>,
+    _memory_pipeline: Arc<crate::memory::pipeline::MemoryPipeline>,
 
     /// MCP context shared with bridge - owns all subsystems.
     mcp_context: Arc<McpContext>,
@@ -267,13 +267,13 @@ impl App {
         Ok(Self {
             _database: database,
             _bus: bus,
-            worker_manager,
-            coordinator,
-            hypothesis_engine,
-            experience_recorder,
-            reflection_pipeline,
-            scheduler,
-            memory_pipeline,
+            _worker_manager: worker_manager,
+            _coordinator: coordinator,
+            _hypothesis_engine: hypothesis_engine,
+            _experience_recorder: experience_recorder,
+            _reflection_pipeline: reflection_pipeline,
+            _scheduler: scheduler,
+            _memory_pipeline: memory_pipeline,
             mcp_context,
         })
     }
@@ -628,7 +628,7 @@ impl App {
     /// Start the runtime.
     pub async fn run(self) -> Result<()> {
         // Start background scheduler worker
-        let scheduler = self.scheduler.clone();
+        let scheduler = self.mcp_context.scheduler.clone();
         tokio::spawn(async move {
             if let Err(e) = scheduler.run().await {
                 tracing::error!("Scheduler error: {}", e);
@@ -644,96 +644,4 @@ impl App {
         .await
     }
 
-    // === Accessor methods that wire up the bus and coordinator fields ===
-
-    /// Get the event bus for monitoring/debugging
-    #[allow(dead_code)]
-    pub fn event_bus(&self) -> &Arc<ExperienceBus> {
-        &self._bus
-    }
-
-    /// Get the worker manager for observer job processing (Architecture §22)
-    #[allow(dead_code)]
-    pub fn worker_manager(&self) -> &Arc<WorkerManager> {
-        &self.worker_manager
-    }
-
-    /// Get the experience coordinator for testing/admin
-    #[allow(dead_code)]
-    pub fn experience_coordinator(&self) -> &Arc<ExperienceCoordinator> {
-        &self.coordinator
-    }
-
-    /// Get subscriber count on the event bus
-    #[allow(dead_code)]
-    pub fn subscriber_count(&self) -> usize {
-        self._bus.subscriber_count()
-    }
-
-    /// Record an experience through the coordinator
-    #[allow(dead_code)]
-    pub fn process_experience(&self, experience: crate::experience::types::Experience) -> crate::experience::types::Experience {
-        self.coordinator.process(experience)
-    }
-
-    /// Record a successful experience using the recorder
-    #[allow(dead_code)]
-    pub fn record_success(
-        &self,
-        experience_type: crate::experience::types::ExperienceType,
-        title: impl Into<String>,
-        description: impl Into<String>,
-    ) -> anyhow::Result<String> {
-        self.experience_recorder.success(experience_type, title, description)
-    }
-
-    /// Record a failed experience using the recorder
-    #[allow(dead_code)]
-    pub fn record_failure(
-        &self,
-        experience_type: crate::experience::types::ExperienceType,
-        title: impl Into<String>,
-        description: impl Into<String>,
-        reason: impl Into<String>,
-    ) -> anyhow::Result<String> {
-        self.experience_recorder.failure(experience_type, title, description, reason)
-    }
-
-    /// Process an experience through the reflection pipeline
-    #[allow(dead_code)]
-    pub async fn reflect_on_experience(
-        &self,
-        experience: &crate::experience::types::Experience,
-    ) -> anyhow::Result<Option<crate::experience::reflection::reflection::Reflection>> {
-        self.reflection_pipeline.process(experience).await
-    }
-
-    /// Analyze patterns across multiple experiences
-    #[allow(dead_code)]
-    pub async fn detect_patterns(
-        &self,
-        experiences: &[crate::experience::types::Experience],
-    ) -> anyhow::Result<Vec<String>> {
-        self.reflection_pipeline.analyze_patterns(experiences).await
-    }
-
-    /// Process an experience through the hypothesis engine
-    #[allow(dead_code)]
-    pub fn process_experience_for_hypothesis(
-        &self,
-        experience: &crate::experience::types::Experience,
-    ) -> anyhow::Result<()> {
-        let mut engine = self.hypothesis_engine.lock().unwrap();
-        engine.process_experience(experience)
-    }
-
-    /// Observe an experience for hypothesis updates
-    #[allow(dead_code)]
-    pub fn observe_experience_for_hypothesis(
-        &self,
-        experience: &crate::experience::types::Experience,
-    ) -> anyhow::Result<()> {
-        let engine = self.hypothesis_engine.lock().unwrap();
-        engine.observe(experience)
-    }
 }

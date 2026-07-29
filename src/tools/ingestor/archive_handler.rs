@@ -36,15 +36,6 @@ pub fn create_archive_temp_dir(archive_name: &str) -> PathBuf {
     path
 }
 
-/// Track the most recent archive extraction folder
-static LAST_ARCHIVE_FOLDER: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
-
-/// Get the most recently created archive temp folder
-#[allow(dead_code)]
-pub fn get_recent_archive_temp_folder() -> Option<PathBuf> {
-    LAST_ARCHIVE_FOLDER.get().cloned()
-}
-
 /// Delete empty folders recursively
 pub fn delete_empty_folders(dir: &Path) {
     if !dir.exists() {
@@ -85,9 +76,6 @@ pub fn process_archive(archive_path: &Path, _temp_dir: &Path) -> Result<Vec<Path
     // Create temp dir for this specific archive
     let extract_dir = create_archive_temp_dir(file_name);
     fs::create_dir_all(&extract_dir)?;
-    
-    // Track this as the most recent archive folder
-    let _ = LAST_ARCHIVE_FOLDER.set(extract_dir.clone());
     
     match extension.as_str() {
         "zip" => extract_zip(archive_path, &extract_dir)?,

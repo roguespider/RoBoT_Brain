@@ -47,9 +47,4 @@ impl McpServerHandler {
     pub async fn record_tool_execution(&self, tool_name: &str, query: Option<String>) {
         self.enforcer.record_tool_execution(&self.session_id, tool_name, query).await;
     }
-
-    #[allow(dead_code)]
-    pub async fn record_workflow_retrieved(&self, purpose: String) {
-        self.enforcer.record_workflow_retrieved(&self.session_id, Some(purpose)).await;
-    }
 }

@@ -14,7 +14,6 @@ use super::Exploration;
 use super::exploration::ExplorationStatus;
 
 /// Trait for exploration storage (scaffolding for future use)
-
 pub trait ExplorationRepository: Send + Sync {
     /// Create a new exploration
     fn create(&self, exploration: &Exploration) -> Result<()>;

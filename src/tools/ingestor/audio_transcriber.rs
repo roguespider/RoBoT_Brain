@@ -73,7 +73,7 @@ pub struct TranscriptionSegment {
 pub struct AudioAnalysis {
     pub duration_seconds: f32,
     pub sample_rate: u32,
-    #[allow(dead_code)]
+    
     pub channels: u16,
     pub rms_db: f32,
     pub peak_db: f32,
@@ -137,7 +137,7 @@ impl AudioAnalysis {
 /// - Converts audio to mel spectrogram
 /// - Runs transformer inference
 /// - Returns transcribed text
-/// Without Candle, returns detailed audio analysis metrics.
+///   Without Candle, returns detailed audio analysis metrics.
 pub fn transcribe_audio(path: &Path) -> Result<TranscriptionResult> {
     let samples = load_audio_file(path)?;
     let duration_seconds = samples.len() as f32 / 16000.0;
@@ -188,6 +188,7 @@ fn generate_transcription(analysis: &AudioAnalysis, path: &Path) -> String {
          File: {}\n\
          Duration: {:.2}s\n\
          Sample Rate: {} Hz\n\
+         Channels: {}\n\
          \n\
          AUDIO METRICS\n\
          -------------\n\
@@ -211,6 +212,7 @@ fn generate_transcription(analysis: &AudioAnalysis, path: &Path) -> String {
         filename,
         analysis.duration_seconds,
         analysis.sample_rate,
+        analysis.channels,
         analysis.rms_db,
         analysis.peak_db,
         analysis.speech_estimate_percent,
