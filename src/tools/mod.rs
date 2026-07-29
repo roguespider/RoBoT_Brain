@@ -40,46 +40,17 @@ impl ToolOutput {
             error: Some(msg.to_string()),
         }
     }
-
-    /// Create a successful output from a value that can be converted to JSON
-    #[allow(dead_code)]
-    pub fn from_value<T: Serialize>(value: T) -> Result<Self, serde_json::Error> {
-        Ok(Self::success(serde_json::to_value(value)?))
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
-    #[test]
-    fn test_tool_output_from_value() {
-        #[derive(Serialize)]
-        struct TestData {
-            message: String,
-            count: i32,
-        }
-        
-        let data = TestData {
-            message: "Hello".to_string(),
-            count: 42,
-        };
-        
-        let output = ToolOutput::from_value(data).unwrap();
-        assert!(output.success);
-        assert!(output.error.is_none());
-        assert_eq!(output.data["message"], "Hello");
-        assert_eq!(output.data["count"], 42);
-    }
-
-    #[test]
-    fn test_get_tools_sync() {
-        // get_tools() returns empty vec when registry not initialized
-        let tools = get_tools();
+    #[tokio::test]
+    async fn test_get_tools_async() {
+        // get_tools_async() returns empty vec when registry not initialized
+        let tools = get_tools_async().await;
         assert!(tools.is_empty());
-        
-        // get_tools() should return same type as get_tools_async
-        // This wires up the sync variant for use in non-async contexts
     }
 }
 
@@ -200,19 +171,7 @@ pub fn register_tools(context: &Arc<McpContext>) {
     tracing::info!("Total MCP tools registered: {}", reg.tools.len());
 }
 
-/// Get all registered tools (sync version for use outside async context)
-/// This is the preferred method when you're in a synchronous context
-/// (e.g., CLI commands, non-async handlers). For async contexts,
-/// prefer `get_tools_async()` which properly yields without blocking.
-#[allow(dead_code)]
-pub fn get_tools() -> Vec<crate::bridge::mcp::McpTool> {
-    TOOL_REGISTRY
-        .get()
-        .map(|r| r.lock().unwrap().tools.clone())
-        .unwrap_or_default()
-}
-
-/// Get all registered tools (async version for use inside async context)
+/// Get all registered tools
 pub async fn get_tools_async() -> Vec<crate::bridge::mcp::McpTool> {
     // Use blocking lock inside async context (safe since it's only read)
     let registry = TOOL_REGISTRY

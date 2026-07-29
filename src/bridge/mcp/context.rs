@@ -74,7 +74,7 @@ pub struct McpContext {
 }
 
 impl McpContext {
-    #[allow(clippy::too_many_arguments)]
+    
     pub fn new(
         database: Arc<SqliteDatabase>,
         bus: Arc<ExperienceBus>,

@@ -40,16 +40,8 @@ pub struct ExtractedJsonData {
     pub content: String,
     /// JSON path in the original file (e.g., "messages[0].content")
     pub json_path: String,
-    /// The field name (e.g., "content", "title")
-    #[allow(dead_code)]
-    pub field_name: String,
     /// Context from sibling fields (e.g., "role: user, id: 123")
     pub sibling_context: String,
-    /// The type of data (conversation, data, metadata, etc.)
-    pub data_type: String,
-    /// Raw JSON value for reference
-    #[allow(dead_code)]
-    pub raw_value: Value,
 }
 
 impl ExtractedJsonData {
@@ -76,30 +68,6 @@ impl ExtractedJsonData {
 pub struct JsonImportResult {
     /// All extracted data pieces
     pub items: Vec<ExtractedJsonData>,
-    /// Detected type of JSON file
-    #[allow(dead_code)]
-    pub json_type: JsonFileType,
-    /// Summary statistics
-    #[allow(dead_code)]
-    pub stats: ImportStats,
-    /// Any warnings
-    #[allow(dead_code)]
-    pub warnings: Vec<String>,
-}
-
-/// Statistics about the import
-#[derive(Debug, Default)]
-pub struct ImportStats {
-    #[allow(dead_code)]
-    pub total_items: usize,
-    #[allow(dead_code)]
-    pub text_items: usize,
-    #[allow(dead_code)]
-    pub metadata_items: usize,
-    #[allow(dead_code)]
-    pub nested_items: usize,
-    #[allow(dead_code)]
-    pub skipped_items: usize,
 }
 
 /// Types of JSON files we can detect
@@ -111,9 +79,6 @@ pub enum JsonFileType {
     DataArray,
     /// Single object with mixed fields
     MixedObject,
-    /// Key-value pairs / configuration
-    #[allow(dead_code)]
-    Config,
     /// Chroma/LangChain export
     EmbeddingsExport,
     /// Unknown structure
@@ -131,14 +96,11 @@ pub fn import_json_file(path: &Path, config: Option<JsonImportConfig>) -> Result
     let value: Value = serde_json::from_str(&content)
         .with_context(|| format!("Failed to parse JSON file: {}", path.display()))?;
     
-    // Detect JSON type
-    let json_type = detect_json_type(&value);
-    
-    // Extract data based on type
+    // Detect JSON type and extract data
     let mut items = Vec::new();
     let mut warnings = Vec::new();
     
-    match json_type {
+    match detect_json_type(&value) {
         JsonFileType::Conversation => {
             extract_conversation(&value, "", &config, &mut items, &mut warnings)?;
         }
@@ -153,20 +115,11 @@ pub fn import_json_file(path: &Path, config: Option<JsonImportConfig>) -> Result
         }
     }
     
-    // Calculate stats
-    let stats = ImportStats {
-        total_items: items.len(),
-        text_items: items.iter().filter(|i| i.data_type == "text").count(),
-        metadata_items: items.iter().filter(|i| i.data_type == "metadata").count(),
-        nested_items: items.iter().filter(|i| i.data_type == "nested").count(),
-        skipped_items: 0,
-    };
+    // Suppress unused warnings - warnings are collected but currently not exposed
+    let _ = warnings;
     
     Ok(JsonImportResult {
         items,
-        json_type,
-        stats,
-        warnings,
     })
 }
 
@@ -264,10 +217,7 @@ fn extract_conversation(
         items.push(ExtractedJsonData {
             content: metadata_pairs.join(", "),
             json_path: path.to_string(),
-            field_name: "_metadata".to_string(),
             sibling_context: String::new(),
-            data_type: "metadata".to_string(),
-            raw_value: Value::Null,
         });
     }
     
@@ -321,10 +271,7 @@ fn extract_message_item(item: &Value, path: &str, config: &JsonImportConfig, ite
                     items.push(ExtractedJsonData {
                         content: text.to_string(),
                         json_path: format!("{}.{}", path, field),
-                        field_name: field.to_string(),
                         sibling_context: sibling_context_str.clone(),
-                        data_type: "conversation.message".to_string(),
-                        raw_value: content_val.clone(),
                     });
                     return; // Found content, done
                 }
@@ -339,10 +286,7 @@ fn extract_message_item(item: &Value, path: &str, config: &JsonImportConfig, ite
                 items.push(ExtractedJsonData {
                     content: text.to_string(),
                     json_path: format!("{}.{}", path, key),
-                    field_name: key.clone(),
                     sibling_context: sibling_context_str.clone(),
-                    data_type: "conversation.other".to_string(),
-                    raw_value: val.clone(),
                 });
             }
         }
@@ -411,10 +355,7 @@ fn extract_data_array(
                 items.push(ExtractedJsonData {
                     content: format!("{}: {}", key, val),
                     json_path: format!("{}[{}]", path, idx),
-                    field_name: key.to_string(),
                     sibling_context: String::new(),
-                    data_type: "config".to_string(),
-                    raw_value: item.clone(),
                 });
             }
         }
@@ -474,14 +415,11 @@ fn extract_object_as_record(
         .collect::<Vec<_>>()
         .join(", ");
     
-    if let Some((content, field)) = main_content.zip(main_field) {
+    if let Some((content, _field)) = main_content.zip(main_field) {
         items.push(ExtractedJsonData {
             content,
             json_path: path.to_string(),
-            field_name: field,
             sibling_context,
-            data_type: "data.record".to_string(),
-            raw_value: value.clone(),
         });
     } else {
         // No main content field - extract all string fields
@@ -498,10 +436,7 @@ fn extract_object_as_record(
             items.push(ExtractedJsonData {
                 content: all_text.join("\n"),
                 json_path: path.to_string(),
-                field_name: "_record".to_string(),
                 sibling_context: String::new(),
-                data_type: "data.record".to_string(),
-                raw_value: value.clone(),
             });
         }
     }
@@ -592,10 +527,7 @@ fn extract_embeddings_export(
                 items.push(ExtractedJsonData {
                     content: content.to_string(),
                     json_path: format!("{}.{}[{}]", path, key, idx),
-                    field_name: "document".to_string(),
                     sibling_context,
-                    data_type: "embeddings.document".to_string(),
-                    raw_value: doc.clone(),
                 });
             }
         }
@@ -627,10 +559,7 @@ fn extract_generic_json(
                 items.push(ExtractedJsonData {
                     content: "null".to_string(),
                     json_path: path.to_string(),
-                    field_name: "_null".to_string(),
                     sibling_context: String::new(),
-                    data_type: "null".to_string(),
-                    raw_value: Value::Null,
                 });
             }
         }
@@ -639,10 +568,7 @@ fn extract_generic_json(
             items.push(ExtractedJsonData {
                 content: b.to_string(),
                 json_path: path.to_string(),
-                field_name: "_boolean".to_string(),
                 sibling_context: String::new(),
-                data_type: "boolean".to_string(),
-                raw_value: Value::Bool(*b),
             });
         }
         Value::Number(n) => {
@@ -650,10 +576,7 @@ fn extract_generic_json(
             items.push(ExtractedJsonData {
                 content: n.to_string(),
                 json_path: path.to_string(),
-                field_name: "_number".to_string(),
                 sibling_context: String::new(),
-                data_type: "number".to_string(),
-                raw_value: value.clone(),
             });
         }
         Value::String(s) => {
@@ -661,10 +584,7 @@ fn extract_generic_json(
                 items.push(ExtractedJsonData {
                     content: s.clone(),
                     json_path: path.to_string(),
-                    field_name: "_value".to_string(),
                     sibling_context: String::new(),
-                    data_type: "text".to_string(),
-                    raw_value: value.clone(),
                 });
             }
         }
@@ -687,10 +607,7 @@ fn extract_generic_json(
                         items.push(ExtractedJsonData {
                             content: joined,
                             json_path: path.to_string(),
-                            field_name: "_array".to_string(),
                             sibling_context: format!("{} items", arr.len()),
-                            data_type: "text".to_string(),
-                            raw_value: value.clone(),
                         });
                     }
                 }
@@ -711,32 +628,4 @@ fn extract_generic_json(
     }
     
     Ok(())
-}
-
-/// Format import result for display
-#[allow(dead_code)]
-pub fn format_import_summary(result: &JsonImportResult) -> String {
-    let mut summary = String::new();
-    
-    summary.push_str(&format!("JSON Type: {:?}\n", result.json_type));
-    summary.push_str(&format!("Total items extracted: {}\n", result.stats.total_items));
-    
-    if result.stats.text_items > 0 {
-        summary.push_str(&format!("  - Text items: {}\n", result.stats.text_items));
-    }
-    if result.stats.metadata_items > 0 {
-        summary.push_str(&format!("  - Metadata items: {}\n", result.stats.metadata_items));
-    }
-    if result.stats.nested_items > 0 {
-        summary.push_str(&format!("  - Nested items: {}\n", result.stats.nested_items));
-    }
-    
-    if !result.warnings.is_empty() {
-        summary.push_str("\nWarnings:\n");
-        for warning in &result.warnings {
-            summary.push_str(&format!("  - {}\n", warning));
-        }
-    }
-    
-    summary
 }

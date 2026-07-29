@@ -629,6 +629,29 @@ async fn get_hypothesis(
 }
 
 #[tool(
+    name = "get_observation",
+    description = "Get a specific observation by its ID. Useful for examining individual observations that contributed to hypotheses."
+)]
+async fn get_observation(
+    &self,
+    Parameters(input): Parameters<tools::hypothesis::GetObservationInput>,
+) -> ContentBlock {
+    // Check workflow enforcement first
+    if let Err(e) = self.check_workflow_enforcement("get_observation").await {
+        tracing::warn!("Workflow enforcement blocked get_observation: {}", e.message);
+        return enforcement_error_to_content(e);
+    }
+
+    match tools::hypothesis::execute_get_observation(input, &self.context.database).await {
+        Ok(result) => {
+            self.record_tool_execution("get_observation", None).await;
+            tool_output_to_content(result)
+        }
+        Err(e) => tool_output_to_content(ToolOutput::error(e)),
+    }
+}
+
+#[tool(
     name = "list_hypotheses",
     description = "List all hypotheses with optional filters."
 )]
@@ -696,6 +719,30 @@ async fn evaluate_hypothesis(
         Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
 }
+
+#[tool(
+    name = "link_observation_to_experience",
+    description = "Link an observation to an experience for tracking the relationship."
+)]
+async fn link_observation_to_experience(
+    &self,
+    Parameters(input): Parameters<tools::hypothesis::LinkObservationToExperienceInput>,
+) -> ContentBlock {
+    // Check workflow enforcement first
+    if let Err(e) = self.check_workflow_enforcement("link_observation_to_experience").await {
+        tracing::warn!("Workflow enforcement blocked link_observation_to_experience: {}", e.message);
+        return enforcement_error_to_content(e);
+    }
+
+    match tools::hypothesis::execute_link_observation_to_experience(input, &self.context.database).await {
+        Ok(result) => {
+            self.record_tool_execution("link_observation_to_experience", None).await;
+            tool_output_to_content(result)
+        }
+        Err(e) => tool_output_to_content(ToolOutput::error(e)),
+    }
+}
+
 #[tool(
     name = "get_knowledge",
     description = "Get learned knowledge extracted from validated hypotheses."

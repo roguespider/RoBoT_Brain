@@ -73,7 +73,7 @@ pub struct TranscriptionSegment {
 pub struct AudioAnalysis {
     pub duration_seconds: f32,
     pub sample_rate: u32,
-    #[allow(dead_code)]
+    
     pub channels: u16,
     pub rms_db: f32,
     pub peak_db: f32,
@@ -188,6 +188,7 @@ fn generate_transcription(analysis: &AudioAnalysis, path: &Path) -> String {
          File: {}\n\
          Duration: {:.2}s\n\
          Sample Rate: {} Hz\n\
+         Channels: {}\n\
          \n\
          AUDIO METRICS\n\
          -------------\n\
@@ -211,6 +212,7 @@ fn generate_transcription(analysis: &AudioAnalysis, path: &Path) -> String {
         filename,
         analysis.duration_seconds,
         analysis.sample_rate,
+        analysis.channels,
         analysis.rms_db,
         analysis.peak_db,
         analysis.speech_estimate_percent,

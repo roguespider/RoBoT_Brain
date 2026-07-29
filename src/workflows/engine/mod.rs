@@ -5,7 +5,7 @@
 
 
 
-#[allow(clippy::module_inception)]
+
 mod engine;
 mod executor;
 mod experience;

@@ -22,7 +22,7 @@
 //! ```
 
 pub mod attempt;
-#[allow(clippy::module_inception)]
+
 pub mod exploration;
 pub mod finding;
 pub mod hypothesis;

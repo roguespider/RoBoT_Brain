@@ -36,7 +36,7 @@ use serde::{Deserialize, Serialize};
 pub mod engine;
 pub mod insight;
 pub mod pattern;
-#[allow(clippy::module_inception)]
+
 pub mod reflection;
 pub mod review;
 pub mod services;

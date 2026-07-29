@@ -4,7 +4,7 @@
 #![allow(dead_code)]
 //! Planning and decision-making module
 
-#[allow(clippy::module_inception)]
+
 pub mod planner;
 pub mod policy;
 
