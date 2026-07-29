@@ -14,21 +14,21 @@ pub fn all() -> Vec<McpTool> {
     vec![
         McpTool {
             name: INGEST_FILES.to_string(),
-            description: "INGEST FILES INTO MEMORY. REQUIRED WORKFLOW: 1) Call get_workflow with purpose='file_ingestion' first. 2) Call list_importable to see files. 3) Call ingest_files with limit=1 (ONE file at a time). 4) SUMMARIZE what was ingested (filename, size, chunks, memory IDs). 5) ASK USER: 'Can I delete the original file?' 6) Only delete if user says YES. DO NOT batch ingest or auto-delete.".to_string(),
+            description: "Ingest files from files_to_import folder into memory. One file at a time (limit=1). Returns memory IDs for stored content.".to_string(),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
                     "folder": {
                         "type": "string",
-                        "description": "Defaults to 'files_to_import' - it's ALREADY next to robot_brain.exe. You don't need to specify this unless using a different folder. Example: 'files_to_import'"
+                        "description": "Defaults to 'files_to_import'. Example: 'files_to_import'"
                     },
                     "file_path": {
                         "type": "string",
-                        "description": "SINGLE FILE MODE - Ingest one specific file by full path. Example: 'C:\\robot_brain\\files_to_import\\notes.txt'"
+                        "description": "Ingest one specific file by full path. Example: '/path/to/file.txt'"
                     },
                     "limit": {
                         "type": "integer",
-                        "description": "REQUIRED: Must be 1. Ingest ONE file at a time, then ASK USER about deletion before continuing. Default is 1. Example: limit=1"
+                        "description": "Number of files to ingest (default: 1). Ingest one at a time."
                     },
                     "chunk_size": {
                         "type": "integer",
@@ -40,24 +40,24 @@ pub fn all() -> Vec<McpTool> {
                     },
                     "recursive": {
                         "type": "boolean",
-                        "description": "Search subfolders recursively (default: true). Set to false to only look in the root folder."
+                        "description": "Search subfolders recursively (default: true)"
                     },
                     "force": {
                         "type": "boolean",
-                        "description": "Force re-ingestion of already-ingested files (default: false). Use when user confirms they want to add a file again."
+                        "description": "Force re-ingestion of already-ingested files (default: false)"
                     }
                 }
             }),
         },
         McpTool {
             name: LIST_IMPORTABLE.to_string(),
-            description: "LIST FILES READY FOR IMPORT. Automatically looks in 'files_to_import' folder (same directory as robot_brain.exe). Returns list of files with full paths. No need to search - just call this tool.".to_string(),
+            description: "List files available for import from files_to_import folder.".to_string(),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
                     "folder": {
                         "type": "string",
-                        "description": "Leave empty - defaults to 'files_to_import' which is already next to robot_brain.exe"
+                        "description": "Defaults to 'files_to_import'"
                     },
                     "limit": {
                         "type": "integer",
@@ -65,24 +65,28 @@ pub fn all() -> Vec<McpTool> {
                     },
                     "recursive": {
                         "type": "boolean",
-                        "description": "Search subfolders recursively (default: true). Set to false to only look in the root folder."
+                        "description": "Search subfolders recursively (default: true)"
+                    },
+                    "list_all": {
+                        "type": "boolean",
+                        "description": "List all files regardless of limit (default: false)"
                     }
                 }
             }),
         },
         McpTool {
             name: TRANSCRIBE_AUDIO.to_string(),
-            description: "TRANSCRIBE AUDIO FILE. Transcribes an audio file (MP3, WAV, M4A, FLAC, etc.) to text using Whisper AI. The transcription is automatically stored as memory for later retrieval. Audio files in files_to_import will be automatically transcribed when ingested.".to_string(),
+            description: "Transcribe an audio file to text using Whisper AI.".to_string(),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
                     "path": {
                         "type": "string",
-                        "description": "Full path to the audio file to transcribe. Example: 'C:\\robot_brain\\files_to_import\\recording.wav'"
+                        "description": "Full path to the audio file to transcribe"
                     },
                     "store_as_memory": {
                         "type": "boolean",
-                        "description": "Whether to store the transcription as memory (default: true)"
+                        "description": "Store the transcription as memory (default: true)"
                     }
                 },
                 "required": ["path"]
@@ -90,7 +94,7 @@ pub fn all() -> Vec<McpTool> {
         },
         McpTool {
             name: LIST_INGESTED_FILES.to_string(),
-            description: "List files that have been successfully ingested and can now be deleted.".to_string(),
+            description: "List files that have been successfully ingested.".to_string(),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -104,25 +108,25 @@ pub fn all() -> Vec<McpTool> {
                     },
                     "recursive": {
                         "type": "boolean",
-                        "description": "Search subfolders recursively (default: true). Set to false to only look in the root folder."
+                        "description": "Search subfolders recursively (default: true)"
                     }
                 }
             }),
         },
         McpTool {
             name: DELETE_INGESTED_FILES.to_string(),
-            description: "DELETE ORIGINAL FILES after ingestion. ⚠️ CRITICAL: You MUST have asked the user 'Can I delete the original file?' and received a YES before calling this tool. Do NOT auto-delete. The tool will block deletion without user confirmation.".to_string(),
+            description: "Delete original files after successful ingestion. Requires confirmation='yes'.".to_string(),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
                     "files": {
                         "type": "array",
                         "items": {"type": "string"},
-                        "description": "File paths to delete. MUST be files that were already ingested by ingest_files."
+                        "description": "File paths to delete (must be ingested files)"
                     },
                     "confirmation": {
                         "type": "string",
-                        "description": "VERIFICATION REQUIRED: Must be EXACTLY 'yes' to confirm deletion. Without this, deletion will NOT proceed. The user must have explicitly said YES to deletion."
+                        "description": "Must be 'yes' to confirm deletion"
                     }
                 },
                 "required": ["files", "confirmation"]
