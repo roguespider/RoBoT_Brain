@@ -1,8 +1,8 @@
 // src/bridge/mcp/types.rs
 
-// MCP (Model Context Protocol) core types
-
 #![allow(dead_code)]
+
+// MCP (Model Context Protocol) core types
 
 use serde::{Deserialize, Serialize};
 

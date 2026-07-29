@@ -26,8 +26,6 @@ pub enum HypothesisStatus {
     /// Superseded by a better hypothesis
     Superseded,
 }
-
-
 impl std::fmt::Display for HypothesisStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
@@ -244,8 +242,6 @@ pub enum MemoryLayer {
     /// Long-term memory - curated, persistent, indexed
     Permanent,
 }
-
-
 impl std::fmt::Display for MemoryLayer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
@@ -276,8 +272,6 @@ pub enum HierarchyLevel {
     /// Individual sentence (for fine-grained search)
     Sentence,
 }
-
-
 impl std::fmt::Display for HierarchyLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
@@ -415,8 +409,6 @@ pub enum MemoryRelationshipType {
     /// Derived from relationship (A is derived from B)
     DerivedFrom,
 }
-
-
 impl std::fmt::Display for MemoryRelationshipType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
@@ -455,6 +447,4 @@ impl MemoryRelationship {
         }
     }
 }
-
-
 

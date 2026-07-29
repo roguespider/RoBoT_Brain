@@ -1,6 +1,8 @@
 
 // src/learning/working_memory.rs
 
+#![allow(dead_code)]
+
 //! Learning system's Working Memory with state machine for active context
 //!
 //! This is a DIFFERENT concept from `src/memory/working.rs`:
@@ -12,10 +14,6 @@
 //! - State machine transitions (Active → Evaluated → Promoted → Archived)
 //! - Promotion policies for knowledge extraction
 //! - Lineage tracking for memory provenance
-
-#![allow(dead_code)]
-
-
 
 mod store;
 #[cfg(test)]

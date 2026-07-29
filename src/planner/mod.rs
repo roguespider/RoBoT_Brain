@@ -1,8 +1,8 @@
 
 // src/planner/mod.rs
-//! Planning and decision-making module
 
 #![allow(dead_code)]
+//! Planning and decision-making module
 
 pub mod planner;
 pub mod policy;

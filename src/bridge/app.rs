@@ -41,6 +41,7 @@ use crate::workflows::engine::WorkflowEngine;
 /// Root application container.
 ///
 /// Owns long-running services required by RoBoT.
+#[allow(dead_code)]
 pub struct App {
     /// Persistent database layer.
     _database: Arc<SqliteDatabase>,
@@ -67,7 +68,6 @@ pub struct App {
     scheduler: Arc<Scheduler>,
     
     /// Memory pipeline for working→permanent consolidation.
-    #[allow(dead_code)]
     memory_pipeline: Arc<crate::memory::pipeline::MemoryPipeline>,
 
     /// MCP context shared with bridge - owns all subsystems.

@@ -1,8 +1,8 @@
 
 // src/skills/mod.rs
-//! Skill management and registry
 
 #![allow(dead_code)]
+//! Skill management and registry
 
 pub mod registry;
 
