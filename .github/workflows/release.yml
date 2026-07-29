@@ -101,13 +101,7 @@ jobs:
         run: rustup target add ${{ matrix.target }}
 
       - name: Build release
-        uses: houseabsolute/actions-rust-cross@v0
-        with:
-          name: robot_brain
-          targets: ${{ matrix.target }}
-          args: --release --bin robot_brain
-        env:
-          CROSS_CONTAINER_TEMP: /tmp
+        run: cargo build --release --target ${{ matrix.target }}
 
       - name: Prepare artifact
         shell: bash
