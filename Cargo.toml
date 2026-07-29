@@ -1,7 +1,22 @@
 [package]
 name = "robot_brain"
-version = "0.1.0"
+version = "0.7.1"
 edition = "2021"
+description = "A Rust MCP server for Zed Editor with persistent memory and experience-based learning"
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+license-file = "LICENSE"
+keywords = ["mcp", "zed", "ai", "memory", "agent"]
+categories = ["command-line-utilities", "ai", "robotics"]
+repository = "https://github.com/roguespider/RoBoT_Brain"
+homepage = "https://github.com/roguespider/RoBoT_Brain"
+authors = ["RoBoT Team"]
+
+[profile.release]
+opt-level = 3
+lto = true
+codegen-units = 1
+strip = true
 
 [build-dependencies]
 

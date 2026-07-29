@@ -7,6 +7,8 @@ A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with p
 > **Status:** v0.7.1 (fix-and-repair) — Memory System implemented per Architecture §4.08, §6.3 with Working Memory, Permanent Memory, and Memory Retrieval.
 > Full event catalog per Architecture §4.04. Learning Pipeline per Architecture §9. Database layer with 8 migrations. All 54 unit tests and 103 integration
 > tests passing. 0 errors, 0 warnings.
+>
+> **Automated Releases:** GitHub Actions CI/CD builds binaries for Linux (x86_64, aarch64), Windows (x86_64), and macOS (x86_64, aarch64).
 ---
 To Build
 install rust 
@@ -125,6 +127,75 @@ cargo build --release
 ```
 
 Audio transcription is enabled by default using Candle (no extra features or libclang required).
+
+---
+
+## Release Process
+
+Releases are automated via GitHub Actions. To create a new release:
+
+### Creating a Release
+
+1. **Update version** in `Cargo.toml`:
+   ```toml
+   [package]
+   version = "0.8.0"  # Update this
+   ```
+
+2. **Commit and tag**:
+   ```bash
+   git add .
+   git commit -m "Release v0.8.0"
+   git tag v0.8.0
+   git push origin main --tags
+   ```
+
+3. **GitHub Actions** will automatically:
+   - ✅ Run tests on Linux, Windows, and macOS
+   - ✅ Build release binaries for all platforms:
+     - Linux: x86_64, aarch64
+     - Windows: x86_64
+     - macOS: x86_64, aarch64 (Apple Silicon)
+   - ✅ Generate SHA256 checksums
+   - ✅ Create a GitHub Release with all artifacts
+
+### Download Pre-built Binaries
+
+Pre-built binaries are available on the [Releases page](https://github.com/roguespider/RoBoT_Brain/releases).
+
+| Platform | Architecture | Filename |
+|----------|-------------|----------|
+| Linux | x86_64 | `robot_brain-linux-x86_64.tar.gz` |
+| Linux | aarch64 | `robot_brain-linux-aarch64.tar.gz` |
+| Windows | x86_64 | `robot_brain-windows-x86_64.zip` |
+| macOS | x86_64 | `robot_brain-macos-x86_64.tar.gz` |
+| macOS | aarch64 | `robot_brain-macos-aarch64.tar.gz` |
+
+### Installing from Release
+
+**Linux/macOS:**
+```bash
+# Download the latest release
+curl -L https://github.com/roguespider/RoBoT_Brain/releases/latest/download/robot_brain-linux-x86_64.tar.gz | tar xz
+sudo mv robot_brain /usr/local/bin/
+robot_brain --version
+```
+
+**Windows:**
+```powershell
+# Download and extract
+Invoke-WebRequest -Uri "https://github.com/roguespider/RoBoT_Brain/releases/latest/download/robot_brain-windows-x86_64.zip" -OutFile robot_brain.zip
+Expand-Archive robot_brain.zip -DestinationPath .
+.\robot_brain.exe --version
+```
+
+### Homebrew (macOS)
+
+```bash
+brew tap roguespider/robot-brain https://github.com/roguespider/RoBoT_Brain
+brew install robot_brain
+robot_brain --version
+```
 
 ---
 

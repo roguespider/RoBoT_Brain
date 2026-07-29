@@ -1,0 +1,267 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  CARGO_TERM_COLOR: always
+  # Optimize for release builds
+  RUST_BACKTRACE: '1'
+
+jobs:
+  # ============================================================================
+  # CI: Test on all platforms
+  # ============================================================================
+  ci-test:
+    name: CI Test - ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macos-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+
+      - name: Check formatting
+        run: cargo fmt --all -- --check
+
+      - name: Run Clippy
+        run: cargo clippy --all-targets --all-features -- -D warnings
+
+      - name: Run tests
+        run: cargo test --all-features --all
+
+      - name: Build documentation
+        run: cargo doc --all-features --no-deps
+
+  # ============================================================================
+  # Build Release Binaries
+  # ============================================================================
+  build:
+    name: Build - ${{ matrix.job }} (${{ matrix.os }})
+    needs: ci-test
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            job: linux-x86_64
+            target: x86_64-unknown-linux-gnu
+            artifact: robot_brain-linux-x86_64.tar.gz
+          - os: ubuntu-latest
+            job: linux-aarch64
+            target: aarch64-unknown-linux-gnu
+            artifact: robot_brain-linux-aarch64.tar.gz
+          - os: windows-latest
+            job: windows-x86_64
+            target: x86_64-pc-windows-msvc
+            artifact: robot_brain-windows-x86_64.zip
+          - os: macos-latest
+            job: macos-x86_64
+            target: x86_64-apple-darwin
+            artifact: robot_brain-macos-x86_64.tar.gz
+          - os: macos-latest
+            job: macos-aarch64
+            target: aarch64-apple-darwin
+            artifact: robot_brain-macos-aarch64.tar.gz
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Cache cargo registry
+        uses: Swatinem/rust-cache@v2
+
+      - name: Add target
+        run: rustup target add ${{ matrix.target }}
+
+      - name: Build release
+        uses: houseabsolute/actions-rust-cross@v0
+        with:
+          name: robot_brain
+          targets: ${{ matrix.target }}
+          args: --release --bin robot_brain
+        env:
+          CROSS_CONTAINER_TEMP: /tmp
+
+      - name: Prepare artifact
+        shell: bash
+        run: |
+          mkdir -p release/${{ matrix.job }}
+          
+          # Copy binary
+          if [ "${{ runner.os }}" = "Windows" ]; then
+            cp target/${{ matrix.target }}/release/robot_brain.exe release/${{ matrix.job }}/
+            cd release/${{ matrix.job }}
+            powershell -Command "Compress-Archive -Path * -DestinationPath ../${{ matrix.artifact }}"
+          else
+            cp target/${{ matrix.target }}/release/robot_brain release/${{ matrix.job }}/
+            cd release/${{ matrix.job }}
+            tar -czf ../${{ matrix.artifact }} .
+          fi
+          cd ../..
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.artifact }}
+          path: release/${{ matrix.artifact }}
+          retention-days: 5
+
+  # ============================================================================
+  # Create GitHub Release
+  # ============================================================================
+  release:
+    name: Create Release
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Display structure of downloaded files
+        run: ls -R artifacts
+
+      - name: Create Checksums
+        run: |
+          mkdir -p checksums
+          for artifact in artifacts/*.tar.gz artifacts/*.zip; do
+            if [ -f "$artifact" ]; then
+              sha256sum "$artifact" > "checksums/$(basename $artifact).sha256"
+            fi
+          done
+
+      - name: Prepare Release Notes
+        id: prepare-release-notes
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}
+          
+          # Generate release notes from commits since last tag
+          RELEASE_NOTES=$(git log --oneline --pretty=format:"* %s" $(git describe --tags --abbrev=0 2>/dev/null || echo "")..HEAD 2>/dev/null || echo "")
+          
+          if [ -z "$RELEASE_NOTES" ]; then
+            RELEASE_NOTES="## What's Changed\n\nInitial release for v${VERSION}\n\n### Changes\n- Built on: Linux, Windows, macOS\n- Architectures: x86_64, aarch64"
+          fi
+          
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "$RELEASE_NOTES" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body_path: ${{ github.event.inputs.body || '' }}
+          draft: false
+          prerelease: ${{ contains(github.ref, 'alpha') || contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+          generate_release_notes: false
+          files: |
+            artifacts/**/*.tar.gz
+            artifacts/**/*.zip
+            checksums/*.sha256
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  # ============================================================================
+  # Build Homebrew formula (macOS package manager)
+  # ============================================================================
+  homebrew:
+    name: Homebrew Tap Update
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout homebrew-tap
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}-homebrew
+          path: homebrew-tap
+          token: ${{ secrets.GITHUB_TOKEN }}
+          sparse-checkout: |
+            robot_brain.rb
+          sparse-checkout-cone-mode: false
+        continue-on-error: true
+
+      - name: Create Homebrew formula
+        if: steps.checkout.outputs.status == 'failure' || steps.checkout.outputs.status == ''
+        run: |
+          TAG_NAME=${GITHUB_REF#refs/tags/}
+          VERSION=${TAG_NAME#v}
+          
+          cat << 'FORMULA_EOF' > homebrew-tap/robot_brain.rb
+          class RobotBrain < Formula
+            desc "A Rust MCP server for Zed Editor with persistent memory"
+            homepage "https://github.com/roguespider/RoBoT_Brain"
+            license "AGPL-3.0-or-later"
+          
+            version "{{VERSION}}"
+          
+            on_macos do
+              if Hardware::CPU.arm?
+                url "https://github.com/roguespider/RoBoT_Brain/releases/download/v{{VERSION}}/robot_brain-macos-aarch64.tar.gz"
+                sha256 "REPLACE_WITH_ACTUAL_SHA256"
+              else
+                url "https://github.com/roguespider/RoBoT_Brain/releases/download/v{{VERSION}}/robot_brain-macos-x86_64.tar.gz"
+                sha256 "REPLACE_WITH_ACTUAL_SHA256"
+              end
+            end
+          
+            def install
+              bin.install "robot_brain"
+            end
+          
+            test do
+              system "#{bin}/robot_brain", "--version"
+            end
+          end
+          FORMULA_EOF
+          
+          sed -i "s/{{VERSION}}/${VERSION}/g" homebrew-tap/robot_brain.rb
+
+      - name: Create Pull Request for Homebrew
+        if: steps.checkout.outputs.status == 'failure'
+        uses: peter-evans/create-pull-request@v6
+        with:
+          path: homebrew-tap
+          token: ${{ secrets.GITHUB_TOKEN }}
+          commit-message: "Update robot_brain to v${{ github.event.release.tag_name }}"
+          title: "Update robot_brain to ${{ github.event.release.tag_name }}"
+          body: |
+            Automated PR to update robot_brain formula.
+            
+            This PR was created by the release workflow.
+          branch: robot_brain-${{ github.event.release.tag_name }}
+          base: main
