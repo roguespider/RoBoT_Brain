@@ -1,5 +1,4 @@
 // src/experience/integration/event_subscriber.rs
-#![allow(dead_code)]
 
 //! Event subscriber that listens to experience events and triggers learning pipeline
 //!
@@ -348,7 +347,7 @@ impl EventSubscriber {
         let reputation = store.entry(source_id.to_string())
             .or_insert_with(|| Reputation::new(source_id.to_string()));
         
-        let _ = reputation.apply(
+        reputation.apply(
             String::new(), // No specific experience
             crate::experience::reputation::factors::ReputationFactor::Accuracy,
             impact,

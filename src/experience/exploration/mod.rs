@@ -18,6 +18,7 @@
 //!     ExplorationFinding, Hypothesis, HypothesisResult,
 //!     ExplorationRepository, InMemoryExplorationRepository,
 //! };
+
 //! ```
 
 pub mod attempt;

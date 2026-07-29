@@ -1,6 +1,7 @@
+
 // src/tools/ingestor/core.rs
-#![allow(dead_code)]
 // Core file ingestion logic
+
 
 use std::collections::HashSet;
 use std::path::{Path, PathBuf};
@@ -21,7 +22,7 @@ use crate::tools::ToolOutput;
 use crate::tools::ingestor::archive_handler::{
     create_archive_temp_dir, delete_empty_folders, process_archive,
 };
-use crate::tools::ingestor::file_collector::{collect_all_files_recursive, collect_importable_files, collect_importable_files_with_recursive, get_import_folder, is_supported_extension, AUDIO_EXTENSIONS, JSON_EXTENSIONS, ARCHIVE_EXTENSIONS, TEXT_EXTENSIONS, IMAGE_EXTENSIONS};
+use crate::tools::ingestor::file_collector::{collect_all_files_recursive, collect_importable_files, collect_importable_files_with_recursive, get_import_folder, is_supported_extension, normalize_path, AUDIO_EXTENSIONS, JSON_EXTENSIONS, ARCHIVE_EXTENSIONS, TEXT_EXTENSIONS, IMAGE_EXTENSIONS};
 use crate::tools::ingestor::text_extractor::{extract_text, extract_image_metadata, validate_text_quality};
 use crate::tools::ingestor::semantic_chunker::{parse_document, get_file_type};
 use crate::tools::ingestor::json_importer::{import_json_file, ExtractedJsonData};
@@ -39,7 +40,36 @@ pub use super::workflow::{
 pub const DEFAULT_CHUNK_SIZE: usize = 1000;
 
 /// Default overlap between chunks
+#[allow(dead_code)]
 pub const DEFAULT_CHUNK_OVERLAP: usize = 100;
+
+/// Resolve a file path string to an actual PathBuf that can be used for file operations.
+/// This handles the Windows extended-length path prefix issue where:
+/// 1. canonicalize() returns \\?\E:\... style paths on Windows
+/// 2. normalize_path() strips this prefix for storage
+/// 3. We need to re-canonicalize to ensure the path works for file operations
+fn resolve_path(path: &str) -> std::io::Result<PathBuf> {
+    let p = Path::new(path);
+    
+    // First try canonicalize (resolves symlinks, relative paths, etc.)
+    if let Ok(canonical) = p.canonicalize() {
+        // Canonicalize returns \\?\E:\... on Windows, so normalize it
+        let normalized = normalize_path(canonical);
+        return Ok(normalized);
+    }
+    
+    // If canonicalize fails, try the raw path (might exist but have permission issues)
+    if p.exists() {
+        // Return normalized version of the original path
+        return Ok(normalize_path(p.to_path_buf()));
+    }
+    
+    // Path doesn't exist or can't be accessed
+    Err(std::io::Error::new(
+        std::io::ErrorKind::NotFound,
+        format!("Path not found: {}", path)
+    ))
+}
 
 /// Check if a file is an archive based on its extension
 fn is_archive_file(path: &Path) -> bool {
@@ -110,7 +140,10 @@ impl IngestTracker {
                 let import_folder = exe_dir.join("files_to_import");
                 if let Ok(file_path_buf) = Path::new(file_path).canonicalize() {
                     if let Ok(import_canonical) = import_folder.canonicalize() {
-                        return file_path_buf.starts_with(import_canonical);
+                        // Normalize both paths to handle Windows extended-length paths
+                        let file_normalized = normalize_path(file_path_buf);
+                        let import_normalized = normalize_path(import_canonical);
+                        return file_normalized.starts_with(import_normalized);
                     }
                 }
             }
@@ -296,7 +329,6 @@ pub struct IngestSummary {
 // ============================================================================
 
 /// Ingest files into memory
-/// 
 /// Per Architecture §6.3: Stores memories in Working Memory cache (fast, volatile, in-memory)
 /// Also persists to SQLite for recovery via checkpoint
 pub async fn ingest_file(
@@ -345,34 +377,9 @@ pub async fn ingest_file(
 
     // Check if ingesting a specific file or from folder
     if let Some(file_path) = file_path {
-        let path = Path::new(file_path);
-        if path.exists() {
-            let result = time::timeout(
-                Duration::from_secs(timeout_secs),
-                ingest_path_with_memory(path, chunk_size, memory_type, db, working_memory)
-            ).await;
-            
-            match result {
-                Ok(Ok(ingest_result)) => {
-                    tracing::info!("Ingested file successfully: {} chunks", ingest_result.chunks_created);
-                    Ok(ToolOutput::success(serde_json::to_value(ingest_result)?))
-                }
-                Ok(Err(e)) => {
-                    tracing::error!("Failed to ingest file: {}", e);
-                    Ok(ToolOutput::error(format!("Failed to ingest file: {}", e)))
-                }
-                Err(_) => {
-                    tracing::error!("Ingestion timed out after {} seconds", timeout_secs);
-                    Ok(ToolOutput::error(format!(
-                        "Ingestion timed out after {} seconds. Try increasing timeout_seconds for large files.",
-                        timeout_secs
-                    )))
-                }
-            }
-        } else {
-            // Try relative to folder
-            let path = folder.join(file_path);
-            if path.exists() {
+        // Resolve the path to handle Windows extended-length path prefix
+        match resolve_path(file_path) {
+            Ok(path) => {
                 let result = time::timeout(
                     Duration::from_secs(timeout_secs),
                     ingest_path_with_memory(&path, chunk_size, memory_type, db, working_memory)
@@ -395,8 +402,42 @@ pub async fn ingest_file(
                         )))
                     }
                 }
-            } else {
-                Ok(ToolOutput::error(format!("File not found: {}", file_path)))
+            }
+            Err(_e) => {
+                // Try relative to folder as fallback
+                let relative_path = folder.join(file_path);
+                match resolve_path(&relative_path.to_string_lossy()) {
+                    Ok(path) => {
+                        let result = time::timeout(
+                            Duration::from_secs(timeout_secs),
+                            ingest_path_with_memory(&path, chunk_size, memory_type, db, working_memory)
+                        ).await;
+                        
+                        match result {
+                            Ok(Ok(ingest_result)) => {
+                                tracing::info!("Ingested file successfully: {} chunks", ingest_result.chunks_created);
+                                Ok(ToolOutput::success(serde_json::to_value(ingest_result)?))
+                            }
+                            Ok(Err(e)) => {
+                                tracing::error!("Failed to ingest file: {}", e);
+                                Ok(ToolOutput::error(format!("Failed to ingest file: {}", e)))
+                            }
+                            Err(_) => {
+                                tracing::error!("Ingestion timed out after {} seconds", timeout_secs);
+                                Ok(ToolOutput::error(format!(
+                                    "Ingestion timed out after {} seconds. Try increasing timeout_seconds for large files.",
+                                    timeout_secs
+                                )))
+                            }
+                        }
+                    }
+                    Err(_) => {
+                        Ok(ToolOutput::error(format!(
+                            "File not found: {}\nTried:\n  1. {}\n  2. {}",
+                            file_path, file_path, relative_path.display()
+                        )))
+                    }
+                }
             }
         }
     } else {
@@ -479,14 +520,32 @@ pub async fn ingest_file(
         let mut timeout_occurred = false;
 
         for file_info in files_to_process {
-            let path = Path::new(&file_info.path);
             let filename = file_info.filename.clone();
+
+            // Resolve the path to ensure it works on all platforms (handles Windows \\?\ prefix)
+            let path = match resolve_path(&file_info.path) {
+                Ok(p) => p,
+                Err(e) => {
+                    failed += 1;
+                    results.push(IngestResult {
+                        filename,
+                        file_path: file_info.path.clone(),
+                        success: false,
+                        chunks_created: 0,
+                        chunk_size_used: chunk_size,
+                        memory_ids: vec![],
+                        error: Some(format!("Failed to resolve path: {}", e)),
+                        remaining_count: 0,
+                    });
+                    continue;
+                }
+            };
 
             // Check if it's an archive
             if file_info.file_type == "archive" {
                 let result = time::timeout(
                     Duration::from_secs(timeout_secs),
-                    ingest_archive(path, chunk_size, memory_type.clone(), db.clone(), working_memory.clone())
+                    ingest_archive(&path, chunk_size, memory_type.clone(), db.clone(), working_memory.clone())
                 ).await;
                 
                 match result {
@@ -527,7 +586,7 @@ pub async fn ingest_file(
             } else {
                 let result = time::timeout(
                     Duration::from_secs(timeout_secs),
-                    ingest_single_file(path, chunk_size, memory_type.clone(), db.clone(), working_memory.clone())
+                    ingest_single_file(&path, chunk_size, memory_type.clone(), db.clone(), working_memory.clone())
                 ).await;
                 
                 match result {
@@ -666,7 +725,7 @@ pub async fn ingest_file(
         } else if successfully_ingested.is_empty() && already_ingested.is_empty() {
             "No files to ingest.".to_string()
         } else if successfully_ingested.len() == 1 {
-            let filename = successfully_ingested[0].rsplit('/').last().unwrap_or(&successfully_ingested[0]).rsplit('\\').last().unwrap_or(&successfully_ingested[0]);
+            let filename = successfully_ingested[0].rsplit('/').next_back().unwrap_or(&successfully_ingested[0]).rsplit('\\').next_back().unwrap_or(&successfully_ingested[0]);
             format!("Successfully ingested: {}", filename)
         } else {
             format!("Successfully ingested {} files.", successfully_ingested.len())

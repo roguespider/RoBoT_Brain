@@ -1,5 +1,4 @@
 // /src/experience/reputation/factors.rs
-#![allow(dead_code)]
 
 use serde::{Deserialize, Serialize};
 

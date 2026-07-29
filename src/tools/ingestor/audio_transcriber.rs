@@ -1,4 +1,7 @@
+
 // src/tools/ingestor/audio_transcriber.rs
+
+
 //! Audio transcription for RoBoT Brain
 //! 
 //! This module provides audio transcription capabilities.
@@ -12,7 +15,7 @@
 //! 4. Return structured transcription result
 //! 
 //! ## Candle Integration
-//! 
+//!
 //! Full Whisper transcription requires Candle ML framework with model downloads:
 //! ```toml
 //! # In Cargo.toml - uncomment to enable Whisper inference
@@ -70,6 +73,7 @@ pub struct TranscriptionSegment {
 pub struct AudioAnalysis {
     pub duration_seconds: f32,
     pub sample_rate: u32,
+    #[allow(dead_code)]
     pub channels: u16,
     pub rms_db: f32,
     pub peak_db: f32,
@@ -128,13 +132,11 @@ impl AudioAnalysis {
 }
 
 /// Transcribe an audio file to text
-/// 
 /// This function performs audio transcription. With Candle dependencies enabled:
 /// - Downloads and loads Whisper model from HuggingFace
 /// - Converts audio to mel spectrogram
 /// - Runs transformer inference
 /// - Returns transcribed text
-/// 
 /// Without Candle, returns detailed audio analysis metrics.
 pub fn transcribe_audio(path: &Path) -> Result<TranscriptionResult> {
     let samples = load_audio_file(path)?;
@@ -391,6 +393,7 @@ pub async fn store_transcription_as_memory(
 #[cfg(test)]
 mod tests {
     use std::path::Path;
+    use super::*;
 
     #[test]
     fn test_is_audio_file() {

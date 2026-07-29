@@ -1,5 +1,4 @@
 // /src/experience/evolution/evidence.rs
-#![allow(dead_code)]
 
 // Evidence for behavior evaluation
 

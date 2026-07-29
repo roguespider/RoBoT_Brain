@@ -1,4 +1,5 @@
 // src/bridge/mcp/handler.rs
+
 #![allow(dead_code)]
 // MCP protocol handler trait
 
@@ -28,8 +29,6 @@ pub struct DefaultMcpHandler {
     capabilities: McpCapabilities,
     server_info: McpServerInfo,
 }
-
-
 impl DefaultMcpHandler {
     /// Create a new default handler with the given info
     pub fn new(server_name: &str, server_version: &str) -> Self {

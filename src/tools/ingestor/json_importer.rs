@@ -1,7 +1,8 @@
+
 // src/tools/ingestor/json_importer.rs
-#![allow(dead_code)]
 
 // Smart JSON importer that extracts structured data into memories
+
 
 use std::path::Path;
 
@@ -40,12 +41,14 @@ pub struct ExtractedJsonData {
     /// JSON path in the original file (e.g., "messages[0].content")
     pub json_path: String,
     /// The field name (e.g., "content", "title")
+    #[allow(dead_code)]
     pub field_name: String,
     /// Context from sibling fields (e.g., "role: user, id: 123")
     pub sibling_context: String,
     /// The type of data (conversation, data, metadata, etc.)
     pub data_type: String,
     /// Raw JSON value for reference
+    #[allow(dead_code)]
     pub raw_value: Value,
 }
 
@@ -57,12 +60,12 @@ impl ExtractedJsonData {
         if !self.sibling_context.is_empty() {
             content.push_str("\n\n[Context: ");
             content.push_str(&self.sibling_context);
-            content.push_str("]");
+            content.push(']');
         }
         
         content.push_str("\n\n[Source: ");
         content.push_str(&self.json_path);
-        content.push_str("]");
+        content.push(']');
         
         content
     }
@@ -74,20 +77,28 @@ pub struct JsonImportResult {
     /// All extracted data pieces
     pub items: Vec<ExtractedJsonData>,
     /// Detected type of JSON file
+    #[allow(dead_code)]
     pub json_type: JsonFileType,
     /// Summary statistics
+    #[allow(dead_code)]
     pub stats: ImportStats,
     /// Any warnings
+    #[allow(dead_code)]
     pub warnings: Vec<String>,
 }
 
 /// Statistics about the import
 #[derive(Debug, Default)]
 pub struct ImportStats {
+    #[allow(dead_code)]
     pub total_items: usize,
+    #[allow(dead_code)]
     pub text_items: usize,
+    #[allow(dead_code)]
     pub metadata_items: usize,
+    #[allow(dead_code)]
     pub nested_items: usize,
+    #[allow(dead_code)]
     pub skipped_items: usize,
 }
 
@@ -101,6 +112,7 @@ pub enum JsonFileType {
     /// Single object with mixed fields
     MixedObject,
     /// Key-value pairs / configuration
+    #[allow(dead_code)]
     Config,
     /// Chroma/LangChain export
     EmbeddingsExport,
@@ -522,13 +534,13 @@ fn extract_embeddings_export(
             let (docs_array, ids_array, metadatas_array) = if let Value::Array(arr) = docs {
                 // Documents might be nested in arrays (Chroma format: [[doc1, doc2]])
                 if let Some(Value::Array(inner)) = arr.first() {
-                    let ids = obj.get("ids").and_then(|v| v.as_array()).map(|a| a.clone());
-                    let metadatas = obj.get("metadatas").and_then(|v| v.as_array()).map(|a| a.clone());
+                    let ids = obj.get("ids").and_then(|v| v.as_array()).cloned();
+                    let metadatas = obj.get("metadatas").and_then(|v| v.as_array()).cloned();
                     (inner.clone(), ids, metadatas)
                 } else {
                     // Direct array of documents
-                    let ids = obj.get("ids").and_then(|v| v.as_array()).map(|a| a.clone());
-                    let metadatas = obj.get("metadatas").and_then(|v| v.as_array()).map(|a| a.clone());
+                    let ids = obj.get("ids").and_then(|v| v.as_array()).cloned();
+                    let metadatas = obj.get("metadatas").and_then(|v| v.as_array()).cloned();
                     (arr.clone(), ids, metadatas)
                 }
             } else {
@@ -706,6 +718,7 @@ fn extract_generic_json(
 }
 
 /// Format import result for display
+#[allow(dead_code)]
 pub fn format_import_summary(result: &JsonImportResult) -> String {
     let mut summary = String::new();
     

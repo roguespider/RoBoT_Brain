@@ -1,5 +1,4 @@
 // robot_mcp/src/experience/observer.rs
-#![allow(dead_code)]
 
 
 use anyhow::Result;

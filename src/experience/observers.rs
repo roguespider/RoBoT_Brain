@@ -1,5 +1,4 @@
 // /src/experience/observers.rs
-#![allow(dead_code)]
 //! Observer implementations for the learning subsystems
 //!
 //! Per Architecture §22 - Background Workers:

@@ -1,5 +1,4 @@
 // robot/src/experience/hypothesis/services/validator.rs
-#![allow(dead_code)]
 
 //! ============================================================================
 //! HYPOTHESIS VALIDATOR

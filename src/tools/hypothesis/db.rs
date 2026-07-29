@@ -1,6 +1,7 @@
 // src/tools/hypothesis/db.rs
 // Database operations for the Hypothesis Engine
 
+
 use std::sync::Arc;
 use anyhow::Result;
 use uuid::Uuid;

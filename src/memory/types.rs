@@ -8,8 +8,10 @@ use uuid::Uuid;
 
 /// Memory layer type - Per Architecture §6.3
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub enum MemoryLayer {
     /// Working Memory - Temporary information used during active tasks
+    #[default]
     Working,
     /// Permanent Memory - Curated knowledge retained after evaluation
     Permanent,
@@ -57,8 +59,10 @@ impl std::fmt::Display for MemoryType {
 
 /// Memory status - Per Architecture §6.3
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub enum MemoryStatus {
     /// Active and accessible
+    #[default]
     Active,
     /// Inactive but retained
     Inactive,
@@ -68,11 +72,6 @@ pub enum MemoryStatus {
     PendingDeletion,
 }
 
-impl Default for MemoryStatus {
-    fn default() -> Self {
-        MemoryStatus::Active
-    }
-}
 
 /// A memory item - Per Architecture §6.3
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -185,11 +184,6 @@ impl MemoryItem {
     }
 }
 
-impl Default for MemoryLayer {
-    fn default() -> Self {
-        MemoryLayer::Working
-    }
-}
 
 // ============================================================
 // CONVERSION TO/FROM DATABASE MODELS

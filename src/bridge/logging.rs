@@ -7,7 +7,7 @@ pub fn init_logging() {
         .with_thread_ids(false)
         .with_file(false)
         .with_line_number(false)
-        .with_writer(|| std::io::sink())  // Discard tracing logs
+        .with_writer(std::io::sink)  // Discard tracing logs
         .with_ansi(false)
         .init();
     

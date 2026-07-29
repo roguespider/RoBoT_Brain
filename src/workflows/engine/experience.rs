@@ -10,7 +10,7 @@ use crate::workflows::engine::types::ExperienceRecord;
 pub fn build_search_query(action: &str, params: &HashMap<String, String>) -> String {
     let mut parts = vec![action.replace('_', " ")];
 
-    for (_key, value) in params.iter() {
+    for value in params.values() {
         if !value.is_empty() && value.len() < 100 {
             let normalized_value = value.replace(['[', ']', '{', '}'], "").trim().to_string();
             if !normalized_value.is_empty() {
@@ -118,15 +118,15 @@ impl ExperienceRecord {
     /// Build raw observation - observable facts only
     fn build_observation(action: &str, _params: &HashMap<String, String>) -> String {
         match action {
-            "create_file" | "write_file" => format!("File operation: create/write"),
-            "edit_file" => format!("File operation: edit"),
-            "delete_file" => format!("File operation: delete"),
-            "run_command" | "execute_command" | "bash" => format!("Command executed"),
-            "create_reflection" => format!("Reflection created"),
-            "ingest_files" | "import_files" => format!("Files ingested"),
-            "record_experience" => format!("Experience recorded"),
-            "search_memory" | "get_memory" => format!("Memory accessed"),
-            "add_knowledge" => format!("Knowledge added"),
+            "create_file" | "write_file" => "File operation: create/write".to_string(),
+            "edit_file" => "File operation: edit".to_string(),
+            "delete_file" => "File operation: delete".to_string(),
+            "run_command" | "execute_command" | "bash" => "Command executed".to_string(),
+            "create_reflection" => "Reflection created".to_string(),
+            "ingest_files" | "import_files" => "Files ingested".to_string(),
+            "record_experience" => "Experience recorded".to_string(),
+            "search_memory" | "get_memory" => "Memory accessed".to_string(),
+            "add_knowledge" => "Knowledge added".to_string(),
             _ => format!("Action: {}", action),
         }
     }

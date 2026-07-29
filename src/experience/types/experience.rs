@@ -1,5 +1,4 @@
 // src/experience/types/experience.rs
-#![allow(dead_code)]
 
 // Experience struct and related types
 

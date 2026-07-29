@@ -1,6 +1,6 @@
 // src/experience/types/evidence.rs
-#![allow(dead_code)]
 // Evidence types
+
 
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

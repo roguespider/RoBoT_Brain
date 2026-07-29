@@ -1,5 +1,4 @@
 // robot/src/experience/hypothesis/support/simulation.rs
-#![allow(dead_code)]
 
 //! ============================================================================
 //! HYPOTHESIS SIMULATION

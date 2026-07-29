@@ -1607,11 +1607,11 @@ async fn search_skills(
 
 // Manual ServerHandler impl with custom server info
 #[tool_handler]
-#[allow(deprecated)] // Using deprecated enable_logging() required for builder type inference
 impl rmcp::handler::server::ServerHandler for McpServerHandler {
     fn get_info(&self) -> rmcp::model::ServerInfo {
         use rmcp::model::ServerCapabilitiesBuilder;
 
+        #[allow(deprecated)]
         let capabilities = ServerCapabilitiesBuilder::default()
             .enable_experimental()
             .enable_extensions()

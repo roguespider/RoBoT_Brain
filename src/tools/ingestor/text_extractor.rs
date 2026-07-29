@@ -1,6 +1,8 @@
+
 // src/tools/ingestor/text_extractor.rs
 
 // Text extraction from various file formats
+
 
 use std::fs::File;
 use std::io::{BufReader, Read};
@@ -249,7 +251,7 @@ fn extract_chroma_text(content: &str) -> Result<String> {
     result.push_str("# Chroma Database Export\n\n");
     
     for (i, doc) in documents.iter().enumerate() {
-        result.push_str(&format!("---\n"));
+        result.push_str("---\n");
         
         // Add ID if available
         if let Some(id) = ids.get(i) {
@@ -398,8 +400,8 @@ pub fn strip_xml_tags(xml: &str) -> String {
     let mut result = String::new();
     let mut in_content = true;
     
-    let mut chars = xml.chars().peekable();
-    while let Some(c) = chars.next() {
+    let chars = xml.chars().peekable();
+    for c in chars {
         if c == '<' {
             in_content = false;
         } else if c == '>' {
@@ -424,6 +426,7 @@ pub fn strip_html_tags(html: &str) -> String {
 }
 
 /// Chunk text into smaller pieces with overlap
+#[allow(dead_code)]
 pub fn chunk_text(text: &str, chunk_size: usize, overlap: usize) -> Vec<String> {
     if text.len() <= chunk_size {
         return vec![text.to_string()];
@@ -470,7 +473,7 @@ pub fn validate_text_quality(content: &str) -> (bool, String) {
         } else if byte < 32 && byte != 9 && byte != 10 && byte != 13 {
             // Allow tab, newline, carriage return
             control_count += 1;
-        } else if byte >= 32 && byte < 127 || byte >= 128 {
+        } else if (32..127).contains(&byte) || byte >= 128 {
             printable_count += 1;
         }
     }

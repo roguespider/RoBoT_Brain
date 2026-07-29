@@ -1,10 +1,8 @@
 
-#![allow(dead_code)]
 
 // src/tools/memory/mod.rs
 // Memory-related MCP tools
 // Per Architecture §07: Every experience originates from observations
-
 
 
 use std::sync::Arc;
@@ -53,6 +51,7 @@ pub struct ListMemoriesInput {
 
 /// Tool: Preview memories for deletion (asks user before deleting)
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[allow(dead_code)]
 pub struct CleanupMemoriesInput {
     /// List of memory IDs to delete
     pub ids: Vec<String>,
@@ -62,6 +61,7 @@ pub struct CleanupMemoriesInput {
 
 /// Tool: List all image memories and detect garbage
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[allow(dead_code)]
 pub struct ListImageMemoriesInput {
     /// Show memories that look like garbage image text (binary data stored as text)
     pub include_garbage: Option<bool>,
@@ -217,7 +217,6 @@ fn parse_memory_type(s: &str) -> MemoryType {
 }
 
 /// Execute store memory tool
-/// 
 /// Per Architecture §07: Every experience originates from observations
 /// Per Architecture §1: Memory is a component. Experience is the source of learning.
 /// Per Architecture §4: "Actions, observations, decisions, successes, failures, 
@@ -336,7 +335,6 @@ fn convert_memory_type_to_memory(dt: MemoryType) -> crate::memory::types::Memory
 }
 
 /// Execute search memory tool
-/// 
 /// Per Architecture §07: Memory access generates observations for the learning pipeline.
 /// Per Architecture §4: Memory retrieval is part of the event system.
 /// Per Architecture §6.3: Uses MemoryRetrieval service (queries both Working and Permanent memory)
@@ -415,7 +413,6 @@ pub async fn execute_search_memory(
 }
 
 /// Execute get memory tool
-/// 
 /// Per Architecture §07: Memory access generates observations for the learning pipeline.
 /// Per Architecture §6.3: Uses MemoryRetrieval service
 pub async fn execute_get_memory(
@@ -529,6 +526,7 @@ pub async fn execute_list_memories(
 }
 
 /// Execute cleanup memories tool - ALWAYS requires user confirmation to delete
+#[allow(dead_code)]
 pub async fn execute_cleanup_memories(
     input: CleanupMemoriesInput,
     database: &Arc<SqliteDatabase>,
@@ -593,6 +591,7 @@ pub async fn execute_cleanup_memories(
 
 /// Execute list image memories tool
 /// Lists all image memories and optionally shows garbage (binary data stored as text)
+#[allow(dead_code)]
 pub async fn execute_list_image_memories(
     input: ListImageMemoriesInput,
     database: &Arc<SqliteDatabase>,
@@ -662,16 +661,18 @@ pub async fn execute_list_image_memories(
 }
 
 /// Extract a field value from content
+#[allow(dead_code)]
 fn extract_field_from_content(content: &str, field_name: &str) -> String {
     for line in content.lines() {
-        if line.starts_with(field_name) {
-            return line[field_name.len()..].trim().to_string();
+        if let Some(stripped) = line.strip_prefix(field_name) {
+            return stripped.trim().to_string();
         }
     }
     "unknown".to_string()
 }
 
 /// Check if content looks like binary garbage
+#[allow(dead_code)]
 fn content_looks_like_garbage(content: &str) -> bool {
     let bytes = content.as_bytes();
     
@@ -687,7 +688,7 @@ fn content_looks_like_garbage(content: &str) -> bool {
     }
     
     // Check ratio of printable characters
-    let printable = bytes.iter().filter(|&&b| (b >= 32 && b < 127) || b >= 128).count();
+    let printable = bytes.iter().filter(|&&b| (32..127).contains(&b) || b >= 128).count();
     let ratio = printable as f64 / bytes.len() as f64;
     if ratio < 0.3 {
         return true;

@@ -1,3 +1,4 @@
+
 // src/knowledge/mod.rs
 //! Knowledge System - Manages information that has gained sufficient confidence
 //! to influence reasoning.
@@ -10,6 +11,8 @@
 //! - Connect concepts together
 //!
 //! Knowledge is not static - it changes as new evidence appears.
+
+#![allow(dead_code)]
 
 pub mod types;
 pub mod store;

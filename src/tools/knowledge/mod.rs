@@ -3,6 +3,7 @@
 // src/tools/knowledge/mod.rs
 //! Knowledge system MCP tools
 
+
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;

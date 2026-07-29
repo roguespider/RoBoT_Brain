@@ -1,6 +1,6 @@
 // src/database/models.rs
-#![allow(dead_code)]
 
+#![allow(dead_code)]
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -12,8 +12,10 @@ use uuid::Uuid;
 
 /// Status of a hypothesis
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Default)]
 pub enum HypothesisStatus {
     /// Hypothesis is being tested
+    #[default]
     Testing,
     /// Evidence supports the hypothesis
     Supported,
@@ -24,13 +26,6 @@ pub enum HypothesisStatus {
     /// Superseded by a better hypothesis
     Superseded,
 }
-
-impl Default for HypothesisStatus {
-    fn default() -> Self {
-        HypothesisStatus::Testing
-    }
-}
-
 impl std::fmt::Display for HypothesisStatus {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
@@ -239,19 +234,14 @@ impl std::fmt::Display for MemoryType {
 /// - Working: Short-term, volatile, context-focused
 /// - Permanent: Long-term, curated, indexed
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub enum MemoryLayer {
     /// Short-term memory - temporary, high volatility
+    #[default]
     Working,
     /// Long-term memory - curated, persistent, indexed
     Permanent,
 }
-
-impl Default for MemoryLayer {
-    fn default() -> Self {
-        MemoryLayer::Working
-    }
-}
-
 impl std::fmt::Display for MemoryLayer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
@@ -268,8 +258,10 @@ impl std::fmt::Display for MemoryLayer {
 
 /// Level in the document hierarchy
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Default)]
 pub enum HierarchyLevel {
     /// Root level - whole document/file
+    #[default]
     Document,
     /// Major section (h1, ## header, chapter)
     Section,
@@ -280,13 +272,6 @@ pub enum HierarchyLevel {
     /// Individual sentence (for fine-grained search)
     Sentence,
 }
-
-impl Default for HierarchyLevel {
-    fn default() -> Self {
-        HierarchyLevel::Document
-    }
-}
-
 impl std::fmt::Display for HierarchyLevel {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
@@ -370,28 +355,6 @@ impl MemoryCard {
         }
     }
 
-    /// Create a new memory in Permanent layer (LTM)
-    pub fn new_permanent(content: String, memory_type: MemoryType) -> Self {
-        let now = Utc::now();
-        Self {
-            id: Uuid::new_v4(),
-            content,
-            memory_type,
-            layer: MemoryLayer::Permanent,
-            parent_id: None,
-            hierarchy_level: HierarchyLevel::Document,
-            order_index: 0,
-            path: String::new(),
-            file_source: None,
-            access_count: 0,
-            last_accessed: None,
-            confidence: 0.7,  // Higher default confidence for promoted memories
-            importance: 0.7,
-            created_at: now,
-            updated_at: now,
-        }
-    }
-
     /// Create a new hierarchical memory card
     pub fn new_hierarchical(
         content: String,
@@ -422,19 +385,6 @@ impl MemoryCard {
             updated_at: now,
         }
     }
-
-    /// Promote this memory to Permanent layer (Working → Permanent)
-    pub fn promote_to_permanent(&mut self) {
-        self.layer = MemoryLayer::Permanent;
-        self.confidence = (self.confidence + 0.2).min(1.0);  // Boost confidence
-        self.updated_at = Utc::now();
-    }
-
-    /// Record an access for consolidation tracking
-    pub fn record_access(&mut self) {
-        self.access_count += 1;
-        self.last_accessed = Some(Utc::now());
-    }
 }
 
 // ==========================================================
@@ -443,8 +393,10 @@ impl MemoryCard {
 
 /// Relationship type between memories
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub enum MemoryRelationshipType {
     /// General related relationship
+    #[default]
     Related,
     /// Causal relationship (A causes B)
     Causes,
@@ -457,13 +409,6 @@ pub enum MemoryRelationshipType {
     /// Derived from relationship (A is derived from B)
     DerivedFrom,
 }
-
-impl Default for MemoryRelationshipType {
-    fn default() -> Self {
-        MemoryRelationshipType::Related
-    }
-}
-
 impl std::fmt::Display for MemoryRelationshipType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
@@ -502,6 +447,4 @@ impl MemoryRelationship {
         }
     }
 }
-
-
 

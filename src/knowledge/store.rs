@@ -1,5 +1,4 @@
 // src/knowledge/store.rs
-#![allow(dead_code)]
 
 //! Knowledge store - repository for managing knowledge items
 
@@ -93,8 +92,8 @@ impl KnowledgeStore {
     pub async fn update(&self, mut item: KnowledgeItem) -> bool {
         item.updated_at = chrono::Utc::now();
         let mut items = self.items.write().await;
-        if items.contains_key(&item.id) {
-            items.insert(item.id, item);
+        if let std::collections::hash_map::Entry::Occupied(mut e) = items.entry(item.id) {
+            e.insert(item);
             true
         } else {
             false

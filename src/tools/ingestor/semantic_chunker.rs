@@ -1,7 +1,8 @@
+
 // src/tools/ingestor/semantic_chunker.rs
-#![allow(dead_code)]
 // Semantic document chunking - splits documents at natural boundaries
 // preserving full document structure for hierarchical storage
+
 
 use crate::database::models::HierarchyLevel;
 use crate::database::models::MemoryType;
@@ -11,6 +12,7 @@ use uuid::Uuid;
 /// A node in the document hierarchy tree
 #[derive(Debug, Clone)]
 pub struct HierarchyNode {
+    #[allow(dead_code)]
     pub id: Option<Uuid>,            // Set after insertion
     pub content: String,
     pub level: HierarchyLevel,
@@ -59,11 +61,13 @@ impl HierarchyNode {
     }
 
     /// Count total nodes in tree
+    #[allow(dead_code)]
     pub fn count(&self) -> usize {
         1 + self.children.iter().map(|c| c.count()).sum::<usize>()
     }
 
     /// Get max depth of tree
+    #[allow(dead_code)]
     pub fn max_depth(&self) -> usize {
         if self.children.is_empty() {
             1
@@ -166,8 +170,8 @@ fn parse_markdown(content: &str, file_name: &str) -> HierarchyNode {
                 current_paragraph.clear();
             }
 
-            let header_level = trimmed.find('#').map(|i| i).unwrap_or(0);
-            let header_text = trimmed.trim_start_matches(|c| c == '#').trim().to_string();
+            let header_level = trimmed.find('#').unwrap_or(0);
+            let header_text = trimmed.trim_start_matches('#').trim().to_string();
             // Treat level 1 and 2 headers as sections for test compatibility
             let level = if header_level <= 2 { HierarchyLevel::Section } else { HierarchyLevel::Subsection };
             let path = format!("{}/section[{}]", file_name, section_index);
@@ -431,9 +435,9 @@ fn parse_json_value(value: &serde_json::Value, parent_path: &str, order_index: u
                 parse_json_value(item, parent_path, idx, parent);
             }
         }
-        serde_json::Value::String(s) => {
+        serde_json::Value::String(s)
             // Top-level string - add as paragraph
-            if !s.is_empty() {
+            if !s.is_empty() => {
                 let node = HierarchyNode::new(
                     s.clone(),
                     HierarchyLevel::Paragraph,
@@ -442,7 +446,6 @@ fn parse_json_value(value: &serde_json::Value, parent_path: &str, order_index: u
                 );
                 parent.children.push(node);
             }
-        }
         _ => {}
     }
 }

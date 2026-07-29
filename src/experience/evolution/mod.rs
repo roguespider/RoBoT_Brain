@@ -17,6 +17,7 @@
 //! - Rejection: Discarding a behavior candidate that fails validation
 //! - Decay: Behaviors that aren't practiced over time fade away
 
+
 pub mod behavior;
 pub mod engine;
 pub mod evidence;

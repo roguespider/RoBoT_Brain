@@ -2,6 +2,7 @@
 
 // Tool execution functions for the Hypothesis Engine
 
+
 use std::sync::Arc;
 use anyhow::Result;
 use uuid::Uuid;
@@ -169,6 +170,7 @@ pub async fn execute_get_hypothesis(
     })))
 }
 
+#[allow(dead_code)]
 pub async fn execute_get_observation(
     input: GetObservationInput,
     db: &Arc<SqliteDatabase>,
@@ -340,6 +342,7 @@ pub async fn execute_list_observations(
     })))
 }
 
+#[allow(dead_code)]
 pub async fn execute_link_observation_to_experience(
     input: LinkObservationToExperienceInput,
     db: &Arc<SqliteDatabase>,
@@ -465,7 +468,7 @@ pub async fn execute_extract_knowledge(
     if hypothesis.status != HypothesisStatus::Supported {
         return Ok(ToolOutput::error(format!(
             "Can only extract knowledge from supported hypotheses. Current status: {}",
-            hypothesis.status.to_string()
+            hypothesis.status
         )));
     }
     

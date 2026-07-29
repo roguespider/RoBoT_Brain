@@ -1,5 +1,4 @@
 // /src/experience/reflection/services/repository.rs
-#![allow(dead_code)]
 
 // Repository for persisting and retrieving reflections
 

@@ -1,5 +1,4 @@
 // /src/experience/metrics.rs
-#![allow(dead_code)]
 // Metrics collection for performance and learning tracking
 
 
@@ -38,7 +37,6 @@ pub struct AggregatedMetric {
 }
 
 /// System-wide metrics collection
-/// 
 /// Per Architecture: Provides centralized metrics for monitoring system health,
 /// learning progress, and performance characteristics.
 pub struct Metrics {

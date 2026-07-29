@@ -1,5 +1,4 @@
 // src/skills/registry.rs
-#![allow(dead_code)]
 //! Skill registry for managing available skills
 //!
 //! Per Architecture §2.9, §12, §15:
@@ -804,7 +803,7 @@ impl SkillExecutor {
         
         // Update local metrics
         let mut metrics = self.metrics.lock().unwrap();
-        let metrics_entry = metrics.entry(skill_id.to_string()).or_insert_with(|| ExecutionMetrics::new());
+        let metrics_entry = metrics.entry(skill_id.to_string()).or_default();
         if result.success {
             metrics_entry.record_success(duration_ms);
         } else {

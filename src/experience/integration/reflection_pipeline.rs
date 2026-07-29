@@ -1,5 +1,4 @@
 // src/experience/integration/reflection_pipeline.rs
-#![allow(dead_code)]
 
 //! Reflection Pipeline - Wires reflection engine to the event system
 //!

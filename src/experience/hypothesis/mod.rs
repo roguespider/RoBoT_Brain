@@ -1,5 +1,4 @@
 // robot/src/experience/hypothesis/mod.rs
-#![allow(dead_code)]
 
 //! ============================================================================
 //! HYPOTHESIS ENGINE

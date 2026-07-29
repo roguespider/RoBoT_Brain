@@ -1,4 +1,7 @@
+
 // src/memory/mod.rs
+
+#![allow(dead_code)]
 //! Memory System - Per Architecture §6.3
 //!
 //! Memory provides storage and retrieval capabilities.
@@ -10,7 +13,6 @@
 //! Per Architecture §6.3:
 //! - Working Memory: Short lifespan, high volatility, context focused
 //! - Permanent Memory: Indexed, connected, confidence weighted, relationship aware
-
 pub mod types;
 pub mod working;
 pub mod permanent;

@@ -1,3 +1,4 @@
+
 // src/tools/exploration_tools/handlers.rs
 //! Tool execution handlers
 

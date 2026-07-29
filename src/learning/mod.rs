@@ -1,4 +1,6 @@
 // src/learning/mod.rs
+
+#![allow(dead_code)]
 //! Learning module for experience-based learning
 //!
 //! Per Architecture §9 - Learning Pipeline:

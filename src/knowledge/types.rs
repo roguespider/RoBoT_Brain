@@ -1,5 +1,4 @@
 // src/knowledge/types.rs
-#![allow(dead_code)]
 
 //! Core types for the Knowledge System
 
@@ -127,8 +126,10 @@ impl KnowledgeItem {
 /// KNOWLEDGE TYPE
 /// ============================================================================
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
+#[derive(Default)]
 pub enum KnowledgeType {
     /// Factual knowledge (tested and verified)
+    #[default]
     Fact,
     /// Procedure/workflow knowledge
     Procedure,
@@ -146,18 +147,15 @@ pub enum KnowledgeType {
     Custom(String),
 }
 
-impl Default for KnowledgeType {
-    fn default() -> Self {
-        KnowledgeType::Fact
-    }
-}
 
 /// ============================================================================
 /// KNOWLEDGE STATUS
 /// ============================================================================
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Default)]
 pub enum KnowledgeStatus {
     /// Newly created, needs validation
+    #[default]
     New,
     /// Being validated
     Validating,
@@ -171,11 +169,6 @@ pub enum KnowledgeStatus {
     Merged,
 }
 
-impl Default for KnowledgeStatus {
-    fn default() -> Self {
-        KnowledgeStatus::New
-    }
-}
 
 /// ============================================================================
 /// KNOWLEDGE CONFIDENCE
@@ -283,8 +276,10 @@ pub struct ConfidenceDimensions {
 //  ============================================================================
 /// Where knowledge originated (per architecture #12: Reputation)
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum KnowledgeSource {
     /// Created from user input
+    #[default]
     User,
     /// Created from tool execution
     Tool,
@@ -300,11 +295,6 @@ pub enum KnowledgeSource {
     External(String), // source_name
 }
 
-impl Default for KnowledgeSource {
-    fn default() -> Self {
-        KnowledgeSource::User
-    }
-}
 
 /// ============================================================================
 /// KNOWLEDGE RELATION
@@ -321,12 +311,14 @@ pub struct KnowledgeRelation {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Default)]
 pub enum RelationType {
     /// Supports/strengthens this knowledge
     Supports,
     /// Contradicts this knowledge
     Contradicts,
     /// General relatedness
+    #[default]
     Related,
     /// Specialization
     Specializes,
@@ -336,11 +328,6 @@ pub enum RelationType {
     Prerequisite,
 }
 
-impl Default for RelationType {
-    fn default() -> Self {
-        RelationType::Related
-    }
-}
 
 // ============================================================================
 /// KNOWLEDGE DEPENDENCIES
@@ -378,8 +365,10 @@ impl KnowledgeDependency {
 
 /// Types of dependencies between knowledge items
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Default)]
 pub enum DependencyType {
     /// Knowledge requires this to function
+    #[default]
     Required,
     /// Knowledge is enhanced by this
     Optional,
@@ -389,11 +378,6 @@ pub enum DependencyType {
     Replaces,
 }
 
-impl Default for DependencyType {
-    fn default() -> Self {
-        DependencyType::Required
-    }
-}
 
 // ============================================================================
 /// KNOWLEDGE VERSION
@@ -445,17 +429,17 @@ impl KnowledgeVersion {
             let op_full = format!("={}", op);
             return self.satisfies_single_constraint(&op_full, ver);
         }
-        if constraint.starts_with(">=") {
-            return self.satisfies_single_constraint(">=", &constraint[2..]);
+        if let Some(stripped) = constraint.strip_prefix(">=") {
+            return self.satisfies_single_constraint(">=", stripped);
         }
-        if constraint.starts_with("<=") {
-            return self.satisfies_single_constraint("<=", &constraint[2..]);
+        if let Some(stripped) = constraint.strip_prefix("<=") {
+            return self.satisfies_single_constraint("<=", stripped);
         }
-        if constraint.starts_with('>') {
-            return self.satisfies_single_constraint(">", &constraint[1..]);
+        if let Some(stripped) = constraint.strip_prefix('>') {
+            return self.satisfies_single_constraint(">", stripped);
         }
-        if constraint.starts_with('<') {
-            return self.satisfies_single_constraint("<", &constraint[1..]);
+        if let Some(stripped) = constraint.strip_prefix('<') {
+            return self.satisfies_single_constraint("<", stripped);
         }
         // Exact match
         self.version == constraint

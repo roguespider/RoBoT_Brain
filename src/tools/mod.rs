@@ -1,9 +1,9 @@
 
-#![allow(dead_code)]
 
 
 // src/tools/mod.rs
 // MCP tools for Zed Editor integration
+
 
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
@@ -42,6 +42,7 @@ impl ToolOutput {
     }
 
     /// Create a successful output from a value that can be converted to JSON
+    #[allow(dead_code)]
     pub fn from_value<T: Serialize>(value: T) -> Result<Self, serde_json::Error> {
         Ok(Self::success(serde_json::to_value(value)?))
     }
@@ -200,10 +201,10 @@ pub fn register_tools(context: &Arc<McpContext>) {
 }
 
 /// Get all registered tools (sync version for use outside async context)
-/// 
 /// This is the preferred method when you're in a synchronous context
 /// (e.g., CLI commands, non-async handlers). For async contexts,
 /// prefer `get_tools_async()` which properly yields without blocking.
+#[allow(dead_code)]
 pub fn get_tools() -> Vec<crate::bridge::mcp::McpTool> {
     TOOL_REGISTRY
         .get()
