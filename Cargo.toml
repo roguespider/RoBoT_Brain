@@ -51,7 +51,6 @@ candle-transformers = "0.8.0"
 hf-hub = "0.4.0"          # Downloads Whisper models from HuggingFace
 tokenizers = "0.21.0"
 ureq = "2"                 # HTTP client for downloading models
-hound = "3.5"              # Loads WAV audio files
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = [

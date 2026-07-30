@@ -336,71 +336,135 @@ fn load_audio_file(path: &Path) -> Result<Vec<f32>> {
 
 /// Load WAV file and convert to 16kHz mono PCM samples
 fn load_wav(path: &Path) -> Result<Vec<f32>> {
-    use hound::{WavReader, SampleFormat};
+    let data = std::fs::read(path)
+        .with_context(|| format!("Failed to read WAV file: {}", path.display()))?;
     
-    let reader = WavReader::open(path)
-        .with_context(|| format!("Failed to open WAV file: {}", path.display()))?;
-    let spec = reader.spec();
+    // Parse WAV header
+    if data.len() < 44 {
+        anyhow::bail!("File too small to be a valid WAV file");
+    }
     
-    tracing::debug!(
-        "WAV: {} channels, {} Hz, {} bits per sample",
-        spec.channels,
-        spec.sample_rate,
-        spec.bits_per_sample
-    );
+    // Check RIFF header
+    if &data[0..4] != b"RIFF" {
+        anyhow::bail!("Invalid WAV file: missing RIFF header");
+    }
     
-    let samples: Vec<f32> = if spec.channels == 1 && spec.sample_rate == 16000 {
-        match spec.sample_format {
-            SampleFormat::Int => reader
-                .into_samples::<i16>()
-                .filter_map(|s| s.ok())
-                .map(|s| s as f32 / 32768.0)
-                .collect(),
-            SampleFormat::Float => reader
-                .into_samples::<f32>()
-                .filter_map(|s| s.ok())
-                .collect(),
+    // Check WAVE format
+    if &data[8..12] != b"WAVE" {
+        anyhow::bail!("Invalid WAV file: missing WAVE format");
+    }
+    
+    // Find fmt chunk
+    let mut pos = 12;
+    let mut channels: u16 = 1;
+    let mut sample_rate: u32 = 16000;
+    let mut bits_per_sample: u16 = 16;
+    
+    while pos < data.len() - 8 {
+        let chunk_id = &data[pos..pos + 4];
+        let chunk_size = u32::from_le_bytes([
+            data[pos + 4],
+            data[pos + 5],
+            data[pos + 6],
+            data[pos + 7],
+        ]) as usize;
+        
+        if chunk_id == b"fmt " {
+            // Parse format chunk
+            if chunk_size >= 16 {
+                channels = u16::from_le_bytes([data[pos + 14], data[pos + 15]]);
+                sample_rate = u32::from_le_bytes([
+                    data[pos + 16], data[pos + 17], data[pos + 18], data[pos + 19]
+                ]);
+                bits_per_sample = u16::from_le_bytes([data[pos + 22], data[pos + 23]]);
+            }
+        } else if chunk_id == b"data" {
+            // Found audio data
+            let audio_start = pos + 8;
+            let audio_end = (audio_start + chunk_size).min(data.len());
+            
+            tracing::debug!(
+                "WAV: {} channels, {} Hz, {} bits per sample",
+                channels,
+                sample_rate,
+                bits_per_sample
+            );
+            
+            let samples = decode_wav_samples(
+                &data[audio_start..audio_end],
+                channels,
+                bits_per_sample,
+            )?;
+            
+            // Convert to mono and resample if needed
+            let mono = if channels > 1 {
+                samples.chunks(channels as usize)
+                    .map(|chunk| chunk.iter().sum::<f32>() / channels as f32)
+                    .collect()
+            } else {
+                samples
+            };
+            
+            if sample_rate == 16000 {
+                return Ok(mono);
+            } else {
+                return resample_audio(&mono, sample_rate, 16000);
+            }
         }
-    } else {
-        tracing::info!("Converting audio to 16kHz mono");
-        resample_audio(reader, spec)?
-    };
+        
+        pos += 8 + chunk_size;
+        // Align to even byte
+        if chunk_size % 2 != 0 && pos % 2 != 0 {
+            pos += 1;
+        }
+    }
+    
+    anyhow::bail!("Invalid WAV file: no data chunk found")
+}
+
+/// Decode WAV sample data into f32 samples
+fn decode_wav_samples(data: &[u8], channels: u16, bits_per_sample: u16) -> Result<Vec<f32>> {
+    let bytes_per_sample = (bits_per_sample / 8) as usize;
+    let num_samples = data.len() / bytes_per_sample;
+    let mut samples = Vec::with_capacity(num_samples);
+    
+    for i in 0..num_samples {
+        let offset = i * bytes_per_sample;
+        let sample = match bits_per_sample {
+            8 => {
+                // 8-bit samples are unsigned (0-255), centered at 128
+                let val = data[offset];
+                (val as f32 - 128.0) / 128.0
+            }
+            16 => {
+                let val = i16::from_le_bytes([data[offset], data[offset + 1]]);
+                val as f32 / 32768.0
+            }
+            24 => {
+                let val = i32::from_le_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                val as f32 / 8388608.0
+            }
+            32 => {
+                let val = i32::from_le_bytes([
+                    data[offset],
+                    data[offset + 1],
+                    data[offset + 2],
+                    data[offset + 3],
+                ]);
+                val as f32 / 2147483648.0
+            }
+            _ => anyhow::bail!("Unsupported bits per sample: {}", bits_per_sample),
+        };
+        samples.push(sample);
+    }
     
     Ok(samples)
 }
 
-/// Resample audio to 16kHz mono
-fn resample_audio(
-    reader: hound::WavReader<std::io::BufReader<std::fs::File>>,
-    spec: hound::WavSpec,
-) -> Result<Vec<f32>> {
-    use hound::SampleFormat;
-    
-    let target_rate = 16000u32;
-    let ratio = target_rate as f64 / spec.sample_rate as f64;
-    
-    let samples: Vec<f32> = match spec.sample_format {
-        SampleFormat::Int => reader
-            .into_samples::<i16>()
-            .filter_map(|s| s.ok())
-            .map(|s| s as f32 / 32768.0)
-            .collect(),
-        SampleFormat::Float => reader
-            .into_samples::<f32>()
-            .filter_map(|s| s.ok())
-            .collect(),
-    };
-    
-    let mono: Vec<f32> = if spec.channels > 1 {
-        samples
-            .chunks(spec.channels as usize)
-            .map(|chunk| chunk.iter().sum::<f32>() / spec.channels as f32)
-            .collect()
-    } else {
-        samples
-    };
-    
-    let new_len = ((mono.len() as f64) * ratio) as usize;
+/// Resample audio to target sample rate
+fn resample_audio(samples: &[f32], from_rate: u32, to_rate: u32) -> Result<Vec<f32>> {
+    let ratio = to_rate as f64 / from_rate as f64;
+    let new_len = ((samples.len() as f64) * ratio) as usize;
     let mut resampled = Vec::with_capacity(new_len);
     
     for i in 0..new_len {
@@ -408,12 +472,12 @@ fn resample_audio(
         let src_idx = src_pos as usize;
         let frac = src_pos - src_idx as f64;
         
-        if src_idx + 1 < mono.len() {
-            let sample = mono[src_idx] as f64 * (1.0 - frac)
-                + mono[src_idx + 1] as f64 * frac;
+        if src_idx + 1 < samples.len() {
+            let sample = samples[src_idx] as f64 * (1.0 - frac)
+                + samples[src_idx + 1] as f64 * frac;
             resampled.push(sample as f32);
-        } else if src_idx < mono.len() {
-            resampled.push(mono[src_idx]);
+        } else if src_idx < samples.len() {
+            resampled.push(samples[src_idx]);
         }
     }
     
