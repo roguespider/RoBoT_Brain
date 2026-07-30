@@ -1,26 +1,31 @@
 // src/tools/ingestor/audio_transcriber.rs
 
-//! Audio transcription for RoBoT Brain
+//! Audio transcription for RoBoT Brain using Candle Whisper
 //! 
 //! ## Architecture (Architecture §17 - MCP)
 //! 
 //! The transcribe_audio tool follows the standard MCP tool pattern:
 //! 1. Load audio file (WAV format at 16kHz mono)
 //! 2. Convert to mel spectrogram features
-//! 3. Process through transcription pipeline
+//! 3. Process through Whisper transformer model
 //! 4. Return structured transcription result
 //! 
-//! ## Candle Integration
+//! ## Candle Whisper Integration
 //!
-//! This module uses Candle for audio processing and can integrate with
-//! Whisper for full transcription when the model is available.
+//! Uses candle-transformers with the Whisper model from HuggingFace.
+//! Model is downloaded automatically on first use.
 
 use std::path::Path;
 use std::sync::Arc;
 
 use anyhow::{Context, Result};
 
-use candle_core::{Device, Tensor};
+// Use candle from candle_transformers to ensure same version
+use candle_transformers::models::mimi::candle::{Device, IndexOp, Tensor, DType};
+use candle_transformers::models::mimi::candle_nn::VarBuilder;
+use candle_transformers::models::whisper::{self as whisper, Config};
+use hf_hub::api::sync::Api;
+use tokenizers::Tokenizer;
 
 use crate::database::models::MemoryCard;
 use crate::database::sqlite::SqliteDatabase;
@@ -115,139 +120,272 @@ impl AudioAnalysis {
     }
 }
 
-/// Audio processor for transcription
-pub struct AudioProcessor {
+/// Whisper transcriber using Candle
+pub struct WhisperTranscriber {
+    model: whisper::model::Whisper,
+    tokenizer: Tokenizer,
     device: Device,
 }
 
-impl AudioProcessor {
-    /// Create a new audio processor
+impl WhisperTranscriber {
+    /// Create a new Whisper transcriber
     pub fn new() -> Result<Self> {
+        let device = Device::Cpu;
+        
+        // Download the Whisper model from HuggingFace
+        let api = Api::new()?;
+        let repo = api.repo(hf_hub::Repo::with_revision(
+            "openai/whisper-base".to_string(),
+            hf_hub::RepoType::Model,
+            "main".to_string(),
+        ));
+        
+        tracing::info!("Downloading Whisper model files...");
+        
+        // Get model files
+        let config_path = repo.get("config.json")?;
+        let model_path = repo.get("model.safetensors")?;
+        let tokenizer_path = repo.get("tokenizer.json")?;
+        
+        tracing::info!("Loading Whisper model from {:?}", model_path);
+        
+        // Load config
+        let config_content = std::fs::read_to_string(&config_path)?;
+        let config: serde_json::Value = serde_json::from_str(&config_content)?;
+        
+        let num_mel_bins = config["n_mels"]
+            .as_i64()
+            .unwrap_or(80) as usize;
+        let max_source_positions = config["n_audio_ctx"]
+            .as_i64()
+            .unwrap_or(1500) as usize;
+        let d_model = config["d_model"]
+            .as_i64()
+            .unwrap_or(512) as usize;
+        let encoder_attention_heads = config["n_audio_head"]
+            .as_i64()
+            .unwrap_or(8) as usize;
+        let encoder_layers = config["n_audio_layer"]
+            .as_i64()
+            .unwrap_or(4) as usize;
+        let vocab_size = config["n_vocab"]
+            .as_i64()
+            .unwrap_or(51865) as usize;
+        let max_target_positions = config["n_text_ctx"]
+            .as_i64()
+            .unwrap_or(448) as usize;
+        let decoder_attention_heads = config["n_text_head"]
+            .as_i64()
+            .unwrap_or(8) as usize;
+        let decoder_layers = config["n_text_layer"]
+            .as_i64()
+            .unwrap_or(4) as usize;
+        
+        let whisper_config = Config {
+            num_mel_bins,
+            max_source_positions,
+            d_model,
+            encoder_attention_heads,
+            encoder_layers,
+            vocab_size,
+            max_target_positions,
+            decoder_attention_heads,
+            decoder_layers,
+            suppress_tokens: vec![],
+        };
+        
+        // Load model weights
+        let vb = unsafe { 
+            VarBuilder::from_mmaped_safetensors(&[model_path], DType::F32, &device)? 
+        };
+        
+        let model = whisper::model::Whisper::load(&vb, whisper_config)?;
+        
+        // Load tokenizer
+        let tokenizer = Tokenizer::from_file(tokenizer_path)
+            .map_err(|e| anyhow::anyhow!("Failed to load tokenizer: {}", e))?;
+        
+        tracing::info!("Whisper model loaded successfully");
+        
         Ok(Self {
-            device: Device::Cpu,
+            model,
+            tokenizer,
+            device,
         })
     }
     
-    /// Compute mel spectrogram from audio samples
-    pub fn compute_mel_spectrogram(&self, samples: &[f32], n_mel: usize) -> Result<Tensor> {
-        let n_fft = 400usize;
-        let hop_length = 160usize;
-        let win_length = 400usize;
-        
-        let num_frames = ((samples.len() as f32 - n_fft as f32) / hop_length as f32).ceil() as usize + 1;
-        
-        // Hann window
-        let window: Vec<f32> = (0..win_length)
-            .map(|i| {
-                let x = i as f32 * std::f32::consts::PI / (win_length - 1) as f32;
-                0.5 * (1.0 - x.cos())
-            })
-            .collect();
-        
-        // Compute STFT magnitude
-        let mut spectrogram = Vec::with_capacity(num_frames * (n_fft / 2 + 1));
-        
-        for frame_idx in 0..num_frames {
-            let start = frame_idx * hop_length;
-            if start >= samples.len() {
-                break;
-            }
-            
-            // Apply window
-            let mut windowed = vec![0.0f32; n_fft];
-            for i in 0..n_fft.min(samples.len().saturating_sub(start)) {
-                windowed[i] = samples[start + i] * window[i];
-            }
-            
-            // DFT for each frequency bin (simplified)
-            for k in 0..(n_fft / 2 + 1) {
-                let mut real = 0.0f32;
-                let mut imag = 0.0f32;
-                for n in 0..n_fft {
-                    let angle = -2.0 * std::f32::consts::PI * k as f32 * n as f32 / n_fft as f32;
-                    real += windowed[n] * angle.cos();
-                    imag += windowed[n] * angle.sin();
-                }
-                let magnitude = (real * real + imag * imag).sqrt().max(1e-10);
-                spectrogram.push(magnitude);
-            }
-        }
-        
-        // Apply mel filterbank (simplified)
-        let mut mel_spec = Vec::with_capacity(num_frames * n_mel);
-        for frame_idx in 0..num_frames {
-            let spec_start = frame_idx * (n_fft / 2 + 1);
-            for m in 0..n_mel {
-                let mut sum = 0.0f32;
-                let count = (n_fft / 2 + 1).min(n_mel);
-                for i in 0..count {
-                    let idx = spec_start + i + m;
-                    if idx < spectrogram.len() {
-                        sum += spectrogram[idx];
-                    }
-                }
-                let db = 10.0 * (sum.max(1e-10) / 1000.0).log10();
-                mel_spec.push((db + 8.0).max(0.0) / 20.0);
-            }
-        }
-        
-        let shape = (1, n_mel, num_frames);
-        let tensor = Tensor::from_slice(&mel_spec, shape, &self.device)?;
-        
-        Ok(tensor)
-    }
-    
-    /// Process audio samples
-    pub fn process(&self, samples: &[f32]) -> Result<TranscriptionResult> {
+    /// Transcribe audio samples to text
+    pub fn transcribe(&mut self, samples: &[f32]) -> Result<TranscriptionResult> {
         let duration_seconds = samples.len() as f32 / 16000.0;
         
-        // Compute mel spectrogram
-        let mel_spec = self.compute_mel_spectrogram(samples, 80)?;
+        // Compute mel spectrogram using Candle's audio module
+        let mel_filters = load_mel_filters()?;
+        let mel_spec = whisper::audio::pcm_to_mel(
+            &self.model.config,
+            samples,
+            &mel_filters,
+        );
         
-        tracing::info!("Mel spectrogram shape: {:?}", mel_spec.shape());
+        // Convert to tensor [1, n_mel, n_frames]
+        let n_mel = self.model.config.num_mel_bins;
+        let n_frames = mel_spec.len() / n_mel;
+        let mel_tensor = Tensor::from_slice(&mel_spec, (1, n_mel, n_frames), &self.device)?;
+        
+        tracing::info!("Mel spectrogram shape: {:?}", mel_tensor.shape());
+        
+        // Run encoder
+        let audio_features = self.model.encoder.forward(&mel_tensor, true)?;
+        
+        tracing::info!("Audio features shape: {:?}", audio_features.dims());
+        
+        // Decode to text
+        let text = self.decode(&audio_features)?;
         
         Ok(TranscriptionResult {
-            text: "Audio processed".to_string(),
+            text,
             language: Some("en".to_string()),
             duration_seconds,
             segments: vec![],
         })
     }
-}
-
-impl Default for AudioProcessor {
-    fn default() -> Self {
-        Self::new().expect("Failed to create audio processor")
+    
+    /// Decode audio features to text
+    fn decode(&mut self, audio_features: &Tensor) -> Result<String> {
+        // Get special tokens
+        let sot_token = get_token_id(&self.tokenizer, whisper::SOT_TOKEN)?;
+        let transcribe_token = get_token_id(&self.tokenizer, whisper::TRANSCRIBE_TOKEN)?;
+        let no_timestamps_token = get_token_id(&self.tokenizer, whisper::NO_TIMESTAMPS_TOKEN)?;
+        let eot_token = get_token_id(&self.tokenizer, whisper::EOT_TOKEN)?;
+        
+        // Build token sequence: <|startoftranscript|><|en|><|transcribe|><|notimestamps|>
+        let mut tokens = vec![sot_token, transcribe_token, no_timestamps_token];
+        
+        let sample_len = self.model.config.max_target_positions / 2;
+        
+        for _ in 0..sample_len {
+            let tokens_t = Tensor::new(tokens.as_slice(), &self.device)?.unsqueeze(0)?;
+            
+            let ys = self.model.decoder.forward(&tokens_t, audio_features, tokens.len() == 3)?;
+            
+            let (_, seq_len, _) = ys.dims3()?;
+            let logits = self.model.decoder.final_linear(&ys.i((..1, seq_len - 1..))?)?
+                .i(0)?.i(0)?;
+            
+            // Greedy decoding
+            let logits_v: Vec<f32> = logits.to_vec1()?;
+            let next_token = logits_v
+                .iter()
+                .enumerate()
+                .max_by(|(_, u), (_, v)| u.partial_cmp(v).unwrap_or(std::cmp::Ordering::Equal))
+                .map(|(i, _)| i as u32)
+                .unwrap();
+            
+            tokens.push(next_token);
+            
+            if next_token == eot_token || tokens.len() > self.model.config.max_target_positions {
+                break;
+            }
+        }
+        
+        // Decode tokens to text
+        let text = self.tokenizer.decode(&tokens, true)
+            .map_err(|e| anyhow::anyhow!("Failed to decode tokens: {}", e))?;
+        
+        Ok(text)
     }
 }
 
-/// Global processor instance
-static PROCESSOR: std::sync::OnceLock<AudioProcessor> = 
-    std::sync::OnceLock::new();
-
-fn get_processor() -> Result<&'static AudioProcessor> {
-    let processor = PROCESSOR.get_or_init(|| {
-        AudioProcessor::new().expect("Failed to create processor")
-    });
-    Ok(processor)
+impl Default for WhisperTranscriber {
+    fn default() -> Self {
+        Self::new().expect("Failed to create Whisper transcriber")
+    }
 }
 
-/// Transcribe an audio file to text
+/// Get token ID from tokenizer
+fn get_token_id(tokenizer: &Tokenizer, token: &str) -> Result<u32> {
+    tokenizer.token_to_id(token)
+        .ok_or_else(|| anyhow::anyhow!("Token not found: {}", token))
+}
+
+/// Load mel filterbank for Whisper
+fn load_mel_filters() -> Result<Vec<f32>> {
+    // Standard Whisper mel filterbank parameters
+    let n_mel = 80usize;
+    let n_fft = 400usize;
+    let sample_rate = 16000usize;
+    let f_min = 0.0f32;
+    let f_max = 8000.0f32;
+    
+    let mut mel_filters = vec![0.0f32; n_mel * (n_fft / 2 + 1)];
+    
+    // Convert frequencies to mel scale
+    let f_min_mel = 2595.0 * (1.0 + f_min / 700.0).ln() / 2.30258509299;
+    let f_max_mel = 2595.0 * (1.0 + f_max / 700.0).ln() / 2.30258509299;
+    
+    let mel_points: Vec<f32> = (0..=n_mel).map(|i| {
+        f_min_mel + (f_max_mel - f_min_mel) * i as f32 / n_mel as f32
+    }).collect();
+    
+    // Convert back to Hz
+    let hz_points: Vec<f32> = mel_points.iter().map(|m| {
+        700.0 * ((m * 2.30258509299).exp() - 1.0)
+    }).collect();
+    
+    // Convert to FFT bin numbers
+    let bin_points: Vec<f32> = hz_points.iter().map(|hz| {
+        (n_fft + 1) as f32 * hz / sample_rate as f32
+    }).collect();
+    
+    // Create triangular filters
+    for m in 1..n_mel {
+        let f_left = bin_points[m - 1] as usize;
+        let f_center = bin_points[m] as usize;
+        let f_right = bin_points[m + 1] as usize;
+        
+        for k in f_left..=f_right {
+            let weight = if k <= f_center {
+                (k - f_left) as f32 / (f_center - f_left).max(1) as f32
+            } else {
+                (f_right - k) as f32 / (f_right - f_center).max(1) as f32
+            };
+            let idx = m * (n_fft / 2 + 1) / n_mel + k;
+            if idx < mel_filters.len() {
+                mel_filters[idx] = weight;
+            }
+        }
+    }
+    
+    Ok(mel_filters)
+}
+
+/// Global transcriber instance (using Mutex for interior mutability)
+static TRANSCRIBER: std::sync::OnceLock<std::sync::Mutex<WhisperTranscriber>> = 
+    std::sync::OnceLock::new();
+
+fn get_transcriber() -> Result<std::sync::MutexGuard<'static, WhisperTranscriber>> {
+    let transcriber = TRANSCRIBER.get_or_init(|| {
+        std::sync::Mutex::new(WhisperTranscriber::new().expect("Failed to create transcriber"))
+    });
+    
+    transcriber.lock().map_err(|e| anyhow::anyhow!("Lock error: {}", e))
+}
+
+/// Transcribe an audio file to text using Whisper
 pub fn transcribe_audio(path: &Path) -> Result<TranscriptionResult> {
     let samples = load_audio_file(path)?;
     let duration_seconds = samples.len() as f32 / 16000.0;
     
     tracing::info!(
-        "Processing audio file: {} (duration: {:.1}s)",
+        "Transcribing audio file: {} (duration: {:.1}s)",
         path.display(),
         duration_seconds
     );
     
-    // Get processor
-    let processor = get_processor()?;
+    // Get transcriber (loads model on first call)
+    let mut transcriber = get_transcriber()?;
     
-    // Run processing
-    let result = processor.process(&samples)?;
+    // Run Whisper transcription
+    let result = transcriber.transcribe(&samples)?;
     
     // Generate audio analysis for context
     let analysis = AudioAnalysis::from_samples(&samples, 16000, duration_seconds);
@@ -255,12 +393,12 @@ pub fn transcribe_audio(path: &Path) -> Result<TranscriptionResult> {
     
     Ok(TranscriptionResult {
         text: format!("{}\n\n{}",
-            if result.text == "Audio processed" {
+            if result.text.is_empty() {
                 analysis_text
             } else {
                 result.text
             },
-            "\n[Note: For full Whisper transcription, ensure HF_TOKEN is set for model download]"
+            format!("\n[Transcribed using Candle Whisper - {:.1}s audio]", duration_seconds)
         ),
         language: result.language,
         duration_seconds: result.duration_seconds,
@@ -423,7 +561,7 @@ fn load_wav(path: &Path) -> Result<Vec<f32>> {
 }
 
 /// Decode WAV sample data into f32 samples
-fn decode_wav_samples(data: &[u8], channels: u16, bits_per_sample: u16) -> Result<Vec<f32>> {
+fn decode_wav_samples(data: &[u8], _channels: u16, bits_per_sample: u16) -> Result<Vec<f32>> {
     let bytes_per_sample = (bits_per_sample / 8) as usize;
     let num_samples = data.len() / bytes_per_sample;
     let mut samples = Vec::with_capacity(num_samples);
