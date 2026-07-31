@@ -72,12 +72,11 @@ pub async fn run_comprehensive_tests(
         }
     }
     
-    let lint_summary = LintSummary::new(all_lint_issues);
+    let lint_summary = LintSummary::new(all_lint_issues.clone());
     lint_summary.print_report();
     
     // Store lint issues in report
-    report.lint_errors = lint_summary.errors;
-    report.lint_warnings = lint_summary.warnings;
+    report.set_lint_issues(all_lint_issues);
     
     // Step 2: Get all test requirements
     println!("\n📋 PHASE 2: COLLECTING TEST REQUIREMENTS");

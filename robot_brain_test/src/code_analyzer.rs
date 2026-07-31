@@ -199,7 +199,7 @@ impl CodeAnalyzer {
 
     /// Check for panic! with stub-like messages
     fn check_panic_stub(&self, line: &str, file_path: &Path, line_number: usize) -> Option<CodeIssue> {
-        let panic_regex = Regex::new(r#"panic!\s*\(["#).ok()?;
+        let panic_regex = Regex::new(r#"panic!\s*\("#).ok()?;
         
         if panic_regex.is_match(line) {
             let lower_line = line.to_lowercase();

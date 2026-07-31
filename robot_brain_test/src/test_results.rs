@@ -4,7 +4,7 @@
 //! Shows pass/fail status for each function with detailed information.
 
 use crate::function_registry::TestRequirement;
-use crate::code_analyzer::CodeIssue;
+use crate::code_analyzer::{CodeIssue, LintIssue, LintLevel};
 
 /// Represents the result of a single test
 #[derive(Debug, Clone)]
@@ -56,6 +56,7 @@ pub struct TestReport {
     pub total_duration_ms: u64,
     pub lint_errors: usize,
     pub lint_warnings: usize,
+    pub lint_issues: Vec<LintIssue>,
 }
 
 impl TestReport {
@@ -72,6 +73,13 @@ impl TestReport {
     /// Set code issues
     pub fn set_code_issues(&mut self, issues: Vec<CodeIssue>) {
         self.code_issues = issues;
+    }
+    
+    /// Set lint issues (compiler errors and warnings)
+    pub fn set_lint_issues(&mut self, issues: Vec<LintIssue>) {
+        self.lint_errors = issues.iter().filter(|i| i.level == LintLevel::Error).count();
+        self.lint_warnings = issues.iter().filter(|i| i.level == LintLevel::Warning).count();
+        self.lint_issues = issues;
     }
     
     /// Get pass count
@@ -134,6 +142,9 @@ impl TestReport {
             self.print_code_issues();
         }
         
+        // Compiler errors and warnings section
+        self.print_lint_issues();
+        
         // Failed tests section
         if !self.failed_results().is_empty() {
             self.print_failed_tests();
@@ -190,6 +201,13 @@ impl TestReport {
             "Pass Rate:", pass_rate, "", "", "");
         println!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
             "Code Issues:", code_issues, "", "", "");
+        
+        // Compiler errors and warnings
+        println!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
+            "Compiler Errors:", self.lint_errors, "", "", "");
+        println!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
+            "Compiler Warnings:", self.lint_warnings, "", "", "");
+        
         println!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
             "Duration:", format!("{}ms", self.total_duration_ms), "", "", "");
         
@@ -235,6 +253,94 @@ impl TestReport {
             if issues.len() > 3 {
                 println!("│  └── ... and {} more", issues.len() - 3);
             }
+        }
+        
+        println!("│{:─<97}│", "");
+        println!("└{:─<97}┘", "");
+    }
+    
+    /// Print compiler errors and warnings table
+    fn print_lint_issues(&self) {
+        // Filter for errors and warnings only
+        let error_warnings: Vec<&LintIssue> = self.lint_issues.iter()
+            .filter(|i| i.level == LintLevel::Error || i.level == LintLevel::Warning)
+            .collect();
+        
+        if error_warnings.is_empty() {
+            println!("\n┌{:─<98}┐", "");
+            println!("│ {:^96} │", "🔧  COMPILER ERRORS & WARNINGS");
+            println!("├{:─<98}┤", "");
+            println!("│");
+            println!("│  ✅ No compiler errors or warnings!");
+            println!("│");
+            println!("└{:─<98}┘", "");
+            return;
+        }
+        
+        println!("\n┌{:─<98}┐", "");
+        println!("│ {:^96} │", "🔧  COMPILER ERRORS & WARNINGS");
+        println!("├{:─<98}┤", "");
+        println!("│");
+        println!("│  Compiler errors and warnings from cargo check / clippy:");
+        println!("│{:─<97}│", "");
+        
+        // Table header
+        println!("│");
+        println!("├{:─<8}├{:─<6}├{:─<12}├{:─<68}┤", "─", "─", "─", "─");
+        println!("│ {:^6} │ {:^4} │ {:^10} │ {:^66} │", 
+            "Level", "Line", "Code", "Message");
+        println!("├{:─<8}┼{:─<6}┼{:─<12}┼{:─<68}┤", "─", "─", "─", "─");
+        
+        // Print each error/warning
+        for issue in &error_warnings {
+            let level_str = match issue.level {
+                LintLevel::Error => "ERROR",
+                LintLevel::Warning => "WARN",
+                _ => continue,
+            };
+            
+            let level_icon = match issue.level {
+                LintLevel::Error => "❌",
+                LintLevel::Warning => "⚠️",
+                _ => " ",
+            };
+            
+            let msg_truncated = truncate(&issue.message, 66);
+            
+            println!("│ {} {:^4} │ {:>4} │ {:^10} │ {:.<66} │", 
+                level_icon,
+                level_str,
+                issue.line_number,
+                truncate(&issue.code, 10),
+                msg_truncated
+            );
+        }
+        
+        println!("├{:─<8}┴{:─<6}┴{:─<12}┴{:─<68}┤", "─", "─", "─", "─");
+        
+        // Summary by file
+        println!("│");
+        println!("│  Summary by file:");
+        let mut by_file: std::collections::HashMap<String, (usize, usize)> = std::collections::HashMap::new();
+        for issue in &error_warnings {
+            let file_name = std::path::Path::new(&issue.file_path)
+                .file_name()
+                .map(|n| n.to_string_lossy().to_string())
+                .unwrap_or_else(|| issue.file_path.clone());
+            
+            let entry = by_file.entry(file_name).or_insert((0, 0));
+            match issue.level {
+                LintLevel::Error => entry.0 += 1,
+                LintLevel::Warning => entry.1 += 1,
+                _ => {}
+            }
+        }
+        
+        for (file, (errs, warns)) in by_file.iter().take(5) {
+            let err_icon = if *errs > 0 { "❌" } else { "" };
+            let warn_icon = if *warns > 0 { "⚠️" } else { "" };
+            println!("│    {} {}{} - {} errors, {} warnings", 
+                file, err_icon, warn_icon, errs, warns);
         }
         
         println!("│{:─<97}│", "");
@@ -355,7 +461,8 @@ impl TestReport {
         
         let all_passed = self.all_passed();
         let no_code_issues = self.code_issues.is_empty();
-        let overall_success = all_passed && no_code_issues;
+        let no_lint_issues = self.lint_errors == 0 && self.lint_warnings == 0;
+        let overall_success = all_passed && no_code_issues && no_lint_issues;
         
         if overall_success {
             println!("│ {:^96} │", "🎉 VERDICT: ALL TESTS PASSED - READY FOR PRODUCTION");
@@ -365,6 +472,7 @@ impl TestReport {
             println!("│  ✅ No stub patterns or partial implementations detected");
             println!("│  ✅ No #[allow(*)] annotations that hide issues");
             println!("│  ✅ All sub-functions complete and working");
+            println!("│  ✅ No compiler errors or warnings");
             println!("│");
         } else {
             println!("│ {:^96} │", "⚠️  VERDICT: TESTS HAVE ISSUES - REVIEW REQUIRED");
@@ -382,15 +490,28 @@ impl TestReport {
                 println!("│     See code issues section above for details");
             }
             
+            if !no_lint_issues {
+                println!("│  ⚠️  {} compiler errors, {} warnings", self.lint_errors, self.lint_warnings);
+                println!("│     See compiler errors & warnings section above");
+            }
+            
             println!("│");
             println!("│  Required actions:");
+            let mut action_num = 1;
             if !all_passed {
-                println!("│    1. Fix all failing tests");
-                println!("│    2. Ensure functions work end-to-end");
+                println!("│    {}. Fix all failing tests", action_num);
+                action_num += 1;
+                println!("│    {}. Ensure functions work end-to-end", action_num);
+                action_num += 1;
             }
             if !no_code_issues {
-                println!("│    3. Remove stub patterns and #[allow(*)] annotations");
-                println!("│    4. Implement missing functionality");
+                println!("│    {}. Remove stub patterns and #[allow(*)] annotations", action_num);
+                action_num += 1;
+                println!("│    {}. Implement missing functionality", action_num);
+                action_num += 1;
+            }
+            if !no_lint_issues {
+                println!("│    {}. Fix compiler errors and warnings", action_num);
             }
             println!("│");
         }
