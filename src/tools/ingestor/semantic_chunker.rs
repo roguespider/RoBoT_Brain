@@ -84,7 +84,7 @@ fn parse_markdown(content: &str, file_name: &str) -> HierarchyNode {
     let mut current_section: Option<HierarchyNode> = None;
     let mut current_paragraph: Vec<String> = Vec::new();
     let mut section_index: usize = 0;
-    let mut _paragraph_index = 0;
+    let mut paragraph_index = 0;
 
     // Collect code blocks separately
     let mut in_code_block = false;
@@ -105,12 +105,12 @@ fn parse_markdown(content: &str, file_name: &str) -> HierarchyNode {
                     let path = format!("{}/section[{}]/code_block[{}]",
                         file_name,
                         current_section.as_ref().map(|s| s.order_index).unwrap_or(0),
-                        _paragraph_index
+                        paragraph_index
                     );
                     let code_node = HierarchyNode::new(
                         code_content,
                         HierarchyLevel::Paragraph,
-                        _paragraph_index,
+                        paragraph_index,
                         path
                     );
                     if let Some(ref mut sec) = current_section {
@@ -118,7 +118,7 @@ fn parse_markdown(content: &str, file_name: &str) -> HierarchyNode {
                     } else {
                         root.children.push(code_node);
                     }
-                    _paragraph_index += 1;
+                    paragraph_index += 1;
                 }
                 code_block_content.clear();
             }
@@ -142,11 +142,11 @@ fn parse_markdown(content: &str, file_name: &str) -> HierarchyNode {
                     let path = format!("{}/section[{}]/paragraph[{}]",
                         file_name,
                         section_index.saturating_sub(1),
-                        _paragraph_index
+                        paragraph_index
                     );
-                    let node = HierarchyNode::new(para_text, HierarchyLevel::Paragraph, _paragraph_index, path);
+                    let node = HierarchyNode::new(para_text, HierarchyLevel::Paragraph, paragraph_index, path);
                     root.children.push(node);
-                    _paragraph_index += 1;
+                    paragraph_index += 1;
                 }
                 current_paragraph.clear();
             }
@@ -158,7 +158,7 @@ fn parse_markdown(content: &str, file_name: &str) -> HierarchyNode {
             let path = format!("{}/section[{}]", file_name, section_index);
             let section = HierarchyNode::new(header_text, level, section_index, path);
             section_index += 1;
-            _paragraph_index = 0;
+            paragraph_index = 0;
             current_section = Some(section);
         } else if trimmed.is_empty() {
             if !current_paragraph.is_empty() {
@@ -167,15 +167,15 @@ fn parse_markdown(content: &str, file_name: &str) -> HierarchyNode {
                     let path = format!("{}/section[{}]/paragraph[{}]",
                         file_name,
                         current_section.as_ref().map(|s| s.order_index).unwrap_or(0),
-                        _paragraph_index
+                        paragraph_index
                     );
-                    let node = HierarchyNode::new(para_text, HierarchyLevel::Paragraph, _paragraph_index, path);
+                    let node = HierarchyNode::new(para_text, HierarchyLevel::Paragraph, paragraph_index, path);
                     if let Some(ref mut sec) = current_section {
                         sec.children.push(node);
                     } else {
                         root.children.push(node);
                     }
-                    _paragraph_index += 1;
+                    paragraph_index += 1;
                 }
                 current_paragraph.clear();
             }
@@ -190,9 +190,9 @@ fn parse_markdown(content: &str, file_name: &str) -> HierarchyNode {
             let path = format!("{}/section[{}]/paragraph[{}]",
                 file_name,
                 current_section.as_ref().map(|s| s.order_index).unwrap_or(0),
-                _paragraph_index
+                paragraph_index
             );
-            let node = HierarchyNode::new(para_text, HierarchyLevel::Paragraph, _paragraph_index, path);
+            let node = HierarchyNode::new(para_text, HierarchyLevel::Paragraph, paragraph_index, path);
             if let Some(ref mut sec) = current_section {
                 sec.children.push(node);
             } else {
@@ -456,21 +456,14 @@ fn parse_html(content: &str, file_name: &str) -> HierarchyNode {
 
 /// Strip HTML tags from content
 fn strip_html_tags(content: &str) -> String {
+    // First remove script and style blocks
+    let cleaned = remove_script_style(content);
+    
     let mut result = String::new();
     let mut in_tag = false;
-    let mut _in_script = false;
-    let mut _in_style = false;
-    
-    for chunk in content.split('<') {
-        if chunk.starts_with("script") {
-            _in_script = true;
-        } else if chunk.starts_with("/script") {
-            _in_script = false;
-        } else if chunk.starts_with("style") {
-            _in_style = true;
-        } else if chunk.starts_with("/style") {
-            _in_style = false;
-        } else if in_tag {
+
+    for chunk in cleaned.split('<') {
+        if in_tag {
             // Inside a tag - check for closing
             if let Some(pos) = chunk.find('>') {
                 in_tag = false;
@@ -478,9 +471,10 @@ fn strip_html_tags(content: &str) -> String {
             }
         } else {
             result.push_str(chunk);
+            in_tag = true;
         }
     }
-    
+
     // Clean up whitespace
     result.lines()
         .map(|l| l.trim())

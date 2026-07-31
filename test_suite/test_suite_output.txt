@@ -46,50 +46,49 @@ SETTING UP TEST ENVIRONMENT
   todo!() macros                               0
   panic!() stubs                               0
   Early return stubs                          51
-  Underscore-prefixed code                    85
+  Underscore-prefixed code                    66
   Placeholder returns                          0
   Stub patterns                                0
   ────────────────────────────────────────────────
-  TOTAL ISSUES                               232
+  TOTAL ISSUES                               213
 
   Issues by File:
   ────────────────────────────────────────────────
-    tools/experience/mod.rs                       4
-    bridge/mcp/client.rs                         11
-    tools/hypothesis/execute.rs                  10
-    workflows/enforcement/enforcer.rs             2
-    tools/ingestor/archive_handler.rs             1
-    knowledge/store.rs                            1
-    tools/ingestor/audio_transcriber.rs           1
-    bridge/mcp/mod.rs                             2
-    tools/reflection/mod.rs                       4
-    knowledge/types.rs                            2
-    tools/skills/mod.rs                           8
-    learning/pipeline.rs                          1
-    tools/ingestor/workflow.rs                    5
-    tools/agent/workflows.rs                      2
-    experience/worker_manager.rs                  6
-    bridge/mcp/types.rs                          28
-    personality/mod.rs                            8
-    tools/search/mod.rs                           3
-    experience/integration/hypothesis_pipeline.rs      1
-    learning/working_memory/store/mod.rs          3
-    bridge/rmcp/generated/tools_impl.rs           1
-    bridge/mcp/context.rs                         1
-    experience/integration/learning_coordinator.rs      5
-    bridge/app.rs                                42
-    tools/ingestor/semantic_chunker.rs           19
-    workflows/engine/experience.rs                1
-    memory/repository.rs                          1
-    tools/knowledge/mod.rs                        1
-    workflows/engine/executor.rs                  6
-    experience/integration/event_subscriber.rs      6
-    experience/types/experience.rs                3
-    experience/scorer.rs                          1
-    tools/ingestor/core.rs                       14
     bridge/acp.rs                                24
     tools/memory/mod.rs                           3
+    experience/worker_manager.rs                  6
+    tools/ingestor/audio_transcriber.rs           1
+    tools/ingestor/archive_handler.rs             1
+    tools/experience/mod.rs                       4
+    tools/reflection/mod.rs                       4
+    tools/knowledge/mod.rs                        1
+    tools/agent/workflows.rs                      2
+    tools/ingestor/workflow.rs                    5
+    workflows/engine/executor.rs                  6
+    tools/search/mod.rs                           3
+    bridge/mcp/types.rs                          28
+    bridge/mcp/context.rs                         1
+    tools/ingestor/core.rs                       14
+    bridge/app.rs                                42
+    bridge/mcp/mod.rs                             2
+    memory/repository.rs                          1
+    workflows/engine/experience.rs                1
+    experience/scorer.rs                          1
+    tools/hypothesis/execute.rs                  10
+    learning/working_memory/store/mod.rs          3
+    workflows/enforcement/enforcer.rs             2
+    bridge/rmcp/generated/tools_impl.rs           1
+    knowledge/store.rs                            1
+    experience/integration/event_subscriber.rs      6
+    bridge/mcp/client.rs                         11
     experience/observers.rs                       1
+    experience/integration/learning_coordinator.rs      5
+    knowledge/types.rs                            2
+    personality/mod.rs                            8
+    experience/types/experience.rs                3
+    experience/integration/hypothesis_pipeline.rs      1
+    learning/pipeline.rs                          1
+    tools/skills/mod.rs                           8
 ════════════════════════════════════════════════════════════════════════════════
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -267,25 +266,6 @@ SETTING UP TEST ENVIRONMENT
 │      796 │ core.rs                                  │ Early R... │ Returns Ok() immediately            │
 │     1370 │ core.rs                                  │ Early R... │ Returns Ok() immediately            │
 │     1417 │ core.rs                                  │ Early R... │ Returns Ok() immediately            │
-│       87 │ semantic_chunker.rs                      │ _prefix    │ Underscore-prefixed identifier...   │
-│      108 │ semantic_chunker.rs                      │ _prefix    │ Underscore-prefixed identifier...   │
-│      113 │ semantic_chunker.rs                      │ _prefix    │ Underscore-prefixed identifier...   │
-│      121 │ semantic_chunker.rs                      │ _prefix    │ Underscore-prefixed identifier...   │
-│      145 │ semantic_chunker.rs                      │ _prefix    │ Underscore-prefixed identifier...   │
-│      147 │ semantic_chunker.rs                      │ _prefix    │ Underscore-prefixed identifier...   │
-│      149 │ semantic_chunker.rs                      │ _prefix    │ Underscore-prefixed identifier...   │
-│      161 │ semantic_chunker.rs                      │ _prefix    │ Underscore-prefixed identifier...   │
-│      170 │ semantic_chunker.rs                      │ _prefix    │ Underscore-prefixed identifier...   │
-│      172 │ semantic_chunker.rs                      │ _prefix    │ Underscore-prefixed identifier...   │
-│      178 │ semantic_chunker.rs                      │ _prefix    │ Underscore-prefixed identifier...   │
-│      193 │ semantic_chunker.rs                      │ _prefix    │ Underscore-prefixed identifier...   │
-│      195 │ semantic_chunker.rs                      │ _prefix    │ Underscore-prefixed identifier...   │
-│      461 │ semantic_chunker.rs                      │ _prefix    │ Underscore-prefixed identifier...   │
-│      462 │ semantic_chunker.rs                      │ _prefix    │ Underscore-prefixed identifier...   │
-│      466 │ semantic_chunker.rs                      │ _prefix    │ Underscore-prefixed identifier...   │
-│      468 │ semantic_chunker.rs                      │ _prefix    │ Underscore-prefixed identifier...   │
-│      470 │ semantic_chunker.rs                      │ _prefix    │ Underscore-prefixed identifier...   │
-│      472 │ semantic_chunker.rs                      │ _prefix    │ Underscore-prefixed identifier...   │
 │      517 │ mod.rs                                   │ _prefix    │ Underscore-prefixed identifier...   │
 │      267 │ mod.rs                                   │ Early R... │ Returns Ok() immediately            │
 │      295 │ mod.rs                                   │ Early R... │ Returns Ok() immediately            │
@@ -342,9 +322,23 @@ SETTING UP TEST ENVIRONMENT
 
   Lint Level                Count
   ─────────────────────────────────
+  Warnings                      1
   ─────────────────────────────────
-  TOTAL (E+W)                   0
+  TOTAL (E+W)                   1
 
+  Lint issues by File:
+  ─────────────────────────────────
+    tools/ingestor/semantic_chunker.rs......      1
+
+────────────────────────────────────────────────────────────────────────────────────────────────────
+  DETAILED LINT ISSUES TABLE
+────────────────────────────────────────────────────────────────────────────────────────────────────
+
+┌────────┬──────┬──────────────────────────────────────────────────┬──────────────────────────────┐
+│ Level  │ Line │                       File                       │           Message            │
+├────────┼──────┼──────────────────────────────────────────────────┼──────────────────────────────┤
+│  WARN  │ 149  │src/tools/ingestor/semantic_chunker.rs............│assigned to `paragraph_in.....│
+└────────┴──────┴──────────────────────────────────────────────────┴──────────────────────────────┘
 ════════════════════════════════════════════════════════════════════════════════════════════════════
 
 📋 PHASE 2: COLLECTING TEST REQUIREMENTS
@@ -466,10 +460,10 @@ SETTING UP TEST ENVIRONMENT
 │  Skipped:                                     0                                                 │
 │  Blocked:                                     0                                                 │
 │  Pass Rate:                                56.0%                                                 │
-│  Code Issues:                               232                                                 │
+│  Code Issues:                               213                                                 │
 │  Compiler Errors:                             0                                                 │
-│  Compiler Warnings:                           0                                                 │
-│  Duration:                                122ms                                                 │
+│  Compiler Warnings:                           1                                                 │
+│  Duration:                                123ms                                                 │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -478,95 +472,6 @@ SETTING UP TEST ENVIRONMENT
 │  The following issues were found in the source code:
 │  These may indicate incomplete implementations or technical debt:
 │─────────────────────────────────────────────────────────────────────────────────────────────────│
-│
-│  Issue Type: _prefix
-│  Count: 85
-│  ├── Files affected: 18
-│  ├── Line 350: mod.rs - Underscore-prefixed identifier: _should_explore
-│  ├── Line 294: observers.rs - Underscore-prefixed identifier: _event
-│  ├── Line 39: worker_manager.rs - Underscore-prefixed identifier: _task
-│  ├── Line 87: worker_manager.rs - Underscore-prefixed identifier: _task
-│  ├── Line 226: worker_manager.rs - Underscore-prefixed identifier: _event
-│  ├── Line 231: worker_manager.rs - Underscore-prefixed identifier: _event
-│  ├── Line 255: worker_manager.rs - Underscore-prefixed identifier: _handle
-│  ├── Line 291: worker_manager.rs - Underscore-prefixed identifier: _handle
-│  ├── Line 171: scorer.rs - Underscore-prefixed identifier: _experience
-│  ├── Line 154: experience.rs - Underscore-prefixed identifier: _evidence_id
-│  ├── Line 462: learning_coordinator.rs - Underscore-prefixed identifier: _knowledge_id
-│  ├── Line 501: learning_coordinator.rs - Underscore-prefixed identifier: _hypothesis_id
-│  ├── Line 545: learning_coordinator.rs - Underscore-prefixed identifier: _id
-│  ├── Line 809: learning_coordinator.rs - Underscore-prefixed identifier: _id
-│  ├── Line 277: event_subscriber.rs - Underscore-prefixed identifier: _reflection
-│  ├── Line 301: event_subscriber.rs - Underscore-prefixed identifier: _behavior
-│  ├── Line 311: event_subscriber.rs - Underscore-prefixed identifier: _reflection
-│  ├── Line 320: event_subscriber.rs - Underscore-prefixed identifier: _hypothesis
-│  ├── Line 321: event_subscriber.rs - Underscore-prefixed identifier: _result
-│  ├── Line 332: event_subscriber.rs - Underscore-prefixed identifier: _evidence
-│  ├── Line 221: hypothesis_pipeline.rs - Underscore-prefixed identifier: _id
-│  ├── Line 253: executor.rs - Underscore-prefixed identifier: _action
-│  ├── Line 254: executor.rs - Underscore-prefixed identifier: _params
-│  ├── Line 119: experience.rs - Underscore-prefixed identifier: _params
-│  ├── Line 48: app.rs - Underscore-prefixed identifier: _database
-│  ├── Line 51: app.rs - Underscore-prefixed identifier: _bus
-│  ├── Line 54: app.rs - Underscore-prefixed identifier: _worker_manager
-│  ├── Line 57: app.rs - Underscore-prefixed identifier: _coordinator
-│  ├── Line 60: app.rs - Underscore-prefixed identifier: _hypothesis_engine
-│  ├── Line 63: app.rs - Underscore-prefixed identifier: _experience_record
-│  ├── Line 66: app.rs - Underscore-prefixed identifier: _reflection_pipeli
-│  ├── Line 69: app.rs - Underscore-prefixed identifier: _scheduler
-│  ├── Line 72: app.rs - Underscore-prefixed identifier: _memory_pipeline
-│  ├── Line 158: app.rs - Underscore-prefixed identifier: _working_memory
-│  ├── Line 159: app.rs - Underscore-prefixed identifier: _lineage_tracker
-│  ├── Line 185: app.rs - Underscore-prefixed identifier: _event_subscriber_
-│  ├── Line 277: app.rs - Underscore-prefixed identifier: _database
-│  ├── Line 278: app.rs - Underscore-prefixed identifier: _bus
-│  ├── Line 279: app.rs - Underscore-prefixed identifier: _worker_manager
-│  ├── Line 280: app.rs - Underscore-prefixed identifier: _coordinator
-│  ├── Line 281: app.rs - Underscore-prefixed identifier: _hypothesis_engine
-│  ├── Line 282: app.rs - Underscore-prefixed identifier: _experience_record
-│  ├── Line 283: app.rs - Underscore-prefixed identifier: _reflection_pipeli
-│  ├── Line 284: app.rs - Underscore-prefixed identifier: _scheduler
-│  ├── Line 285: app.rs - Underscore-prefixed identifier: _memory_pipeline
-│  ├── Line 504: app.rs - Underscore-prefixed identifier: _engine
-│  ├── Line 566: audio_transcriber.rs - Underscore-prefixed identifier: _channels
-│  ├── Line 64: archive_handler.rs - Underscore-prefixed identifier: _temp_dir
-│  ├── Line 402: core.rs - Underscore-prefixed identifier: _e
-│  ├── Line 640: core.rs - Underscore-prefixed identifier: _remaining_count
-│  ├── Line 655: core.rs - Underscore-prefixed identifier: _folder_display
-│  ├── Line 656: core.rs - Underscore-prefixed identifier: _exe_dir
-│  ├── Line 691: core.rs - Underscore-prefixed identifier: _summary
-│  ├── Line 714: core.rs - Underscore-prefixed identifier: _user_message
-│  ├── Line 968: core.rs - Underscore-prefixed identifier: _chunk_size
-│  ├── Line 1283: core.rs - Underscore-prefixed identifier: _chunk_size
-│  ├── Line 1284: core.rs - Underscore-prefixed identifier: _memory_type
-│  ├── Line 87: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 108: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 113: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 121: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 145: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 147: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 149: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 161: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 170: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 172: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 178: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 193: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 195: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 461: semantic_chunker.rs - Underscore-prefixed identifier: _in_script
-│  ├── Line 462: semantic_chunker.rs - Underscore-prefixed identifier: _in_style
-│  ├── Line 466: semantic_chunker.rs - Underscore-prefixed identifier: _in_script
-│  ├── Line 468: semantic_chunker.rs - Underscore-prefixed identifier: _in_script
-│  ├── Line 470: semantic_chunker.rs - Underscore-prefixed identifier: _in_style
-│  ├── Line 472: semantic_chunker.rs - Underscore-prefixed identifier: _in_style
-│  ├── Line 517: mod.rs - Underscore-prefixed identifier: _input
-│  ├── Line 213: mod.rs - Underscore-prefixed identifier: _input
-│  ├── Line 445: mod.rs - Underscore-prefixed identifier: _database
-│  ├── Line 326: mod.rs - Underscore-prefixed identifier: _input
-│  ├── Line 361: repository.rs - Underscore-prefixed identifier: _relationship_type
-│  ├── Line 528: types.rs - Underscore-prefixed identifier: _minor
-│  ├── Line 535: types.rs - Underscore-prefixed identifier: _patch
-│  ├── Line 667: store.rs - Underscore-prefixed identifier: _id2
-│  └── Line 237: pipeline.rs - Underscore-prefixed identifier: _id2
 │
 │  Issue Type: #[allow(*)]
 │  Count: 96
@@ -668,6 +573,76 @@ SETTING UP TEST ENVIRONMENT
 │  ├── Line 12: mod.rs - Found #[allow(...)] annotation which suppresses wa
 │  └── Line 14: mod.rs - Found #[allow(...)] annotation which suppresses wa
 │
+│  Issue Type: _prefix
+│  Count: 66
+│  ├── Files affected: 17
+│  ├── Line 350: mod.rs - Underscore-prefixed identifier: _should_explore
+│  ├── Line 294: observers.rs - Underscore-prefixed identifier: _event
+│  ├── Line 39: worker_manager.rs - Underscore-prefixed identifier: _task
+│  ├── Line 87: worker_manager.rs - Underscore-prefixed identifier: _task
+│  ├── Line 226: worker_manager.rs - Underscore-prefixed identifier: _event
+│  ├── Line 231: worker_manager.rs - Underscore-prefixed identifier: _event
+│  ├── Line 255: worker_manager.rs - Underscore-prefixed identifier: _handle
+│  ├── Line 291: worker_manager.rs - Underscore-prefixed identifier: _handle
+│  ├── Line 171: scorer.rs - Underscore-prefixed identifier: _experience
+│  ├── Line 154: experience.rs - Underscore-prefixed identifier: _evidence_id
+│  ├── Line 462: learning_coordinator.rs - Underscore-prefixed identifier: _knowledge_id
+│  ├── Line 501: learning_coordinator.rs - Underscore-prefixed identifier: _hypothesis_id
+│  ├── Line 545: learning_coordinator.rs - Underscore-prefixed identifier: _id
+│  ├── Line 809: learning_coordinator.rs - Underscore-prefixed identifier: _id
+│  ├── Line 277: event_subscriber.rs - Underscore-prefixed identifier: _reflection
+│  ├── Line 301: event_subscriber.rs - Underscore-prefixed identifier: _behavior
+│  ├── Line 311: event_subscriber.rs - Underscore-prefixed identifier: _reflection
+│  ├── Line 320: event_subscriber.rs - Underscore-prefixed identifier: _hypothesis
+│  ├── Line 321: event_subscriber.rs - Underscore-prefixed identifier: _result
+│  ├── Line 332: event_subscriber.rs - Underscore-prefixed identifier: _evidence
+│  ├── Line 221: hypothesis_pipeline.rs - Underscore-prefixed identifier: _id
+│  ├── Line 253: executor.rs - Underscore-prefixed identifier: _action
+│  ├── Line 254: executor.rs - Underscore-prefixed identifier: _params
+│  ├── Line 119: experience.rs - Underscore-prefixed identifier: _params
+│  ├── Line 48: app.rs - Underscore-prefixed identifier: _database
+│  ├── Line 51: app.rs - Underscore-prefixed identifier: _bus
+│  ├── Line 54: app.rs - Underscore-prefixed identifier: _worker_manager
+│  ├── Line 57: app.rs - Underscore-prefixed identifier: _coordinator
+│  ├── Line 60: app.rs - Underscore-prefixed identifier: _hypothesis_engine
+│  ├── Line 63: app.rs - Underscore-prefixed identifier: _experience_record
+│  ├── Line 66: app.rs - Underscore-prefixed identifier: _reflection_pipeli
+│  ├── Line 69: app.rs - Underscore-prefixed identifier: _scheduler
+│  ├── Line 72: app.rs - Underscore-prefixed identifier: _memory_pipeline
+│  ├── Line 158: app.rs - Underscore-prefixed identifier: _working_memory
+│  ├── Line 159: app.rs - Underscore-prefixed identifier: _lineage_tracker
+│  ├── Line 185: app.rs - Underscore-prefixed identifier: _event_subscriber_
+│  ├── Line 277: app.rs - Underscore-prefixed identifier: _database
+│  ├── Line 278: app.rs - Underscore-prefixed identifier: _bus
+│  ├── Line 279: app.rs - Underscore-prefixed identifier: _worker_manager
+│  ├── Line 280: app.rs - Underscore-prefixed identifier: _coordinator
+│  ├── Line 281: app.rs - Underscore-prefixed identifier: _hypothesis_engine
+│  ├── Line 282: app.rs - Underscore-prefixed identifier: _experience_record
+│  ├── Line 283: app.rs - Underscore-prefixed identifier: _reflection_pipeli
+│  ├── Line 284: app.rs - Underscore-prefixed identifier: _scheduler
+│  ├── Line 285: app.rs - Underscore-prefixed identifier: _memory_pipeline
+│  ├── Line 504: app.rs - Underscore-prefixed identifier: _engine
+│  ├── Line 566: audio_transcriber.rs - Underscore-prefixed identifier: _channels
+│  ├── Line 64: archive_handler.rs - Underscore-prefixed identifier: _temp_dir
+│  ├── Line 402: core.rs - Underscore-prefixed identifier: _e
+│  ├── Line 640: core.rs - Underscore-prefixed identifier: _remaining_count
+│  ├── Line 655: core.rs - Underscore-prefixed identifier: _folder_display
+│  ├── Line 656: core.rs - Underscore-prefixed identifier: _exe_dir
+│  ├── Line 691: core.rs - Underscore-prefixed identifier: _summary
+│  ├── Line 714: core.rs - Underscore-prefixed identifier: _user_message
+│  ├── Line 968: core.rs - Underscore-prefixed identifier: _chunk_size
+│  ├── Line 1283: core.rs - Underscore-prefixed identifier: _chunk_size
+│  ├── Line 1284: core.rs - Underscore-prefixed identifier: _memory_type
+│  ├── Line 517: mod.rs - Underscore-prefixed identifier: _input
+│  ├── Line 213: mod.rs - Underscore-prefixed identifier: _input
+│  ├── Line 445: mod.rs - Underscore-prefixed identifier: _database
+│  ├── Line 326: mod.rs - Underscore-prefixed identifier: _input
+│  ├── Line 361: repository.rs - Underscore-prefixed identifier: _relationship_type
+│  ├── Line 528: types.rs - Underscore-prefixed identifier: _minor
+│  ├── Line 535: types.rs - Underscore-prefixed identifier: _patch
+│  ├── Line 667: store.rs - Underscore-prefixed identifier: _id2
+│  └── Line 237: pipeline.rs - Underscore-prefixed identifier: _id2
+│
 │  Issue Type: Early Return Stub
 │  Count: 51
 │  ├── Files affected: 10
@@ -729,9 +704,19 @@ SETTING UP TEST ENVIRONMENT
 │                                  🔧  COMPILER ERRORS & WARNINGS                                   │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │
-│  ✅ No compiler errors or warnings!
+│  Compiler errors and warnings from cargo check / clippy:
+│─────────────────────────────────────────────────────────────────────────────────────────────────│
 │
-└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+├────────├──────├────────────├────────────────────────────────────────────────────────────────────┤
+│ Level  │ Line │    Code    │                              Message                               │
+├────────┼──────┼────────────┼────────────────────────────────────────────────────────────────────┤
+│ ⚠️ WARN │  149 │   value    │ assigned to `paragraph_index` is never read: this value is reas... │
+├────────┴──────┴────────────┴────────────────────────────────────────────────────────────────────┤
+│
+│  Summary by file:
+│    semantic_chunker.rs ⚠️ - 0 errors, 1 warnings
+│─────────────────────────────────────────────────────────────────────────────────────────────────│
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                                          ❌ FAILED TESTS                                          │
@@ -1053,37 +1038,40 @@ SETTING UP TEST ENVIRONMENT
 └──────┴────────────────────┴─────────────────────────┴────────┴──────────┴─────────────────────────┘
 
   Category Summary:
-    Memory               7/7 passed
-    Ingestor             7/7 passed
-    Hypothesis           1/7 passed
-    Experience           1/4 passed
-    Exploration          0/4 passed
-    Reflection           2/4 passed
-    Agent                5/5 passed
-    Knowledge            5/5 passed
-    Workflow             1/9 passed
-    Skills               9/11 passed
-    Planner              1/9 passed
     Search               3/3 passed
+    Agent                5/5 passed
+    Workflow             1/9 passed
+    Memory               7/7 passed
+    Experience           1/4 passed
+    Reflection           2/4 passed
+    Hypothesis           1/7 passed
+    Exploration          0/4 passed
+    Ingestor             7/7 passed
+    Knowledge            5/5 passed
+    Planner              1/9 passed
+    Skills               9/11 passed
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                         ⚠️  VERDICT: TESTS HAVE ISSUES - REVIEW REQUIRED                         │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │
 │  ❌ 33 tests failed, 0 errors
-│  ⚠️  232 code quality issues detected
+│  ⚠️  213 code quality issues detected
 │     See code issues section above for details
+│  ⚠️  0 compiler errors, 1 warnings
+│     See compiler errors & warnings section above
 │
 │  Required actions:
 │    1. Fix all failing tests
 │    2. Ensure functions work end-to-end
 │    3. Remove stub patterns and #[allow(*)] annotations
 │    4. Implement missing functionality
+│    5. Fix compiler errors and warnings
 │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ════════════════════════════════════════════════════════════════════════════════════════════════════
 
-  Total test duration: 16.669877266s
+  Total test duration: 16.842556531s
 
 
 ========================================================================================================================
@@ -1274,7 +1262,7 @@ Testing agent workflow discovery, execution, and MCP integration
 
   Testing workflow creation...
     ✓ create_workflow - SUCCESS
-    ✓ Workflow ID: Some("17f56169-a6ca-48fd-ae3f-2780d91e6519")
+    ✓ Workflow ID: Some("26d3112e-470e-49a1-beec-f5c45f526a23")
 
   Testing adding workflow steps...
     ✓ add_workflow_step('Initialize', 'initialize') - SUCCESS
@@ -1368,7 +1356,7 @@ MCP WORKFLOW INTEGRATION TEST RESULTS
 
 ⚙️  Workflow Execution:
   - Workflow creation: ✓
-  - Workflow ID generated: Some("17f56169-a6ca-48fd-ae3f-2780d91e6519")
+  - Workflow ID generated: Some("26d3112e-470e-49a1-beec-f5c45f526a23")
   - Step addition: ✓
   - Workflow start: ✓
   - Workflow completion: ✓
@@ -1415,10 +1403,10 @@ Overall MCP Workflow Integration Score: 16/20 checks passed (80%)
 │  Skipped:                                     0                                                 │
 │  Blocked:                                     0                                                 │
 │  Pass Rate:                                56.0%                                                 │
-│  Code Issues:                               232                                                 │
+│  Code Issues:                               213                                                 │
 │  Compiler Errors:                             0                                                 │
-│  Compiler Warnings:                           0                                                 │
-│  Duration:                                122ms                                                 │
+│  Compiler Warnings:                           1                                                 │
+│  Duration:                                123ms                                                 │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
@@ -1428,64 +1416,9 @@ Overall MCP Workflow Integration Score: 16/20 checks passed (80%)
 │  These may indicate incomplete implementations or technical debt:
 │─────────────────────────────────────────────────────────────────────────────────────────────────│
 │
-│  Issue Type: Early Return Stub
-│  Count: 51
-│  ├── Files affected: 10
-│  ├── Line 135: experience.rs - Returns Err() immediately
-│  ├── Line 145: experience.rs - Returns Err() immediately
-│  ├── Line 97: executor.rs - Returns Err() immediately
-│  ├── Line 168: executor.rs - Returns Ok() immediately
-│  ├── Line 202: executor.rs - Returns Ok() immediately
-│  ├── Line 233: executor.rs - Returns Ok() immediately
-│  ├── Line 152: enforcer.rs - Returns Err() immediately
-│  ├── Line 157: enforcer.rs - Returns Err() immediately
-│  ├── Line 278: client.rs - Returns Err() immediately
-│  ├── Line 626: app.rs - Returns Err() immediately
-│  ├── Line 112: workflow.rs - Returns Ok() immediately
-│  ├── Line 185: workflow.rs - Returns Ok() immediately
-│  ├── Line 240: workflow.rs - Returns Ok() immediately
-│  ├── Line 270: workflow.rs - Returns Ok() immediately
-│  ├── Line 492: workflow.rs - Returns Ok() immediately
-│  ├── Line 447: core.rs - Returns Ok() immediately
-│  ├── Line 734: core.rs - Returns Ok() immediately
-│  ├── Line 796: core.rs - Returns Ok() immediately
-│  ├── Line 1370: core.rs - Returns Ok() immediately
-│  ├── Line 1417: core.rs - Returns Ok() immediately
-│  ├── Line 267: mod.rs - Returns Ok() immediately
-│  ├── Line 295: mod.rs - Returns Ok() immediately
-│  ├── Line 363: mod.rs - Returns Ok() immediately
-│  ├── Line 381: mod.rs - Returns Ok() immediately
-│  ├── Line 429: mod.rs - Returns Ok() immediately
-│  ├── Line 507: mod.rs - Returns Ok() immediately
-│  ├── Line 618: mod.rs - Returns Ok() immediately
-│  ├── Line 166: mod.rs - Returns Ok() immediately
-│  ├── Line 280: mod.rs - Returns Ok() immediately
-│  ├── Line 311: mod.rs - Returns Ok() immediately
-│  ├── Line 345: mod.rs - Returns Ok() immediately
-│  ├── Line 203: mod.rs - Returns Ok() immediately
-│  ├── Line 242: mod.rs - Returns Ok() immediately
-│  ├── Line 271: mod.rs - Returns Ok() immediately
-│  ├── Line 43: execute.rs - Returns Ok() immediately
-│  ├── Line 65: execute.rs - Returns Ok() immediately
-│  ├── Line 118: execute.rs - Returns Ok() immediately
-│  ├── Line 149: execute.rs - Returns Ok() immediately
-│  ├── Line 274: execute.rs - Returns Ok() immediately
-│  ├── Line 316: execute.rs - Returns Ok() immediately
-│  ├── Line 369: execute.rs - Returns Ok() immediately
-│  ├── Line 408: execute.rs - Returns Ok() immediately
-│  ├── Line 427: execute.rs - Returns Ok() immediately
-│  ├── Line 450: execute.rs - Returns Ok() immediately
-│  ├── Line 355: mod.rs - Returns Ok() immediately
-│  ├── Line 470: mod.rs - Returns Ok() immediately
-│  ├── Line 160: workflows.rs - Returns Ok() immediately
-│  ├── Line 193: workflows.rs - Returns Ok() immediately
-│  ├── Line 138: mod.rs - Returns Ok() immediately
-│  ├── Line 175: mod.rs - Returns Ok() immediately
-│  └── Line 200: mod.rs - Returns Ok() immediately
-│
 │  Issue Type: _prefix
-│  Count: 85
-│  ├── Files affected: 18
+│  Count: 66
+│  ├── Files affected: 17
 │  ├── Line 350: mod.rs - Underscore-prefixed identifier: _should_explore
 │  ├── Line 294: observers.rs - Underscore-prefixed identifier: _event
 │  ├── Line 39: worker_manager.rs - Underscore-prefixed identifier: _task
@@ -1543,25 +1476,6 @@ Overall MCP Workflow Integration Score: 16/20 checks passed (80%)
 │  ├── Line 968: core.rs - Underscore-prefixed identifier: _chunk_size
 │  ├── Line 1283: core.rs - Underscore-prefixed identifier: _chunk_size
 │  ├── Line 1284: core.rs - Underscore-prefixed identifier: _memory_type
-│  ├── Line 87: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 108: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 113: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 121: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 145: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 147: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 149: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 161: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 170: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 172: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 178: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 193: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 195: semantic_chunker.rs - Underscore-prefixed identifier: _paragraph_index
-│  ├── Line 461: semantic_chunker.rs - Underscore-prefixed identifier: _in_script
-│  ├── Line 462: semantic_chunker.rs - Underscore-prefixed identifier: _in_style
-│  ├── Line 466: semantic_chunker.rs - Underscore-prefixed identifier: _in_script
-│  ├── Line 468: semantic_chunker.rs - Underscore-prefixed identifier: _in_script
-│  ├── Line 470: semantic_chunker.rs - Underscore-prefixed identifier: _in_style
-│  ├── Line 472: semantic_chunker.rs - Underscore-prefixed identifier: _in_style
 │  ├── Line 517: mod.rs - Underscore-prefixed identifier: _input
 │  ├── Line 213: mod.rs - Underscore-prefixed identifier: _input
 │  ├── Line 445: mod.rs - Underscore-prefixed identifier: _database
@@ -1571,6 +1485,61 @@ Overall MCP Workflow Integration Score: 16/20 checks passed (80%)
 │  ├── Line 535: types.rs - Underscore-prefixed identifier: _patch
 │  ├── Line 667: store.rs - Underscore-prefixed identifier: _id2
 │  └── Line 237: pipeline.rs - Underscore-prefixed identifier: _id2
+│
+│  Issue Type: Early Return Stub
+│  Count: 51
+│  ├── Files affected: 10
+│  ├── Line 135: experience.rs - Returns Err() immediately
+│  ├── Line 145: experience.rs - Returns Err() immediately
+│  ├── Line 97: executor.rs - Returns Err() immediately
+│  ├── Line 168: executor.rs - Returns Ok() immediately
+│  ├── Line 202: executor.rs - Returns Ok() immediately
+│  ├── Line 233: executor.rs - Returns Ok() immediately
+│  ├── Line 152: enforcer.rs - Returns Err() immediately
+│  ├── Line 157: enforcer.rs - Returns Err() immediately
+│  ├── Line 278: client.rs - Returns Err() immediately
+│  ├── Line 626: app.rs - Returns Err() immediately
+│  ├── Line 112: workflow.rs - Returns Ok() immediately
+│  ├── Line 185: workflow.rs - Returns Ok() immediately
+│  ├── Line 240: workflow.rs - Returns Ok() immediately
+│  ├── Line 270: workflow.rs - Returns Ok() immediately
+│  ├── Line 492: workflow.rs - Returns Ok() immediately
+│  ├── Line 447: core.rs - Returns Ok() immediately
+│  ├── Line 734: core.rs - Returns Ok() immediately
+│  ├── Line 796: core.rs - Returns Ok() immediately
+│  ├── Line 1370: core.rs - Returns Ok() immediately
+│  ├── Line 1417: core.rs - Returns Ok() immediately
+│  ├── Line 267: mod.rs - Returns Ok() immediately
+│  ├── Line 295: mod.rs - Returns Ok() immediately
+│  ├── Line 363: mod.rs - Returns Ok() immediately
+│  ├── Line 381: mod.rs - Returns Ok() immediately
+│  ├── Line 429: mod.rs - Returns Ok() immediately
+│  ├── Line 507: mod.rs - Returns Ok() immediately
+│  ├── Line 618: mod.rs - Returns Ok() immediately
+│  ├── Line 166: mod.rs - Returns Ok() immediately
+│  ├── Line 280: mod.rs - Returns Ok() immediately
+│  ├── Line 311: mod.rs - Returns Ok() immediately
+│  ├── Line 345: mod.rs - Returns Ok() immediately
+│  ├── Line 203: mod.rs - Returns Ok() immediately
+│  ├── Line 242: mod.rs - Returns Ok() immediately
+│  ├── Line 271: mod.rs - Returns Ok() immediately
+│  ├── Line 43: execute.rs - Returns Ok() immediately
+│  ├── Line 65: execute.rs - Returns Ok() immediately
+│  ├── Line 118: execute.rs - Returns Ok() immediately
+│  ├── Line 149: execute.rs - Returns Ok() immediately
+│  ├── Line 274: execute.rs - Returns Ok() immediately
+│  ├── Line 316: execute.rs - Returns Ok() immediately
+│  ├── Line 369: execute.rs - Returns Ok() immediately
+│  ├── Line 408: execute.rs - Returns Ok() immediately
+│  ├── Line 427: execute.rs - Returns Ok() immediately
+│  ├── Line 450: execute.rs - Returns Ok() immediately
+│  ├── Line 355: mod.rs - Returns Ok() immediately
+│  ├── Line 470: mod.rs - Returns Ok() immediately
+│  ├── Line 160: workflows.rs - Returns Ok() immediately
+│  ├── Line 193: workflows.rs - Returns Ok() immediately
+│  ├── Line 138: mod.rs - Returns Ok() immediately
+│  ├── Line 175: mod.rs - Returns Ok() immediately
+│  └── Line 200: mod.rs - Returns Ok() immediately
 │
 │  Issue Type: #[allow(*)]
 │  Count: 96
@@ -1678,9 +1647,19 @@ Overall MCP Workflow Integration Score: 16/20 checks passed (80%)
 │                                  🔧  COMPILER ERRORS & WARNINGS                                   │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │
-│  ✅ No compiler errors or warnings!
+│  Compiler errors and warnings from cargo check / clippy:
+│─────────────────────────────────────────────────────────────────────────────────────────────────│
 │
-└──────────────────────────────────────────────────────────────────────────────────────────────────┘
+├────────├──────├────────────├────────────────────────────────────────────────────────────────────┤
+│ Level  │ Line │    Code    │                              Message                               │
+├────────┼──────┼────────────┼────────────────────────────────────────────────────────────────────┤
+│ ⚠️ WARN │  149 │   value    │ assigned to `paragraph_index` is never read: this value is reas... │
+├────────┴──────┴────────────┴────────────────────────────────────────────────────────────────────┤
+│
+│  Summary by file:
+│    semantic_chunker.rs ⚠️ - 0 errors, 1 warnings
+│─────────────────────────────────────────────────────────────────────────────────────────────────│
+└─────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                                          ❌ FAILED TESTS                                          │
@@ -2002,32 +1981,35 @@ Overall MCP Workflow Integration Score: 16/20 checks passed (80%)
 └──────┴────────────────────┴─────────────────────────┴────────┴──────────┴─────────────────────────┘
 
   Category Summary:
+    Skills               9/11 passed
+    Planner              1/9 passed
     Agent                5/5 passed
-    Memory               7/7 passed
+    Workflow             1/9 passed
+    Knowledge            5/5 passed
     Search               3/3 passed
     Experience           1/4 passed
-    Hypothesis           1/7 passed
-    Knowledge            5/5 passed
-    Skills               9/11 passed
-    Reflection           2/4 passed
-    Ingestor             7/7 passed
-    Workflow             1/9 passed
-    Planner              1/9 passed
     Exploration          0/4 passed
+    Reflection           2/4 passed
+    Memory               7/7 passed
+    Ingestor             7/7 passed
+    Hypothesis           1/7 passed
 
 ┌──────────────────────────────────────────────────────────────────────────────────────────────────┐
 │                         ⚠️  VERDICT: TESTS HAVE ISSUES - REVIEW REQUIRED                         │
 ├──────────────────────────────────────────────────────────────────────────────────────────────────┤
 │
 │  ❌ 33 tests failed, 0 errors
-│  ⚠️  232 code quality issues detected
+│  ⚠️  213 code quality issues detected
 │     See code issues section above for details
+│  ⚠️  0 compiler errors, 1 warnings
+│     See compiler errors & warnings section above
 │
 │  Required actions:
 │    1. Fix all failing tests
 │    2. Ensure functions work end-to-end
 │    3. Remove stub patterns and #[allow(*)] annotations
 │    4. Implement missing functionality
+│    5. Fix compiler errors and warnings
 │
 └──────────────────────────────────────────────────────────────────────────────────────────────────┘
 ════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -2049,9 +2031,9 @@ OVERALL SUMMARY
   ┌────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┐
   │                                                   CODE QUALITY                                                   │
   ├────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┤
-  │ Code Issues (stubs, #[allow]):                                                                              232 │
+  │ Code Issues (stubs, #[allow]):                                                                              213 │
   │ Compiler Errors:                                                                                              0 │
-  │ Compiler Warnings:                                                                                            0 │
+  │ Compiler Warnings:                                                                                            1 │
   └────────────────────────────────────────────────────────────────────────────────────────────────────────────────────┘
 
 ════════════════════════════════════════════════════════════════════════════════════════════════════════════════════════
