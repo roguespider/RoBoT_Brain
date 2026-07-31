@@ -239,19 +239,18 @@ impl TestReport {
                 .collect::<std::collections::HashSet<_>>()
                 .len());
             
-            // Show first few examples
-            for issue in issues.iter().take(3) {
+            // Show ALL issues
+            for (idx, issue) in issues.iter().enumerate() {
                 let file_name = issue.file_path.file_name()
                     .map(|n| n.to_string_lossy().to_string())
                     .unwrap_or_else(|| "unknown".to_string());
-                crate::teeprintln!("│  ├── Line {}: {} - {}", 
+                let prefix = if idx == issues.len() - 1 { "└──" } else { "├──" };
+                crate::teeprintln!("│  {} Line {}: {} - {}", 
+                    prefix,
                     issue.line_number,
                     file_name,
                     issue.description.chars().take(50).collect::<String>()
                 );
-            }
-            if issues.len() > 3 {
-                crate::teeprintln!("│  └── ... and {} more", issues.len() - 3);
             }
         }
         
