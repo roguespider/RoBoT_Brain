@@ -57,10 +57,6 @@ pub struct GetWorkerStatsInput {
     pub observer_name: Option<String>,
 }
 
-/// Tool: Get worker count
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-pub struct GetWorkerCountInput {}
-
 /// Experience tool definitions
 pub mod definitions {
     pub const RECORD_EXPERIENCE: &str = "record_experience";
