@@ -105,10 +105,18 @@ pub async fn run_comprehensive_tests(
         Err(e) => println!("    ⚠️  Workflow init warning: {}", e),
     }
     
+    // Print test table header
+    println!("\n  ┌{:─<5}┬{:─<20}┬{:─<30}┬{:─<8}┬{:─<50}┐", "", "", "", "", "");
+    println!("  │ {:^3} │ {:^18} │ {:^28} │ {:^6} │ {:^48} │", 
+        "#", "Category", "Test Name", "Status", "Details");
+    println!("  ├{:─<5}┼{:─<20}┼{:─<30}┼{:─<8}┼{:─<50}┤", "", "", "", "", "");
+    
     // Run tests for each category
     let mut data_created: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+    let mut test_num = 0;
     
     for requirement in &requirements {
+        test_num += 1;
         let result = run_single_test(client, requirement, &data_created, env).await;
         
         // Track created data for dependent tests
@@ -120,6 +128,41 @@ pub async fn run_comprehensive_tests(
                     .push(requirement.id.clone());
             }
         }
+        
+        // Print test result in table format
+        let status_icon = match result.status {
+            TestStatus::Pass => "✅ PASS",
+            TestStatus::Fail => "❌ FAIL",
+            TestStatus::Error => "💥 ERROR",
+            TestStatus::Skipped => "⏭️  SKIP",
+            TestStatus::Blocked => "🚫 BLOCK",
+        };
+        
+        let details = if result.status == TestStatus::Pass {
+            "OK".to_string()
+        } else {
+            result.error_message.clone().unwrap_or_else(|| "Unknown error".to_string())
+        };
+        
+        // Truncate for table
+        let cat_str = if requirement.category.len() > 18 { 
+            format!("{}...", &requirement.category[..15]) 
+        } else { 
+            requirement.category.clone() 
+        };
+        let name_str = if requirement.function_name.len() > 28 { 
+            format!("{}...", &requirement.function_name[..25]) 
+        } else { 
+            requirement.function_name.clone() 
+        };
+        let detail_str = if details.len() > 48 { 
+            format!("{}...", &details[..45]) 
+        } else { 
+            details 
+        };
+        
+        println!("  │ {:>3} │ {:<18} │ {:<28} │ {} │ {:<48} │", 
+            test_num, cat_str, name_str, status_icon, detail_str);
         
         report.add_result(result);
         
@@ -133,6 +176,8 @@ pub async fn run_comprehensive_tests(
             }
         }
     }
+    
+    println!("  └{:─<5}┴{:─<20}┴{:─<30}┴{:─<8}┴{:─<50}┘", "", "", "", "", "");
     
     // Step 4: Generate report
     println!("\n📊 PHASE 4: GENERATING REPORT");

@@ -500,10 +500,10 @@ impl TestMcpClient {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     println!("
-{}", "#".repeat(100));
+{}", "#".repeat(120));
     println!("#  RoBoT Brain MCP Server - Comprehensive End-to-End Test Suite");
-    println!("#  Testing every function 100% end-to-end without stubs or #[allow(*)]");
-    println!("{}", "#".repeat(100));
+    println!("#  Testing every function 100% end-to-end");
+    println!("{}", "#".repeat(120));
     
     let server_path = build_server().await?;
     let env = setup_test_environment(&server_path)?;
@@ -513,11 +513,11 @@ async fn main() -> anyhow::Result<()> {
     // Run comprehensive test suite with code analysis
     let report = run_comprehensive_tests(&mut client, &mut stats, &env).await?;
     
-    // Also run the traditional test suite for comparison
+    // Also run the traditional test suite
     println!("\n
-{}", "=".repeat(100));
-    println!("RUNNING TRADITIONAL TEST SUITE (for comparison)");
-    println!("{}", "=".repeat(100));
+{}", "=".repeat(120));
+    println!("RUNNING ALL TESTS");
+    println!("{}", "=".repeat(120));
     
     tests::run_memory_tests(&mut client, &mut stats, None).await?;
     tests::run_experience_tests(&mut client, &mut stats, None).await?;
@@ -530,33 +530,55 @@ async fn main() -> anyhow::Result<()> {
     tests::run_ingestor_tests(&mut client, &mut stats, None, &env).await?;
     tests::run_agent_tests(&mut client, &mut stats, None).await?;
     tests::run_error_handling_tests(&mut client, &mut stats, None).await?;
-    
-    // Run MCP Workflow Integration Tests
-    println!("\n
-{}", "=".repeat(100));
-    println!("RUNNING MCP WORKFLOW INTEGRATION TESTS");
-    println!("{}", "=".repeat(100));
-    
     tests::run_mcp_workflow_tests(&mut client, &mut stats, None).await?;
     
-    stats.print_summary();
+    // Print unified summary table
+    println!("\n{}", "=".repeat(120));
+    println!("{}", "=".repeat(120));
     
-    // Print combined issues summary
-    println!("\n{}", "=".repeat(80));
-    println!("OVERALL QUALITY SUMMARY");
-    println!("{}", "=".repeat(80));
-    println!("  Code Quality Issues:    {:>6} (#[allow, stubs, etc.)", report.code_issues.len());
-    println!("  Lint Errors:           {:>6}", report.lint_errors);
-    println!("  Lint Warnings:         {:>6}", report.lint_warnings);
-    println!("  Test Failures:         {:>6}", stats.failed);
-    println!("{}", "=".repeat(80));
+    // Print comprehensive test results table
+    report.print_report();
+    
+    // Print overall summary
+    println!("\n{}", "=".repeat(120));
+    println!("OVERALL SUMMARY");
+    println!("{}", "=".repeat(120));
+    
+    let total_tests = stats.passed + stats.failed;
+    let pass_rate = if total_tests > 0 {
+        (stats.passed as f64 / total_tests as f64) * 100.0
+    } else {
+        0.0
+    };
+    
+    println!("\n  ┌{:─<116}┐", "");
+    println!("  │ {:^112} │", "TEST RESULTS");
+    println!("  ├{:─<116}┤", "");
+    println!("  │ {:<40} {:>70} │", "Total Tests:", format!("{}", total_tests));
+    println!("  │ {:<40} {:>65} ✅ │", "Passed:", format!("{}", stats.passed));
+    println!("  │ {:<40} {:>65} ❌ │", "Failed:", format!("{}", stats.failed));
+    println!("  │ {:<40} {:>65.1}% │", "Pass Rate:", pass_rate);
+    println!("  │ {:<40} {:>65} │", "Skipped:", stats.skipped);
+    println!("  └{:─<116}┘", "");
+    
+    println!("\n  ┌{:─<116}┐", "");
+    println!("  │ {:^112} │", "CODE QUALITY");
+    println!("  ├{:─<116}┤", "");
+    println!("  │ {:<40} {:>70} │", "Code Issues (stubs, #[allow]):", report.code_issues.len());
+    println!("  │ {:<40} {:>70} │", "Compiler Errors:", report.lint_errors);
+    println!("  │ {:<40} {:>70} │", "Compiler Warnings:", report.lint_warnings);
+    println!("  └{:─<116}┘", "");
     
     // Exit with error if there are issues
     if report.has_issues() || stats.failed > 0 || report.lint_errors > 0 {
-        println!("\n⚠️  TEST SUITE COMPLETED WITH ISSUES");
+        println!("\n{}", "═".repeat(120));
+        println!("  {:^116}", "⚠️  TEST SUITE COMPLETED WITH ISSUES");
+        println!("{}", "═".repeat(120));
         std::process::exit(1);
     }
     
-    println!("\n🎉 ALL TESTS PASSED - SYSTEM READY!");
+    println!("\n{}", "═".repeat(120));
+    println!("  {:^116}", "🎉 ALL TESTS PASSED - SYSTEM READY!");
+    println!("{}", "═".repeat(120));
     Ok(())
 }

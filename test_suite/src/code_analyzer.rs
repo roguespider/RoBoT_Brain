@@ -54,15 +54,41 @@ impl std::fmt::Display for IssueType {
     }
 }
 
+/// Pre-compiled regex patterns for code analysis
+struct CodePatterns {
+    allow_annotation: Regex,
+    unimplemented: Regex,
+    todo: Regex,
+    panic: Regex,
+    underscore_prefix: Regex,
+}
+
+impl CodePatterns {
+    fn new() -> Self {
+        Self {
+            allow_annotation: Regex::new(r#"#\s*\[\s*allow\s*\([^)]*\)"#).unwrap(),
+            unimplemented: Regex::new(r"unimplemented!\s*\(").unwrap(),
+            todo: Regex::new(r"todo!\s*\(").unwrap(),
+            panic: Regex::new(r#"panic!\s*\("#).unwrap(),
+            underscore_prefix: Regex::new(r"\b_\w+\b").unwrap(),
+        }
+    }
+}
+
 /// Analyzes the source code for stub patterns and partial implementations
 pub struct CodeAnalyzer {
     /// Base path to the source code
     source_path: PathBuf,
+    /// Pre-compiled regex patterns
+    patterns: CodePatterns,
 }
 
 impl CodeAnalyzer {
     pub fn new(source_path: PathBuf) -> Self {
-        Self { source_path }
+        Self { 
+            source_path,
+            patterns: CodePatterns::new(),
+        }
     }
 
     /// Run full analysis on the source code
@@ -152,11 +178,9 @@ impl CodeAnalyzer {
 
     /// Check for #[allow(*)] annotations
     fn check_allow_annotation(&self, line: &str, file_path: &Path, line_number: usize) -> Option<CodeIssue> {
-        let allow_regex = Regex::new(r#"#\s*\[\s*allow\s*\([^)]*\)"#).ok()?;
-        
-        if allow_regex.is_match(line) {
+        if self.patterns.allow_annotation.is_match(line) {
             // Extract the allow annotation
-            let captures = allow_regex.captures(line)?;
+            let captures = self.patterns.allow_annotation.captures(line)?;
             let matched = captures.get(0)?.as_str();
             
             Some(CodeIssue {
@@ -173,9 +197,7 @@ impl CodeAnalyzer {
 
     /// Check for unimplemented!() macro
     fn check_unimplemented(&self, line: &str, file_path: &Path, line_number: usize) -> Option<CodeIssue> {
-        let unimplemented_regex = Regex::new(r"unimplemented!\s*\(").ok()?;
-        
-        if unimplemented_regex.is_match(line) {
+        if self.patterns.unimplemented.is_match(line) {
             Some(CodeIssue {
                 file_path: file_path.to_path_buf(),
                 line_number,
@@ -190,9 +212,7 @@ impl CodeAnalyzer {
 
     /// Check for todo!() macro
     fn check_todo(&self, line: &str, file_path: &Path, line_number: usize) -> Option<CodeIssue> {
-        let todo_regex = Regex::new(r"todo!\s*\(").ok()?;
-        
-        if todo_regex.is_match(line) {
+        if self.patterns.todo.is_match(line) {
             Some(CodeIssue {
                 file_path: file_path.to_path_buf(),
                 line_number,
@@ -207,9 +227,7 @@ impl CodeAnalyzer {
 
     /// Check for panic! with stub-like messages
     fn check_panic_stub(&self, line: &str, file_path: &Path, line_number: usize) -> Option<CodeIssue> {
-        let panic_regex = Regex::new(r#"panic!\s*\("#).ok()?;
-        
-        if panic_regex.is_match(line) {
+        if self.patterns.panic.is_match(line) {
             let lower_line = line.to_lowercase();
             let stub_indicators = [
                 "stub", "not implemented", "todo", "wip", "placeholder",
@@ -241,44 +259,23 @@ impl CodeAnalyzer {
             return None;
         }
         
-        // Patterns to detect underscore-prefixed identifiers that indicate unused/ignored code
-        // Match: _variable, _function(), let _name, _ =>, _struct, _enum, etc.
-        let patterns = [
-            // Variable assignments and patterns
-            (r"\b(let|const|static)\s+_\w+", "let/const with underscore prefix"),
-            (r"\b_\w+\s*=", "Assignment to underscore-prefixed variable"),
-            // Function parameters
-            (r"\b_\w+:\s*\w+", "Function parameter with underscore prefix"),
-            // Match arms
-            (r"\b_\w+\s*=>", "Match arm with underscore prefix"),
-            // Function calls with underscore prefix
-            (r"\b_\w+\s*\(", "Function call with underscore prefix"),
-            // Struct/tuple field access
-            (r"\.\.?\s*_\w+", "Struct/tuple pattern with underscore prefix"),
-            // Assignment expressions
-            (r"=\s*_\w+", "Assignment from underscore-prefixed variable"),
-        ];
-        
-        for (pattern, description) in patterns {
-            if let Ok(re) = Regex::new(pattern) {
-                if let Some(caps) = re.captures(line) {
-                    let matched = caps.get(0).map(|m| m.as_str()).unwrap_or("");
-                    
-                    // Skip lines that are just type annotations for unused params
-                    if line.contains("__") {
-                        // Double underscore often means intentionally ignored
-                        continue;
-                    }
-                    
-                    return Some(CodeIssue {
-                        file_path: file_path.to_path_buf(),
-                        line_number,
-                        issue_type: IssueType::UnderscorePrefix,
-                        description: format!("Underscore-prefixed identifier: {} - {}", matched, description),
-                        code_snippet: line.trim().to_string(),
-                    });
-                }
+        // Use pre-compiled underscore pattern
+        if let Some(caps) = self.patterns.underscore_prefix.captures(line) {
+            let matched = caps.get(0).map(|m| m.as_str()).unwrap_or("");
+            
+            // Skip lines that are just type annotations for unused params
+            if line.contains("__") {
+                // Double underscore often means intentionally ignored
+                return None;
             }
+            
+            return Some(CodeIssue {
+                file_path: file_path.to_path_buf(),
+                line_number,
+                issue_type: IssueType::UnderscorePrefix,
+                description: format!("Underscore-prefixed identifier: {}", matched),
+                code_snippet: line.trim().to_string(),
+            });
         }
         
         None

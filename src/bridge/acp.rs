@@ -40,6 +40,7 @@ use uuid::Uuid;
 
 /// ACP message envelope
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct AcpMessage {
     pub id: String,
     pub sender: AcpAgentId,
@@ -52,6 +53,7 @@ pub struct AcpMessage {
     pub ttl: u32,
 }
 
+#[allow(dead_code)]
 impl AcpMessage {
     /// Create a new ACP message
     pub fn new(
@@ -128,11 +130,13 @@ impl AcpMessage {
 
 /// Agent identifier
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct AcpAgentId {
     pub agent_type: String,
     pub instance_id: String,
 }
 
+#[allow(dead_code)]
 impl AcpAgentId {
     /// Create a new agent ID
     pub fn new(agent_type: &str, instance_id: &str) -> Self {
@@ -203,6 +207,7 @@ pub enum AcpMessageType {
     Publish,
 }
 
+#[allow(dead_code)]
 impl AcpMessageType {
     /// Get the reply message type for this message type
     pub fn reply_type(&self) -> Self {
@@ -228,12 +233,14 @@ impl AcpMessageType {
 
 /// ACP protocol errors
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct AcpError {
     pub code: AcpErrorCode,
     pub message: String,
     pub details: Option<serde_json::Value>,
 }
 
+#[allow(dead_code)]
 impl AcpError {
     pub fn new(code: AcpErrorCode, message: &str) -> Self {
         Self {
@@ -260,6 +267,7 @@ impl std::error::Error for AcpError {}
 /// ACP error codes
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
+#[allow(dead_code)]
 pub enum AcpErrorCode {
     MalformedMessage,
     UnknownReceiver,
@@ -270,6 +278,7 @@ pub enum AcpErrorCode {
     InternalError,
 }
 
+#[allow(dead_code)]
 impl AcpErrorCode {
     pub fn to_code(&self) -> u16 {
         match self {
@@ -289,6 +298,7 @@ impl AcpErrorCode {
 // ============================================================================
 
 /// ACP channel for sending and receiving messages
+#[allow(dead_code)]
 pub trait AcpChannel: Send + Sync {
     /// Send a message through the channel
     fn send(&self, message: AcpMessage) -> Result<()>;
@@ -301,12 +311,14 @@ pub trait AcpChannel: Send + Sync {
 }
 
 /// In-memory channel for local agent communication
+#[allow(dead_code)]
 pub struct InMemoryChannel {
     name: String,
     messages: Arc<std::sync::Mutex<Vec<AcpMessage>>>,
     waiting: Arc<AtomicBool>,
 }
 
+#[allow(dead_code)]
 impl InMemoryChannel {
     pub fn new(name: &str) -> Self {
         Self {
@@ -349,6 +361,7 @@ impl AcpChannel for InMemoryChannel {
 // ============================================================================
 
 /// ACP agent trait
+#[allow(dead_code)]
 pub trait AcpAgent: Send + Sync {
     /// Get the agent's ID
     fn id(&self) -> &AcpAgentId;
@@ -365,6 +378,7 @@ pub trait AcpAgent: Send + Sync {
 
 /// Agent capability description
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct AcpCapability {
     pub name: String,
     pub description: String,
@@ -372,6 +386,7 @@ pub struct AcpCapability {
     pub output_schema: serde_json::Value,
 }
 
+#[allow(dead_code)]
 impl AcpCapability {
     pub fn new(name: &str, description: &str) -> Self {
         Self {
@@ -384,6 +399,7 @@ impl AcpCapability {
 }
 
 /// Simple agent implementation with handler closure
+#[allow(dead_code)]
 pub struct SimpleAgent {
     id: AcpAgentId,
     description: String,
@@ -391,6 +407,7 @@ pub struct SimpleAgent {
     handler: Box<dyn Fn(AcpMessage) -> Result<Option<AcpMessage>> + Send + Sync>,
 }
 
+#[allow(dead_code)]
 impl SimpleAgent {
     pub fn new(
         id: AcpAgentId,

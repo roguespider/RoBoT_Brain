@@ -5,23 +5,25 @@
 //! This module provides a complete MCP server handler implementation that
 //! integrates with the rmcp crate for actual MCP protocol handling.
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Result;
 use rmcp::{
     model::{
         CallToolRequestParams, CallToolResult, CompleteRequestParams, CompleteResult,
-        ContentBlock, GetPromptRequestParams, GetPromptResult, Implementation,
+        GetPromptRequestParams, GetPromptResult, Implementation,
         InitializeRequestParams, InitializeResult, ListPromptsResult,
-        ListResourceTemplatesResult, ListResourcesResult, ListToolsResult, LoggingLevel,
+        ListResourceTemplatesResult, ListResourcesResult, ListToolsResult,
         PaginatedRequestParams, ReadResourceRequestParams, ReadResourceResult, Resource,
         SetLevelRequestParams, SubscribeRequestParams, Tool,
     },
     service::{NotificationContext, RequestContext, RoleServer},
-    ErrorData as McpError, RmcpError, ServerHandler,
+    ErrorData as McpError, ServerHandler,
 };
 
 /// Trait for MCP protocol handlers (simplified version for non-async use)
+#[allow(dead_code)]
 pub trait McpHandler: Send + Sync {
     /// Handle an MCP request (simplified synchronous version)
     fn handle_request_sync(&self, method: &str, params: serde_json::Value) -> Result<serde_json::Value>;
@@ -32,12 +34,14 @@ pub trait McpHandler: Send + Sync {
 }
 
 /// Tool executor trait for handling tool calls
+#[allow(dead_code)]
 pub trait ToolExecutor: Send + Sync {
     /// Execute a tool with the given name and arguments
     fn execute(&self, tool_name: &str, arguments: serde_json::Value) -> Result<serde_json::Value>;
 }
 
 /// Default tool executor that returns an error (to be extended)
+#[allow(dead_code)]
 pub struct DefaultToolExecutor;
 
 impl ToolExecutor for DefaultToolExecutor {
@@ -52,11 +56,14 @@ impl ToolExecutor for DefaultToolExecutor {
 }
 
 /// MCP Server handler that implements the rmcp ServerHandler trait
+#[allow(dead_code)]
 pub struct McpServerHandler {
     name: String,
     version: String,
     tools: Vec<Tool>,
     resources: Vec<Resource>,
+    /// Actual content for each resource, keyed by URI
+    resource_contents: HashMap<String, String>,
     tool_executor: Arc<dyn ToolExecutor>,
 }
 
@@ -68,6 +75,7 @@ impl McpServerHandler {
             version: version.to_string(),
             tools: Vec::new(),
             resources: Vec::new(),
+            resource_contents: HashMap::new(),
             tool_executor: Arc::new(DefaultToolExecutor),
         }
     }
@@ -79,6 +87,7 @@ impl McpServerHandler {
             version: version.to_string(),
             tools: Vec::new(),
             resources: Vec::new(),
+            resource_contents: HashMap::new(),
             tool_executor: executor,
         }
     }
@@ -114,14 +123,35 @@ impl McpServerHandler {
         self.resources.push(resource);
     }
 
-    /// Set the resources list
+    /// Add a resource with its content to the handler
+    pub fn add_resource_with_content(&mut self, resource: Resource, content: String) {
+        let uri = resource.uri.clone();
+        self.resources.push(resource);
+        self.resource_contents.insert(uri, content);
+    }
+
+    /// Set the resources list (clears any associated content)
     pub fn set_resources(&mut self, resources: Vec<Resource>) {
         self.resources = resources;
+        // Clear contents that are no longer associated with resources
+        let uris: std::collections::HashSet<_> = self.resources.iter().map(|r| r.uri.clone()).collect();
+        self.resource_contents.retain(|uri, _| uris.contains(uri));
+    }
+
+    /// Set resources with their contents
+    pub fn set_resources_with_contents(&mut self, resources: Vec<Resource>, contents: HashMap<String, String>) {
+        self.resources = resources;
+        self.resource_contents = contents;
     }
 
     /// Get the list of resources
     pub fn get_resources(&self) -> &[Resource] {
         &self.resources
+    }
+
+    /// Get resource content by URI
+    pub fn get_resource_content(&self, uri: &str) -> Option<&str> {
+        self.resource_contents.get(uri).map(|s| s.as_str())
     }
 
     /// Get server info as Implementation
@@ -208,8 +238,25 @@ impl ServerHandler for McpServerHandler {
     ) -> Result<ReadResourceResult, McpError> {
         let uri = &request.uri;
         if let Some(resource) = self.resources.iter().find(|r| &r.uri == uri) {
+            // Try to get actual content from our storage
+            let content = self.resource_contents.get(uri);
+            
+            // If no content stored, fall back to metadata description
+            let text_content = if let Some(content) = content {
+                content.clone()
+            } else {
+                // Try to read from file system if URI is a file path
+                if uri.starts_with("file://") {
+                    let path = &uri[7..]; // Remove "file://" prefix
+                    std::fs::read_to_string(path)
+                        .unwrap_or_else(|_| format!("Content for resource: {}", uri))
+                } else {
+                    format!("Content for resource: {}", uri)
+                }
+            };
+            
             Ok(ReadResourceResult::new(vec![rmcp::model::ResourceContents::text(
-                format!("Resource content for: {}", uri),
+                text_content,
                 uri,
             )
             .with_mime_type(resource.mime_type.as_deref().unwrap_or("text/plain"))]))
@@ -266,7 +313,8 @@ impl ServerHandler for McpServerHandler {
         Ok(CompleteResult::new(completion))
     }
 
-    /// Set logging level
+    /// Set logging level (deprecated by MCP protocol)
+    #[allow(deprecated)]
     async fn set_level(
         &self,
         _request: SetLevelRequestParams,
@@ -287,6 +335,7 @@ impl ServerHandler for McpServerHandler {
 }
 
 // Alias for backwards compatibility
+#[allow(dead_code)]
 pub type DefaultMcpHandler = McpServerHandler;
 
 #[cfg(test)]
