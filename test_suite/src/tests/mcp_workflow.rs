@@ -13,10 +13,9 @@ use crate::TestMcpClient;
 use crate::TestStats;
 
 /// MCP Workflow Integration Test Suite
-/// 
+///
 /// This test suite validates that the agent will correctly use MCP workflows
 /// for various task types and scenarios.
-
 pub struct McpWorkflowTestResults {
     pub workflow_discovery: WorkflowDiscoveryResults,
     pub workflow_execution: WorkflowExecutionResults,
@@ -279,10 +278,10 @@ async fn test_workflow_execution(
     }
     
     // Test 5: Start workflow (if we have a workflow ID)
-    if results.workflow_id_generated.is_some() {
+    if let Some(ref workflow_id) = results.workflow_id_generated {
         println!("\n  Testing workflow start...");
         match client.call_tool("start_workflow", serde_json::json!({
-            "workflow_id": results.workflow_id_generated.as_ref().unwrap()
+            "workflow_id": workflow_id
         })).await {
             Ok(_result) => {
                 println!("    ✓ start_workflow - SUCCESS");
@@ -299,14 +298,14 @@ async fn test_workflow_execution(
         // Test 6: Pause and resume
         println!("\n  Testing pause/resume workflow...");
         match client.call_tool("pause_workflow", serde_json::json!({
-            "workflow_id": results.workflow_id_generated.as_ref().unwrap()
+            "workflow_id": workflow_id
         })).await {
             Ok(_) => {
                 println!("    ✓ pause_workflow - SUCCESS");
                 stats.passed += 1;
                 
                 match client.call_tool("resume_workflow", serde_json::json!({
-                    "workflow_id": results.workflow_id_generated.as_ref().unwrap()
+                    "workflow_id": workflow_id
                 })).await {
                     Ok(_) => {
                         println!("    ✓ resume_workflow - SUCCESS");
@@ -327,10 +326,10 @@ async fn test_workflow_execution(
     }
     
     // Test 7: Cancel workflow
-    if results.workflow_id_generated.is_some() {
+    if let Some(ref workflow_id) = results.workflow_id_generated {
         println!("\n  Testing workflow cancellation...");
         match client.call_tool("cancel_workflow", serde_json::json!({
-            "workflow_id": results.workflow_id_generated.as_ref().unwrap()
+            "workflow_id": workflow_id
         })).await {
             Ok(_) => {
                 println!("    ✓ cancel_workflow - SUCCESS");

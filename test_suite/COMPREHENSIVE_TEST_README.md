@@ -90,7 +90,7 @@ Dedicated tests to ensure the agent correctly uses MCP workflows:
 ## Running the Tests
 
 ```bash
-cargo run --package robot_brain_test
+cargo run --package test_suite
 ```
 
 ## Output Format

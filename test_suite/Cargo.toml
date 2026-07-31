@@ -1,10 +1,10 @@
 [package]
-name = "robot_brain_test"
+name = "test_suite"
 version = "0.1.0"
 edition = "2021"
 
 [[bin]]
-name = "robot_brain_test"
+name = "test_suite"
 path = "src/main.rs"
 
 [dependencies]

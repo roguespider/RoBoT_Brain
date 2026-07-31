@@ -2632,7 +2632,7 @@ This project includes a comprehensive test suite with 54 unit tests and a full i
 cargo test
 
 # Build and run the comprehensive integration test suite
-cd robot_brain_test && cargo build && ./target/debug/robot_brain_test
+cd test_suite && cargo build && ./target/debug/test_suite
 ```
 
 **Test Results:**

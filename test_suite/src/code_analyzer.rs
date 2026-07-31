@@ -7,6 +7,7 @@
 //! - panic!() with stub-like messages
 //! - Partial/stub function implementations
 //! - Functions that return early without doing work
+//! - Underscore-prefixed identifiers (_unused, _ignored, etc.)
 
 use std::path::{Path, PathBuf};
 use std::fs;
@@ -31,6 +32,7 @@ pub enum IssueType {
     Todo,
     Panic,
     EarlyReturnStub,
+    UnderscorePrefix,
     #[allow(dead_code)]
     PlaceholderReturn,
     #[allow(dead_code)]
@@ -45,6 +47,7 @@ impl std::fmt::Display for IssueType {
             IssueType::Todo => write!(f, "todo!()"),
             IssueType::Panic => write!(f, "panic!()"),
             IssueType::EarlyReturnStub => write!(f, "Early Return Stub"),
+            IssueType::UnderscorePrefix => write!(f, "_prefix"),
             IssueType::PlaceholderReturn => write!(f, "Placeholder Return"),
             IssueType::StubPattern => write!(f, "Stub Pattern"),
         }
@@ -132,6 +135,11 @@ impl CodeAnalyzer {
             
             // Check for panic! with stub messages
             if let Some(issue) = self.check_panic_stub(line, file_path, line_number) {
+                issues.push(issue);
+            }
+            
+            // Check for underscore-prefixed identifiers
+            if let Some(issue) = self.check_underscore_prefix(line, file_path, line_number) {
                 issues.push(issue);
             }
         }
@@ -224,33 +232,76 @@ impl CodeAnalyzer {
         None
     }
 
+    /// Check for underscore-prefixed identifiers (variables, functions, etc.)
+    /// These often indicate unused or intentionally ignored code that should be reviewed
+    fn check_underscore_prefix(&self, line: &str, file_path: &Path, line_number: usize) -> Option<CodeIssue> {
+        // Skip comments and doc comments
+        let trimmed = line.trim();
+        if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("///") || trimmed.starts_with("//!") {
+            return None;
+        }
+        
+        // Patterns to detect underscore-prefixed identifiers that indicate unused/ignored code
+        // Match: _variable, _function(), let _name, _ =>, _struct, _enum, etc.
+        let patterns = [
+            // Variable assignments and patterns
+            (r"\b(let|const|static)\s+_\w+", "let/const with underscore prefix"),
+            (r"\b_\w+\s*=", "Assignment to underscore-prefixed variable"),
+            // Function parameters
+            (r"\b_\w+:\s*\w+", "Function parameter with underscore prefix"),
+            // Match arms
+            (r"\b_\w+\s*=>", "Match arm with underscore prefix"),
+            // Function calls with underscore prefix
+            (r"\b_\w+\s*\(", "Function call with underscore prefix"),
+            // Struct/tuple field access
+            (r"\.\.?\s*_\w+", "Struct/tuple pattern with underscore prefix"),
+            // Assignment expressions
+            (r"=\s*_\w+", "Assignment from underscore-prefixed variable"),
+        ];
+        
+        for (pattern, description) in patterns {
+            if let Ok(re) = Regex::new(pattern) {
+                if let Some(caps) = re.captures(line) {
+                    let matched = caps.get(0).map(|m| m.as_str()).unwrap_or("");
+                    
+                    // Skip lines that are just type annotations for unused params
+                    if line.contains("__") {
+                        // Double underscore often means intentionally ignored
+                        continue;
+                    }
+                    
+                    return Some(CodeIssue {
+                        file_path: file_path.to_path_buf(),
+                        line_number,
+                        issue_type: IssueType::UnderscorePrefix,
+                        description: format!("Underscore-prefixed identifier: {} - {}", matched, description),
+                        code_snippet: line.trim().to_string(),
+                    });
+                }
+            }
+        }
+        
+        None
+    }
+
     /// Analyze function bodies for stub patterns
     fn analyze_stub_functions(&self, content: &str, file_path: &Path) -> Vec<CodeIssue> {
         let mut issues = Vec::new();
         
         // Pattern: Function that only returns Ok() or Err() immediately
-        let _stub_return_regex = match Regex::new(
+        let _stub_return_regex = Regex::new(
             r"pub\s+async\s+fn\s+(\w+).*?\{[^}]*(Ok\(|Err\().*\}[^}]*$"
-        ) {
-            Ok(re) => Some(re),
-            Err(_) => None,
-        };
+        ).ok();
         
         // Pattern: Function that just returns default/unimplemented values
-        let _placeholder_regex = match Regex::new(
+        let _placeholder_regex = Regex::new(
             r"(Vec::new\(\)|HashMap::new\(\)|None|Default::default\(\)|\[\].*to_vec\(\))"
-        ) {
-            Ok(re) => Some(re),
-            Err(_) => None,
-        };
+        ).ok();
         
         // Check for functions that are just stubs returning empty/default values
-        let _stub_fn_regex = match Regex::new(
+        let _stub_fn_regex = Regex::new(
             r"pub\s+(async\s+)?fn\s+(\w+).*?\{(\s*(//[^\n]*\n)?\s*)*(Ok\(|Err\(|return)"
-        ) {
-            Ok(re) => Some(re),
-            Err(_) => None,
-        };
+        ).ok();
         
         for (line_num, line) in content.lines().enumerate() {
             let line_number = line_num + 1;
@@ -302,6 +353,7 @@ impl CodeAnalyzer {
                 IssueType::Todo => summary.todos += 1,
                 IssueType::Panic => summary.panics += 1,
                 IssueType::EarlyReturnStub => summary.early_returns += 1,
+                IssueType::UnderscorePrefix => summary.underscore_prefixes += 1,
                 IssueType::PlaceholderReturn => summary.placeholder_returns += 1,
                 IssueType::StubPattern => summary.stub_patterns += 1,
             }
@@ -325,6 +377,7 @@ pub struct AnalysisSummary {
     pub todos: usize,
     pub panics: usize,
     pub early_returns: usize,
+    pub underscore_prefixes: usize,
     pub placeholder_returns: usize,
     pub stub_patterns: usize,
     pub issues_by_file: std::collections::HashMap<String, usize>,
@@ -350,6 +403,7 @@ impl AnalysisSummary {
         println!("  {:<35} {:>10}", "todo!() macros", self.todos);
         println!("  {:<35} {:>10}", "panic!() stubs", self.panics);
         println!("  {:<35} {:>10}", "Early return stubs", self.early_returns);
+        println!("  {:<35} {:>10}", "Underscore-prefixed code", self.underscore_prefixes);
         println!("  {:<35} {:>10}", "Placeholder returns", self.placeholder_returns);
         println!("  {:<35} {:>10}", "Stub patterns", self.stub_patterns);
         println!("  {}", "─".repeat(48));

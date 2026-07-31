@@ -104,7 +104,7 @@ fn setup_test_environment(server_path: &Path) -> anyhow::Result<TestEnvironment>
     println!("{}", "=".repeat(60));
     
     let test_dir = server_path.parent().unwrap()
-        .join("robot_brain_test_env");
+        .join("test_suite_env");
     
     if test_dir.exists() {
         fs::remove_dir_all(&test_dir)?;
@@ -390,7 +390,7 @@ impl TestMcpClient {
         client.send_request("initialize", serde_json::json!({
             "protocolVersion": "2024-11-05",
             "capabilities": { "tools": {} },
-            "clientInfo": { "name": "robot_brain_test", "version": "1.0.0" }
+            "clientInfo": { "name": "test_suite", "version": "1.0.0" }
         })).await?;
         
         client.read_response_line(5).await?;

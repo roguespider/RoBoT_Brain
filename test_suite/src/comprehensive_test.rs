@@ -124,16 +124,13 @@ pub async fn run_comprehensive_tests(
         report.add_result(result);
         
         // Update stats
-        match report.results.last() {
-            Some(r) => {
-                match r.status {
-                    TestStatus::Pass => stats.passed += 1,
-                    TestStatus::Fail | TestStatus::Error => stats.failed += 1,
-                    TestStatus::Skipped => stats.skipped += 1,
-                    TestStatus::Blocked => stats.skipped += 1,
-                }
+        if let Some(r) = report.results.last() {
+            match r.status {
+                TestStatus::Pass => stats.passed += 1,
+                TestStatus::Fail | TestStatus::Error => stats.failed += 1,
+                TestStatus::Skipped => stats.skipped += 1,
+                TestStatus::Blocked => stats.skipped += 1,
             }
-            None => {}
         }
     }
     
@@ -178,7 +175,7 @@ async fn run_single_test(
     };
     
     for check in &requirement.validation {
-        let vr = validate_result(&result_for_validation, &check);
+        let vr = validate_result(&result_for_validation, check);
         validation_results.push(vr);
     }
     
