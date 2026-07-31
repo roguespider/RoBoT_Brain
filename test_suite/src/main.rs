@@ -584,6 +584,7 @@ async fn main() -> anyhow::Result<()> {
         teeprintln!("\n{}", "═".repeat(120));
         teeprintln!("  {:^116}", "⚠️  TEST SUITE COMPLETED WITH ISSUES");
         teeprintln!("{}", "═".repeat(120));
+        output::flush();
         std::process::exit(1);
     }
     
@@ -591,5 +592,6 @@ async fn main() -> anyhow::Result<()> {
     teeprintln!("  {:^116}", "🎉 ALL TESTS PASSED - SYSTEM READY!");
     teeprintln!("{}", "═".repeat(120));
     teeprintln!("\n✅ Full output saved to: {}", output_file.display());
+    output::flush();
     Ok(())
 }

@@ -37,6 +37,11 @@ impl TeeWriter {
         self.write(s);
         self.write("\n");
     }
+
+    /// Flush the buffer to ensure all data is written
+    pub fn flush(&mut self) {
+        let _ = self.file.flush();
+    }
 }
 
 /// Initialize the global tee writer
@@ -44,6 +49,15 @@ pub fn init(path: &PathBuf) -> std::io::Result<()> {
     let mut tee = TEE.lock().unwrap();
     *tee = Some(TeeWriter::new(path)?);
     Ok(())
+}
+
+/// Flush the global tee writer
+pub fn flush() {
+    if let Ok(mut tee) = TEE.lock() {
+        if let Some(ref mut writer) = *tee {
+            writer.flush();
+        }
+    }
 }
 
 /// Print and write to file simultaneously
