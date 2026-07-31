@@ -45,12 +45,12 @@ tracing = "0.1"
 tracing-subscriber = "0.3"
 futures = "0.3"
 
-# Audio transcription - Candle Whisper integration (optional)
-# candle-core = "0.8.0"  # Enable when running on machine with GPU or for full Whisper
-# candle-transformers = "0.8.0"
-# hf-hub = "0.4.0"        # Downloads Whisper models from HuggingFace  
-# tokenizers = "0.21.0"
-hound = "3.5" # Loads WAV audio files
+# Audio transcription - Candle Whisper integration
+candle-nn = "0.8.4"
+candle-transformers = "0.8.4"
+hf-hub = "0.4.0"          # Downloads Whisper models from HuggingFace
+tokenizers = "0.21.0"
+ureq = "2"                 # HTTP client for downloading models
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = [
