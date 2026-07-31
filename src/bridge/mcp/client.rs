@@ -262,23 +262,14 @@ impl McpClient {
         arguments: Option<serde_json::Value>,
     ) -> Result<serde_json::Value, ToolError> {
         // Find the server that has this tool
-        let server_name;
-        let peer;
-        {
+        let (server_name, peer) = {
             let servers = self.servers.read().await;
             let found = servers
                 .iter()
-                .find(|s| s.tools.iter().any(|t| t.name == tool_name));
-            match found {
-                Some(s) => {
-                    server_name = s.name.clone();
-                    peer = s.running.peer().clone();
-                }
-                None => {
-                    return Err(ToolError::not_found(tool_name));
-                }
-            }
-        }
+                .find(|s| s.tools.iter().any(|t| t.name == tool_name))
+                .ok_or_else(|| ToolError::not_found(tool_name))?;
+            (found.name.clone(), found.running.peer().clone())
+        };
 
         // Call the tool via the server's peer
         let params = match arguments {
