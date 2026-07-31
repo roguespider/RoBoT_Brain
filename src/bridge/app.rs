@@ -32,6 +32,7 @@ use crate::experience::scorer::ExperienceScorer;
 use crate::experience::worker_manager::WorkerManager;
 use crate::knowledge::KnowledgeStore;
 use crate::learning::{LineageTracker, WorkingMemory};
+use crate::personality::{Personality, PersonalityTraits};
 use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory as MemWorkingMemory};
 use crate::planner::{Planner, PolicyEngine};
 use crate::skills::registry::SkillRegistry;
@@ -71,6 +72,9 @@ pub struct App {
 
     /// MCP context shared with bridge - owns all subsystems.
     mcp_context: Arc<McpContext>,
+
+    /// Personality system for behavioral characteristics.
+    personality: Arc<std::sync::Mutex<Personality>>,
 }
 
 impl App {
@@ -274,6 +278,7 @@ impl App {
             _scheduler: scheduler,
             _memory_pipeline: memory_pipeline,
             mcp_context,
+            personality: Arc::new(Mutex::new(Personality::new())),
         })
     }
 
@@ -641,6 +646,70 @@ impl App {
             self.mcp_context.clone(),
         )
         .await
+    }
+
+    // =========================================================================
+    // Personality Methods
+    // =========================================================================
+
+    /// Get reference to personality system
+    pub fn personality(&self) -> Arc<std::sync::Mutex<Personality>> {
+        self.personality.clone()
+    }
+
+    /// Get current personality traits
+    pub fn get_personality_traits(&self) -> PersonalityTraits {
+        self.personality.lock().unwrap().get_traits().clone()
+    }
+
+    /// Set personality traits
+    pub fn set_personality_traits(&self, traits: PersonalityTraits) {
+        self.personality.lock().unwrap().set_traits(traits);
+    }
+
+    /// Apply a personality preset (balanced, analytical, creative, cautious, bold)
+    pub fn apply_personality_preset(&self, preset: &str) -> bool {
+        self.personality.lock().unwrap().apply_preset(preset)
+    }
+
+    /// Get available personality presets
+    pub fn list_personality_presets(&self) -> Vec<String> {
+        self.personality.lock().unwrap().list_presets()
+    }
+
+    /// Get current personality preset name
+    pub fn get_personality_preset(&self) -> String {
+        self.personality.lock().unwrap().get_current_preset().to_string()
+    }
+
+    /// Adapt personality based on experience outcome
+    pub fn adapt_personality(&self, success: bool, risk_taken: bool) {
+        self.personality.lock().unwrap().adapt_from_experience(success, risk_taken);
+    }
+
+    /// Get communication style based on personality verbosity
+    pub fn get_communication_style(&self) -> crate::personality::CommunicationStyle {
+        self.personality.lock().unwrap().get_communication_style()
+    }
+
+    /// Decide if system should explore new approaches
+    pub fn should_explore(&self, confidence: f32) -> bool {
+        self.personality.lock().unwrap().should_explore(confidence)
+    }
+
+    /// Decide if system should take a risk
+    pub fn should_take_risk(&self, potential_gain: f32, potential_loss: f32) -> bool {
+        self.personality.lock().unwrap().should_take_risk(potential_gain, potential_loss)
+    }
+
+    /// Get patience-based timeout
+    pub fn get_personality_timeout(&self, base_timeout_secs: u64) -> u64 {
+        self.personality.lock().unwrap().get_timeout(base_timeout_secs)
+    }
+
+    /// Get personality success rate
+    pub fn get_personality_success_rate(&self) -> f32 {
+        self.personality.lock().unwrap().success_rate()
     }
 
 }
