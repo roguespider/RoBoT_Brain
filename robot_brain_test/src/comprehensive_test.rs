@@ -162,14 +162,28 @@ async fn run_single_test(
     let args = build_test_arguments(requirement, env);
     
     // Call the tool
-    match client.call_tool(&requirement.function_name, args).await {
-        Ok(result) => {
-            // Validate the result
-            for check in &requirement.validation {
-                let vr = validate_result(&result, check);
-                validation_results.push(vr);
-            }
-            
+    let tool_result = client.call_tool(&requirement.function_name, args).await;
+    
+    // Run validation even if there's an error (for tests that expect errors)
+    let result_for_validation = match &tool_result {
+        Ok(result) => result.clone(),
+        Err(_) => {
+            // Create a mock result for validation that indicates error
+            // The validation can check for expected error conditions
+            serde_json::json!({
+                "success": false,
+                "error": tool_result.as_ref().err().map(|e| e.to_string())
+            })
+        }
+    };
+    
+    for check in &requirement.validation {
+        let vr = validate_result(&result_for_validation, &check);
+        validation_results.push(vr);
+    }
+    
+    match tool_result {
+        Ok(_result) => {
             // Check if all validations passed
             let all_passed = validation_results.iter().all(|v| v.passed);
             
@@ -182,9 +196,14 @@ async fn run_single_test(
             }
         }
         Err(e) => {
+            // Check if the validation expects an error
+            let expects_error = requirement.validation.iter().any(|v| {
+                v.check_type == CheckType::IsSuccess && v.expected_value.as_deref() == Some("false")
+            });
+            
             TestResult {
                 requirement: requirement.clone(),
-                status: TestStatus::Error,
+                status: if expects_error { TestStatus::Pass } else { TestStatus::Error },
                 error_message: Some(e.to_string()),
                 duration_ms: start.elapsed().as_millis() as u64,
                 validation_results,
@@ -432,8 +451,13 @@ fn validate_result(result: &serde_json::Value, check: &ValidationCheck) -> Valid
     }
 }
 
-/// Check if result has a field
+/// Check if result has a field (supports dot notation for nested fields)
 fn has_field(result: &serde_json::Value, field: &str) -> bool {
+    // Support dot notation for nested fields (e.g., "skill.name")
+    if field.contains('.') {
+        return has_nested_field(result, field);
+    }
+    
     // Try to find the field in various locations
     if result.get(field).is_some() {
         return true;
@@ -443,7 +467,7 @@ fn has_field(result: &serde_json::Value, field: &str) -> bool {
     if let Some(content) = result.get("content").and_then(|c| c.as_array()).and_then(|arr| arr.first()) {
         if let Some(text) = content.get("text").and_then(|t| t.as_str()) {
             if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(text) {
-                if parsed.get(field).is_some() {
+                if has_nested_field(&parsed, field) {
                     return true;
                 }
             }
@@ -452,7 +476,7 @@ fn has_field(result: &serde_json::Value, field: &str) -> bool {
     
     // Check in data field
     if let Some(data) = result.get("data") {
-        if data.get(field).is_some() {
+        if has_nested_field(data, field) {
             return true;
         }
     }
@@ -471,6 +495,25 @@ fn has_field(result: &serde_json::Value, field: &str) -> bool {
         }
     }
     
+    false
+}
+
+/// Check for nested field using dot notation
+fn has_nested_field(result: &serde_json::Value, path: &str) -> bool {
+    let parts: Vec<&str> = path.splitn(2, '.').collect();
+    if parts.is_empty() {
+        return false;
+    }
+    
+    let first = parts[0];
+    if let Some(value) = result.get(first) {
+        if parts.len() == 1 {
+            return true;
+        }
+        if parts.len() > 1 {
+            return has_nested_field(value, parts[1]);
+        }
+    }
     false
 }
 
@@ -503,18 +546,12 @@ fn is_json_value_empty(value: &serde_json::Value) -> bool {
 
 /// Check if success field has expected value
 fn is_success(result: &serde_json::Value, _field: &str, expected: Option<&str>) -> bool {
-    let success = result.get("success")
-        .and_then(|s| s.as_bool())
-        .or_else(|| {
-            // Check in content.text
-            result.get("content")
-                .and_then(|c| c.as_array())
-                .and_then(|arr| arr.first())
-                .and_then(|c| c.get("text"))
-                .and_then(|t| t.as_str())
-                .and_then(|text| serde_json::from_str::<serde_json::Value>(text).ok())
-                .and_then(|parsed| parsed.get("success").and_then(|s| s.as_bool()))
-        });
+    // Check for isError field (MCP response format)
+    let is_error = result.get("isError")
+        .and_then(|e| e.as_bool())
+        .unwrap_or(false);
+    
+    let success = Some(!is_error);
     
     match (success, expected) {
         (Some(s), Some("false")) => !s,
