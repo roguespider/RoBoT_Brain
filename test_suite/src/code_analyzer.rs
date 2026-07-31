@@ -326,7 +326,7 @@ impl CodeAnalyzer {
             // Check for early returns that might indicate stubs
             let early_return_patterns = [
                 (r"^\s*return\s+Ok\(\)\s*;?\s*$", "Returns Ok() with no value"),
-                (r"^\s*return\s+Err\([^)]+\)\s*;?\s*$", "Returns Err() immediately"),
+                (r"^\s*return\s+Err\(", "Returns Err() immediately"),
                 (r"^\s*Ok\(ToolOutput::", "Returns Ok() immediately"),
             ];
             
@@ -342,10 +342,13 @@ impl CodeAnalyzer {
                         let context = context_lines.join("\n");
                         
                         // If function is just one or two lines, it's likely a stub
-                        // Skip if context has proper error handling patterns
+                        // For Err returns: be aggressive and flag them
+                        // For Ok returns: skip if context has proper error handling
                         let has_proper_error = context.contains("Error") || context.contains("anyhow")
                             || context.contains("Result") || context.contains("?");
-                        if context.matches('{').count() <= 2 && context.matches("Ok(").count() <= 2 && !has_proper_error {
+                        let is_err_return = desc.contains("Err()");
+                        if context.matches('{').count() <= 2 && context.matches("Ok(").count() <= 2 
+                           && (is_err_return || !has_proper_error) {
                             issues.push(CodeIssue {
                                 file_path: file_path.to_path_buf(),
                                 line_number,
