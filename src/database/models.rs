@@ -11,8 +11,7 @@ use uuid::Uuid;
 // ==========================================================
 
 /// Status of a hypothesis
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub enum HypothesisStatus {
     /// Hypothesis is being tested
     #[default]
@@ -233,8 +232,7 @@ impl std::fmt::Display for MemoryType {
 /// Memory layer per Architecture §6.3
 /// - Working: Short-term, volatile, context-focused
 /// - Permanent: Long-term, curated, indexed
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Default)]
 pub enum MemoryLayer {
     /// Short-term memory - temporary, high volatility
     #[default]
@@ -257,8 +255,7 @@ impl std::fmt::Display for MemoryLayer {
 // ==========================================================
 
 /// Level in the document hierarchy
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Default)]
 pub enum HierarchyLevel {
     /// Root level - whole document/file
     #[default]
