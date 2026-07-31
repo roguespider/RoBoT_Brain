@@ -41,6 +41,7 @@ impl std::fmt::Display for TestStatus {
 /// Result of a validation check
 #[derive(Debug, Clone)]
 pub struct ValidationResult {
+    #[allow(dead_code)]
     pub check_type: String,
     pub field: String,
     pub passed: bool,

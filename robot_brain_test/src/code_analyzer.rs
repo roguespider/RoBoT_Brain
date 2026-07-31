@@ -19,6 +19,7 @@ pub struct CodeIssue {
     pub line_number: usize,
     pub issue_type: IssueType,
     pub description: String,
+    #[allow(dead_code)]
     pub code_snippet: String,
 }
 
@@ -30,7 +31,9 @@ pub enum IssueType {
     Todo,
     Panic,
     EarlyReturnStub,
+    #[allow(dead_code)]
     PlaceholderReturn,
+    #[allow(dead_code)]
     StubPattern,
 }
 
@@ -372,7 +375,6 @@ impl AnalysisSummary {
 // ========================================================================
 
 use std::process::Command;
-use std::sync::OnceLock;
 
 /// Represents a lint warning or error from clippy or rustc
 #[derive(Debug, Clone, PartialEq)]
@@ -443,11 +445,6 @@ impl LintAnalyzer {
         // Pattern for rustc/clipp output: file:line:col: level: code (message)
         let re = regex::Regex::new(
             r"^(.+?):(\d+):(\d+):\s*((?:error|warning|help|note)+(?:\[\w+\])?):\s*((?:\w+)+)\s*(.*)$"
-        ).unwrap_or_else(|_| regex::Regex::new(r"^.+$").unwrap());
-        
-        // Alternative pattern for more verbose output
-        let re2 = regex::Regex::new(
-            r"^  --> (.+?):(\d+):(\d+)\s*$|^\s*\|\s*$|^\s*\|\s*\d+\s+\|(.+)$|^=+\s*(\w+)\s*=\s*(.+)$"
         ).unwrap_or_else(|_| regex::Regex::new(r"^.+$").unwrap());
         
         for line in output.lines() {
@@ -529,6 +526,7 @@ impl LintSummary {
         summary
     }
     
+    #[allow(dead_code)]
     pub fn total_count(&self) -> usize {
         self.errors + self.warnings
     }

@@ -14,6 +14,8 @@
 //! - Archives: zip, tar.gz (extracted then ingested)
 //! - Documents: (requires actual files - skipped in unit tests)
 
+#![allow(unused_variables)]
+
 use crate::test_environment::TestEnvironment;
 use crate::TestMcpClient;
 use crate::TestStats;
@@ -24,6 +26,7 @@ struct FileTypeTest {
     file_path: String,
     file_type: &'static str,
     extension: &'static str,
+    #[allow(dead_code)]
     should_succeed: bool,
 }
 
