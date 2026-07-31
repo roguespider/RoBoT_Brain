@@ -179,13 +179,16 @@ fn extract_conversation(
     path: &str,
     config: &JsonImportConfig,
     items: &mut Vec<ExtractedJsonData>,
-    _warnings: &mut Vec<String>,
+    warnings: &mut Vec<String>,
 ) -> Result<()> {
     // Handle array of messages at root
     if let Value::Array(arr) = value {
         for (idx, item) in arr.iter().enumerate() {
             let item_path = format!("[{}]", idx);
             extract_message_item(item, &item_path, config, items);
+        }
+        if arr.is_empty() {
+            warnings.push(format!("Empty array at {}", path));
         }
         return Ok(());
     }
@@ -322,11 +325,12 @@ fn extract_data_array(
     }
     
     // Check if all items have similar structure
-    let _first_keys: std::collections::HashSet<_> = if let Some(Value::Object(o)) = arr.first() {
+    let first_keys: std::collections::HashSet<_> = if let Some(Value::Object(o)) = arr.first() {
         o.keys().collect()
     } else {
         std::collections::HashSet::new()
     };
+    let _ = first_keys; // Used for future structure analysis
     
     // Determine if it's a key-value list or record list
     let is_key_value = arr.iter().all(|item| {
@@ -401,7 +405,7 @@ fn extract_object_as_record(
     
     // Collect sibling context (everything except main content)
     let sibling_context = obj.iter()
-        .filter(|(k, _v)| Some(&k[..]) != main_field.as_deref())
+        .filter(|(k, _)| Some(&k[..]) != main_field.as_deref())
         .filter_map(|(k, v)| {
             let val_str = if let Some(s) = v.as_str() {
                 s.to_string()
@@ -415,12 +419,13 @@ fn extract_object_as_record(
         .collect::<Vec<_>>()
         .join(", ");
     
-    if let Some((content, _field)) = main_content.zip(main_field) {
+    if let Some((content, field_name)) = main_content.zip(main_field) {
         items.push(ExtractedJsonData {
             content,
             json_path: path.to_string(),
             sibling_context,
         });
+        let _ = field_name; // Field name logged separately if needed
     } else {
         // No main content field - extract all string fields
         let mut all_text = Vec::new();

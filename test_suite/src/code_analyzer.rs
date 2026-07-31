@@ -259,15 +259,23 @@ impl CodeAnalyzer {
             return None;
         }
         
-        // Use pre-compiled underscore pattern
-        if let Some(caps) = self.patterns.underscore_prefix.captures(line) {
+        // Skip lines that are just type annotations for unused params
+        if line.contains("__") {
+            // Double underscore often means intentionally ignored
+            return None;
+        }
+        
+        // Skip string literals containing underscore-prefixed identifiers
+        // This handles cases like ["_id", "_type"] in JSON field arrays
+        let without_strings = line
+            .split(|c| c == '"' || c == '\'')
+            .enumerate()
+            .filter(|(i, _)| i % 2 == 0)
+            .map(|(_, s)| s)
+            .collect::<Vec<_>>()
+            .join(" ");
+        if let Some(caps) = self.patterns.underscore_prefix.captures(&without_strings) {
             let matched = caps.get(0).map(|m| m.as_str()).unwrap_or("");
-            
-            // Skip lines that are just type annotations for unused params
-            if line.contains("__") {
-                // Double underscore often means intentionally ignored
-                return None;
-            }
             
             return Some(CodeIssue {
                 file_path: file_path.to_path_buf(),
