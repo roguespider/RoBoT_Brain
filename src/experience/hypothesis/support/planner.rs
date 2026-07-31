@@ -188,7 +188,6 @@ impl HypothesisPlanner {
 /// ============================================================================
 /// PLANNING RESULT
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlanningResult {
     pub hypothesis_id: HypothesisId,
@@ -217,7 +216,6 @@ pub enum PlanningStatus {
 /// ============================================================================
 /// PLANNED ACTION
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlannedAction {
     pub action_type: ActionType,

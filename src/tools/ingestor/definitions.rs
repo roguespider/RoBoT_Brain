@@ -14,13 +14,13 @@ pub fn all() -> Vec<McpTool> {
     vec![
         McpTool {
             name: INGEST_FILES.to_string(),
-            description: "Ingest files from files_to_import folder into memory. One file at a time (limit=1). Returns memory IDs for stored content.".to_string(),
+            description: "Ingest files from files_to_import folder into memory. When no path is specified, automatically ingests from the files_to_import folder. Returns memory IDs for stored content.".to_string(),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
                     "folder": {
                         "type": "string",
-                        "description": "Defaults to 'files_to_import'. Example: 'files_to_import'"
+                        "description": "Optional. Import folder name (defaults to 'files_to_import' if not specified). The folder should be next to robot_brain executable."
                     },
                     "file_path": {
                         "type": "string",
@@ -46,18 +46,19 @@ pub fn all() -> Vec<McpTool> {
                         "type": "boolean",
                         "description": "Force re-ingestion of already-ingested files (default: false)"
                     }
-                }
+                },
+                "required": []
             }),
         },
         McpTool {
             name: LIST_IMPORTABLE.to_string(),
-            description: "List files available for import from files_to_import folder.".to_string(),
+            description: "List files available for import. Shows files in the files_to_import folder by default.".to_string(),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
                     "folder": {
                         "type": "string",
-                        "description": "Defaults to 'files_to_import'"
+                        "description": "Optional. Import folder name (defaults to 'files_to_import' if not specified)."
                     },
                     "limit": {
                         "type": "integer",
@@ -67,11 +68,12 @@ pub fn all() -> Vec<McpTool> {
                         "type": "boolean",
                         "description": "Search subfolders recursively (default: true)"
                     },
-                    "list_all": {
+                    "all": {
                         "type": "boolean",
-                        "description": "List all files regardless of limit (default: false)"
+                        "description": "List all files without limit (default: false)"
                     }
-                }
+                },
+                "required": []
             }),
         },
         McpTool {
@@ -100,7 +102,7 @@ pub fn all() -> Vec<McpTool> {
                 "properties": {
                     "folder": {
                         "type": "string",
-                        "description": "Import folder path (default: files_to_import)"
+                        "description": "Optional. Import folder name (defaults to 'files_to_import' if not specified)."
                     },
                     "limit": {
                         "type": "integer",

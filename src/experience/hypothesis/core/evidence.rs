@@ -22,7 +22,6 @@ pub type ExperienceId = String;
 /// ============================================================================
 /// EVIDENCE
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Evidence {
     /// Unique identifier.
@@ -62,7 +61,6 @@ pub struct Evidence {
 /// ============================================================================
 /// IDENTIFIER
 /// ============================================================================
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct EvidenceId(pub String);
 
@@ -81,7 +79,6 @@ impl Default for EvidenceId {
 /// ============================================================================
 /// SOURCE
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum EvidenceSource {
     Experience,
@@ -98,7 +95,6 @@ pub enum EvidenceSource {
 /// ============================================================================
 /// RELATIONSHIP
 /// ============================================================================
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub enum EvidenceRelationship {
     Supports,
@@ -109,7 +105,6 @@ pub enum EvidenceRelationship {
 /// ============================================================================
 /// STRENGTH
 /// ============================================================================
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 #[derive(Default)]
 pub enum EvidenceStrength {
@@ -137,7 +132,6 @@ impl EvidenceStrength {
 /// ============================================================================
 /// METADATA
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct EvidenceMetadata {
     /// Optional notes.

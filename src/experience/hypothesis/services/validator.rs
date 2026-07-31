@@ -24,7 +24,6 @@ use crate::experience::hypothesis::core::hypothesis::{Hypothesis, HypothesisStat
 /// ============================================================================
 /// VALIDATOR
 /// ============================================================================
-
 #[derive(Debug, Clone)]
 pub struct HypothesisValidator {
     /// Minimum similarity before considering conflict.
@@ -133,7 +132,6 @@ impl Default for HypothesisValidator {
 /// ============================================================================
 /// VALIDATION RESULTS
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ValidationReport {
     pub valid: bool,

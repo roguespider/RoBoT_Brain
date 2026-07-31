@@ -12,7 +12,6 @@ use crate::database::sqlite::SqliteDatabase;
 use crate::memory::types::{MemoryItem, MemoryLayer, MemoryStatus, MemoryType};
 
 /// Repository trait for memory persistence (scaffolding for future use)
-
 pub trait MemoryRepository: Send + Sync {
     /// Store a memory item
     fn store(&self, item: &MemoryItem) -> Result<()>;

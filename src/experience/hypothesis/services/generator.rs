@@ -21,7 +21,6 @@ use crate::experience::types::Experience;
 /// ============================================================================
 /// GENERATOR
 /// ============================================================================
-
 #[derive(Debug, Clone)]
 pub struct HypothesisGenerator {
     /// Minimum confidence required before generating.
@@ -92,7 +91,6 @@ impl Default for HypothesisGenerator {
 /// ============================================================================
 /// GENERATION RESULT
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GenerationResult {
     pub generated: bool,

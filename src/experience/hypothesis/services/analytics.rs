@@ -18,7 +18,6 @@ use crate::experience::hypothesis::core::hypothesis::{Hypothesis, HypothesisStat
 /// ============================================================================
 /// ANALYTICS SERVICE
 /// ============================================================================
-
 #[derive(Debug, Clone, Default)]
 pub struct HypothesisAnalytics;
 
@@ -87,7 +86,6 @@ impl HypothesisAnalytics {
 /// ============================================================================
 /// REPORT
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HypothesisAnalyticsReport {
     pub total: u32,

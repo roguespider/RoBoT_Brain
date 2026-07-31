@@ -58,7 +58,6 @@ pub enum MemoryEvent {
 }
 
 /// Memory event handler trait (scaffolding for future use)
-
 pub trait MemoryEventHandler: Send + Sync {
     /// Handle a memory event
     fn handle(&self, event: &MemoryEvent);

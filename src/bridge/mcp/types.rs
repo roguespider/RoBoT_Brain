@@ -19,7 +19,6 @@ pub enum McpMessage {
 }
 
 /// MCP request message
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpRequest {
     pub method: String,
@@ -28,7 +27,6 @@ pub struct McpRequest {
 }
 
 /// MCP response message
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpResponse {
     pub result: Option<serde_json::Value>,
@@ -37,7 +35,6 @@ pub struct McpResponse {
 }
 
 /// MCP error
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpError {
     pub code: i32,
@@ -46,7 +43,6 @@ pub struct McpError {
 }
 
 /// MCP notification message
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpNotification {
     pub method: String,
@@ -62,7 +58,6 @@ pub struct McpTool {
 }
 
 /// Resource definition for MCP
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpResource {
     pub uri: String,
@@ -72,7 +67,6 @@ pub struct McpResource {
 }
 
 /// Prompt definition for MCP
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpPrompt {
     pub name: String,
@@ -81,7 +75,6 @@ pub struct McpPrompt {
 }
 
 /// Argument for a prompt
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpPromptArgument {
     pub name: String,
@@ -90,7 +83,6 @@ pub struct McpPromptArgument {
 }
 
 /// Initialize request parameters
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct InitializeParams {
     pub protocol_version: String,
@@ -116,7 +108,6 @@ pub struct McpCapabilities {
 pub struct McpEmpty;
 
 /// Resources capability
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpResourcesCapability {
     pub subscribe: Option<bool>,
@@ -124,7 +115,6 @@ pub struct McpResourcesCapability {
 }
 
 /// Client information
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct McpClientInfo {
     pub name: String,

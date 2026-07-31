@@ -78,7 +78,6 @@ pub struct Hypothesis {
 /// ============================================================================
 /// IDENTIFIER
 /// ============================================================================
-
 #[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct HypothesisId(pub String);
 
@@ -97,7 +96,6 @@ impl Default for HypothesisId {
 /// ============================================================================
 /// STATUS
 /// ============================================================================
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[derive(Default)]
 pub enum HypothesisStatus {
@@ -113,7 +111,6 @@ pub enum HypothesisStatus {
 /// ============================================================================
 /// CATEGORY
 /// ============================================================================
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[derive(Default)]
 pub enum HypothesisCategory {
@@ -134,7 +131,6 @@ pub enum HypothesisCategory {
 /// ============================================================================
 /// PRIORITY
 /// ============================================================================
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[derive(Default)]
 pub enum HypothesisPriority {
@@ -149,7 +145,6 @@ pub enum HypothesisPriority {
 /// ============================================================================
 /// CONFIDENCE
 /// ============================================================================
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize)]
 pub struct HypothesisConfidence {
     /// Confidence between 0.0 and 1.0.
@@ -189,7 +184,6 @@ impl Default for HypothesisConfidence {
 /// ============================================================================
 /// METADATA
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub struct HypothesisMetadata {
     /// Who or what created the hypothesis.

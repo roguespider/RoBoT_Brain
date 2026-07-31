@@ -17,7 +17,6 @@ use crate::experience::hypothesis::core::hypothesis::{Hypothesis, HypothesisStat
 /// ============================================================================
 /// STATISTICS TRACKER
 /// ============================================================================
-
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct HypothesisStatistics {
     /// Total hypotheses observed.
@@ -127,7 +126,6 @@ impl HypothesisStatistics {
 /// ============================================================================
 /// SNAPSHOT
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct StatisticsSnapshot {
     pub total_hypotheses: u64,

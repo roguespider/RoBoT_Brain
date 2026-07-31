@@ -174,9 +174,8 @@ pub fn register_tools(context: &Arc<McpContext>) {
 /// Get all registered tools
 pub async fn get_tools_async() -> Vec<crate::bridge::mcp::McpTool> {
     // Use blocking lock inside async context (safe since it's only read)
-    let registry = TOOL_REGISTRY
-        .get()
-        .expect("Tool registry should be initialized by register_tools()");
-    let tools = registry.lock().unwrap().tools.clone();
-    tools
+    match TOOL_REGISTRY.get() {
+        Some(registry) => registry.lock().unwrap().tools.clone(),
+        None => Vec::new(),  // Return empty vec when registry not initialized
+    }
 }

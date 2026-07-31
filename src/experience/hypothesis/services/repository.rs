@@ -31,7 +31,6 @@ use crate::experience::hypothesis::core::hypothesis::{
 /// ============================================================================
 /// REPOSITORY
 /// ============================================================================
-
 #[derive(Debug, Default)]
 pub struct HypothesisRepository {
     hypotheses: HashMap<String, Hypothesis>,

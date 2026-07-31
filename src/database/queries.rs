@@ -67,7 +67,6 @@ pub fn insert_memory(conn: &Connection, memory: &MemoryCard) -> Result<()> {
 
     Ok(())
 }
-
 /// Delete memories by their IDs (internal helper)
 pub(crate) fn delete_memories(conn: &Connection, ids: &[Uuid]) -> Result<usize> {
     if ids.is_empty() {
@@ -88,7 +87,6 @@ pub(crate) fn delete_memories(conn: &Connection, ids: &[Uuid]) -> Result<usize> 
     let deleted = conn.execute(&query, params_refs.as_slice())?;
     Ok(deleted)
 }
-
 /// Delete memories by their string IDs (convenience function)
 pub fn delete_memories_by_string_ids(conn: &Connection, ids: &[String]) -> Result<usize> {
     if ids.is_empty() {
@@ -219,7 +217,6 @@ pub fn search_memory(conn: &Connection, text: &str, limit: usize) -> Result<Vec<
 
     Ok(rows.collect::<Result<Vec<_>, _>>()?)
 }
-
 /// Helper function to map a row to MemoryCard
 fn map_row_to_memory_card(row: &rusqlite::Row) -> rusqlite::Result<MemoryCard> {
     let uuid_str: String = row.get(0)?;
@@ -275,7 +272,6 @@ pub fn list_memories(conn: &Connection, memory_type: Option<&str>, limit: usize)
 
     Ok(rows)
 }
-
 /// List memories by layer (Working or Permanent)
 pub fn list_memories_by_layer(conn: &Connection, layer: &str, limit: usize) -> Result<Vec<MemoryCard>> {
     let query = "SELECT id, content, memory_type, COALESCE(layer, 'working') as layer,
@@ -440,7 +436,6 @@ pub fn list_scheduled_tasks(conn: &Connection) -> Result<Vec<ScheduledTask>> {
 
     Ok(tasks)
 }
-
 /// Delete a scheduled task by ID
 pub fn delete_scheduled_task(conn: &Connection, id: &str) -> Result<()> {
     conn.execute("DELETE FROM scheduled_tasks WHERE id = ?1", params![id])?;
@@ -452,7 +447,6 @@ pub fn delete_scheduled_task(conn: &Connection, id: &str) -> Result<()> {
 // ==========================================================
 
 use crate::database::models::Observation;
-
 /// Insert an observation (Per Architecture §07: Every experience originates from observations)
 pub fn insert_observation(conn: &Connection, observation: &Observation) -> Result<()> {
     conn.execute(
@@ -481,7 +475,6 @@ pub fn insert_observation(conn: &Connection, observation: &Observation) -> Resul
     )?;
     Ok(())
 }
-
 /// Get an observation by ID
 pub fn get_observation(conn: &Connection, id: Uuid) -> Result<Option<Observation>> {
     let mut stmt = conn.prepare(
@@ -510,7 +503,6 @@ pub fn get_observation(conn: &Connection, id: Uuid) -> Result<Option<Observation
         Err(e) => Err(e.into()),
     }
 }
-
 /// List recent observations
 pub fn list_observations(conn: &Connection, limit: usize) -> Result<Vec<Observation>> {
     let mut stmt = conn.prepare(
@@ -535,7 +527,6 @@ pub fn list_observations(conn: &Connection, limit: usize) -> Result<Vec<Observat
 
     Ok(rows.collect::<Result<Vec<_>, _>>()?)
 }
-
 /// Link an observation to an experience
 pub fn link_observation_to_experience(conn: &Connection, observation_id: Uuid, experience_id: Uuid) -> Result<()> {
     if let Some(mut obs) = get_observation(conn, observation_id)? {
@@ -551,7 +542,6 @@ pub fn link_observation_to_experience(conn: &Connection, observation_id: Uuid, e
 
 use crate::experience::types::{Experience, ExperienceContext, ExperienceOutcome, ExperienceScore, ExperienceType};
 use crate::experience::types::maturity::KnowledgeMaturity;
-
 /// List recent experiences from the database
 pub fn list_experiences(conn: &Connection, limit: usize) -> Result<Vec<Experience>> {
     let mut stmt = conn.prepare(
@@ -631,7 +621,6 @@ pub fn list_experiences(conn: &Connection, limit: usize) -> Result<Vec<Experienc
 // ==========================================================
 
 use crate::experience::reputation::reputation::Reputation;
-
 /// List all reputations from the database
 pub fn list_reputations(conn: &Connection) -> Result<Vec<Reputation>> {
     let mut stmt = conn.prepare(
@@ -664,7 +653,6 @@ pub fn list_reputations(conn: &Connection) -> Result<Vec<Reputation>> {
     
     Ok(reputations)
 }
-
 /// Insert or update a reputation
 pub fn insert_reputation(conn: &Connection, reputation: &Reputation) -> Result<()> {
     conn.execute(
@@ -688,7 +676,6 @@ pub fn insert_reputation(conn: &Connection, reputation: &Reputation) -> Result<(
 // ==========================================================
 
 use crate::database::models::MemoryRelationship;
-
 /// Insert a new memory relationship
 pub fn insert_memory_relationship(conn: &Connection, relationship: &MemoryRelationship) -> Result<()> {
     conn.execute(

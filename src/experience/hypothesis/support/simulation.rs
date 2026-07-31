@@ -161,7 +161,6 @@ impl HypothesisSimulator {
 /// ============================================================================
 /// SIMULATION PARAMETERS
 /// ============================================================================
-
 #[derive(Debug, Clone)]
 pub struct SimulationParams {
     /// Impact multiplier for success (positive value)
@@ -205,7 +204,6 @@ impl SimulationParams {
 /// ============================================================================
 /// SIMULATION RESULT
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SimulationResult {
     pub hypothesis_id: HypothesisId,
@@ -236,7 +234,6 @@ impl SimulationResult {
 /// ============================================================================
 /// OUTCOME
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Outcome {
     pub outcome_type: OutcomeType,
@@ -264,7 +261,6 @@ pub enum OutcomeType {
 /// ============================================================================
 /// RISK LEVEL
 /// ============================================================================
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, PartialOrd, Ord)]
 pub enum RiskLevel {
     VeryLow,

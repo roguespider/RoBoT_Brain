@@ -12,6 +12,7 @@ use std::process::Stdio;
 use std::env;
 use std::time::Duration;
 use std::fs;
+use std::io::Write;
 use tokio::io::{AsyncBufReadExt, BufReader, AsyncWriteExt};
 use tokio::process::{Command as AsyncCommand, ChildStdout, Child};
 use tokio::time::timeout;
@@ -35,7 +36,8 @@ impl TestStats {
     }
     
     pub fn print_summary(&self) {
-        println!("\n{}", "=".repeat(60));
+        println!("
+{}", "=".repeat(60));
         println!("TEST SUMMARY");
         println!("{}", "=".repeat(60));
         println!("  Passed:  {} ✅", self.passed);
@@ -44,16 +46,21 @@ impl TestStats {
         println!("{}", "=".repeat(60));
         
         if self.failed == 0 {
-            println!("\n🎉 ALL TESTS PASSED! 🎉\n");
+            println!("
+🎉 ALL TESTS PASSED! 🎉
+");
         } else {
-            println!("\n⚠️  SOME TESTS FAILED\n");
+            println!("
+⚠️  SOME TESTS FAILED
+");
         }
     }
 }
 
 /// Build the robot_brain server
 async fn build_server() -> anyhow::Result<PathBuf> {
-    println!("\n{}", "=".repeat(60));
+    println!("
+{}", "=".repeat(60));
     println!("BUILDING ROBOT_BRAIN SERVER");
     println!("{}", "=".repeat(60));
     
@@ -75,7 +82,8 @@ async fn build_server() -> anyhow::Result<PathBuf> {
     
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr);
-        anyhow::bail!("Failed to build robot_brain:\n{}", stderr);
+        anyhow::bail!("Failed to build robot_brain:
+{}", stderr);
     }
     
     println!("✓ Server built successfully: {}", release_path.display());
@@ -84,7 +92,8 @@ async fn build_server() -> anyhow::Result<PathBuf> {
 
 /// Setup test environment
 fn setup_test_environment(server_path: &Path) -> anyhow::Result<TestEnvironment> {
-    println!("\n{}", "=".repeat(60));
+    println!("
+{}", "=".repeat(60));
     println!("SETTING UP TEST ENVIRONMENT");
     println!("{}", "=".repeat(60));
     
@@ -105,17 +114,239 @@ fn setup_test_environment(server_path: &Path) -> anyhow::Result<TestEnvironment>
     fs::create_dir_all(files_folder)?;
     
     let sample_files = [
-        ("readme.txt", "This is a sample README file.\nIt contains important information."),
-        ("notes.txt", "Meeting Notes - Project Planning\n\n1. Define requirements\n2. Design architecture"),
-        ("todo.txt", "TODO List:\n- Write tests\n- Fix bugs\n- Deploy"),
+        ("readme.txt", "This is a sample README file.
+It contains important information."),
+        ("notes.txt", "Meeting Notes - Project Planning
+
+1. Define requirements
+2. Design architecture"),
+        ("todo.txt", "TODO List:
+- Write tests
+- Fix bugs
+- Deploy"),
         ("config.json", r#"{"name": "test", "version": "1.0.0"}"#),
-        ("data.csv", "id,name,value\n1,alpha,100\n2,beta,200"),
+        ("data.csv", "id,name,value
+1,alpha,100
+2,beta,200"),
     ];
     
     for (filename, content) in sample_files {
         fs::write(files_folder.join(filename), content)?;
     }
     
+    // Create subdirectories for testing recursive ingestion
+    let subdirs = [
+        "code_samples",
+        "config_files",
+        "documents",
+        "archives",
+    ];
+    
+    for subdir in subdirs {
+        fs::create_dir_all(files_folder.join(subdir))?;
+    }
+    
+    // ============================================
+    // Create test files for EACH supported file type
+    // ============================================
+    
+    // Text files (standard)
+    fs::write(files_folder.join("sample.md"), "# Sample Markdown
+
+This is a **test** file.
+
+## Features
+- Item 1
+- Item 2
+")?;
+    fs::write(files_folder.join("sample.rst"), "Sample RST
+==========
+
+This is a reStructuredText file.
+
+Section
+-------
+
+Content here.
+")?;
+    fs::write(files_folder.join("sample.log"), "[2024-01-01 10:00:00] INFO: Application started
+[2024-01-01 10:00:01] DEBUG: Loading config
+[2024-01-01 10:00:02] WARN: Optional module not found
+")?;
+    fs::write(files_folder.join("sample.xml"), "<?xml version=\"1.0\"?>
+<root>
+  <item id=\"1\">First item</item>
+  <item id=\"2\">Second item</item>
+</root>
+")?;
+    fs::write(files_folder.join("sample.html"), "<!DOCTYPE html>
+<html>
+<head><title>Test</title></head>
+<body>
+  <h1>Hello World</h1>
+  <p>This is a test page.</p>
+</body>
+</html>
+")?;
+    
+    // Code files
+    fs::write(files_folder.join("code_samples/sample.rs"), "/// A sample Rust function
+pub fn greet(name: &str) -> String {
+    format!(\"Hello, {}!\", name)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    
+    #[test]
+    fn test_greet() {
+        assert_eq!(greet(\"World\"), \"Hello, World!\");
+    }
+}
+")?;
+    fs::write(files_folder.join("code_samples/sample.py"), "def greet(name):
+    \"\"\"Greet someone by name.\"\"\"
+    return f\"Hello, {name}!\"
+
+if __name__ == \"__main__\":
+    print(greet(\"World\"))
+")?;
+    fs::write(files_folder.join("code_samples/sample.js"), "/**
+ * Sample JavaScript function
+ */
+function greet(name) {
+    return `Hello, ${name}!`;
+}
+
+console.log(greet(\"World\"));
+")?;
+    fs::write(files_folder.join("code_samples/sample.ts"), "/**
+ * Sample TypeScript function
+ */
+function greet(name: string): string {
+    return `Hello, ${name}!`;
+}
+
+console.log(greet(\"World\"));
+")?;
+    
+    // Config files
+    fs::write(files_folder.join("config_files/app.yaml"), "app:
+  name: test-app
+  version: 1.0.0
+  debug: true
+
+database:
+  host: localhost
+  port: 5432
+")?;
+    fs::write(files_folder.join("config_files/settings.ini"), "[DEFAULT]
+app_name = TestApp
+version = 1.0
+
+[database]
+host = localhost
+port = 5432
+")?;
+    fs::write(files_folder.join("config_files/config.toml"), "[package]
+name = \"test-crate\"
+version = \"0.1.0\"
+
+[dependencies]
+serde = \"1.0\"
+tokio = { version = \"1.0\", features = [\"full\"] }
+")?;
+    
+    // Scripts
+    fs::write(files_folder.join("code_samples/script.sh"), "#!/bin/bash
+# Sample shell script
+echo \"Hello from shell script!\"
+for i in 1 2 3; do
+    echo \"Count: $i\"
+done
+")?;
+    fs::write(files_folder.join("code_samples/query.sql"), "-- Sample SQL query
+SELECT users.name, COUNT(orders.id) as order_count
+FROM users
+LEFT JOIN orders ON users.id = orders.user_id
+GROUP BY users.id
+ORDER BY order_count DESC;
+")?;
+    
+    // Data formats
+    fs::write(files_folder.join("config_files/data.json"), serde_json::json!({
+        "users": [
+            {"id": 1, "name": "Alice", "email": "alice@example.com"},
+            {"id": 2, "name": "Bob", "email": "bob@example.com"}
+        ],
+        "total": 2
+    }).to_string())?;
+    fs::write(files_folder.join("config_files/data.jsonl"), "{\"id\":1,\"action\":\"start\",\"timestamp\":\"2024-01-01T10:00:00Z\"}
+{\"id\":2,\"action\":\"stop\",\"timestamp\":\"2024-01-01T10:05:00Z\"}
+{\"id\":3,\"action\":\"restart\",\"timestamp\":\"2024-01-01T10:10:00Z\"}
+")?;
+    fs::write(files_folder.join("config_files/data.csv"), "id,name,score,active
+1,Alice,95,true
+2,Bob,87,false
+3,Charlie,92,true
+")?;
+    
+    // Subtitles
+    fs::write(files_folder.join("sample.srt"), "1
+00:00:00,000 --> 00:00:02,500
+Hello, this is the first subtitle.
+
+2
+00:00:03,000 --> 00:00:06,000
+This is the second subtitle line.
+
+3
+00:00:07,000 --> 00:00:10,000
+And this is the third subtitle.
+")?;
+    
+    // Image metadata test (we can't create actual images, but we create SVG)
+    fs::write(files_folder.join("sample.svg"), "<?xml version=\"1.0\"?>
+<svg width=\"200\" height=\"100\" viewBox=\"0 0 200 100\" xmlns=\"http://www.w3.org/2000/svg\">
+  <rect x=\"10\" y=\"10\" width=\"180\" height=\"80\" fill=\"blue\" />
+  <circle cx=\"100\" cy=\"50\" r=\"30\" fill=\"red\" />
+  <text x=\"100\" y=\"55\" text-anchor=\"middle\" fill=\"white\">Test SVG</text>
+</svg>
+")?;
+    
+    // Create a minimal ZIP archive for testing
+    let zip_path = files_folder.join("archives/test.zip");
+    let zip_file = fs::File::create(&zip_path)?;
+    let mut zip_writer = zip::ZipWriter::new(zip_file);
+    zip_writer.start_file("inside.txt", zip::write::SimpleFileOptions::default())?;
+    zip_writer.write_all(b"This file is inside the ZIP archive.
+It should be extracted and ingested.
+")?;
+    zip_writer.finish()?;
+    
+    // Create a simple tar.gz archive for testing
+    let tar_gz_path = files_folder.join("archives/test.tar.gz");
+    let tar_gz_file = fs::File::create(&tar_gz_path)?;
+    let enc = flate2::write::GzEncoder::new(tar_gz_file, flate2::Compression::default());
+    let mut tar_builder = tar::Builder::new(enc);
+    let tar_content = "This file is inside the TAR.GZ archive.";
+    let mut header = tar::Header::new_gnu();
+    header.set_path("inside_tar.txt")?;
+    header.set_size(tar_content.len() as u64);
+    header.set_cksum();
+    tar_builder.append(&header, tar_content.as_bytes())?;
+    tar_builder.finish()?;
+    
+    println!("✓ Created {} test subdirectories", subdirs.len());
+    println!("✓ Created test files for all supported file types:");
+    println!("  - Text files: txt, md, rst, log, xml, html");
+    println!("  - Code files: rs, py, js, ts");
+    println!("  - Config files: yaml, ini, toml, json, jsonl, csv");
+    println!("  - Scripts: sh, sql");
+    println!("  - Subtitles: srt");
+    println!("  - Images: svg (metadata only)");
+    println!("  - Archives: zip, tar.gz");
     println!("✓ Test directory: {}", test_env.root_dir.display());
     println!("✓ Server: {}", test_env.server_path.display());
     println!("✓ Files folder: {}", files_folder.display());
@@ -157,7 +388,8 @@ impl TestMcpClient {
         })).await?;
         
         client.read_response_line(5).await?;
-        client.stdin.write_all(b"{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\",\"params\":{}}\n").await?;
+        client.stdin.write_all(b"{\"jsonrpc\":\"2.0\",\"method\":\"notifications/initialized\",\"params\":{}}
+").await?;
         
         client.send_request("tools/call", serde_json::json!({
             "name": "get_workflow",
@@ -180,7 +412,8 @@ impl TestMcpClient {
         self.send_id += 1;
         let s = serde_json::to_string(&request)?;
         self.stdin.write_all(s.as_bytes()).await?;
-        self.stdin.write_all(b"\n").await?;
+        self.stdin.write_all(b"
+").await?;
         Ok(())
     }
     
@@ -260,7 +493,8 @@ impl TestMcpClient {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    println!("\n{}", "#".repeat(60));
+    println!("
+{}", "#".repeat(60));
     println!("#  RoBoT Brain MCP Server - Comprehensive Test Suite");
     println!("#  Testing all 57+ MCP tools with real agent scenarios");
     println!("{}", "#".repeat(60));
@@ -270,7 +504,8 @@ async fn main() -> anyhow::Result<()> {
     let mut client = TestMcpClient::new(&env.server_path).await?;
     let mut stats = TestStats::new();
     
-    println!("\n{}", "=".repeat(60));
+    println!("
+{}", "=".repeat(60));
     println!("RUNNING COMPREHENSIVE TOOL TESTS");
     println!("{}", "=".repeat(60));
     

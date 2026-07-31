@@ -41,7 +41,6 @@ use crate::workflows::engine::WorkflowEngine;
 /// Root application container.
 ///
 /// Owns long-running services required by RoBoT.
-
 pub struct App {
     /// Persistent database layer.
     _database: Arc<SqliteDatabase>,

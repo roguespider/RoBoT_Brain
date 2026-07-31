@@ -11,7 +11,6 @@ use crate::experience::hypothesis::core::hypothesis::HypothesisId;
 /// ============================================================================
 /// GRAPH STATISTICS
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct GraphStats {
     pub node_count: usize,
@@ -26,7 +25,6 @@ pub struct GraphStats {
 /// ============================================================================
 /// NODE
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HypothesisNode {
     pub hypothesis_id: HypothesisId,
@@ -66,7 +64,6 @@ impl NodeMetadata {
 /// ============================================================================
 /// EDGE
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HypothesisEdge {
     pub id: EdgeId,
@@ -137,7 +134,6 @@ impl Default for EdgeId {
 /// ============================================================================
 /// RELATIONSHIP
 /// ============================================================================
-
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
 pub enum HypothesisRelationship {
     /// Hypothesis A provides evidence supporting Hypothesis B

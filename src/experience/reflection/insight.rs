@@ -145,7 +145,6 @@ impl Insight {
 /// ============================================================================
 /// Insight Type
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum InsightType {
     Behavioral,

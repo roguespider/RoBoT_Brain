@@ -158,7 +158,6 @@ impl Reflection {
 /// ============================================================================
 /// Lesson
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Lesson {
     pub title: String,
@@ -169,7 +168,6 @@ pub struct Lesson {
 /// ============================================================================
 /// Reflection Insight
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReflectionInsight {
     pub statement: String,
@@ -180,7 +178,6 @@ pub struct ReflectionInsight {
 /// ============================================================================
 /// Evidence
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ReflectionEvidence {
     pub experience_id: ExperienceId,

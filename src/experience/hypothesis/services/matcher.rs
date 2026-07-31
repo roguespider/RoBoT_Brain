@@ -19,7 +19,6 @@ use crate::experience::types::Experience;
 /// ============================================================================
 /// MATCHER
 /// ============================================================================
-
 #[derive(Debug, Clone)]
 pub struct HypothesisMatcher {
     /// Minimum similarity score required.
@@ -139,7 +138,6 @@ impl Default for HypothesisMatcher {
 /// ============================================================================
 /// MATCH RESULT
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct HypothesisMatch {
     pub hypothesis_id: crate::experience::hypothesis::core::hypothesis::HypothesisId,

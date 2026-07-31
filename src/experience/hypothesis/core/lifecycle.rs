@@ -20,7 +20,6 @@ use super::hypothesis::{Hypothesis, HypothesisStatus};
 /// ============================================================================
 /// LIFECYCLE MANAGER
 /// ============================================================================
-
 #[derive(Debug, Clone)]
 pub struct HypothesisLifecycle {
     /// Minimum evaluations before a hypothesis can become supported.
@@ -125,7 +124,6 @@ impl Default for HypothesisLifecycle {
 /// ============================================================================
 /// RESULT
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct LifecycleResult {
     pub changed: bool,

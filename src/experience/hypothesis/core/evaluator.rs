@@ -26,7 +26,6 @@ use super::{
 /// ============================================================================
 /// EVALUATOR
 /// ============================================================================
-
 #[derive(Debug, Clone)]
 pub struct HypothesisEvaluator {
     /// How strongly supporting evidence affects confidence.
@@ -139,7 +138,6 @@ impl Default for HypothesisEvaluator {
 /// ============================================================================
 /// RESULT
 /// ============================================================================
-
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct EvaluationResult {
     pub hypothesis_id: super::hypothesis::HypothesisId,
