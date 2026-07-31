@@ -102,10 +102,6 @@ impl CodeAnalyzer {
         }
     }
 
-    /// Get the base source path
-    pub fn source_path(&self) -> &Path {
-        &self.source_path
-    }
 
     /// Run full analysis on the source code
     pub fn analyze(&self) -> Vec<CodeIssue> {
