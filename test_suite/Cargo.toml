@@ -2,6 +2,9 @@
 name = "test_suite"
 version = "0.1.0"
 edition = "2021"
+description = "Comprehensive test suite for RoBoT Brain MCP Server"
+license = "AGPL-3.0-or-later"
+authors = ["RoBoT Team"]
 
 [[bin]]
 name = "test_suite"
