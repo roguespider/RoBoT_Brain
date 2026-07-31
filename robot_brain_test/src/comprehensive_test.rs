@@ -319,7 +319,7 @@ fn build_test_arguments(requirement: &TestRequirement, env: &TestEnvironment) ->
         
         // Knowledge tools
         "knowledge_add" => serde_json::json!({
-            "content": "Test knowledge content"
+            "statement": "Test knowledge content"
         }),
         "knowledge_query" => serde_json::json!({
             "query": "test"
@@ -330,7 +330,7 @@ fn build_test_arguments(requirement: &TestRequirement, env: &TestEnvironment) ->
         "knowledge_stats" => serde_json::json!({}),
         "knowledge_record_application" => serde_json::json!({
             "knowledge_id": "00000000-0000-0000-0000-000000000000",
-            "successful": true
+            "success": true
         }),
         
         // Planner tools

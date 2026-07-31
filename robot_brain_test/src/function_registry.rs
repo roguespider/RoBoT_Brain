@@ -682,7 +682,7 @@ impl FunctionRegistry {
                 requires_data: None,
                 expected_behavior: "Adds new knowledge".to_string(),
                 validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "id".to_string(), expected_value: None },
+                    ValidationCheck { check_type: CheckType::HasField, field: "knowledge_id".to_string(), expected_value: None },
                 ],
                 priority: 1,
             },
@@ -694,7 +694,7 @@ impl FunctionRegistry {
                 requires_data: Some(DataRequirement { data_type: "knowledge".to_string(), creation_tool: "add_knowledge".to_string(), min_count: 1 }),
                 expected_behavior: "Queries knowledge base".to_string(),
                 validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "results".to_string(), expected_value: None },
+                    ValidationCheck { check_type: CheckType::HasField, field: "items".to_string(), expected_value: None },
                 ],
                 priority: 1,
             },
@@ -706,7 +706,7 @@ impl FunctionRegistry {
                 requires_data: None,
                 expected_behavior: "Gets knowledge that has been applied multiple times".to_string(),
                 validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "knowledge".to_string(), expected_value: None },
+                    ValidationCheck { check_type: CheckType::HasField, field: "items".to_string(), expected_value: None },
                 ],
                 priority: 2,
             },
@@ -718,7 +718,7 @@ impl FunctionRegistry {
                 requires_data: None,
                 expected_behavior: "Returns knowledge statistics".to_string(),
                 validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "stats".to_string(), expected_value: None },
+                    ValidationCheck { check_type: CheckType::HasField, field: "total".to_string(), expected_value: None },
                 ],
                 priority: 2,
             },
