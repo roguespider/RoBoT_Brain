@@ -7,7 +7,7 @@ use crate::{TestMcpClient, TestStats};
 use crate::test_environment::TestEnvironment;
 use crate::function_registry::{FunctionRegistry, TestRequirement, ValidationCheck, CheckType};
 use crate::test_results::{TestReport, TestResult, TestStatus, ValidationResult};
-use crate::code_analyzer::CodeAnalyzer;
+use crate::code_analyzer::{CodeAnalyzer, LintAnalyzer, LintSummary};
 use crate::test_results::print_issues_table;
 use std::time::Instant;
 
@@ -39,6 +39,45 @@ pub async fn run_comprehensive_tests(
     
     // Print issues table
     print_issues_table(&code_issues);
+    
+    // Step 1b: Run lint analysis (clippy + cargo check)
+    println!("\n📋 PHASE 1B: LINT ANALYSIS (clippy + cargo check)");
+    println!("{}", "─".repeat(100));
+    
+    let project_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+    
+    println!("  Running clippy...");
+    let clippy_issues = match LintAnalyzer::run_clippy(&project_path) {
+        Ok(issues) => issues,
+        Err(e) => {
+            println!("    ⚠️  Clippy failed: {}", e);
+            Vec::new()
+        }
+    };
+    
+    println!("  Running cargo check...");
+    let check_issues = match LintAnalyzer::run_check(&project_path) {
+        Ok(issues) => issues,
+        Err(e) => {
+            println!("    ⚠️  Cargo check failed: {}", e);
+            Vec::new()
+        }
+    };
+    
+    // Combine and dedupe issues
+    let mut all_lint_issues = clippy_issues;
+    for issue in check_issues {
+        if !all_lint_issues.iter().any(|i| i.file_path == issue.file_path && i.line_number == issue.line_number && i.message == issue.message) {
+            all_lint_issues.push(issue);
+        }
+    }
+    
+    let lint_summary = LintSummary::new(all_lint_issues);
+    lint_summary.print_report();
+    
+    // Store lint issues in report
+    report.lint_errors = lint_summary.errors;
+    report.lint_warnings = lint_summary.warnings;
     
     // Step 2: Get all test requirements
     println!("\n📋 PHASE 2: COLLECTING TEST REQUIREMENTS");

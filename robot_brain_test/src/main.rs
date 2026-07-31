@@ -533,8 +533,18 @@ async fn main() -> anyhow::Result<()> {
     
     stats.print_summary();
     
+    // Print combined issues summary
+    println!("\n{}", "=".repeat(80));
+    println!("OVERALL QUALITY SUMMARY");
+    println!("{}", "=".repeat(80));
+    println!("  Code Quality Issues:    {:>6} (#[allow, stubs, etc.)", report.code_issues.len());
+    println!("  Lint Errors:           {:>6}", report.lint_errors);
+    println!("  Lint Warnings:         {:>6}", report.lint_warnings);
+    println!("  Test Failures:         {:>6}", stats.failed);
+    println!("{}", "=".repeat(80));
+    
     // Exit with error if there are issues
-    if report.has_issues() || stats.failed > 0 {
+    if report.has_issues() || stats.failed > 0 || report.lint_errors > 0 {
         println!("\n⚠️  TEST SUITE COMPLETED WITH ISSUES");
         std::process::exit(1);
     }

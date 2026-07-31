@@ -53,6 +53,8 @@ pub struct TestReport {
     pub results: Vec<TestResult>,
     pub code_issues: Vec<CodeIssue>,
     pub total_duration_ms: u64,
+    pub lint_errors: usize,
+    pub lint_warnings: usize,
 }
 
 impl TestReport {
