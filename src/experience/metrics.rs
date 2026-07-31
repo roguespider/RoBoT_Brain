@@ -274,6 +274,46 @@ impl MetricsCollector {
         }
     }
 
+    // === Synchronous methods for use in sync contexts (e.g., worker observers) ===
+
+    /// Record a metric value synchronously (spawns async task)
+    pub fn record_sync(&self, name: impl Into<String>, value: f64) {
+        let name = name.into();
+        let metrics = Arc::clone(&self.metrics);
+        tokio::spawn(async move {
+            let point = MetricPoint {
+                name: name.clone(),
+                value,
+                timestamp: Utc::now(),
+                labels: HashMap::new(),
+            };
+            let mut metrics = metrics.write().await;
+            metrics.entry(name).or_insert_with(Vec::new).push(point);
+        });
+    }
+
+    /// Increment a counter synchronously (spawns async task)
+    pub fn increment_sync(&self, name: impl Into<String>) {
+        let name = name.into();
+        let counters = Arc::clone(&self.counters);
+        tokio::spawn(async move {
+            let mut counters = counters.write().await;
+            *counters.entry(name).or_insert(0) += 1;
+        });
+    }
+
+    /// Set a gauge value synchronously (spawns async task)
+    pub fn set_gauge_sync(&self, name: impl Into<String>, value: f64) {
+        let name = name.into();
+        let gauges = Arc::clone(&self.gauges);
+        tokio::spawn(async move {
+            let mut gauges = gauges.write().await;
+            gauges.insert(name, value);
+        });
+    }
+
+    // === Async methods ===
+
     /// Record a metric value
     pub async fn record(&self, name: impl Into<String>, value: f64) {
         let name = name.into();
