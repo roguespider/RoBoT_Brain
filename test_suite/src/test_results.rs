@@ -6,6 +6,7 @@
 use crate::function_registry::TestRequirement;
 use crate::code_analyzer::{CodeIssue, LintIssue, LintLevel};
 
+use std::path::PathBuf;
 /// Represents the result of a single test
 #[derive(Debug, Clone)]
 pub struct TestResult {
@@ -57,6 +58,7 @@ pub struct TestReport {
     pub lint_errors: usize,
     pub lint_warnings: usize,
     pub lint_issues: Vec<LintIssue>,
+    pub source_path: Option<PathBuf>,
 }
 
 impl TestReport {
@@ -73,6 +75,11 @@ impl TestReport {
     /// Set code issues
     pub fn set_code_issues(&mut self, issues: Vec<CodeIssue>) {
         self.code_issues = issues;
+    }
+
+    /// Set source path for relative path display
+    pub fn set_source_path(&mut self, path: PathBuf) {
+        self.source_path = Some(path);
     }
     
     /// Set lint issues (compiler errors and warnings)
@@ -234,18 +241,22 @@ impl TestReport {
             crate::teeprintln!("│");
             crate::teeprintln!("│  Issue Type: {}", issue_type);
             crate::teeprintln!("│  Count: {}", issues.len());
+            let base_path = self.source_path.as_ref().map(|p| p.as_path());
             crate::teeprintln!("│  ├── Files affected: {}", issues.iter()
-                .map(|i| i.file_path.file_name().unwrap_or_default().to_string_lossy().to_string())
+                .map(|i| {
+                    let path = base_path.map(|bp| i.relative_path(bp)).unwrap_or_else(|| i.file_path.to_string_lossy().to_string());
+                    path
+                })
                 .collect::<std::collections::HashSet<_>>()
                 .len());
-            
+
             // Show ALL issues
             for (idx, issue) in issues.iter().enumerate() {
-                let file_name = issue.file_path.file_name()
-                    .map(|n| n.to_string_lossy().to_string())
-                    .unwrap_or_else(|| "unknown".to_string());
+                let file_name = base_path
+                    .map(|bp| issue.relative_path(bp))
+                    .unwrap_or_else(|| issue.file_path.to_string_lossy().to_string());
                 let prefix = if idx == issues.len() - 1 { "└──" } else { "├──" };
-                crate::teeprintln!("│  {} Line {}: {} - {}", 
+                crate::teeprintln!("│  {} Line {}: {} - {}",
                     prefix,
                     issue.line_number,
                     file_name,
@@ -529,7 +540,7 @@ fn truncate(s: &str, max_len: usize) -> String {
 }
 
 /// Print issues table (standalone function for early reporting)
-pub fn print_issues_table(issues: &[CodeIssue]) {
+pub fn print_issues_table(issues: &[CodeIssue], source_path: &std::path::Path) {
     if issues.is_empty() {
         crate::teeprintln!("\n  ✅ No code quality issues detected in source!");
         return;
@@ -541,12 +552,8 @@ pub fn print_issues_table(issues: &[CodeIssue]) {
     crate::teeprintln!("│ {:^8} │ {:^38} │ {:^8} │ {:^33} │", 
         "Line", "File", "Type", "Description");
     crate::teeprintln!("├{:─<10}┼{:─<40}┼{:─<10}┼{:─<35}┤", "─", "─", "─", "─");
-    
     for issue in issues {
-        let file_name = issue.file_path.file_name()
-            .map(|n| n.to_string_lossy().to_string())
-            .unwrap_or_else(|| "unknown".to_string());
-        
+        let file_name = issue.relative_path(source_path);
         let issue_type = issue.issue_type.to_string();
         let description = truncate(&issue.description, 33);
         

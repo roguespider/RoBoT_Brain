@@ -30,15 +30,16 @@ pub async fn run_comprehensive_tests(
     crate::teeprintln!("{}", "─".repeat(100));
     
     let source_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("src");
-    let analyzer = CodeAnalyzer::new(source_path);
+    let analyzer = CodeAnalyzer::new(source_path.clone());
     let code_issues = analyzer.analyze();
     let summary = analyzer.get_summary(&code_issues);
     
     summary.print_table();
     report.set_code_issues(code_issues.clone());
+    report.set_source_path(source_path.clone());
     
     // Print issues table
-    print_issues_table(&code_issues);
+    print_issues_table(&code_issues, &source_path);
     
     // Step 1b: Run lint analysis (clippy + cargo check)
     crate::teeprintln!("\n📋 PHASE 1B: LINT ANALYSIS (clippy + cargo check)");

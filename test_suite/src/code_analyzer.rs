@@ -24,6 +24,17 @@ pub struct CodeIssue {
     pub code_snippet: String,
 }
 
+impl CodeIssue {
+    /// Get the relative path from the source directory (e.g., "tools/memory/mod.rs")
+    pub fn relative_path(&self, base_path: &Path) -> String {
+        if let Ok(stripped) = self.file_path.strip_prefix(base_path) {
+            stripped.to_string_lossy().to_string()
+        } else {
+            self.file_path.to_string_lossy().to_string()
+        }
+    }
+}
+
 /// Types of issues that can be detected
 #[derive(Debug, Clone, PartialEq)]
 pub enum IssueType {
@@ -89,6 +100,11 @@ impl CodeAnalyzer {
             source_path,
             patterns: CodePatterns::new(),
         }
+    }
+
+    /// Get the base source path
+    pub fn source_path(&self) -> &Path {
+        &self.source_path
     }
 
     /// Run full analysis on the source code
