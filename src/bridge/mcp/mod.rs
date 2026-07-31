@@ -9,8 +9,8 @@ pub mod context;
 pub mod handler;
 pub mod types;
 
-// Re-export commonly used types for backwards compatibility
+// Re-export commonly used types
 pub use client::{McpClient, ToolError};
 pub use context::McpContext;
-pub use handler::{DefaultMcpHandler, McpHandler, ToolExecutor};
+pub use handler::{DefaultMcpHandler, McpHandler, McpServerHandler, ToolExecutor};
 pub use types::{McpTool, McpCapabilities, McpClientInfo, McpServerInfo};

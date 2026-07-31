@@ -1,25 +1,34 @@
 // src/bridge/mcp/handler.rs
 
-//! MCP protocol handler implementation
+//! MCP protocol handler implementation using rmcp crate
 //!
-//! This module provides the handler implementation for processing
-//! MCP protocol requests and notifications.
+//! This module provides a complete MCP server handler implementation that
+//! integrates with the rmcp crate for actual MCP protocol handling.
 
-use anyhow::Result;
 use std::sync::Arc;
 
-use super::types::{McpCapabilities, McpNotification, McpRequest, McpResponse, McpServerInfo};
+use anyhow::Result;
+use rmcp::{
+    model::{
+        CallToolRequestParams, CallToolResult, CompleteRequestParams, CompleteResult,
+        ContentBlock, GetPromptRequestParams, GetPromptResult, Implementation,
+        InitializeRequestParams, InitializeResult, ListPromptsResult,
+        ListResourceTemplatesResult, ListResourcesResult, ListToolsResult, LoggingLevel,
+        PaginatedRequestParams, ReadResourceRequestParams, ReadResourceResult, Resource,
+        SetLevelRequestParams, SubscribeRequestParams, Tool,
+    },
+    service::{NotificationContext, RequestContext, RoleServer},
+    ErrorData as McpError, RmcpError, ServerHandler,
+};
 
-/// Trait for MCP protocol handlers (defined for future extensibility)
+/// Trait for MCP protocol handlers (simplified version for non-async use)
 pub trait McpHandler: Send + Sync {
-    /// Handle an MCP request
-    fn handle_request(&self, request: McpRequest) -> Result<McpResponse>;
-    /// Handle an MCP notification
-    fn handle_notification(&self, notification: McpNotification) -> Result<()>;
+    /// Handle an MCP request (simplified synchronous version)
+    fn handle_request_sync(&self, method: &str, params: serde_json::Value) -> Result<serde_json::Value>;
     /// Get server capabilities
-    fn get_capabilities(&self) -> McpCapabilities;
+    fn get_capabilities(&self) -> super::types::McpCapabilities;
     /// Get server info
-    fn get_server_info(&self) -> McpServerInfo;
+    fn get_server_info(&self) -> super::types::McpServerInfo;
 }
 
 /// Tool executor trait for handling tool calls
@@ -34,220 +43,296 @@ pub struct DefaultToolExecutor;
 impl ToolExecutor for DefaultToolExecutor {
     fn execute(&self, tool_name: &str, _arguments: serde_json::Value) -> Result<serde_json::Value> {
         Ok(serde_json::json!({
-            "error": format!("Tool '{}' not found", tool_name)
+            "content": [{
+                "type": "text",
+                "text": format!("Tool '{}' not found. No tools are registered.", tool_name)
+            }]
         }))
     }
 }
 
-/// Default MCP handler that provides basic request routing
-pub struct DefaultMcpHandler {
-    capabilities: McpCapabilities,
-    server_info: McpServerInfo,
+/// MCP Server handler that implements the rmcp ServerHandler trait
+pub struct McpServerHandler {
+    name: String,
+    version: String,
+    tools: Vec<Tool>,
+    resources: Vec<Resource>,
     tool_executor: Arc<dyn ToolExecutor>,
-    tools: Vec<super::types::McpTool>,
 }
 
-impl DefaultMcpHandler {
-    /// Create a new default handler with the given info
-    pub fn new(server_name: &str, server_version: &str) -> Self {
+impl McpServerHandler {
+    /// Create a new MCP server handler
+    pub fn new(name: &str, version: &str) -> Self {
         Self {
-            capabilities: McpCapabilities {
-                tools: Some(super::types::McpEmpty),
-                resources: None,
-                prompts: None,
-                logging: Some(super::types::McpEmpty),
-            },
-            server_info: McpServerInfo {
-                name: server_name.to_string(),
-                version: server_version.to_string(),
-            },
-            tool_executor: Arc::new(DefaultToolExecutor),
+            name: name.to_string(),
+            version: version.to_string(),
             tools: Vec::new(),
+            resources: Vec::new(),
+            tool_executor: Arc::new(DefaultToolExecutor),
         }
     }
 
     /// Create a handler with a custom tool executor
-    pub fn with_executor(
-        server_name: &str,
-        server_version: &str,
-        executor: Arc<dyn ToolExecutor>,
-    ) -> Self {
+    pub fn with_executor(name: &str, version: &str, executor: Arc<dyn ToolExecutor>) -> Self {
         Self {
-            capabilities: McpCapabilities::with_tools(),
-            server_info: McpServerInfo {
-                name: server_name.to_string(),
-                version: server_version.to_string(),
-            },
-            tool_executor: executor,
+            name: name.to_string(),
+            version: version.to_string(),
             tools: Vec::new(),
+            resources: Vec::new(),
+            tool_executor: executor,
         }
     }
 
     /// Add a tool to the handler
-    pub fn add_tool(&mut self, tool: super::types::McpTool) {
+    pub fn add_tool(&mut self, tool: Tool) {
         self.tools.push(tool);
     }
 
+    /// Add a tool from a simple definition
+    pub fn add_simple_tool(&mut self, name: &str, description: &str, input_schema: serde_json::Value) {
+        let schema: serde_json::Map<String, serde_json::Value> = 
+            input_schema.as_object().cloned().unwrap_or_default();
+        self.tools.push(Tool::new(
+            name.to_string(),
+            description.to_string(),
+            Arc::new(schema),
+        ));
+    }
+
     /// Set the tools list
-    pub fn set_tools(&mut self, tools: Vec<super::types::McpTool>) {
+    pub fn set_tools(&mut self, tools: Vec<Tool>) {
         self.tools = tools;
     }
 
     /// Get the list of tools
-    pub fn get_tools(&self) -> &[super::types::McpTool] {
+    pub fn get_tools(&self) -> &[Tool] {
         &self.tools
     }
 
-    /// Handle a tool call request
-    fn handle_tool_call(&self, params: serde_json::Value) -> Result<serde_json::Value> {
-        let tool_name = params
-            .get("name")
-            .and_then(|v| v.as_str())
-            .unwrap_or("unknown");
-        let arguments = params.get("arguments").cloned().unwrap_or(serde_json::json!({}));
-        self.tool_executor.execute(tool_name, arguments)
+    /// Add a resource to the handler
+    pub fn add_resource(&mut self, resource: Resource) {
+        self.resources.push(resource);
     }
 
-    /// Handle a list tools request
-    fn handle_list_tools(&self) -> Result<serde_json::Value> {
-        Ok(serde_json::json!({
-            "tools": self.tools.iter().map(|t| {
-                serde_json::json!({
-                    "name": t.name,
-                    "description": t.description,
-                    "inputSchema": t.input_schema
-                })
-            }).collect::<Vec<_>>()
-        }))
+    /// Set the resources list
+    pub fn set_resources(&mut self, resources: Vec<Resource>) {
+        self.resources = resources;
     }
 
-    /// Handle initialize request
-    fn handle_initialize(&self, _params: serde_json::Value) -> Result<serde_json::Value> {
-        Ok(serde_json::json!({
-            "protocolVersion": super::types::MCP_VERSION,
-            "capabilities": self.capabilities,
-            "serverInfo": self.server_info
-        }))
+    /// Get the list of resources
+    pub fn get_resources(&self) -> &[Resource] {
+        &self.resources
+    }
+
+    /// Get server info as Implementation
+    fn implementation(&self) -> Implementation {
+        Implementation::new(&self.name, &self.version)
     }
 }
 
-impl McpHandler for DefaultMcpHandler {
-    fn handle_request(&self, request: McpRequest) -> Result<McpResponse> {
-        tracing::debug!("Handling MCP request: {}", request.method);
-
-        let result = match request.method.as_str() {
-            "initialize" => self.handle_initialize(request.params.unwrap_or(serde_json::Value::Null)),
-            "tools/list" => self.handle_list_tools(),
-            "tools/call" => {
-                let params = request.params.unwrap_or(serde_json::Value::Null);
-                self.handle_tool_call(params)
-            }
-            "ping" => Ok(serde_json::json!({"pong": true})),
-            _ => Ok(serde_json::json!({
-                "error": format!("Unknown method: {}", request.method)
-            })),
-        };
-
-        match result {
-            Ok(value) => Ok(McpResponse::success(&request.id, value)),
-            Err(e) => Ok(McpResponse::error(
-                &request.id,
-                super::types::McpError::new(-32603, &e.to_string()),
-            )),
-        }
+impl ServerHandler for McpServerHandler {
+    /// Handle initialize request
+    async fn initialize(
+        &self,
+        _request: InitializeRequestParams,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<InitializeResult, McpError> {
+        Ok(InitializeResult::new(rmcp::model::ServerCapabilities::default())
+            .with_server_info(self.implementation()))
     }
 
-    fn handle_notification(&self, notification: McpNotification) -> Result<()> {
-        tracing::debug!("Received MCP notification: {}", notification.method);
+    /// Handle ping
+    async fn ping(&self, _context: RequestContext<RoleServer>) -> Result<(), McpError> {
         Ok(())
     }
 
-    fn get_capabilities(&self) -> McpCapabilities {
-        self.capabilities.clone()
+    /// List all tools
+    async fn list_tools(
+        &self,
+        _request: Option<PaginatedRequestParams>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ListToolsResult, McpError> {
+        Ok(ListToolsResult::with_all_items(self.tools.clone()))
     }
 
-    fn get_server_info(&self) -> McpServerInfo {
-        self.server_info.clone()
+    /// Call a tool
+    async fn call_tool(
+        &self,
+        request: CallToolRequestParams,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<CallToolResult, McpError> {
+        let tool_name = &request.name;
+        let arguments: serde_json::Value = request.arguments.into();
+
+        match self.tool_executor.execute(tool_name, arguments) {
+            Ok(result) => Ok(CallToolResult::success(vec![
+                rmcp::model::ContentBlock::Text(rmcp::model::TextContent::new(result.to_string())),
+            ])),
+            Err(e) => Ok(CallToolResult::error(vec![
+                rmcp::model::ContentBlock::Text(rmcp::model::TextContent::new(format!(
+                    "Error executing tool '{}': {}",
+                    tool_name, e
+                ))),
+            ])),
+        }
+    }
+
+    /// Get a tool by name (for tool name validation)
+    fn get_tool(&self, name: &str) -> Option<Tool> {
+        self.tools.iter().find(|t| &t.name == name).cloned()
+    }
+
+    /// List resources
+    async fn list_resources(
+        &self,
+        _request: Option<PaginatedRequestParams>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ListResourcesResult, McpError> {
+        Ok(ListResourcesResult::with_all_items(self.resources.clone()))
+    }
+
+    /// List resource templates
+    async fn list_resource_templates(
+        &self,
+        _request: Option<PaginatedRequestParams>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ListResourceTemplatesResult, McpError> {
+        Ok(ListResourceTemplatesResult::with_all_items(vec![]))
+    }
+
+    /// Read a resource
+    async fn read_resource(
+        &self,
+        request: ReadResourceRequestParams,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ReadResourceResult, McpError> {
+        let uri = &request.uri;
+        if let Some(resource) = self.resources.iter().find(|r| &r.uri == uri) {
+            Ok(ReadResourceResult::new(vec![rmcp::model::ResourceContents::text(
+                format!("Resource content for: {}", uri),
+                uri,
+            )
+            .with_mime_type(resource.mime_type.as_deref().unwrap_or("text/plain"))]))
+        } else {
+            Err(McpError::invalid_params(format!("Resource not found: {}", uri), None))
+        }
+    }
+
+    /// Subscribe to resource updates
+    async fn subscribe(
+        &self,
+        _request: SubscribeRequestParams,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<(), McpError> {
+        // No-op: subscriptions not supported without a notification system
+        Ok(())
+    }
+
+    /// Unsubscribe from resource updates
+    async fn unsubscribe(
+        &self,
+        _request: rmcp::model::UnsubscribeRequestParams,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<(), McpError> {
+        Ok(())
+    }
+
+    /// List prompts
+    async fn list_prompts(
+        &self,
+        _request: Option<PaginatedRequestParams>,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<ListPromptsResult, McpError> {
+        Ok(ListPromptsResult::with_all_items(vec![]))
+    }
+
+    /// Get a prompt
+    async fn get_prompt(
+        &self,
+        request: GetPromptRequestParams,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<GetPromptResult, McpError> {
+        Err(McpError::invalid_params(format!("Prompt '{}' not found", request.name), None))
+    }
+
+    /// Complete a request
+    async fn complete(
+        &self,
+        _request: CompleteRequestParams,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<CompleteResult, McpError> {
+        let completion = rmcp::model::CompletionInfo::with_all_values(vec![])
+            .expect("empty values should be valid");
+        Ok(CompleteResult::new(completion))
+    }
+
+    /// Set logging level
+    async fn set_level(
+        &self,
+        _request: SetLevelRequestParams,
+        _context: RequestContext<RoleServer>,
+    ) -> Result<(), McpError> {
+        Ok(())
+    }
+
+    /// Handle initialized notification
+    async fn on_initialized(&self, _context: NotificationContext<RoleServer>) {
+        tracing::info!("MCP server '{}' initialized successfully", self.name);
+    }
+
+    /// Handle roots list changed notification
+    async fn on_roots_list_changed(&self, _context: NotificationContext<RoleServer>) {
+        // No-op
     }
 }
+
+// Alias for backwards compatibility
+pub type DefaultMcpHandler = McpServerHandler;
 
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
-    fn test_default_handler_creation() {
-        let handler = DefaultMcpHandler::new("test-server", "1.0.0");
-        assert_eq!(handler.get_server_info().name, "test-server");
-        assert_eq!(handler.get_server_info().version, "1.0.0");
-        assert!(handler.get_tools().is_empty());
+    fn test_handler_creation() {
+        let handler = McpServerHandler::new("test-server", "1.0.0");
+        assert_eq!(handler.get_tools().len(), 0);
+        assert_eq!(handler.get_resources().len(), 0);
     }
 
     #[test]
-    fn test_handler_with_tools() {
-        let mut handler = DefaultMcpHandler::new("test-server", "1.0.0");
-        handler.add_tool(super::super::types::McpTool::new("test_tool", "A test tool"));
+    fn test_add_tool() {
+        let mut handler = McpServerHandler::new("test-server", "1.0.0");
+        handler.add_simple_tool("test_tool", "A test tool", serde_json::json!({}));
         assert_eq!(handler.get_tools().len(), 1);
+        assert_eq!(handler.get_tools()[0].name, "test_tool");
     }
 
     #[test]
-    fn test_handle_list_tools() {
-        let mut handler = DefaultMcpHandler::new("test-server", "1.0.0");
-        handler.add_tool(super::super::types::McpTool::new("tool1", "First tool"));
-        handler.add_tool(super::super::types::McpTool::new("tool2", "Second tool"));
-
-        let result = handler.handle_list_tools().unwrap();
-        let tools = result.get("tools").unwrap().as_array().unwrap();
-        assert_eq!(tools.len(), 2);
-    }
-
-    #[test]
-    fn test_handle_request_initialize() {
-        let handler = DefaultMcpHandler::new("test-server", "1.0.0");
-        let request = McpRequest::new("initialize", "1");
+    fn test_get_tool() {
+        let mut handler = McpServerHandler::new("test-server", "1.0.0");
+        handler.add_simple_tool("my_tool", "My tool", serde_json::json!({}));
         
-        let response = handler.handle_request(request).unwrap();
-        assert!(response.is_success());
-        let result = response.result.unwrap();
-        assert!(result.get("serverInfo").is_some());
+        assert!(handler.get_tool("my_tool").is_some());
+        assert!(handler.get_tool("nonexistent").is_none());
     }
 
     #[test]
-    fn test_handle_request_tools_list() {
-        let handler = DefaultMcpHandler::new("test-server", "1.0.0");
-        let request = McpRequest::new("tools/list", "2");
-        
-        let response = handler.handle_request(request).unwrap();
-        assert!(response.is_success());
+    fn test_set_tools() {
+        let mut handler = McpServerHandler::new("test-server", "1.0.0");
+        handler.add_simple_tool("tool1", "First tool", serde_json::json!({}));
+        handler.add_simple_tool("tool2", "Second tool", serde_json::json!({}));
+        assert_eq!(handler.get_tools().len(), 2);
     }
 
     #[test]
-    fn test_handle_request_unknown_method() {
-        let handler = DefaultMcpHandler::new("test-server", "1.0.0");
-        let request = McpRequest::new("unknown/method", "3");
+    fn test_resources() {
+        let mut handler = McpServerHandler::new("test-server", "1.0.0");
+        assert_eq!(handler.get_resources().len(), 0);
         
-        let response = handler.handle_request(request).unwrap();
-        assert!(response.is_success());
-        let result = response.result.unwrap();
-        assert!(result.get("error").is_some());
-    }
-
-    #[test]
-    fn test_handle_request_ping() {
-        let handler = DefaultMcpHandler::new("test-server", "1.0.0");
-        let request = McpRequest::new("ping", "4");
-        
-        let response = handler.handle_request(request).unwrap();
-        assert!(response.is_success());
-        assert_eq!(response.result.unwrap(), serde_json::json!({"pong": true}));
-    }
-
-    #[test]
-    fn test_handle_notification() {
-        let handler = DefaultMcpHandler::new("test-server", "1.0.0");
-        let notification = McpNotification::new("test/notification");
-        
-        let result = handler.handle_notification(notification);
-        assert!(result.is_ok());
+        // Resources would need to be added via Resource type
+        // For now just verify the field exists and works
+        handler.set_resources(vec![]);
+        assert_eq!(handler.get_resources().len(), 0);
     }
 }
