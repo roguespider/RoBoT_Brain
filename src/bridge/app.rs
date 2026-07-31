@@ -35,6 +35,7 @@ use crate::learning::{LineageTracker, WorkingMemory};
 use crate::personality::{Personality, PersonalityTraits};
 use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory as MemWorkingMemory};
 use crate::planner::{Planner, PolicyEngine};
+use crate::bridge::acp::{AcpRouter, AcpRegistry};
 use crate::skills::registry::SkillRegistry;
 use crate::tools;
 use crate::workflows::engine::WorkflowEngine;
@@ -75,6 +76,9 @@ pub struct App {
 
     /// Personality system for behavioral characteristics.
     personality: Arc<std::sync::Mutex<Personality>>,
+
+    /// ACP router for inter-agent communication.
+    acp_router: Arc<AcpRouter>,
 }
 
 impl App {
@@ -279,6 +283,7 @@ impl App {
             _memory_pipeline: memory_pipeline,
             mcp_context,
             personality: Arc::new(Mutex::new(Personality::new())),
+            acp_router: Arc::new(AcpRouter::new(Arc::new(AcpRegistry::new()))),
         })
     }
 
@@ -710,6 +715,35 @@ impl App {
     /// Get personality success rate
     pub fn get_personality_success_rate(&self) -> f32 {
         self.personality.lock().unwrap().success_rate()
+    }
+
+    // =========================================================================
+    // ACP (Agent Communication Protocol) Methods
+    // =========================================================================
+
+    /// Get reference to ACP router
+    pub fn acp_router(&self) -> Arc<AcpRouter> {
+        self.acp_router.clone()
+    }
+
+    /// Get ACP registry for agent registration
+    pub fn acp_registry(&self) -> Arc<AcpRegistry> {
+        self.acp_router.registry()
+    }
+
+    /// Route an ACP message to the appropriate agent
+    pub fn route_acp_message(&self, message: crate::bridge::acp::AcpMessage) -> Result<Option<crate::bridge::acp::AcpMessage>> {
+        self.acp_router.route(message)
+    }
+
+    /// List all registered ACP agents
+    pub fn list_acp_agents(&self) -> Result<Vec<crate::bridge::acp::AcpAgentId>> {
+        self.acp_router.registry().list_agents()
+    }
+
+    /// Get count of registered ACP agents
+    pub fn acp_agent_count(&self) -> usize {
+        self.acp_router.registry().count()
     }
 
 }
