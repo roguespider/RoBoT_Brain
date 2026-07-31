@@ -8,6 +8,7 @@ This test suite provides comprehensive end-to-end testing for all MCP tools in t
 2. **Detects stub patterns** - Finds `unimplemented!()`, `todo!()`, `panic!()` with stub messages
 3. **Detects partial implementations** - Identifies functions that return early without doing work
 4. **Generates table-based reports** - Clear, readable output showing pass/fail for every function
+5. **Validates MCP Workflow Integration** - Ensures the agent correctly uses MCP workflows
 
 ## Components
 
@@ -53,6 +54,38 @@ Orchestrates the testing:
 2. **Phase 2**: Collect test requirements
 3. **Phase 3**: Run end-to-end tests
 4. **Phase 4**: Generate detailed report
+
+### 5. MCP Workflow Integration Tests (`mcp_workflow.rs`)
+
+Dedicated tests to ensure the agent correctly uses MCP workflows:
+
+#### Workflow Discovery Tests
+- Verifies `get_workflow` tool is available
+- Tests purpose-based workflow retrieval (file_ingestion, memory_search, etc.)
+- Validates workflow rules and instructions are returned
+
+#### Workflow Execution Tests
+- Creates workflows and verifies IDs are generated
+- Adds workflow steps and validates step chaining
+- Tests workflow start, pause, resume, and cancel operations
+- Validates workflow status retrieval
+
+#### Workflow Tools Validation
+- Verifies all workflow tools are registered and accessible
+- Tests individual tool definitions (create_workflow, add_workflow_step, etc.)
+- Validates agent tools are available (get_workflow, list_tools, get_tool)
+
+#### Agent-Workflow Integration Tests
+- Ensures agent discovers workflows before other operations
+- Tests purpose-based workflow selection
+- Validates workflow step chaining
+- Tests error handling for invalid workflows
+
+#### End-to-End Scenario Tests
+- **File Ingestion Workflow**: Tests the complete file ingestion workflow path
+- **Memory Search Workflow**: Tests memory search workflow integration
+- **Experience Recording Workflow**: Tests experience recording workflow
+- **Multi-Step Workflow**: Tests full execution of multi-step workflows
 
 ## Running the Tests
 
@@ -145,6 +178,16 @@ For the test suite to pass (exit code 0), ALL of the following must be true:
 2. ✅ No code quality issues (no `#[allow(*)]`, `unimplemented!()`, `todo!()`)
 3. ✅ All functions must work end-to-end
 4. ✅ All sub-functions must be complete
+5. ✅ MCP Workflow Integration: Agent must correctly discover and use workflows
+
+### MCP Workflow Integration Requirements
+
+The MCP workflow tests verify:
+- **Workflow Discovery**: Agent can discover workflows via `get_workflow` tool
+- **Purpose-Based Selection**: Agent correctly selects workflows based on task purpose
+- **Tool Availability**: All workflow tools are properly registered and accessible
+- **Execution**: Agent can create, modify, start, pause, resume, and cancel workflows
+- **End-to-End Scenarios**: Complete workflows execute correctly for all scenarios
 
 ## Integration
 
@@ -154,3 +197,11 @@ The comprehensive test suite runs BEFORE the traditional test suite, providing:
 - Code quality metrics
 
 Both suites contribute to the final pass/fail determination.
+
+### Test Execution Order
+
+1. **Code Analysis** - Source code quality check
+2. **Lint Analysis** - clippy and cargo check
+3. **Comprehensive Tests** - Function registry-based tests
+4. **Traditional Tests** - Individual tool category tests
+5. **MCP Workflow Integration** - Agent workflow usage validation

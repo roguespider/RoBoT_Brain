@@ -17,6 +17,7 @@ pub mod search;
 pub mod ingestor;
 pub mod agent;
 pub mod error_handling;
+pub mod mcp_workflow;
 
 pub use memory::run_memory_tests;
 pub use experience::run_experience_tests;
@@ -29,3 +30,4 @@ pub use search::run_search_tests;
 pub use ingestor::run_ingestor_tests;
 pub use agent::run_agent_tests;
 pub use error_handling::run_error_handling_tests;
+pub use mcp_workflow::run_mcp_workflow_tests;

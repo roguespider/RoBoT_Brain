@@ -531,6 +531,14 @@ async fn main() -> anyhow::Result<()> {
     tests::run_agent_tests(&mut client, &mut stats, None).await?;
     tests::run_error_handling_tests(&mut client, &mut stats, None).await?;
     
+    // Run MCP Workflow Integration Tests
+    println!("\n
+{}", "=".repeat(100));
+    println!("RUNNING MCP WORKFLOW INTEGRATION TESTS");
+    println!("{}", "=".repeat(100));
+    
+    tests::run_mcp_workflow_tests(&mut client, &mut stats, None).await?;
+    
     stats.print_summary();
     
     // Print combined issues summary
