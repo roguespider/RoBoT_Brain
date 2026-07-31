@@ -2,10 +2,12 @@
 //!
 //! This test suite comprehensively tests ALL 57+ MCP tools available in the RoBoT Brain server.
 //! It simulates real agent usage scenarios with success and failure cases.
-
-
-
-
+//!
+//! NEW: This suite now includes:
+//! - Code analysis to detect stub patterns, #[allow(*)], unimplemented!(), todo!()
+//! - True end-to-end testing without stubs or mocking
+//! - Table-based reporting showing pass/fail for every function
+//! - Detection of partial implementations and incomplete sub-functions
 
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -19,10 +21,14 @@ use tokio::time::timeout;
 
 mod test_environment;
 mod tests;
+mod code_analyzer;
+mod function_registry;
+mod test_results;
+mod comprehensive_test;
 
 use test_environment::TestEnvironment;
+use comprehensive_test::run_comprehensive_tests;
 
-/// Test statistics
 #[derive(Default)]
 pub struct TestStats {
     pub passed: usize,
@@ -494,20 +500,24 @@ impl TestMcpClient {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     println!("
-{}", "#".repeat(60));
-    println!("#  RoBoT Brain MCP Server - Comprehensive Test Suite");
-    println!("#  Testing all 57+ MCP tools with real agent scenarios");
-    println!("{}", "#".repeat(60));
+{}", "#".repeat(100));
+    println!("#  RoBoT Brain MCP Server - Comprehensive End-to-End Test Suite");
+    println!("#  Testing every function 100% end-to-end without stubs or #[allow(*)]");
+    println!("{}", "#".repeat(100));
     
     let server_path = build_server().await?;
     let env = setup_test_environment(&server_path)?;
     let mut client = TestMcpClient::new(&env.server_path).await?;
     let mut stats = TestStats::new();
     
-    println!("
-{}", "=".repeat(60));
-    println!("RUNNING COMPREHENSIVE TOOL TESTS");
-    println!("{}", "=".repeat(60));
+    // Run comprehensive test suite with code analysis
+    let report = run_comprehensive_tests(&mut client, &mut stats, &env).await?;
+    
+    // Also run the traditional test suite for comparison
+    println!("\n
+{}", "=".repeat(100));
+    println!("RUNNING TRADITIONAL TEST SUITE (for comparison)");
+    println!("{}", "=".repeat(100));
     
     tests::run_memory_tests(&mut client, &mut stats, None).await?;
     tests::run_experience_tests(&mut client, &mut stats, None).await?;
@@ -523,9 +533,12 @@ async fn main() -> anyhow::Result<()> {
     
     stats.print_summary();
     
-    if stats.failed > 0 {
+    // Exit with error if there are issues
+    if report.has_issues() || stats.failed > 0 {
+        println!("\n⚠️  TEST SUITE COMPLETED WITH ISSUES");
         std::process::exit(1);
     }
     
+    println!("\n🎉 ALL TESTS PASSED - SYSTEM READY!");
     Ok(())
 }
