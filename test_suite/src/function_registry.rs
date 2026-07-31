@@ -252,10 +252,11 @@ impl FunctionRegistry {
                 category: "Memory".to_string(),
                 requires_workflow: true,
                 requires_data: None, // No real data created, uses fake UUID
-                expected_behavior: "Retrieves a specific memory by ID (fails with fake UUID)".to_string(),
+                expected_behavior: "Retrieves a specific memory by ID (returns found=false for non-existent)".to_string(),
                 validation: vec![
-                    // This test uses a fake UUID, so it will fail.
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: Some("false".to_string()) },
+                    // Tool returns success with found=false for non-existent memory
+                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: Some("true".to_string()) },
+                    ValidationCheck { check_type: CheckType::HasField, field: "found".to_string(), expected_value: None },
                 ],
                 priority: 1,
             },
@@ -265,9 +266,9 @@ impl FunctionRegistry {
                 category: "Memory".to_string(),
                 requires_workflow: true,
                 requires_data: None,
-                expected_behavior: "Handles invalid UUID gracefully (expected error)".to_string(),
+                expected_behavior: "Handles invalid UUID format gracefully (expected error)".to_string(),
                 validation: vec![
-                    // This test expects an error for invalid UUID
+                    // Invalid UUID format returns error with success=false
                     ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: Some("false".to_string()) },
                 ],
                 priority: 2,

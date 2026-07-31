@@ -592,9 +592,19 @@ fn is_success(result: &serde_json::Value, _field: &str, expected: Option<&str>) 
     let is_error = result.get("isError")
         .and_then(|e| e.as_bool())
         .unwrap_or(false);
-    
-    let success = Some(!is_error);
-    
+
+    // Also check for success field in the JSON content (ToolOutput format)
+    let content_success = result.get("success")
+        .and_then(|s| s.as_bool());
+
+    // If isError is true, treat as failure regardless of content
+    // If isError is not present, check content's success field
+    let success = if is_error {
+        Some(false)
+    } else {
+        content_success.or(Some(true))
+    };
+
     match (success, expected) {
         (Some(s), Some("false")) => !s,
         (Some(s), Some("true")) | (Some(s), None) => s,
