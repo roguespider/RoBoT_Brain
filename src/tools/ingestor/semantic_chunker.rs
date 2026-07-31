@@ -146,7 +146,6 @@ fn parse_markdown(content: &str, file_name: &str) -> HierarchyNode {
                     );
                     let node = HierarchyNode::new(para_text, HierarchyLevel::Paragraph, paragraph_index, path);
                     root.children.push(node);
-                    paragraph_index += 1;
                 }
                 current_paragraph.clear();
             }
