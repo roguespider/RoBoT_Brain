@@ -28,44 +28,59 @@ impl HypothesisAnalytics {
 
     /// Analyze a collection of hypotheses.
     pub fn analyze(&self, hypotheses: &[Hypothesis]) -> HypothesisAnalyticsReport {
-        let mut report = HypothesisAnalyticsReport {
-            total: hypotheses.len() as u32,
-            ..Default::default()
-        };
+        let mut total = hypotheses.len() as u32;
+        let mut draft = 0u32;
+        let mut active = 0u32;
+        let mut supported = 0u32;
+        let mut rejected = 0u32;
+        let mut archived = 0u32;
+        let mut total_confidence = 0.0f32;
+        let mut total_evaluations = 0u32;
 
         for hypothesis in hypotheses {
             match hypothesis.status {
                 HypothesisStatus::Draft => {
-                    report.draft += 1;
+                    draft += 1;
                 }
 
                 HypothesisStatus::Active => {
-                    report.active += 1;
+                    active += 1;
                 }
 
                 HypothesisStatus::Supported => {
-                    report.supported += 1;
+                    supported += 1;
                 }
 
                 HypothesisStatus::Rejected => {
-                    report.rejected += 1;
+                    rejected += 1;
                 }
 
                 HypothesisStatus::Archived => {
-                    report.archived += 1;
+                    archived += 1;
                 }
             }
 
-            report.total_confidence += hypothesis.confidence.value;
-
-            report.total_evaluations += hypothesis.evaluations;
+            total_confidence += hypothesis.confidence.value;
+            total_evaluations += hypothesis.evaluations;
         }
 
-        if report.total > 0 {
-            report.average_confidence = report.total_confidence / report.total as f32;
-        }
+        let average_confidence = if total > 0 {
+            total_confidence / total as f32
+        } else {
+            0.0
+        };
 
-        report
+        HypothesisAnalyticsReport {
+            total,
+            draft,
+            active,
+            supported,
+            rejected,
+            archived,
+            average_confidence,
+            total_confidence,
+            total_evaluations,
+        }
     }
 
     /// Determine whether the hypothesis system is stable.

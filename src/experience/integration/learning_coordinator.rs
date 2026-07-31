@@ -165,9 +165,57 @@ impl LearningCoordinator {
     /// Per Architecture §5.3:
     /// Event → Experience Recorder → Experience Storage → Scoring → Reflection → Learning Signals
     pub async fn process_experience(&self, experience: &Experience) -> Result<LearningResult> {
+        tracing::info!("Processing experience through learning pipeline: {}", experience.id);
+
+        // Step 1: Score the experience
+        let score = self.score_experience(experience).await;
+        self.metrics.increment("learning.experiences.scored").await;
+
+        // Step 2: Generate reflection (if threshold met)
+        let reflection_id = if self.config.auto_reflect && score >= self.config.reflection_threshold {
+            if let Ok(reflection) = self.generate_reflection(experience).await {
+                self.metrics.increment("learning.reflections.generated").await;
+                Some(reflection.id)
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+
+        // Step 3: Generate hypotheses (if enabled)
+        let hypothesis_ids = if self.config.auto_hypothesize {
+            if let Ok(hypotheses) = self.generate_hypotheses(experience).await {
+                self.metrics.increment("learning.hypotheses.generated").await;
+                hypotheses
+            } else {
+                Vec::new()
+            }
+        } else {
+            Vec::new()
+        };
+
+        Ok(LearningResult {
+            experience_id: experience.id,
+            score,
+            reflection_id,
+            hypothesis_ids,
+            knowledge_id: None,
+        })
+    }
+
+    /// Process an experience through the full learning pipeline
+    ///
+    /// Per Architecture §5.3:
+    /// Event → Experience Recorder → Experience Storage → Scoring → Reflection → Learning Signals
+    #[allow(dead_code)]
+    pub async fn process_experience_full(&self, experience: &Experience) -> Result<LearningResult> {
         let mut result = LearningResult {
             experience_id: experience.id,
-            ..Default::default()
+            score: 0.0,
+            reflection_id: None,
+            hypothesis_ids: Vec::new(),
+            knowledge_id: None,
         };
 
         tracing::info!("Processing experience through learning pipeline: {}", experience.id);
