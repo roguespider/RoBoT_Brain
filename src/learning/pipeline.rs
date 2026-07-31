@@ -234,7 +234,7 @@ mod tests {
         let id1 = pipeline.start_from_input(Uuid::new_v4(), "Input 1");
         pipeline.advance_stage(&id1, PipelineStage::Observation, "Obs 1", None);
         
-        let _id2 = pipeline.start_from_input(Uuid::new_v4(), "Input 2");
+        let _ = pipeline.start_from_input(Uuid::new_v4(), "Input 2");
         
         let stats = pipeline.stats();
         assert_eq!(stats.total_records, 2);

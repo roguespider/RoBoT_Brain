@@ -274,9 +274,9 @@ impl EventSubscriber {
 
     /// Generate reflection from experience
     async fn generate_reflection(&self, experience: &Experience) -> Result<()> {
-        let _reflection = self.reflection_engine
+        let _ = self.reflection_engine
             .generate_from_single(experience, format!("Reflection on: {}", experience.title))
-            .await?;
+            .await;
 
         tracing::info!("Generated reflection for experience: {}", experience.id);
         Ok(())
@@ -298,7 +298,7 @@ impl EventSubscriber {
                 insight.confidence = score.confidence;
                 insight.add_experience(experience.id.to_string());
                 
-                let _behavior = self.evolution_engine.create_behavior_from_insight(&insight).await?;
+                let _ = self.evolution_engine.create_behavior_from_insight(&insight).await;
                 tracing::info!("Created behavior from high-confidence experience: {}", experience.id);
             }
         }
@@ -308,6 +308,7 @@ impl EventSubscriber {
     }
 
     /// Update knowledge store from reflection insights
+    #[allow(unused)]
     async fn update_knowledge_from_reflection(&self, _reflection: &crate::experience::reflection::Reflection) -> Result<()> {
         // Extract insights and create knowledge items
         // This bridges Reflection → Knowledge per Architecture §4.04
@@ -315,6 +316,7 @@ impl EventSubscriber {
     }
 
     /// Update knowledge from validated hypothesis
+    #[allow(unused)]
     async fn update_knowledge_from_hypothesis(
         &self,
         _hypothesis: &crate::experience::hypothesis::core::hypothesis::Hypothesis,
@@ -326,6 +328,7 @@ impl EventSubscriber {
     }
 
     /// Update hypothesis with new evidence
+    #[allow(unused)]
     async fn update_hypothesis_with_evidence(
         &self,
         hypothesis_id: &str,

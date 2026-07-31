@@ -311,6 +311,7 @@ pub struct IngestResult {
 }
 
 /// Summary of ingestion operation
+#[allow(dead_code)]
 #[derive(Debug, Clone, Serialize)]
 pub struct IngestSummary {
     pub total_files: usize,
@@ -399,7 +400,7 @@ pub async fn ingest_file(
                     }
                 }
             }
-            Err(_e) => {
+            Err(_) => {
                 // Try relative to folder as fallback
                 let relative_path = folder.join(file_path);
                 match resolve_path(&relative_path.to_string_lossy()) {
@@ -630,14 +631,11 @@ pub async fn ingest_file(
             }
         }
 
-        let total_files = results.len();
         let successfully_ingested: Vec<String> = results
             .iter()
             .filter(|r| r.success)
             .map(|r| r.file_path.clone())
             .collect();
-
-        let _remaining_count: usize = results.iter().map(|r| r.remaining_count).sum();
 
         // RECORD INGESTED FILES for deletion tracking
         // This enables the delete_ingested_files tool to verify files were actually ingested
@@ -650,13 +648,6 @@ pub async fn ingest_file(
         if let Err(e) = db.cleanup_wal_files() {
             tracing::warn!("Failed to cleanup WAL files: {}", e);
         }
-
-        	        // Get folder path for reference
-        let _folder_display = folder.to_string_lossy().to_string();
-        let _exe_dir = std::env::current_exe()
-            .ok()
-            .and_then(|p| p.parent().map(|p| p.to_string_lossy().to_string()))
-            .unwrap_or_else(|| "unknown".to_string());
 
         // Build detailed file info for the summary BEFORE moving results
         let ingested_file_details: Vec<serde_json::Value> = results
@@ -688,14 +679,6 @@ pub async fn ingest_file(
             None
         };
 
-        let _summary = IngestSummary {
-            total_files,
-            successful,
-            failed,
-            total_chunks,
-            results,
-        };
-
         // Format already ingested files for display
         let already_ingested_filenames: Vec<String> = already_ingested.iter().map(|f| f.filename.clone()).collect();
         
@@ -708,23 +691,6 @@ pub async fn ingest_file(
             }))
         } else {
             None
-        };
-        
-        // Generate user-facing message based on what happened
-        let _user_message = if let Some(ref skipped) = skipped_file {
-            format!("Can't ingest '{}': {}", skipped["filename"], skipped["reason"])
-        } else if let Some(ref failed) = failed_file {
-            format!("'{}' failed: {}. Do you want to retry?", 
-                failed["filename"], failed["error"])
-        } else if !already_ingested.is_empty() && successfully_ingested.is_empty() {
-            format!("'{}' was already ingested. Do you want to ingest it again?", already_ingested_filenames[0])
-        } else if successfully_ingested.is_empty() && already_ingested.is_empty() {
-            "No files to ingest.".to_string()
-        } else if successfully_ingested.len() == 1 {
-            let filename = successfully_ingested[0].rsplit('/').next_back().unwrap_or(&successfully_ingested[0]).rsplit('\\').next_back().unwrap_or(&successfully_ingested[0]);
-            format!("Successfully ingested: {}", filename)
-        } else {
-            format!("Successfully ingested {} files.", successfully_ingested.len())
         };
         
         // Return compact response if summary_only is true
@@ -963,6 +929,7 @@ async fn ingest_archive(
 
 /// Ingest a single file into memory using semantic hierarchical chunking
 /// Per Architecture §6.3: Stores in Working Memory cache
+#[allow(unused)]
 async fn ingest_single_file(
     path: &Path,
     _chunk_size: usize,
@@ -1278,6 +1245,7 @@ fn parse_memory_type(s: &str) -> MemoryType {
 }
 
 /// Transcribe an audio file and store as memory
+#[allow(unused)]
 async fn ingest_audio_file(
     path: &Path,
     _chunk_size: usize,

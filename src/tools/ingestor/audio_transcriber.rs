@@ -563,6 +563,7 @@ fn load_wav(path: &Path) -> Result<Vec<f32>> {
 }
 
 /// Decode WAV sample data into f32 samples
+#[allow(unused)]
 fn decode_wav_samples(data: &[u8], _channels: u16, bits_per_sample: u16) -> Result<Vec<f32>> {
     let bytes_per_sample = (bits_per_sample / 8) as usize;
     let num_samples = data.len() / bytes_per_sample;

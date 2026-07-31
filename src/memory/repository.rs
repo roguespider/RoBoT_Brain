@@ -358,11 +358,11 @@ impl MemoryRepository for SqliteMemoryRepository {
         Ok(result)
     }
 
-    fn add_relationship(&self, from_id: &Uuid, to_id: &Uuid, _relationship_type: &str) -> Result<()> {
+    fn add_relationship(&self, from_id: &Uuid, to_id: &Uuid, relationship_type: &str) -> Result<()> {
         let conn = self.db.connection()?;
         conn.execute(
-            "INSERT OR IGNORE INTO memory_relationships (memory_id, related_id) VALUES (?1, ?2)",
-            rusqlite::params![from_id.to_string(), to_id.to_string()],
+            "INSERT OR IGNORE INTO memory_relationships (memory_id, related_id, relationship_type) VALUES (?1, ?2, ?3)",
+            rusqlite::params![from_id.to_string(), to_id.to_string(), relationship_type],
         )?;
         Ok(())
     }

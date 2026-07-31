@@ -116,6 +116,7 @@ impl ExperienceRecord {
     }
 
     /// Build raw observation - observable facts only
+    #[allow(unused)]
     fn build_observation(action: &str, _params: &HashMap<String, String>) -> String {
         match action {
             "create_file" | "write_file" => "File operation: create/write".to_string(),

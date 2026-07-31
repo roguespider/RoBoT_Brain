@@ -459,7 +459,7 @@ impl LearningCoordinator {
             experience.id,
         );
 
-        let _knowledge_id = self.knowledge_store.add(knowledge).await;
+        let _ = self.knowledge_store.add(knowledge).await;
 
         // Publish KnowledgeUpdated event
         let event = ExperienceEvent::knowledge_updated(Uuid::new_v4());
@@ -496,6 +496,7 @@ impl LearningCoordinator {
     // ========================================================================
 
     /// Start exploration for a hypothesis
+    #[allow(unused)]
     pub async fn start_exploration(
         &self,
         _hypothesis_id: String,
@@ -806,7 +807,7 @@ impl LearningCoordinator {
                     pattern.confidence,
                     Uuid::new_v4(),
                 );
-                let _id = self.knowledge_store.add(generalized_knowledge).await;
+                let _ = self.knowledge_store.add(generalized_knowledge).await;
                 result.generalized_knowledge_count += 1;
             }
         }

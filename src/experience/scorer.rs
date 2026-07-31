@@ -168,6 +168,7 @@ impl ExperienceScorer {
         score.clamp(0.0, 1.0)
     }
 
+    #[allow(unused)]
     fn calculate_novelty(&self, _experience: &Experience) -> f32 {
         // Future:
         // Compare embeddings against previous experiences.

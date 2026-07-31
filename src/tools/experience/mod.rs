@@ -209,6 +209,7 @@ pub async fn execute_record_experience(
 }
 
 /// Execute get experience stats tool
+#[allow(unused)]
 pub async fn execute_get_experience_stats(
     _input: GetExperienceStatsInput,
     database: &Arc<SqliteDatabase>,

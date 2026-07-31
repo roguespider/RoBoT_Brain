@@ -291,6 +291,7 @@ impl ExperienceObserver for MetricsObserver {
         "MetricsObserver"
     }
 
+    #[allow(unused)]
     fn accepts(&self, _event: &ExperienceEvent) -> bool {
         true
     }

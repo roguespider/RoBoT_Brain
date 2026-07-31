@@ -445,3 +445,59 @@ impl MemoryRelationship {
     }
 }
 
+// ==========================================================
+// MEMORY EMBEDDING (Vector Index)
+// ==========================================================
+
+/// A vector embedding for semantic memory search
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct MemoryEmbedding {
+    /// Unique identifier
+    pub id: Uuid,
+    /// Memory this embedding belongs to
+    pub memory_id: Uuid,
+    /// The embedding vector as bytes
+    pub embedding: Vec<f32>,
+    /// Model used to generate the embedding
+    pub model: String,
+}
+
+impl MemoryEmbedding {
+    /// Create a new memory embedding
+    pub fn new(memory_id: Uuid, embedding: Vec<f32>, model: String) -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            memory_id,
+            embedding,
+            model,
+        }
+    }
+
+    /// Calculate cosine similarity with another embedding
+    pub fn cosine_similarity(&self, other: &MemoryEmbedding) -> f32 {
+        if self.embedding.is_empty() || other.embedding.is_empty() {
+            return 0.0;
+        }
+
+        let dot_product: f32 = self.embedding
+            .iter()
+            .zip(other.embedding.iter())
+            .map(|(a, b)| a * b)
+            .sum();
+
+        let magnitude_a = (self.embedding.iter().map(|x| x * x).sum::<f32>()).sqrt();
+        let magnitude_b = (other.embedding.iter().map(|x| x * x).sum::<f32>()).sqrt();
+
+        if magnitude_a == 0.0 || magnitude_b == 0.0 {
+            return 0.0;
+        }
+
+        dot_product / (magnitude_a * magnitude_b)
+    }
+
+    /// Get embedding dimension
+    pub fn dimension(&self) -> usize {
+        self.embedding.len()
+    }
+}
+

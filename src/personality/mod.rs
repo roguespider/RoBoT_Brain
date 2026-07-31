@@ -347,7 +347,7 @@ impl Personality {
     pub fn decide(&self, context: &DecisionContext) -> Decision {
         let approach = self.determine_approach();
         let should_act = self.should_take_risk(context.potential_gain, context.potential_loss);
-        let _should_explore = self.should_explore(context.confidence);
+        let _ = self.should_explore(context.confidence);
 
         let reason = format!(
             "Based on {} personality (curiosity={:.2}, caution={:.2}, risk={:.2}): {}",

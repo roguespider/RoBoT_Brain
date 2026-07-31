@@ -298,6 +298,28 @@ fn build_test_arguments(requirement: &TestRequirement, env: &TestEnvironment) ->
             "memory_type": "note"
         }),
         
+        // Vector Index tools (Embedding operations)
+        "vector_store_embedding" => serde_json::json!({
+            "memory_id": "00000000-0000-0000-0000-000000000001",
+            "embedding": [0.1, 0.2, 0.3, 0.4, 0.5],
+            "model": "test-model"
+        }),
+        "vector_get_embedding" => serde_json::json!({
+            "memory_id": "00000000-0000-0000-0000-000000000001"
+        }),
+        "vector_search_similar" => serde_json::json!({
+            "query_embedding": [0.1, 0.2, 0.3, 0.4, 0.5],
+            "limit": 5,
+            "min_similarity": 0.5
+        }),
+        "vector_list_embeddings" => serde_json::json!({
+            "limit": 100
+        }),
+        "vector_delete_embedding" => serde_json::json!({
+            "memory_id": "00000000-0000-0000-0000-000000000001"
+        }),
+        "vector_get_embedding_stats" => serde_json::json!({}),
+        
         // Experience tools
         "experience_record" => serde_json::json!({
             "action": "Test Action",

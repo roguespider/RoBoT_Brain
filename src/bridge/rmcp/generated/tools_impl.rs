@@ -117,6 +117,119 @@ async fn list_memories(
         Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
 }
+
+#[tool(name = "store_embedding", description = "Store a vector embedding for semantic memory search")]
+async fn store_embedding(
+    &self,
+    Parameters(input): Parameters<tools::memory::StoreEmbeddingInput>,
+) -> ContentBlock {
+    if let Err(e) = self.check_workflow_enforcement("store_embedding").await {
+        tracing::warn!("Workflow enforcement blocked store_embedding: {}", e.message);
+        return enforcement_error_to_content(e);
+    }
+
+    match tools::memory::execute_store_embedding(input, &self.context.database).await {
+        Ok(result) => {
+            self.record_tool_execution("store_embedding", None).await;
+            tool_output_to_content(result)
+        }
+        Err(e) => tool_output_to_content(ToolOutput::error(e)),
+    }
+}
+
+#[tool(name = "get_embedding", description = "Get an embedding by memory ID")]
+async fn get_embedding(
+    &self,
+    Parameters(input): Parameters<tools::memory::GetEmbeddingInput>,
+) -> ContentBlock {
+    if let Err(e) = self.check_workflow_enforcement("get_embedding").await {
+        tracing::warn!("Workflow enforcement blocked get_embedding: {}", e.message);
+        return enforcement_error_to_content(e);
+    }
+
+    match tools::memory::execute_get_embedding(input, &self.context.database).await {
+        Ok(result) => {
+            self.record_tool_execution("get_embedding", None).await;
+            tool_output_to_content(result)
+        }
+        Err(e) => tool_output_to_content(ToolOutput::error(e)),
+    }
+}
+
+#[tool(name = "search_similar", description = "Search for similar memories using vector similarity")]
+async fn search_similar(
+    &self,
+    Parameters(input): Parameters<tools::memory::SearchSimilarInput>,
+) -> ContentBlock {
+    if let Err(e) = self.check_workflow_enforcement("search_similar").await {
+        tracing::warn!("Workflow enforcement blocked search_similar: {}", e.message);
+        return enforcement_error_to_content(e);
+    }
+
+    match tools::memory::execute_search_similar(input, &self.context.database).await {
+        Ok(result) => {
+            self.record_tool_execution("search_similar", None).await;
+            tool_output_to_content(result)
+        }
+        Err(e) => tool_output_to_content(ToolOutput::error(e)),
+    }
+}
+
+#[tool(name = "list_embeddings", description = "List all memory embeddings")]
+async fn list_embeddings(
+    &self,
+    Parameters(input): Parameters<tools::memory::ListEmbeddingsInput>,
+) -> ContentBlock {
+    if let Err(e) = self.check_workflow_enforcement("list_embeddings").await {
+        tracing::warn!("Workflow enforcement blocked list_embeddings: {}", e.message);
+        return enforcement_error_to_content(e);
+    }
+
+    match tools::memory::execute_list_embeddings(input, &self.context.database).await {
+        Ok(result) => {
+            self.record_tool_execution("list_embeddings", None).await;
+            tool_output_to_content(result)
+        }
+        Err(e) => tool_output_to_content(ToolOutput::error(e)),
+    }
+}
+
+#[tool(name = "delete_embedding", description = "Delete an embedding by memory ID")]
+async fn delete_embedding(
+    &self,
+    Parameters(input): Parameters<tools::memory::DeleteEmbeddingInput>,
+) -> ContentBlock {
+    if let Err(e) = self.check_workflow_enforcement("delete_embedding").await {
+        tracing::warn!("Workflow enforcement blocked delete_embedding: {}", e.message);
+        return enforcement_error_to_content(e);
+    }
+
+    match tools::memory::execute_delete_embedding(input, &self.context.database).await {
+        Ok(result) => {
+            self.record_tool_execution("delete_embedding", None).await;
+            tool_output_to_content(result)
+        }
+        Err(e) => tool_output_to_content(ToolOutput::error(e)),
+    }
+}
+
+#[tool(name = "get_embedding_stats", description = "Get vector index statistics")]
+async fn get_embedding_stats(
+    &self,
+) -> ContentBlock {
+    if let Err(e) = self.check_workflow_enforcement("get_embedding_stats").await {
+        tracing::warn!("Workflow enforcement blocked get_embedding_stats: {}", e.message);
+        return enforcement_error_to_content(e);
+    }
+
+    match tools::memory::execute_get_embedding_stats(&self.context.database).await {
+        Ok(result) => {
+            self.record_tool_execution("get_embedding_stats", None).await;
+            tool_output_to_content(result)
+        }
+        Err(e) => tool_output_to_content(ToolOutput::error(e)),
+    }
+}
 #[tool(name = "record_experience", description = "Record a new experience")]
 async fn record_experience(
     &self,

@@ -664,7 +664,7 @@ mod tests {
         item2.status = KnowledgeStatus::Active;
         
         store.add(item1).await;
-        let _id2 = store.add(item2).await;
+        let _ = store.add(item2).await;
         
         let mature = store.get_mature().await;
         assert_eq!(mature.len(), 1);

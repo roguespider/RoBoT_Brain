@@ -55,6 +55,12 @@ pub mod definitions {
     pub const SEARCH_MEMORY: &str = "search_memory";
     pub const GET_MEMORY: &str = "get_memory";
     pub const LIST_MEMORIES: &str = "list_memories";
+    pub const STORE_EMBEDDING: &str = "store_embedding";
+    pub const GET_EMBEDDING: &str = "get_embedding";
+    pub const SEARCH_SIMILAR: &str = "search_similar";
+    pub const LIST_EMBEDDINGS: &str = "list_embeddings";
+    pub const DELETE_EMBEDDING: &str = "delete_embedding";
+    pub const GET_EMBEDDING_STATS: &str = "get_embedding_stats";
     
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         vec![
@@ -143,6 +149,107 @@ pub mod definitions {
                             "default": 20
                         }
                     }
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: STORE_EMBEDDING.to_string(),
+                description: "Store a vector embedding for semantic memory search".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "memory_id": {
+                            "type": "string",
+                            "description": "The memory UUID to associate with this embedding"
+                        },
+                        "embedding": {
+                            "type": "array",
+                            "items": { "type": "number" },
+                            "description": "The vector embedding as an array of floats"
+                        },
+                        "model": {
+                            "type": "string",
+                            "description": "The model used to generate the embedding",
+                            "default": "default"
+                        }
+                    },
+                    "required": ["memory_id", "embedding"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: GET_EMBEDDING.to_string(),
+                description: "Get an embedding by memory ID".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "memory_id": {
+                            "type": "string",
+                            "description": "The memory UUID"
+                        }
+                    },
+                    "required": ["memory_id"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: SEARCH_SIMILAR.to_string(),
+                description: "Search for similar memories using vector similarity".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "query_embedding": {
+                            "type": "array",
+                            "items": { "type": "number" },
+                            "description": "The query vector as an array of floats"
+                        },
+                        "limit": {
+                            "type": "number",
+                            "description": "Maximum number of results",
+                            "default": 5
+                        },
+                        "min_similarity": {
+                            "type": "number",
+                            "description": "Minimum cosine similarity threshold (0.0 - 1.0)",
+                            "minimum": 0.0,
+                            "maximum": 1.0,
+                            "default": 0.5
+                        }
+                    },
+                    "required": ["query_embedding"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: LIST_EMBEDDINGS.to_string(),
+                description: "List all memory embeddings".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "limit": {
+                            "type": "number",
+                            "description": "Maximum number of results",
+                            "default": 100
+                        }
+                    }
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: DELETE_EMBEDDING.to_string(),
+                description: "Delete an embedding by memory ID".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "memory_id": {
+                            "type": "string",
+                            "description": "The memory UUID"
+                        }
+                    },
+                    "required": ["memory_id"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: GET_EMBEDDING_STATS.to_string(),
+                description: "Get vector index statistics".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {}
                 }),
             },
         ]
@@ -440,6 +547,7 @@ pub async fn execute_get_memory(
 
 /// Execute list memories tool
 /// Per Architecture §6.3: Uses MemoryRetrieval service
+#[allow(unused)]
 pub async fn execute_list_memories(
     input: ListMemoriesInput,
     _database: &Arc<SqliteDatabase>,
@@ -470,5 +578,189 @@ pub async fn execute_list_memories(
     Ok(ToolOutput::success(serde_json::json!({
         "memories": result,
         "count": result.len()
+    })))
+}
+
+// ============================================================================
+// VECTOR INDEX TOOLS (Embedding Operations)
+// ============================================================================
+
+/// Tool: Store embedding input
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct StoreEmbeddingInput {
+    pub memory_id: String,
+    pub embedding: Vec<f32>,
+    pub model: Option<String>,
+}
+
+/// Tool: Get embedding input
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct GetEmbeddingInput {
+    pub memory_id: String,
+}
+
+/// Tool: Search similar input
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct SearchSimilarInput {
+    pub query_embedding: Vec<f32>,
+    pub limit: Option<usize>,
+    pub min_similarity: Option<f32>,
+}
+
+/// Tool: List embeddings input
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct ListEmbeddingsInput {
+    pub limit: Option<usize>,
+}
+
+/// Tool: Delete embedding input
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct DeleteEmbeddingInput {
+    pub memory_id: String,
+}
+
+/// Execute store embedding tool
+pub async fn execute_store_embedding(
+    input: StoreEmbeddingInput,
+    database: &Arc<SqliteDatabase>,
+) -> Result<ToolOutput> {
+    let memory_uuid = Uuid::parse_str(&input.memory_id)
+        .map_err(|e| anyhow::anyhow!("Invalid memory UUID: {}", e))?;
+    
+    let model = input.model.unwrap_or_else(|| "default".to_string());
+    
+    let embedding = crate::database::models::MemoryEmbedding::new(
+        memory_uuid,
+        input.embedding,
+        model,
+    );
+    
+    let conn = database.connection()?;
+    queries::insert_embedding(&conn, &embedding)?;
+    
+    Ok(ToolOutput::success(serde_json::json!({
+        "success": true,
+        "id": embedding.id.to_string(),
+        "memory_id": embedding.memory_id.to_string(),
+        "dimension": embedding.dimension(),
+        "model": embedding.model
+    })))
+}
+
+/// Execute get embedding tool
+pub async fn execute_get_embedding(
+    input: GetEmbeddingInput,
+    database: &Arc<SqliteDatabase>,
+) -> Result<ToolOutput> {
+    let memory_uuid = Uuid::parse_str(&input.memory_id)
+        .map_err(|e| anyhow::anyhow!("Invalid memory UUID: {}", e))?;
+    
+    let conn = database.connection()?;
+    
+    match queries::get_embedding_by_memory_id(&conn, memory_uuid)? {
+        Some(embedding) => Ok(ToolOutput::success(serde_json::json!({
+            "found": true,
+            "id": embedding.id.to_string(),
+            "memory_id": embedding.memory_id.to_string(),
+            "dimension": embedding.dimension(),
+            "model": embedding.model,
+            "embedding": embedding.embedding
+        }))),
+        None => Ok(ToolOutput::success(serde_json::json!({
+            "found": false
+        }))),
+    }
+}
+
+/// Execute search similar tool using cosine similarity
+pub async fn execute_search_similar(
+    input: SearchSimilarInput,
+    database: &Arc<SqliteDatabase>,
+) -> Result<ToolOutput> {
+    let limit = input.limit.unwrap_or(5);
+    let min_similarity = input.min_similarity.unwrap_or(0.5);
+    
+    let query_embedding = crate::database::models::MemoryEmbedding::new(
+        Uuid::new_v4(),
+        input.query_embedding,
+        "query".to_string(),
+    );
+    
+    let conn = database.connection()?;
+    let embeddings = queries::list_embeddings(&conn, 1000)?;
+    
+    let mut similarities: Vec<(String, f32)> = Vec::new();
+    
+    for emb in embeddings {
+        let similarity = query_embedding.cosine_similarity(&emb);
+        if similarity >= min_similarity {
+            similarities.push((emb.memory_id.to_string(), similarity));
+        }
+    }
+    
+    similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+    similarities.truncate(limit);
+    
+    Ok(ToolOutput::success(serde_json::json!({
+        "results": similarities,
+        "count": similarities.len(),
+        "query_dimension": query_embedding.dimension()
+    })))
+}
+
+/// Execute list embeddings tool
+pub async fn execute_list_embeddings(
+    input: ListEmbeddingsInput,
+    database: &Arc<SqliteDatabase>,
+) -> Result<ToolOutput> {
+    let limit = input.limit.unwrap_or(100);
+    
+    let conn = database.connection()?;
+    let embeddings = queries::list_embeddings(&conn, limit)?;
+    
+    let result: Vec<serde_json::Value> = embeddings
+        .into_iter()
+        .map(|e| {
+            serde_json::json!({
+                "id": e.id.to_string(),
+                "memory_id": e.memory_id.to_string(),
+                "dimension": e.dimension(),
+                "model": e.model
+            })
+        })
+        .collect();
+    
+    Ok(ToolOutput::success(serde_json::json!({
+        "embeddings": result,
+        "count": result.len()
+    })))
+}
+
+/// Execute delete embedding tool
+pub async fn execute_delete_embedding(
+    input: DeleteEmbeddingInput,
+    database: &Arc<SqliteDatabase>,
+) -> Result<ToolOutput> {
+    let memory_uuid = Uuid::parse_str(&input.memory_id)
+        .map_err(|e| anyhow::anyhow!("Invalid memory UUID: {}", e))?;
+    
+    let conn = database.connection()?;
+    let deleted = queries::delete_embedding_by_memory_id(&conn, memory_uuid)?;
+    
+    Ok(ToolOutput::success(serde_json::json!({
+        "success": deleted,
+        "deleted": deleted
+    })))
+}
+
+/// Execute get embedding stats tool
+pub async fn execute_get_embedding_stats(
+    database: &Arc<SqliteDatabase>,
+) -> Result<ToolOutput> {
+    let conn = database.connection()?;
+    let count = queries::count_embeddings(&conn)?;
+    
+    Ok(ToolOutput::success(serde_json::json!({
+        "total_embeddings": count
     })))
 }

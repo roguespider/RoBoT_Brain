@@ -248,6 +248,7 @@ impl WorkflowEngine {
     }
 
     /// Automatically read relevant memories before executing an action
+    #[allow(unused)]
     pub async fn read_memory_before_action(
         &self,
         _action: &str,

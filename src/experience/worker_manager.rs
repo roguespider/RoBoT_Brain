@@ -35,8 +35,6 @@ struct WorkerHandle {
     sender: mpsc::Sender<ObserverJob>,
     /// Statistics for this worker
     stats: Arc<WorkerStats>,
-    /// Tokio handle for the worker task
-    _task: tokio::task::JoinHandle<()>,
 }
 
 impl WorkerManager {
@@ -73,8 +71,8 @@ impl WorkerManager {
         // Clone name for the async task
         let task_name = name.clone();
         
-        // Spawn the worker task
-        let task = tokio::spawn(async move {
+        // Spawn the worker task - task runs until channel closes or observer.shutdown()
+        tokio::spawn(async move {
             if let Err(e) = worker.start().await {
                 tracing::error!("Worker for {} stopped with error: {}", task_name, e);
             }
@@ -84,7 +82,6 @@ impl WorkerManager {
         workers.insert(name.clone(), WorkerHandle {
             sender,
             stats,
-            _task: task,
         });
 
         tracing::info!("Registered observer: {} with worker", name);
@@ -252,7 +249,7 @@ mod tests {
 
         let manager_clone = manager.clone();
         let bus_clone = bus.clone();
-        let _handle = tokio::spawn(async move {
+        tokio::spawn(async move {
             let mut receiver = bus_clone.subscribe();
             while let Ok(event) = receiver.recv().await {
                 let _ = manager_clone.broadcast_event(event).await;
@@ -288,7 +285,7 @@ mod tests {
 
         let manager_clone = manager.clone();
         let bus_clone = bus.clone();
-        let _handle = tokio::spawn(async move {
+        tokio::spawn(async move {
             let mut receiver = bus_clone.subscribe();
             while let Ok(event) = receiver.recv().await {
                 let _ = manager_clone.broadcast_event(event).await;

@@ -322,6 +322,7 @@ pub async fn execute_record_knowledge_application(
 }
 
 /// Execute get knowledge stats tool
+#[allow(unused)]
 pub async fn execute_get_knowledge_stats(
     _input: GetKnowledgeStatsInput,
     knowledge: &Arc<KnowledgeStore>,

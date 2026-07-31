@@ -31,7 +31,6 @@ use crate::experience::scheduler::{Scheduler, TaskSchedule, TaskType};
 use crate::experience::scorer::ExperienceScorer;
 use crate::experience::worker_manager::WorkerManager;
 use crate::knowledge::KnowledgeStore;
-use crate::learning::{LineageTracker, WorkingMemory};
 use crate::personality::{Personality, PersonalityTraits};
 use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory as MemWorkingMemory};
 use crate::planner::{Planner, PolicyEngine};
@@ -43,33 +42,34 @@ use crate::workflows::engine::WorkflowEngine;
 /// Root application container.
 ///
 /// Owns long-running services required by RoBoT.
+#[allow(unused)]
 pub struct App {
     /// Persistent database layer.
-    _database: Arc<SqliteDatabase>,
+    database: Arc<SqliteDatabase>,
 
     /// Event bus for pub/sub.
-    _bus: Arc<ExperienceBus>,
+    bus: Arc<ExperienceBus>,
 
     /// Worker manager for background job processing (Architecture §22).
-    _worker_manager: Arc<WorkerManager>,
+    worker_manager: Arc<WorkerManager>,
 
     /// Experience system coordinator.
-    _coordinator: Arc<ExperienceCoordinator>,
+    coordinator: Arc<ExperienceCoordinator>,
 
     /// Hypothesis engine for belief management.
-    _hypothesis_engine: Arc<std::sync::Mutex<HypothesisEngine>>,
+    hypothesis_engine: Arc<std::sync::Mutex<HypothesisEngine>>,
 
     /// Experience recorder for structured experience creation.
-    _experience_recorder: Arc<ExperienceRecorder>,
+    experience_recorder: Arc<ExperienceRecorder>,
 
     /// Reflection pipeline for processing experiences into insights.
-    _reflection_pipeline: Arc<ReflectionPipeline>,
+    reflection_pipeline: Arc<ReflectionPipeline>,
 
     /// Background task scheduler.
-    _scheduler: Arc<Scheduler>,
+    scheduler: Arc<Scheduler>,
     
     /// Memory pipeline for working→permanent consolidation.
-    _memory_pipeline: Arc<crate::memory::pipeline::MemoryPipeline>,
+    memory_pipeline: Arc<crate::memory::pipeline::MemoryPipeline>,
 
     /// MCP context shared with bridge - owns all subsystems.
     mcp_context: Arc<McpContext>,
@@ -155,8 +155,6 @@ impl App {
         tracing::info!("Worker manager subscribed to bus (total subscribers: {})", bus.subscriber_count());
 
         // Create working memory, lineage tracker, and knowledge store
-        let _working_memory = Arc::new(WorkingMemory::new(1000));
-        let _lineage_tracker = Arc::new(LineageTracker::new());
         let knowledge_store = Arc::new(KnowledgeStore::new(10000));
         
         // Create skills registry - manages reusable capabilities (Architecture §15)
@@ -182,7 +180,7 @@ impl App {
         ));
         
         // Start the event subscriber background task
-        let _event_subscriber_handle = start_event_subscriber(bus.clone(), event_subscriber);
+        start_event_subscriber(bus.clone(), event_subscriber);
         tracing::info!("Event subscriber started for learning pipeline");
 
         // Create memory system - Working and Permanent Memory (Architecture §6.3)
@@ -274,15 +272,15 @@ impl App {
         tracing::info!("RoBoT initialized successfully");
 
         Ok(Self {
-            _database: database,
-            _bus: bus,
-            _worker_manager: worker_manager,
-            _coordinator: coordinator,
-            _hypothesis_engine: hypothesis_engine,
-            _experience_recorder: experience_recorder,
-            _reflection_pipeline: reflection_pipeline,
-            _scheduler: scheduler,
-            _memory_pipeline: memory_pipeline,
+            database,
+            bus,
+            worker_manager,
+            coordinator,
+            hypothesis_engine,
+            experience_recorder,
+            reflection_pipeline,
+            scheduler,
+            memory_pipeline,
             mcp_context,
             personality: Arc::new(Mutex::new(Personality::new())),
             acp_router: Arc::new(AcpRouter::new(Arc::new(AcpRegistry::new()))),
@@ -496,12 +494,10 @@ impl App {
             .await;
 
         // Exploration analysis handler - analyzes exploration results and patterns
-        let exploration_engine = evolution_engine.clone();
         scheduler
             .register_handler(
                 TaskType::ExplorationAnalysis,
-                Box::new(move || {
-                    let _engine = exploration_engine.clone();
+                Box::new(|| {
                     Box::pin(async move {
                         tracing::debug!("Executing scheduled exploration analysis");
                         
