@@ -332,6 +332,13 @@ fn build_test_arguments(requirement: &TestRequirement, env: &TestEnvironment) ->
         "experience_list" => serde_json::json!({}),
         "experience_stats" => serde_json::json!({}),
         
+        // Background Workers tools (per Architecture §22)
+        "worker_get_stats" => serde_json::json!({}),
+        "worker_get_stats_filtered" => serde_json::json!({
+            "observer_name": "ExperienceScorer"
+        }),
+        "worker_get_count" => serde_json::json!({}),
+        
         // Reflection tools
         "reflection_create" => serde_json::json!({
             "title": "Test Reflection",

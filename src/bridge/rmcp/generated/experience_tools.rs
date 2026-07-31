@@ -89,3 +89,46 @@
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
+
+    #[tool(
+        name = "get_worker_stats",
+        description = "Get background worker statistics for observers"
+    )]
+    async fn get_worker_stats(
+        &self,
+        Parameters(input): Parameters<tools::experience::GetWorkerStatsInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("get_worker_stats").await {
+            tracing::warn!("Workflow enforcement blocked get_worker_stats: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+
+        match tools::experience::execute_get_worker_stats(input, &self.context.worker_manager).await {
+            Ok(result) => {
+                self.record_tool_execution("get_worker_stats", None).await;
+                tool_output_to_content(result)
+            }
+            Err(e) => tool_output_to_content(ToolOutput::error(e)),
+        }
+    }
+
+    #[tool(
+        name = "get_worker_count",
+        description = "Get the number of active background workers"
+    )]
+    async fn get_worker_count(
+        &self,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("get_worker_count").await {
+            tracing::warn!("Workflow enforcement blocked get_worker_count: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+
+        match tools::experience::execute_get_worker_count(&self.context.worker_manager).await {
+            Ok(result) => {
+                self.record_tool_execution("get_worker_count", None).await;
+                tool_output_to_content(result)
+            }
+            Err(e) => tool_output_to_content(ToolOutput::error(e)),
+        }
+    }

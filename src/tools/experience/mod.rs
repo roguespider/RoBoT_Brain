@@ -14,6 +14,7 @@ use crate::database::queries;
 use crate::database::sqlite::SqliteDatabase;
 use crate::experience::coordinator::ExperienceCoordinator;
 use crate::experience::types::{Experience, ExperienceOutcome, ExperienceType, OutcomeKind};
+use crate::experience::worker_manager::WorkerManager;
 use crate::tools::ToolOutput;
 
 /// Tool: Record an experience
@@ -46,12 +47,28 @@ pub struct GetExperienceInput {
     pub id: String,
 }
 
+// ============================================================================
+// Background Worker Tools
+// ============================================================================
+
+/// Tool: Get worker statistics
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct GetWorkerStatsInput {
+    pub observer_name: Option<String>,
+}
+
+/// Tool: Get worker count
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct GetWorkerCountInput {}
+
 /// Experience tool definitions
 pub mod definitions {
     pub const RECORD_EXPERIENCE: &str = "record_experience";
     pub const GET_EXPERIENCE_STATS: &str = "get_experience_stats";
     pub const LIST_EXPERIENCES: &str = "list_experiences";
     pub const GET_EXPERIENCE: &str = "get_experience";
+    pub const GET_WORKER_STATS: &str = "get_worker_stats";
+    pub const GET_WORKER_COUNT: &str = "get_worker_count";
     
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         vec![
@@ -131,6 +148,27 @@ pub mod definitions {
                         }
                     },
                     "required": ["id"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: GET_WORKER_STATS.to_string(),
+                description: "Get background worker statistics for observers".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "observer_name": {
+                            "type": "string",
+                            "description": "Filter stats by observer name (optional)"
+                        }
+                    }
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: GET_WORKER_COUNT.to_string(),
+                description: "Get the number of active background workers".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {}
                 }),
             },
         ]
@@ -303,4 +341,53 @@ pub async fn execute_get_experience(
             "experience": serde_json::Value::Null
         }))),
     }
+}
+
+// ============================================================================
+// Background Worker Tools Implementation
+// ============================================================================
+
+/// Execute get worker stats tool
+pub async fn execute_get_worker_stats(
+    input: GetWorkerStatsInput,
+    worker_manager: &Arc<WorkerManager>,
+) -> Result<ToolOutput> {
+    let stats = if let Some(observer_name) = &input.observer_name {
+        worker_manager.get_observer_stats(observer_name).await
+            .map(|s| {
+                serde_json::json!([{
+                    "observer_name": s.observer_name,
+                    "jobs_processed": s.jobs_processed.load(std::sync::atomic::Ordering::SeqCst),
+                    "jobs_failed": s.jobs_failed.load(std::sync::atomic::Ordering::SeqCst),
+                    "jobs_retried": s.jobs_retried.load(std::sync::atomic::Ordering::SeqCst),
+                }])
+            })
+            .unwrap_or_else(|| serde_json::json!([]))
+    } else {
+        let all_stats = worker_manager.get_stats().await;
+        serde_json::json!(all_stats.iter().map(|s| {
+            serde_json::json!({
+                "observer_name": s.observer_name,
+                "jobs_processed": s.jobs_processed.load(std::sync::atomic::Ordering::SeqCst),
+                "jobs_failed": s.jobs_failed.load(std::sync::atomic::Ordering::SeqCst),
+                "jobs_retried": s.jobs_retried.load(std::sync::atomic::Ordering::SeqCst),
+            })
+        }).collect::<Vec<_>>())
+    };
+
+    Ok(ToolOutput::success(serde_json::json!({
+        "stats": stats,
+        "worker_count": worker_manager.worker_count().await
+    })))
+}
+
+/// Execute get worker count tool
+pub async fn execute_get_worker_count(
+    worker_manager: &Arc<WorkerManager>,
+) -> Result<ToolOutput> {
+    let count = worker_manager.worker_count().await;
+    
+    Ok(ToolOutput::success(serde_json::json!({
+        "worker_count": count
+    })))
 }

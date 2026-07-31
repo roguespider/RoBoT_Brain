@@ -249,6 +249,7 @@ impl App {
             database.clone(),
             bus.clone(),
             coordinator.clone(),
+            worker_manager.clone(),
             reflection_engine.clone(),
             evolution_engine.clone(),
             scheduler.clone(),

@@ -11,6 +11,7 @@ use crate::experience::evolution::EvolutionEngine;
 use crate::experience::metrics::MetricsCollector;
 use crate::experience::reflection::ReflectionEngine;
 use crate::experience::scheduler::Scheduler;
+use crate::experience::worker_manager::WorkerManager;
 use crate::knowledge::KnowledgeStore;
 use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory};
 use crate::planner::{Planner, PolicyEngine};
@@ -29,6 +30,9 @@ pub struct McpContext {
 
     /// Experience coordinator (used by experience tools)
     pub coordinator: Arc<ExperienceCoordinator>,
+
+    /// Background worker manager (per Architecture §22)
+    pub worker_manager: Arc<WorkerManager>,
 
     /// Reflection engine (used by reflection tools)
     pub reflection: Arc<ReflectionEngine>,
@@ -80,6 +84,7 @@ impl McpContext {
         database: Arc<SqliteDatabase>,
         bus: Arc<ExperienceBus>,
         coordinator: Arc<ExperienceCoordinator>,
+        worker_manager: Arc<WorkerManager>,
         reflection: Arc<ReflectionEngine>,
         evolution: Arc<EvolutionEngine>,
         scheduler: Arc<Scheduler>,
@@ -97,6 +102,7 @@ impl McpContext {
             database,
             bus,
             coordinator,
+            worker_manager,
             reflection,
             evolution,
             scheduler,
