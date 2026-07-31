@@ -342,7 +342,7 @@ impl LearningCoordinator {
 
         // Publish ReflectionCompleted event
         let event = ExperienceEvent::reflection_completed(experience.id, Uuid::parse_str(&reflection.id).unwrap_or_default());
-        let _ = self.bus.publish(event);
+        self.bus.publish(event);
 
         Ok(reflection)
     }
@@ -369,7 +369,7 @@ impl LearningCoordinator {
         
         // Publish HypothesisGenerated event
         let event = ExperienceEvent::hypothesis_generated(experience.id, Uuid::new_v4());
-        let _ = self.bus.publish(event);
+        self.bus.publish(event);
 
         Ok(hypothesis_ids)
     }
@@ -463,7 +463,7 @@ impl LearningCoordinator {
 
         // Publish KnowledgeUpdated event
         let event = ExperienceEvent::knowledge_updated(Uuid::new_v4());
-        let _ = self.bus.publish(event);
+        self.bus.publish(event);
 
         Ok(())
     }
@@ -516,7 +516,7 @@ impl LearningCoordinator {
 
         // Publish ExplorationStarted event
         let event = ExperienceEvent::exploration_started(Uuid::new_v4());
-        let _ = self.bus.publish(event);
+        self.bus.publish(event);
 
         Ok(exploration_id)
     }
@@ -531,7 +531,7 @@ impl LearningCoordinator {
 
         // Publish ExplorationCompleted event
         let event = ExperienceEvent::exploration_completed(Uuid::new_v4(), Uuid::new_v4());
-        let _ = self.bus.publish(event);
+        self.bus.publish(event);
 
         Ok(())
     }
@@ -597,7 +597,7 @@ impl LearningCoordinator {
 
         // Publish ReputationUpdated event
         let event = ExperienceEvent::reputation_updated(Uuid::new_v4(), source_str, impact as f32);
-        let _ = self.bus.publish(event);
+        self.bus.publish(event);
 
         Ok(())
     }
@@ -907,7 +907,7 @@ impl LearningCoordinator {
             target_domain.to_string(),
             result.transferred_count as u32,
         );
-        let _ = self.bus.publish(event);
+        self.bus.publish(event);
         
         self.metrics.increment("learning.transfers").await;
         
