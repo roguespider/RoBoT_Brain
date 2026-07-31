@@ -21,6 +21,8 @@
 
 //! ```
 
+#![allow(clippy::module_inception)]
+
 pub mod attempt;
 
 pub mod exploration;

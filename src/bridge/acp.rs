@@ -280,7 +280,7 @@ pub enum AcpErrorCode {
 
 #[allow(dead_code)]
 impl AcpErrorCode {
-    pub fn to_code(&self) -> u16 {
+    pub fn to_code(self) -> u16 {
         match self {
             Self::MalformedMessage => 1001,
             Self::UnknownReceiver => 1002,
@@ -447,10 +447,12 @@ impl AcpAgent for SimpleAgent {
 // ============================================================================
 
 /// ACP registry for agent discovery
+#[allow(dead_code)]
 pub struct AcpRegistry {
     agents: std::sync::RwLock<HashMap<AcpAgentId, Arc<dyn AcpAgent>>>,
 }
 
+#[allow(dead_code)]
 impl AcpRegistry {
     pub fn new() -> Self {
         Self {
@@ -526,11 +528,14 @@ impl Default for AcpRegistry {
 // ============================================================================
 
 /// ACP router for routing messages between agents
+#[allow(dead_code)]
 pub struct AcpRouter {
     registry: Arc<AcpRegistry>,
+    #[allow(clippy::type_complexity)]
     handlers: std::sync::RwLock<HashMap<String, Box<dyn Fn(AcpMessage) -> Result<Option<AcpMessage>> + Send + Sync>>>,
 }
 
+#[allow(dead_code)]
 impl AcpRouter {
     pub fn new(registry: Arc<AcpRegistry>) -> Self {
         Self {
@@ -584,6 +589,7 @@ impl AcpRouter {
 // ============================================================================
 
 /// Builder for ACP messages
+#[allow(dead_code)]
 pub struct AcpMessageBuilder {
     sender: Option<AcpAgentId>,
     receiver: Option<AcpAgentId>,
@@ -594,6 +600,7 @@ pub struct AcpMessageBuilder {
     reply_to: Option<String>,
 }
 
+#[allow(dead_code)]
 impl AcpMessageBuilder {
     pub fn new() -> Self {
         Self {

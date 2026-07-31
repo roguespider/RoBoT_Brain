@@ -67,10 +67,10 @@ pub async fn run_mcp_workflow_tests(
     stats: &mut TestStats,
     _filter: Option<&str>,
 ) -> anyhow::Result<McpWorkflowTestResults> {
-    println!("\n{}", "=".repeat(80));
-    println!("MCP WORKFLOW INTEGRATION TESTS");
-    println!("Testing agent workflow discovery, execution, and MCP integration");
-    println!("{}", "=".repeat(80));
+    crate::teeprintln!("\n{}", "=".repeat(80));
+    crate::teeprintln!("MCP WORKFLOW INTEGRATION TESTS");
+    crate::teeprintln!("Testing agent workflow discovery, execution, and MCP integration");
+    crate::teeprintln!("{}", "=".repeat(80));
     
     let results = McpWorkflowTestResults {
         workflow_discovery: test_workflow_discovery(client, stats).await?,
@@ -93,8 +93,8 @@ async fn test_workflow_discovery(
     client: &mut TestMcpClient,
     stats: &mut TestStats,
 ) -> anyhow::Result<WorkflowDiscoveryResults> {
-    println!("\n📋 Phase 1: Workflow Discovery Tests");
-    println!("{}", "-".repeat(60));
+    crate::teeprintln!("\n📋 Phase 1: Workflow Discovery Tests");
+    crate::teeprintln!("{}", "-".repeat(60));
     
     let mut results = WorkflowDiscoveryResults {
         get_workflow_available: false,
@@ -104,12 +104,12 @@ async fn test_workflow_discovery(
     };
     
     // Test 1: get_workflow tool is available
-    println!("\n  Testing get_workflow tool availability...");
+    crate::teeprintln!("\n  Testing get_workflow tool availability...");
     match client.call_tool("get_workflow", serde_json::json!({
         "purpose": "default"
     })).await {
         Ok(result) => {
-            println!("    ✓ get_workflow('default') - SUCCESS");
+            crate::teeprintln!("    ✓ get_workflow('default') - SUCCESS");
             stats.passed += 1;
             results.get_workflow_available = true;
             results.default_workflow_retrieved = true;
@@ -118,18 +118,18 @@ async fn test_workflow_discovery(
             if let Some(text) = extract_content_text(&result) {
                 if text.contains("workflow") || text.contains("rules") || text.contains("guidelines") {
                     results.workflow_rules_understood = true;
-                    println!("    ✓ Workflow rules/instructions present in response");
+                    crate::teeprintln!("    ✓ Workflow rules/instructions present in response");
                 }
             }
         }
         Err(e) => {
-            println!("    ✗ get_workflow('default') - FAILED: {}", e);
+            crate::teeprintln!("    ✗ get_workflow('default') - FAILED: {}", e);
             stats.failed += 1;
         }
     }
     
     // Test 2: Get workflow for specific purposes
-    println!("\n  Testing purpose-based workflow retrieval...");
+    crate::teeprintln!("\n  Testing purpose-based workflow retrieval...");
     let purposes = vec!["file_ingestion", "memory_search", "general", "experience_recording"];
     
     for purpose in purposes {
@@ -137,12 +137,12 @@ async fn test_workflow_discovery(
             "purpose": purpose
         })).await {
             Ok(_result) => {
-                println!("    ✓ get_workflow('{}') - SUCCESS", purpose);
+                crate::teeprintln!("    ✓ get_workflow('{}') - SUCCESS", purpose);
                 stats.passed += 1;
                 results.purpose_based_workflows.push(purpose.to_string());
             }
             Err(e) => {
-                println!("    ✗ get_workflow('{}') - FAILED: {}", purpose, e);
+                crate::teeprintln!("    ✗ get_workflow('{}') - FAILED: {}", purpose, e);
                 stats.failed += 1;
             }
         }
@@ -159,8 +159,8 @@ async fn test_workflow_execution(
     client: &mut TestMcpClient,
     stats: &mut TestStats,
 ) -> anyhow::Result<WorkflowExecutionResults> {
-    println!("\n📋 Phase 2: Workflow Execution Tests");
-    println!("{}", "-".repeat(60));
+    crate::teeprintln!("\n📋 Phase 2: Workflow Execution Tests");
+    crate::teeprintln!("{}", "-".repeat(60));
     
     let mut results = WorkflowExecutionResults {
         create_workflow_succeeds: false,
@@ -172,12 +172,12 @@ async fn test_workflow_execution(
     };
     
     // Test 1: Create a workflow
-    println!("\n  Testing workflow creation...");
+    crate::teeprintln!("\n  Testing workflow creation...");
     match client.call_tool("create_workflow", serde_json::json!({
         "name": "MCP Integration Test Workflow"
     })).await {
         Ok(result) => {
-            println!("    ✓ create_workflow - SUCCESS");
+            crate::teeprintln!("    ✓ create_workflow - SUCCESS");
             stats.passed += 1;
             results.create_workflow_succeeds = true;
             
@@ -189,19 +189,19 @@ async fn test_workflow_execution(
                         .or_else(|| json.get("workflow").and_then(|w| w.get("id"))) 
                     {
                         results.workflow_id_generated = id.as_str().map(String::from);
-                        println!("    ✓ Workflow ID: {:?}", results.workflow_id_generated);
+                        crate::teeprintln!("    ✓ Workflow ID: {:?}", results.workflow_id_generated);
                     }
                 }
             }
         }
         Err(e) => {
-            println!("    ✗ create_workflow - FAILED: {}", e);
+            crate::teeprintln!("    ✗ create_workflow - FAILED: {}", e);
             stats.failed += 1;
         }
     }
     
     // Test 2: Add workflow steps
-    println!("\n  Testing adding workflow steps...");
+    crate::teeprintln!("\n  Testing adding workflow steps...");
     let steps = vec![
         ("Initialize", "initialize"),
         ("Process", "process_data"),
@@ -221,19 +221,19 @@ async fn test_workflow_execution(
         
         match client.call_tool("add_workflow_step", args).await {
             Ok(_) => {
-                println!("    ✓ add_workflow_step('{}', '{}') - SUCCESS", name, action);
+                crate::teeprintln!("    ✓ add_workflow_step('{}', '{}') - SUCCESS", name, action);
                 stats.passed += 1;
                 results.add_step_succeeds = true;
             }
             Err(e) => {
-                println!("    ✗ add_workflow_step('{}', '{}') - FAILED: {}", name, action, e);
+                crate::teeprintln!("    ✗ add_workflow_step('{}', '{}') - FAILED: {}", name, action, e);
                 stats.failed += 1;
             }
         }
     }
     
     // Test 3: Get workflow status
-    println!("\n  Testing workflow status retrieval...");
+    crate::teeprintln!("\n  Testing workflow status retrieval...");
     let mut status_args = serde_json::json!({});
     if let Some(ref id) = results.workflow_id_generated {
         status_args["workflow_id"] = serde_json::json!(id);
@@ -241,85 +241,85 @@ async fn test_workflow_execution(
     
     match client.call_tool("get_workflow_status", status_args).await {
         Ok(result) => {
-            println!("    ✓ get_workflow_status - SUCCESS");
+            crate::teeprintln!("    ✓ get_workflow_status - SUCCESS");
             stats.passed += 1;
             
             // Check if workflow has correct structure
             if let Some(text) = extract_content_text(&result) {
                 if text.contains("id") || text.contains("status") || text.contains("workflow") {
-                    println!("    ✓ Workflow status contains expected fields");
+                    crate::teeprintln!("    ✓ Workflow status contains expected fields");
                 }
             }
         }
         Err(e) => {
-            println!("    ✗ get_workflow_status - FAILED: {}", e);
+            crate::teeprintln!("    ✗ get_workflow_status - FAILED: {}", e);
             stats.failed += 1;
         }
     }
     
     // Test 4: List workflows
-    println!("\n  Testing workflow listing...");
+    crate::teeprintln!("\n  Testing workflow listing...");
     match client.call_tool("list_workflows", serde_json::json!({})).await {
         Ok(result) => {
-            println!("    ✓ list_workflows - SUCCESS");
+            crate::teeprintln!("    ✓ list_workflows - SUCCESS");
             stats.passed += 1;
             
             // Check if response contains workflow list
             if let Some(text) = extract_content_text(&result) {
                 if text.contains("workflows") || text.contains("[]") || text.len() > 10 {
-                    println!("    ✓ Workflow list retrieved successfully");
+                    crate::teeprintln!("    ✓ Workflow list retrieved successfully");
                 }
             }
         }
         Err(e) => {
-            println!("    ✗ list_workflows - FAILED: {}", e);
+            crate::teeprintln!("    ✗ list_workflows - FAILED: {}", e);
             stats.failed += 1;
         }
     }
     
     // Test 5: Start workflow (if we have a workflow ID)
     if let Some(ref workflow_id) = results.workflow_id_generated {
-        println!("\n  Testing workflow start...");
+        crate::teeprintln!("\n  Testing workflow start...");
         match client.call_tool("start_workflow", serde_json::json!({
             "workflow_id": workflow_id
         })).await {
             Ok(_result) => {
-                println!("    ✓ start_workflow - SUCCESS");
+                crate::teeprintln!("    ✓ start_workflow - SUCCESS");
                 stats.passed += 1;
                 results.start_workflow_succeeds = true;
                 results.workflow_completes = true;
             }
             Err(e) => {
-                println!("    ✗ start_workflow - FAILED: {}", e);
+                crate::teeprintln!("    ✗ start_workflow - FAILED: {}", e);
                 stats.failed += 1;
             }
         }
         
         // Test 6: Pause and resume
-        println!("\n  Testing pause/resume workflow...");
+        crate::teeprintln!("\n  Testing pause/resume workflow...");
         match client.call_tool("pause_workflow", serde_json::json!({
             "workflow_id": workflow_id
         })).await {
             Ok(_) => {
-                println!("    ✓ pause_workflow - SUCCESS");
+                crate::teeprintln!("    ✓ pause_workflow - SUCCESS");
                 stats.passed += 1;
                 
                 match client.call_tool("resume_workflow", serde_json::json!({
                     "workflow_id": workflow_id
                 })).await {
                     Ok(_) => {
-                        println!("    ✓ resume_workflow - SUCCESS");
+                        crate::teeprintln!("    ✓ resume_workflow - SUCCESS");
                         stats.passed += 1;
                         results.pause_resume_works = true;
                     }
                     Err(e) => {
-                        println!("    ✗ resume_workflow - FAILED: {}", e);
+                        crate::teeprintln!("    ✗ resume_workflow - FAILED: {}", e);
                         stats.failed += 1;
                     }
                 }
             }
             Err(e) => {
-                println!("    ✗ pause_workflow - FAILED: {}", e);
+                crate::teeprintln!("    ✗ pause_workflow - FAILED: {}", e);
                 stats.failed += 1;
             }
         }
@@ -327,16 +327,16 @@ async fn test_workflow_execution(
     
     // Test 7: Cancel workflow
     if let Some(ref workflow_id) = results.workflow_id_generated {
-        println!("\n  Testing workflow cancellation...");
+        crate::teeprintln!("\n  Testing workflow cancellation...");
         match client.call_tool("cancel_workflow", serde_json::json!({
             "workflow_id": workflow_id
         })).await {
             Ok(_) => {
-                println!("    ✓ cancel_workflow - SUCCESS");
+                crate::teeprintln!("    ✓ cancel_workflow - SUCCESS");
                 stats.passed += 1;
             }
             Err(e) => {
-                println!("    ✗ cancel_workflow - FAILED: {}", e);
+                crate::teeprintln!("    ✗ cancel_workflow - FAILED: {}", e);
                 stats.failed += 1;
             }
         }
@@ -353,8 +353,8 @@ async fn test_workflow_tools(
     client: &mut TestMcpClient,
     stats: &mut TestStats,
 ) -> anyhow::Result<WorkflowToolsResults> {
-    println!("\n📋 Phase 3: Workflow Tools Validation");
-    println!("{}", "-".repeat(60));
+    crate::teeprintln!("\n📋 Phase 3: Workflow Tools Validation");
+    crate::teeprintln!("{}", "-".repeat(60));
     
     let mut results = WorkflowToolsResults {
         total_tools: 0,
@@ -364,27 +364,27 @@ async fn test_workflow_tools(
     };
     
     // Test 1: List all tools
-    println!("\n  Testing list_tools...");
+    crate::teeprintln!("\n  Testing list_tools...");
     match client.call_tool("list_tools", serde_json::json!({})).await {
         Ok(result) => {
-            println!("    ✓ list_tools - SUCCESS");
+            crate::teeprintln!("    ✓ list_tools - SUCCESS");
             stats.passed += 1;
             
             if let Some(text) = extract_content_text(&result) {
                 // Try to count tools from response
                 let tool_count = text.matches("\"name\":").count().max(1);
                 results.total_tools = tool_count;
-                println!("    ℹ Total tools detected: {}", results.total_tools);
+                crate::teeprintln!("    ℹ Total tools detected: {}", results.total_tools);
             }
         }
         Err(e) => {
-            println!("    ✗ list_tools - FAILED: {}", e);
+            crate::teeprintln!("    ✗ list_tools - FAILED: {}", e);
             stats.failed += 1;
         }
     }
     
     // Test 2: Get specific workflow tool details
-    println!("\n  Testing individual workflow tool definitions...");
+    crate::teeprintln!("\n  Testing individual workflow tool definitions...");
     let workflow_tool_names = vec![
         "create_workflow",
         "add_workflow_step",
@@ -408,12 +408,12 @@ async fn test_workflow_tools(
             "name": tool_name
         })).await {
             Ok(_) => {
-                println!("    ✓ get_tool('{}') - SUCCESS", tool_name);
+                crate::teeprintln!("    ✓ get_tool('{}') - SUCCESS", tool_name);
                 stats.passed += 1;
                 results.workflow_tools.push(tool_name.to_string());
             }
             Err(e) => {
-                println!("    ✗ get_tool('{}') - FAILED: {}", tool_name, e);
+                crate::teeprintln!("    ✗ get_tool('{}') - FAILED: {}", tool_name, e);
                 stats.failed += 1;
             }
         }
@@ -424,12 +424,12 @@ async fn test_workflow_tools(
             "name": tool_name
         })).await {
             Ok(_) => {
-                println!("    ✓ get_tool('{}') - SUCCESS", tool_name);
+                crate::teeprintln!("    ✓ get_tool('{}') - SUCCESS", tool_name);
                 stats.passed += 1;
                 results.agent_tools.push(tool_name.to_string());
             }
             Err(e) => {
-                println!("    ✗ get_tool('{}') - FAILED: {}", tool_name, e);
+                crate::teeprintln!("    ✗ get_tool('{}') - FAILED: {}", tool_name, e);
                 stats.failed += 1;
             }
         }
@@ -438,7 +438,7 @@ async fn test_workflow_tools(
     // Validate that all expected workflow tools are available
     if results.workflow_tools.len() >= 5 {
         results.workflow_tool_definitions_valid = true;
-        println!("\n    ✓ All core workflow tools are available");
+        crate::teeprintln!("\n    ✓ All core workflow tools are available");
     }
     
     Ok(results)
@@ -452,8 +452,8 @@ async fn test_agent_workflow_integration(
     client: &mut TestMcpClient,
     stats: &mut TestStats,
 ) -> anyhow::Result<AgentWorkflowIntegrationResults> {
-    println!("\n📋 Phase 4: Agent-Workflow Integration Tests");
-    println!("{}", "-".repeat(60));
+    crate::teeprintln!("\n📋 Phase 4: Agent-Workflow Integration Tests");
+    crate::teeprintln!("{}", "-".repeat(60));
     
     let mut results = AgentWorkflowIntegrationResults {
         agent_discovers_workflow_first: false,
@@ -463,7 +463,7 @@ async fn test_agent_workflow_integration(
     };
     
     // Test 1: Agent workflow discovery pattern
-    println!("\n  Testing agent workflow discovery pattern...");
+    crate::teeprintln!("\n  Testing agent workflow discovery pattern...");
     
     // The agent should call get_workflow before other operations
     // We verify this by checking if get_workflow returns proper workflow data
@@ -473,17 +473,17 @@ async fn test_agent_workflow_integration(
     })).await {
         Ok(_result) => {
             results.agent_discovers_workflow_first = true;
-            println!("    ✓ Agent can discover workflows via get_workflow");
+            crate::teeprintln!("    ✓ Agent can discover workflows via get_workflow");
             stats.passed += 1;
         }
         Err(e) => {
-            println!("    ✗ Agent workflow discovery failed: {}", e);
+            crate::teeprintln!("    ✗ Agent workflow discovery failed: {}", e);
             stats.failed += 1;
         }
     }
     
     // Test 2: Purpose-based workflow selection
-    println!("\n  Testing purpose-based workflow selection...");
+    crate::teeprintln!("\n  Testing purpose-based workflow selection...");
     
     let test_purposes = vec![
         ("file_ingestion", "File Ingestion"),
@@ -497,7 +497,7 @@ async fn test_agent_workflow_integration(
             "purpose": purpose
         })).await {
             Ok(result) => {
-                println!("    ✓ Workflow for '{}' - SUCCESS", purpose);
+                crate::teeprintln!("    ✓ Workflow for '{}' - SUCCESS", purpose);
                 stats.passed += 1;
                 
                 // Verify the workflow has purpose-relevant content
@@ -509,7 +509,7 @@ async fn test_agent_workflow_integration(
                 }
             }
             Err(e) => {
-                println!("    ✗ Workflow for '{}' - FAILED: {}", purpose, e);
+                crate::teeprintln!("    ✗ Workflow for '{}' - FAILED: {}", purpose, e);
                 stats.failed += 1;
                 all_purposes_work = false;
             }
@@ -521,7 +521,7 @@ async fn test_agent_workflow_integration(
     }
     
     // Test 3: Workflow step chaining
-    println!("\n  Testing workflow step chaining...");
+    crate::teeprintln!("\n  Testing workflow step chaining...");
     
     // Create a workflow and add multiple steps
     match client.call_tool("create_workflow", serde_json::json!({
@@ -557,11 +557,11 @@ async fn test_agent_workflow_integration(
                         "action": action
                     })).await {
                         Ok(_) => {
-                            println!("    ✓ Chained step '{}' - SUCCESS", name);
+                            crate::teeprintln!("    ✓ Chained step '{}' - SUCCESS", name);
                             stats.passed += 1;
                         }
                         Err(e) => {
-                            println!("    ✗ Chained step '{}' - FAILED: {}", name, e);
+                            crate::teeprintln!("    ✗ Chained step '{}' - FAILED: {}", name, e);
                             stats.failed += 1;
                             all_steps_added = false;
                         }
@@ -579,13 +579,13 @@ async fn test_agent_workflow_integration(
             }
         }
         Err(e) => {
-            println!("    ✗ Failed to create chained workflow: {}", e);
+            crate::teeprintln!("    ✗ Failed to create chained workflow: {}", e);
             stats.failed += 1;
         }
     }
     
     // Test 4: Workflow dependencies and error handling
-    println!("\n  Testing workflow error handling...");
+    crate::teeprintln!("\n  Testing workflow error handling...");
     
     // Try to start a non-existent workflow (should fail gracefully)
     match client.call_tool("start_workflow", serde_json::json!({
@@ -595,7 +595,7 @@ async fn test_agent_workflow_integration(
             // Server may return success with error message, or error
             if let Some(text) = extract_content_text(&result) {
                 if text.contains("not found") || text.contains("error") || text.contains("fail") {
-                    println!("    ✓ Non-existent workflow handled gracefully");
+                    crate::teeprintln!("    ✓ Non-existent workflow handled gracefully");
                     stats.passed += 1;
                     results.agent_respects_workflow_dependencies = true;
                 }
@@ -603,7 +603,7 @@ async fn test_agent_workflow_integration(
         }
         Err(_) => {
             // Error is also acceptable
-            println!("    ✓ Non-existent workflow returned error (expected)");
+            crate::teeprintln!("    ✓ Non-existent workflow returned error (expected)");
             stats.passed += 1;
             results.agent_respects_workflow_dependencies = true;
         }
@@ -620,8 +620,8 @@ async fn test_end_to_end_scenarios(
     client: &mut TestMcpClient,
     stats: &mut TestStats,
 ) -> anyhow::Result<EndToEndScenarioResults> {
-    println!("\n📋 Phase 5: End-to-End Scenario Tests");
-    println!("{}", "-".repeat(60));
+    crate::teeprintln!("\n📋 Phase 5: End-to-End Scenario Tests");
+    crate::teeprintln!("{}", "-".repeat(60));
     
     let mut results = EndToEndScenarioResults {
         file_ingestion_workflow: false,
@@ -631,7 +631,7 @@ async fn test_end_to_end_scenarios(
     };
     
     // Scenario 1: File Ingestion Workflow
-    println!("\n  Testing File Ingestion Workflow...");
+    crate::teeprintln!("\n  Testing File Ingestion Workflow...");
     match client.call_tool("get_workflow", serde_json::json!({
         "purpose": "file_ingestion"
     })).await {
@@ -644,19 +644,19 @@ async fn test_end_to_end_scenarios(
             ]).await;
             
             if tools_exist {
-                println!("    ✓ File ingestion workflow path available");
+                crate::teeprintln!("    ✓ File ingestion workflow path available");
                 stats.passed += 1;
                 results.file_ingestion_workflow = true;
             }
         }
         Err(e) => {
-            println!("    ✗ File ingestion workflow failed: {}", e);
+            crate::teeprintln!("    ✗ File ingestion workflow failed: {}", e);
             stats.failed += 1;
         }
     }
     
     // Scenario 2: Memory Search Workflow
-    println!("\n  Testing Memory Search Workflow...");
+    crate::teeprintln!("\n  Testing Memory Search Workflow...");
     match client.call_tool("get_workflow", serde_json::json!({
         "purpose": "memory_search"
     })).await {
@@ -667,35 +667,35 @@ async fn test_end_to_end_scenarios(
             ]).await;
             
             if tools_exist {
-                println!("    ✓ Memory search workflow path available");
+                crate::teeprintln!("    ✓ Memory search workflow path available");
                 stats.passed += 1;
                 results.memory_search_workflow = true;
             }
         }
         Err(e) => {
-            println!("    ✗ Memory search workflow failed: {}", e);
+            crate::teeprintln!("    ✗ Memory search workflow failed: {}", e);
             stats.failed += 1;
         }
     }
     
     // Scenario 3: Experience Recording Workflow
-    println!("\n  Testing Experience Recording Workflow...");
+    crate::teeprintln!("\n  Testing Experience Recording Workflow...");
     match client.call_tool("get_workflow", serde_json::json!({
         "purpose": "experience_recording"
     })).await {
         Ok(_) => {
-            println!("    ✓ Experience recording workflow path available");
+            crate::teeprintln!("    ✓ Experience recording workflow path available");
             stats.passed += 1;
             results.experience_recording_workflow = true;
         }
         Err(e) => {
-            println!("    ✗ Experience recording workflow failed: {}", e);
+            crate::teeprintln!("    ✗ Experience recording workflow failed: {}", e);
             stats.failed += 1;
         }
     }
     
     // Scenario 4: Multi-Step Workflow Execution
-    println!("\n  Testing Multi-Step Workflow...");
+    crate::teeprintln!("\n  Testing Multi-Step Workflow...");
     
     // Create a workflow with multiple steps and execute it
     match client.call_tool("create_workflow", serde_json::json!({
@@ -741,12 +741,12 @@ async fn test_end_to_end_scenarios(
                         "workflow_id": workflow_id
                     })).await {
                         Ok(_) => {
-                            println!("    ✓ Multi-step workflow executed successfully");
+                            crate::teeprintln!("    ✓ Multi-step workflow executed successfully");
                             stats.passed += 1;
                             results.multi_step_workflow = true;
                         }
                         Err(e) => {
-                            println!("    ✗ Multi-step workflow start failed: {}", e);
+                            crate::teeprintln!("    ✗ Multi-step workflow start failed: {}", e);
                             stats.failed += 1;
                         }
                     }
@@ -759,7 +759,7 @@ async fn test_end_to_end_scenarios(
             }
         }
         Err(e) => {
-            println!("    ✗ Multi-step workflow creation failed: {}", e);
+            crate::teeprintln!("    ✗ Multi-step workflow creation failed: {}", e);
             stats.failed += 1;
         }
     }
@@ -810,64 +810,64 @@ async fn verify_workflow_tools_exist(
 
 /// Print comprehensive MCP workflow test results
 fn print_mcp_workflow_results(results: &McpWorkflowTestResults) {
-    println!("\n{}", "=".repeat(80));
-    println!("MCP WORKFLOW INTEGRATION TEST RESULTS");
-    println!("{}", "=".repeat(80));
+    crate::teeprintln!("\n{}", "=".repeat(80));
+    crate::teeprintln!("MCP WORKFLOW INTEGRATION TEST RESULTS");
+    crate::teeprintln!("{}", "=".repeat(80));
     
     // Discovery Results
-    println!("\n📋 Workflow Discovery:");
-    println!("  - get_workflow tool available: {}", 
+    crate::teeprintln!("\n📋 Workflow Discovery:");
+    crate::teeprintln!("  - get_workflow tool available: {}", 
         if results.workflow_discovery.get_workflow_available { "✓" } else { "✗" });
-    println!("  - Default workflow retrieved: {}", 
+    crate::teeprintln!("  - Default workflow retrieved: {}", 
         if results.workflow_discovery.default_workflow_retrieved { "✓" } else { "✗" });
-    println!("  - Purpose-based workflows found: {}", 
+    crate::teeprintln!("  - Purpose-based workflows found: {}", 
         results.workflow_discovery.purpose_based_workflows.len());
-    println!("  - Workflow rules understood: {}", 
+    crate::teeprintln!("  - Workflow rules understood: {}", 
         if results.workflow_discovery.workflow_rules_understood { "✓" } else { "✗" });
     
     // Execution Results
-    println!("\n⚙️  Workflow Execution:");
-    println!("  - Workflow creation: {}", 
+    crate::teeprintln!("\n⚙️  Workflow Execution:");
+    crate::teeprintln!("  - Workflow creation: {}", 
         if results.workflow_execution.create_workflow_succeeds { "✓" } else { "✗" });
-    println!("  - Workflow ID generated: {:?}", 
+    crate::teeprintln!("  - Workflow ID generated: {:?}", 
         results.workflow_execution.workflow_id_generated);
-    println!("  - Step addition: {}", 
+    crate::teeprintln!("  - Step addition: {}", 
         if results.workflow_execution.add_step_succeeds { "✓" } else { "✗" });
-    println!("  - Workflow start: {}", 
+    crate::teeprintln!("  - Workflow start: {}", 
         if results.workflow_execution.start_workflow_succeeds { "✓" } else { "✗" });
-    println!("  - Workflow completion: {}", 
+    crate::teeprintln!("  - Workflow completion: {}", 
         if results.workflow_execution.workflow_completes { "✓" } else { "✗" });
-    println!("  - Pause/Resume: {}", 
+    crate::teeprintln!("  - Pause/Resume: {}", 
         if results.workflow_execution.pause_resume_works { "✓" } else { "✗" });
     
     // Tools Results
-    println!("\n🔧 Workflow Tools:");
-    println!("  - Total tools: {}", results.workflow_tools.total_tools);
-    println!("  - Workflow tools available: {}", results.workflow_tools.workflow_tools.len());
-    println!("  - Agent tools available: {}", results.workflow_tools.agent_tools.len());
-    println!("  - Tool definitions valid: {}", 
+    crate::teeprintln!("\n🔧 Workflow Tools:");
+    crate::teeprintln!("  - Total tools: {}", results.workflow_tools.total_tools);
+    crate::teeprintln!("  - Workflow tools available: {}", results.workflow_tools.workflow_tools.len());
+    crate::teeprintln!("  - Agent tools available: {}", results.workflow_tools.agent_tools.len());
+    crate::teeprintln!("  - Tool definitions valid: {}", 
         if results.workflow_tools.workflow_tool_definitions_valid { "✓" } else { "✗" });
     
     // Agent Integration Results
-    println!("\n🤖 Agent-Workflow Integration:");
-    println!("  - Agent discovers workflow: {}", 
+    crate::teeprintln!("\n🤖 Agent-Workflow Integration:");
+    crate::teeprintln!("  - Agent discovers workflow: {}", 
         if results.agent_workflow_integration.agent_discovers_workflow_first { "✓" } else { "✗" });
-    println!("  - Agent uses purpose-based workflows: {}", 
+    crate::teeprintln!("  - Agent uses purpose-based workflows: {}", 
         if results.agent_workflow_integration.agent_uses_correct_workflow_for_purpose { "✓" } else { "✗" });
-    println!("  - Agent chains workflow steps: {}", 
+    crate::teeprintln!("  - Agent chains workflow steps: {}", 
         if results.agent_workflow_integration.agent_chains_workflow_steps { "✓" } else { "✗" });
-    println!("  - Agent respects dependencies: {}", 
+    crate::teeprintln!("  - Agent respects dependencies: {}", 
         if results.agent_workflow_integration.agent_respects_workflow_dependencies { "✓" } else { "✗" });
     
     // E2E Results
-    println!("\n🔄 End-to-End Scenarios:");
-    println!("  - File ingestion workflow: {}", 
+    crate::teeprintln!("\n🔄 End-to-End Scenarios:");
+    crate::teeprintln!("  - File ingestion workflow: {}", 
         if results.end_to_end_scenarios.file_ingestion_workflow { "✓" } else { "✗" });
-    println!("  - Memory search workflow: {}", 
+    crate::teeprintln!("  - Memory search workflow: {}", 
         if results.end_to_end_scenarios.memory_search_workflow { "✓" } else { "✗" });
-    println!("  - Experience recording workflow: {}", 
+    crate::teeprintln!("  - Experience recording workflow: {}", 
         if results.end_to_end_scenarios.experience_recording_workflow { "✓" } else { "✗" });
-    println!("  - Multi-step workflow: {}", 
+    crate::teeprintln!("  - Multi-step workflow: {}", 
         if results.end_to_end_scenarios.multi_step_workflow { "✓" } else { "✗" });
     
     // Overall Assessment
@@ -891,19 +891,19 @@ fn print_mcp_workflow_results(results: &McpWorkflowTestResults) {
         results.end_to_end_scenarios.multi_step_workflow,
     ].iter().filter(|&&x| x).count();
     
-    println!("\n{}", "-".repeat(80));
-    println!("Overall MCP Workflow Integration Score: {}/{} checks passed ({:.0}%)", 
+    crate::teeprintln!("\n{}", "-".repeat(80));
+    crate::teeprintln!("Overall MCP Workflow Integration Score: {}/{} checks passed ({:.0}%)", 
         passed_checks, total_checks, (passed_checks as f64 / total_checks as f64) * 100.0);
     
     if passed_checks >= total_checks - 2 {
-        println!("\n🎉 AGENT WILL USE MCP WORKFLOWS CORRECTLY!");
+        crate::teeprintln!("\n🎉 AGENT WILL USE MCP WORKFLOWS CORRECTLY!");
     } else if passed_checks >= total_checks / 2 {
-        println!("\n⚠️  PARTIAL MCP WORKFLOW SUPPORT - Some issues need attention");
+        crate::teeprintln!("\n⚠️  PARTIAL MCP WORKFLOW SUPPORT - Some issues need attention");
     } else {
-        println!("\n❌ MCP WORKFLOW INTEGRATION NEEDS SIGNIFICANT IMPROVEMENT");
+        crate::teeprintln!("\n❌ MCP WORKFLOW INTEGRATION NEEDS SIGNIFICANT IMPROVEMENT");
     }
     
-    println!("{}", "=".repeat(80));
+    crate::teeprintln!("{}", "=".repeat(80));
 }
 
 #[cfg(test)]

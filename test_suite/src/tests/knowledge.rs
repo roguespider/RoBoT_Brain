@@ -12,7 +12,7 @@ pub async fn run_knowledge_tests(
     stats: &mut TestStats,
     _filter: Option<&str>,
 ) -> anyhow::Result<()> {
-    println!("\n--- Knowledge Tools Tests ---");
+    crate::teeprintln!("\n--- Knowledge Tools Tests ---");
     
     test_add_knowledge(client, stats, "Files should be imported before processing").await?;
     test_add_knowledge(client, stats, "Memory system stores context between sessions").await?;
@@ -41,11 +41,11 @@ async fn test_add_knowledge(
     })).await {
         Ok(_) => {
             let truncated = if content.len() > 40 { &content[..40] } else { content };
-            println!("  ✓ add_knowledge('{}...') - SUCCESS", truncated);
+            crate::teeprintln!("  ✓ add_knowledge('{}...') - SUCCESS", truncated);
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ✗ add_knowledge('{}...') - FAILED: {}", &content[..40.min(content.len())], e);
+            crate::teeprintln!("  ✗ add_knowledge('{}...') - FAILED: {}", &content[..40.min(content.len())], e);
             stats.failed += 1;
         }
     }
@@ -61,11 +61,11 @@ async fn test_query_knowledge(
         "query": query
     })).await {
         Ok(_) => {
-            println!("  ✓ query_knowledge('{}') - SUCCESS", query);
+            crate::teeprintln!("  ✓ query_knowledge('{}') - SUCCESS", query);
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ✗ query_knowledge('{}') - FAILED: {}", query, e);
+            crate::teeprintln!("  ✗ query_knowledge('{}') - FAILED: {}", query, e);
             stats.failed += 1;
         }
     }
@@ -84,11 +84,11 @@ async fn test_get_mature_knowledge(
     
     match client.call_tool("get_mature_knowledge", args).await {
         Ok(_) => {
-            println!("  ✓ get_mature_knowledge({:?}) - SUCCESS", min_applications);
+            crate::teeprintln!("  ✓ get_mature_knowledge({:?}) - SUCCESS", min_applications);
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ✗ get_mature_knowledge({:?}) - FAILED: {}", min_applications, e);
+            crate::teeprintln!("  ✗ get_mature_knowledge({:?}) - FAILED: {}", min_applications, e);
             stats.failed += 1;
         }
     }
@@ -101,11 +101,11 @@ async fn test_get_knowledge_stats(
 ) -> anyhow::Result<()> {
     match client.call_tool("get_knowledge_stats", serde_json::json!({})).await {
         Ok(_) => {
-            println!("  ✓ get_knowledge_stats - SUCCESS");
+            crate::teeprintln!("  ✓ get_knowledge_stats - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ✗ get_knowledge_stats - FAILED: {}", e);
+            crate::teeprintln!("  ✗ get_knowledge_stats - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -123,11 +123,11 @@ async fn test_record_knowledge_application(
         "successful": successful
     })).await {
         Ok(_) => {
-            println!("  ✓ record_knowledge_application({}, {}) - SUCCESS", knowledge_id, successful);
+            crate::teeprintln!("  ✓ record_knowledge_application({}, {}) - SUCCESS", knowledge_id, successful);
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ✗ record_knowledge_application({}, {}) - FAILED: {}", knowledge_id, successful, e);
+            crate::teeprintln!("  ✗ record_knowledge_application({}, {}) - FAILED: {}", knowledge_id, successful, e);
             stats.failed += 1;
         }
     }

@@ -12,7 +12,7 @@ pub async fn run_agent_tests(
     stats: &mut TestStats,
     _filter: Option<&str>,
 ) -> anyhow::Result<()> {
-    println!("\n--- Agent Tools Tests ---");
+    crate::teeprintln!("\n--- Agent Tools Tests ---");
     
     test_get_workflow(client, stats, "default").await?;
     test_get_workflow(client, stats, "general").await?;
@@ -33,11 +33,11 @@ async fn test_get_workflow(
         "purpose": purpose
     })).await {
         Ok(_) => {
-            println!("  ✓ get_workflow({}) - SUCCESS", purpose);
+            crate::teeprintln!("  ✓ get_workflow({}) - SUCCESS", purpose);
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ✗ get_workflow({}) - FAILED: {}", purpose, e);
+            crate::teeprintln!("  ✗ get_workflow({}) - FAILED: {}", purpose, e);
             stats.failed += 1;
         }
     }
@@ -57,11 +57,11 @@ async fn test_list_tools(
     match client.call_tool("list_tools", args).await {
         Ok(_) => {
             let c = category.unwrap_or("all");
-            println!("  ✓ list_tools({}) - SUCCESS", c);
+            crate::teeprintln!("  ✓ list_tools({}) - SUCCESS", c);
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ✗ list_tools({:?}) - FAILED: {}", category, e);
+            crate::teeprintln!("  ✗ list_tools({:?}) - FAILED: {}", category, e);
             stats.failed += 1;
         }
     }
@@ -77,11 +77,11 @@ async fn test_get_tool(
         "name": tool_name
     })).await {
         Ok(_) => {
-            println!("  ✓ get_tool('{}') - SUCCESS", tool_name);
+            crate::teeprintln!("  ✓ get_tool('{}') - SUCCESS", tool_name);
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ✗ get_tool('{}') - FAILED: {}", tool_name, e);
+            crate::teeprintln!("  ✗ get_tool('{}') - FAILED: {}", tool_name, e);
             stats.failed += 1;
         }
     }

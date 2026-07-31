@@ -340,11 +340,13 @@ impl McpClientInfo {
 
 /// Server information
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[allow(dead_code)]
 pub struct McpServerInfo {
     pub name: String,
     pub version: String,
 }
 
+#[allow(dead_code)]
 impl McpServerInfo {
     /// Create new server info
     pub fn new(name: &str, version: &str) -> Self {

@@ -70,11 +70,13 @@ impl Default for PersonalityTraits {
 }
 
 /// Communication style preferences
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+#[allow(dead_code)]
 pub enum CommunicationStyle {
     /// Minimal output, just essential information
     Concise,
     /// Balanced between brief and detailed
+    #[default]
     Balanced,
     /// Full explanations with context
     Detailed,
@@ -82,6 +84,7 @@ pub enum CommunicationStyle {
 
 impl CommunicationStyle {
     /// Get format string for response based on style
+    #[allow(dead_code)]
     pub fn format_response(&self, content: &str) -> String {
         match self {
             CommunicationStyle::Concise => {
@@ -109,14 +112,9 @@ impl CommunicationStyle {
     }
 }
 
-impl Default for CommunicationStyle {
-    fn default() -> Self {
-        CommunicationStyle::Balanced
-    }
-}
-
 /// Decision context for personality-based choices
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
+#[allow(dead_code)]
 pub struct DecisionContext {
     /// Current confidence in the approach (0.0 - 1.0)
     pub confidence: f32,
@@ -130,20 +128,9 @@ pub struct DecisionContext {
     pub time_available: u64,
 }
 
-impl Default for DecisionContext {
-    fn default() -> Self {
-        Self {
-            confidence: 0.5,
-            potential_gain: 0.5,
-            potential_loss: 0.5,
-            uncertainty: 0.5,
-            time_available: 60,
-        }
-    }
-}
-
 /// Decision made by personality system
 #[derive(Debug, Clone)]
+#[allow(dead_code)]
 pub struct Decision {
     /// Whether to take the proposed action
     pub should_act: bool,
@@ -156,23 +143,20 @@ pub struct Decision {
 }
 
 /// Approach style for decisions
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+#[allow(dead_code)]
 pub enum DecisionApproach {
     /// Quick, minimal processing
     Fast,
     /// Standard processing with verification
+    #[default]
     Standard,
     /// Thorough analysis with multiple passes
     Thorough,
 }
 
-impl Default for DecisionApproach {
-    fn default() -> Self {
-        DecisionApproach::Standard
-    }
-}
-
 /// Personality system that influences decision-making
+#[allow(dead_code)]
 pub struct Personality {
     /// Current personality traits
     traits: PersonalityTraits,
@@ -188,6 +172,7 @@ pub struct Personality {
     success_count: u32,
 }
 
+#[allow(dead_code)]
 impl Personality {
     /// Create a new personality with default traits
     pub fn new() -> Self {

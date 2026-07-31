@@ -3,6 +3,8 @@
 //! 
 //! This module provides the workflow engine for executing multi-step workflows.
 
+#![allow(clippy::module_inception)]
+
 
 
 

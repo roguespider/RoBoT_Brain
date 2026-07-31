@@ -75,9 +75,11 @@ pub struct App {
     mcp_context: Arc<McpContext>,
 
     /// Personality system for behavioral characteristics.
+    #[allow(dead_code)]
     personality: Arc<std::sync::Mutex<Personality>>,
 
     /// ACP router for inter-agent communication.
+    #[allow(dead_code)]
     acp_router: Arc<AcpRouter>,
 }
 
@@ -654,93 +656,108 @@ impl App {
     }
 
     // =========================================================================
-    // Personality Methods
+    // Personality Methods (designed for future use)
     // =========================================================================
-
+    #[allow(dead_code)]
     /// Get reference to personality system
     pub fn personality(&self) -> Arc<std::sync::Mutex<Personality>> {
         self.personality.clone()
     }
 
+    #[allow(dead_code)]
     /// Get current personality traits
     pub fn get_personality_traits(&self) -> PersonalityTraits {
         self.personality.lock().unwrap().get_traits().clone()
     }
 
+    #[allow(dead_code)]
     /// Set personality traits
     pub fn set_personality_traits(&self, traits: PersonalityTraits) {
         self.personality.lock().unwrap().set_traits(traits);
     }
 
+    #[allow(dead_code)]
     /// Apply a personality preset (balanced, analytical, creative, cautious, bold)
     pub fn apply_personality_preset(&self, preset: &str) -> bool {
         self.personality.lock().unwrap().apply_preset(preset)
     }
 
+    #[allow(dead_code)]
     /// Get available personality presets
     pub fn list_personality_presets(&self) -> Vec<String> {
         self.personality.lock().unwrap().list_presets()
     }
 
+    #[allow(dead_code)]
     /// Get current personality preset name
     pub fn get_personality_preset(&self) -> String {
         self.personality.lock().unwrap().get_current_preset().to_string()
     }
 
+    #[allow(dead_code)]
     /// Adapt personality based on experience outcome
     pub fn adapt_personality(&self, success: bool, risk_taken: bool) {
         self.personality.lock().unwrap().adapt_from_experience(success, risk_taken);
     }
 
+    #[allow(dead_code)]
     /// Get communication style based on personality verbosity
     pub fn get_communication_style(&self) -> crate::personality::CommunicationStyle {
         self.personality.lock().unwrap().get_communication_style()
     }
 
+    #[allow(dead_code)]
     /// Decide if system should explore new approaches
     pub fn should_explore(&self, confidence: f32) -> bool {
         self.personality.lock().unwrap().should_explore(confidence)
     }
 
+    #[allow(dead_code)]
     /// Decide if system should take a risk
     pub fn should_take_risk(&self, potential_gain: f32, potential_loss: f32) -> bool {
         self.personality.lock().unwrap().should_take_risk(potential_gain, potential_loss)
     }
 
+    #[allow(dead_code)]
     /// Get patience-based timeout
     pub fn get_personality_timeout(&self, base_timeout_secs: u64) -> u64 {
         self.personality.lock().unwrap().get_timeout(base_timeout_secs)
     }
 
+    #[allow(dead_code)]
     /// Get personality success rate
     pub fn get_personality_success_rate(&self) -> f32 {
         self.personality.lock().unwrap().success_rate()
     }
 
     // =========================================================================
-    // ACP (Agent Communication Protocol) Methods
+    // ACP (Agent Communication Protocol) Methods (designed for future use)
     // =========================================================================
-
+    #[allow(dead_code)]
     /// Get reference to ACP router
     pub fn acp_router(&self) -> Arc<AcpRouter> {
         self.acp_router.clone()
     }
 
+    #[allow(dead_code)]
     /// Get ACP registry for agent registration
     pub fn acp_registry(&self) -> Arc<AcpRegistry> {
         self.acp_router.registry()
     }
 
+    #[allow(dead_code)]
     /// Route an ACP message to the appropriate agent
     pub fn route_acp_message(&self, message: crate::bridge::acp::AcpMessage) -> Result<Option<crate::bridge::acp::AcpMessage>> {
         self.acp_router.route(message)
     }
 
+    #[allow(dead_code)]
     /// List all registered ACP agents
     pub fn list_acp_agents(&self) -> Result<Vec<crate::bridge::acp::AcpAgentId>> {
         self.acp_router.registry().list_agents()
     }
 
+    #[allow(dead_code)]
     /// Get count of registered ACP agents
     pub fn acp_agent_count(&self) -> usize {
         self.acp_router.registry().count()

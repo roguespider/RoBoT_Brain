@@ -38,6 +38,7 @@ struct ConnectedServer {
 
 impl ConnectedServer {
     /// Get peer for making requests
+    #[allow(dead_code)]
     fn peer(&self) -> Peer<RoleClient> {
         self.running.peer().clone()
     }
@@ -51,6 +52,7 @@ pub struct ToolError {
     pub tool: String,
 }
 
+#[allow(dead_code)]
 impl ToolError {
     /// Create a new tool error
     pub fn new(server: &str, tool: &str, message: &str) -> Self {
@@ -103,11 +105,13 @@ impl McpClient {
     }
 
     /// Check if client has any connected servers
+    #[allow(dead_code)]
     pub async fn has_connections(&self) -> bool {
         !self.servers.read().await.is_empty()
     }
 
     /// Get number of connected servers
+    #[allow(dead_code)]
     pub async fn server_count(&self) -> usize {
         self.servers.read().await.len()
     }
@@ -174,6 +178,7 @@ impl McpClient {
     }
 
     /// Disconnect from a server by name
+    #[allow(dead_code)]
     pub async fn disconnect(&self, name: &str) -> Result<bool> {
         let mut servers = self.servers.write().await;
         if let Some(pos) = servers.iter().position(|s| s.name == name) {
@@ -186,6 +191,7 @@ impl McpClient {
     }
 
     /// Disconnect from all servers
+    #[allow(dead_code)]
     pub async fn disconnect_all(&self) -> usize {
         let mut servers = self.servers.write().await;
         let count = servers.len();
@@ -195,6 +201,7 @@ impl McpClient {
     }
 
     /// List all servers
+    #[allow(dead_code)]
     pub async fn list_servers(&self) -> Vec<String> {
         self.servers.read().await.iter().map(|s| s.name.clone()).collect()
     }
@@ -210,6 +217,7 @@ impl McpClient {
     }
 
     /// Get a specific tool by name
+    #[allow(dead_code)]
     pub async fn get_tool(&self, name: &str) -> Option<Tool> {
         let servers = self.servers.read().await;
         for server in servers.iter() {
@@ -221,6 +229,7 @@ impl McpClient {
     }
 
     /// Get the server that owns a specific tool
+    #[allow(dead_code)]
     pub async fn get_tool_server(&self, tool_name: &str) -> Option<String> {
         let servers = self.servers.read().await;
         for server in servers.iter() {
@@ -232,6 +241,7 @@ impl McpClient {
     }
 
     /// Refresh tools from a specific server
+    #[allow(dead_code)]
     pub async fn refresh_tools(&self, server_name: &str) -> Result<Vec<Tool>> {
         let mut servers = self.servers.write().await;
         if let Some(server) = servers.iter_mut().find(|s| s.name == server_name) {

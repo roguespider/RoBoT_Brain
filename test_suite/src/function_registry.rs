@@ -197,7 +197,8 @@ impl FunctionRegistry {
                 requires_data: None,
                 expected_behavior: "Returns tool definition for 'store_memory'".to_string(),
                 validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "name".to_string(), expected_value: Some("store_memory".to_string()) },
+                    ValidationCheck { check_type: CheckType::HasField, field: "found".to_string(), expected_value: Some("true".to_string()) },
+                    ValidationCheck { check_type: CheckType::HasField, field: "tool".to_string(), expected_value: None },
                 ],
                 priority: 2,
             },

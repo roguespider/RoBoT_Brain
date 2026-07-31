@@ -30,6 +30,8 @@
 //!
 //! The reflection system acts as the robot's "thinking after doing."
 
+#![allow(clippy::module_inception)]
+
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 

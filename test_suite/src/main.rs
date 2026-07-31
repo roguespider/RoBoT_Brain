@@ -8,6 +8,8 @@
 //! - True end-to-end testing without stubs or mocking
 //! - Table-based reporting showing pass/fail for every function
 //! - Detection of partial implementations and incomplete sub-functions
+//!
+//! OUTPUT: All test results are automatically saved to `test_suite_output.txt`
 
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
@@ -18,6 +20,9 @@ use std::io::Write;
 use tokio::io::{AsyncBufReadExt, BufReader, AsyncWriteExt};
 use tokio::process::{Command as AsyncCommand, ChildStdout, Child};
 use tokio::time::timeout;
+
+// Shared output module - provides teeprintln macro for all modules
+pub mod output;
 
 mod test_environment;
 mod tests;
@@ -42,21 +47,21 @@ impl TestStats {
     }
     
     pub fn print_summary(&self) {
-        println!("
+        teeprintln!("
 {}", "=".repeat(60));
-        println!("TEST SUMMARY");
-        println!("{}", "=".repeat(60));
-        println!("  Passed:  {} ✅", self.passed);
-        println!("  Failed:  {} ❌", self.failed);
-        println!("  Skipped: {}", self.skipped);
-        println!("{}", "=".repeat(60));
+        teeprintln!("TEST SUMMARY");
+        teeprintln!("{}", "=".repeat(60));
+        teeprintln!("  Passed:  {} ✅", self.passed);
+        teeprintln!("  Failed:  {} ❌", self.failed);
+        teeprintln!("  Skipped: {}", self.skipped);
+        teeprintln!("{}", "=".repeat(60));
         
         if self.failed == 0 {
-            println!("
+            teeprintln!("
 🎉 ALL TESTS PASSED! 🎉
 ");
         } else {
-            println!("
+            teeprintln!("
 ⚠️  SOME TESTS FAILED
 ");
         }
@@ -65,20 +70,20 @@ impl TestStats {
 
 /// Build the robot_brain server
 async fn build_server() -> anyhow::Result<PathBuf> {
-    println!("
+    teeprintln!("
 {}", "=".repeat(60));
-    println!("BUILDING ROBOT_BRAIN SERVER");
-    println!("{}", "=".repeat(60));
+    teeprintln!("BUILDING ROBOT_BRAIN SERVER");
+    teeprintln!("{}", "=".repeat(60));
     
     let robot_brain_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
     let release_path = robot_brain_dir.join("target/release/robot_brain");
     
     if release_path.exists() {
-        println!("✓ Server already built at: {}", release_path.display());
+        teeprintln!("✓ Server already built at: {}", release_path.display());
         return Ok(release_path);
     }
     
-    println!("Building robot_brain...");
+    teeprintln!("Building robot_brain...");
     
     let output = AsyncCommand::new("cargo")
         .current_dir(&robot_brain_dir)
@@ -92,16 +97,16 @@ async fn build_server() -> anyhow::Result<PathBuf> {
 {}", stderr);
     }
     
-    println!("✓ Server built successfully: {}", release_path.display());
+    teeprintln!("✓ Server built successfully: {}", release_path.display());
     Ok(release_path)
 }
 
 /// Setup test environment
 fn setup_test_environment(server_path: &Path) -> anyhow::Result<TestEnvironment> {
-    println!("
+    teeprintln!("
 {}", "=".repeat(60));
-    println!("SETTING UP TEST ENVIRONMENT");
-    println!("{}", "=".repeat(60));
+    teeprintln!("SETTING UP TEST ENVIRONMENT");
+    teeprintln!("{}", "=".repeat(60));
     
     let test_dir = server_path.parent().unwrap()
         .join("test_suite_env");
@@ -344,18 +349,18 @@ It should be extracted and ingested.
     tar_builder.append(&header, tar_content.as_bytes())?;
     tar_builder.finish()?;
     
-    println!("✓ Created {} test subdirectories", subdirs.len());
-    println!("✓ Created test files for all supported file types:");
-    println!("  - Text files: txt, md, rst, log, xml, html");
-    println!("  - Code files: rs, py, js, ts");
-    println!("  - Config files: yaml, ini, toml, json, jsonl, csv");
-    println!("  - Scripts: sh, sql");
-    println!("  - Subtitles: srt");
-    println!("  - Images: svg (metadata only)");
-    println!("  - Archives: zip, tar.gz");
-    println!("✓ Test directory: {}", test_env.root_dir.display());
-    println!("✓ Server: {}", test_env.server_path.display());
-    println!("✓ Files folder: {}", files_folder.display());
+    teeprintln!("✓ Created {} test subdirectories", subdirs.len());
+    teeprintln!("✓ Created test files for all supported file types:");
+    teeprintln!("  - Text files: txt, md, rst, log, xml, html");
+    teeprintln!("  - Code files: rs, py, js, ts");
+    teeprintln!("  - Config files: yaml, ini, toml, json, jsonl, csv");
+    teeprintln!("  - Scripts: sh, sql");
+    teeprintln!("  - Subtitles: srt");
+    teeprintln!("  - Images: svg (metadata only)");
+    teeprintln!("  - Archives: zip, tar.gz");
+    teeprintln!("✓ Test directory: {}", test_env.root_dir.display());
+    teeprintln!("✓ Server: {}", test_env.server_path.display());
+    teeprintln!("✓ Files folder: {}", files_folder.display());
     
     Ok(test_env)
 }
@@ -403,7 +408,7 @@ impl TestMcpClient {
         })).await?;
         client.read_response_line(5).await?;
         
-        println!("✓ MCP connection established");
+        teeprintln!("✓ MCP connection established");
         
         Ok(client)
     }
@@ -499,11 +504,16 @@ impl TestMcpClient {
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
-    println!("
+    // Initialize file output - all output will be written to both stdout and file
+    let output_file = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test_suite_output.txt");
+    output::init(&output_file).expect("Failed to create output file");
+    
+    teeprintln!("
 {}", "#".repeat(120));
-    println!("#  RoBoT Brain MCP Server - Comprehensive End-to-End Test Suite");
-    println!("#  Testing every function 100% end-to-end");
-    println!("{}", "#".repeat(120));
+    teeprintln!("#  RoBoT Brain MCP Server - Comprehensive End-to-End Test Suite");
+    teeprintln!("#  Testing every function 100% end-to-end");
+    teeprintln!("#  Output saved to: {}", output_file.display());
+    teeprintln!("{}", "#".repeat(120));
     
     let server_path = build_server().await?;
     let env = setup_test_environment(&server_path)?;
@@ -514,10 +524,10 @@ async fn main() -> anyhow::Result<()> {
     let report = run_comprehensive_tests(&mut client, &mut stats, &env).await?;
     
     // Also run the traditional test suite
-    println!("\n
+    teeprintln!("\n
 {}", "=".repeat(120));
-    println!("RUNNING ALL TESTS");
-    println!("{}", "=".repeat(120));
+    teeprintln!("RUNNING ALL TESTS");
+    teeprintln!("{}", "=".repeat(120));
     
     tests::run_memory_tests(&mut client, &mut stats, None).await?;
     tests::run_experience_tests(&mut client, &mut stats, None).await?;
@@ -533,16 +543,16 @@ async fn main() -> anyhow::Result<()> {
     tests::run_mcp_workflow_tests(&mut client, &mut stats, None).await?;
     
     // Print unified summary table
-    println!("\n{}", "=".repeat(120));
-    println!("{}", "=".repeat(120));
+    teeprintln!("\n{}", "=".repeat(120));
+    teeprintln!("{}", "=".repeat(120));
     
     // Print comprehensive test results table
     report.print_report();
     
     // Print overall summary
-    println!("\n{}", "=".repeat(120));
-    println!("OVERALL SUMMARY");
-    println!("{}", "=".repeat(120));
+    teeprintln!("\n{}", "=".repeat(120));
+    teeprintln!("OVERALL SUMMARY");
+    teeprintln!("{}", "=".repeat(120));
     
     let total_tests = stats.passed + stats.failed;
     let pass_rate = if total_tests > 0 {
@@ -551,34 +561,35 @@ async fn main() -> anyhow::Result<()> {
         0.0
     };
     
-    println!("\n  ┌{:─<116}┐", "");
-    println!("  │ {:^112} │", "TEST RESULTS");
-    println!("  ├{:─<116}┤", "");
-    println!("  │ {:<40} {:>70} │", "Total Tests:", format!("{}", total_tests));
-    println!("  │ {:<40} {:>65} ✅ │", "Passed:", format!("{}", stats.passed));
-    println!("  │ {:<40} {:>65} ❌ │", "Failed:", format!("{}", stats.failed));
-    println!("  │ {:<40} {:>65.1}% │", "Pass Rate:", pass_rate);
-    println!("  │ {:<40} {:>65} │", "Skipped:", stats.skipped);
-    println!("  └{:─<116}┘", "");
+    teeprintln!("\n  ┌{:─<116}┐", "");
+    teeprintln!("  │ {:^112} │", "TEST RESULTS");
+    teeprintln!("  ├{:─<116}┤", "");
+    teeprintln!("  │ {:<40} {:>70} │", "Total Tests:", format!("{}", total_tests));
+    teeprintln!("  │ {:<40} {:>65} ✅ │", "Passed:", format!("{}", stats.passed));
+    teeprintln!("  │ {:<40} {:>65} ❌ │", "Failed:", format!("{}", stats.failed));
+    teeprintln!("  │ {:<40} {:>65.1}% │", "Pass Rate:", pass_rate);
+    teeprintln!("  │ {:<40} {:>65} │", "Skipped:", stats.skipped);
+    teeprintln!("  └{:─<116}┘", "");
     
-    println!("\n  ┌{:─<116}┐", "");
-    println!("  │ {:^112} │", "CODE QUALITY");
-    println!("  ├{:─<116}┤", "");
-    println!("  │ {:<40} {:>70} │", "Code Issues (stubs, #[allow]):", report.code_issues.len());
-    println!("  │ {:<40} {:>70} │", "Compiler Errors:", report.lint_errors);
-    println!("  │ {:<40} {:>70} │", "Compiler Warnings:", report.lint_warnings);
-    println!("  └{:─<116}┘", "");
+    teeprintln!("\n  ┌{:─<116}┐", "");
+    teeprintln!("  │ {:^112} │", "CODE QUALITY");
+    teeprintln!("  ├{:─<116}┤", "");
+    teeprintln!("  │ {:<40} {:>70} │", "Code Issues (stubs, #[allow]):", report.code_issues.len());
+    teeprintln!("  │ {:<40} {:>70} │", "Compiler Errors:", report.lint_errors);
+    teeprintln!("  │ {:<40} {:>70} │", "Compiler Warnings:", report.lint_warnings);
+    teeprintln!("  └{:─<116}┘", "");
     
     // Exit with error if there are issues
     if report.has_issues() || stats.failed > 0 || report.lint_errors > 0 {
-        println!("\n{}", "═".repeat(120));
-        println!("  {:^116}", "⚠️  TEST SUITE COMPLETED WITH ISSUES");
-        println!("{}", "═".repeat(120));
+        teeprintln!("\n{}", "═".repeat(120));
+        teeprintln!("  {:^116}", "⚠️  TEST SUITE COMPLETED WITH ISSUES");
+        teeprintln!("{}", "═".repeat(120));
         std::process::exit(1);
     }
     
-    println!("\n{}", "═".repeat(120));
-    println!("  {:^116}", "🎉 ALL TESTS PASSED - SYSTEM READY!");
-    println!("{}", "═".repeat(120));
+    teeprintln!("\n{}", "═".repeat(120));
+    teeprintln!("  {:^116}", "🎉 ALL TESTS PASSED - SYSTEM READY!");
+    teeprintln!("{}", "═".repeat(120));
+    teeprintln!("\n✅ Full output saved to: {}", output_file.display());
     Ok(())
 }

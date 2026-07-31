@@ -170,7 +170,7 @@ impl MetricsObserver {
         let collector = &self.metrics;
 
         // Increment event counter
-        collector.increment_sync(&format!("events.{}", event.event_type.name()));
+        collector.increment_sync(format!("events.{}", event.event_type.name()));
 
         // Record payload-specific metrics
         match &event.payload {
@@ -197,7 +197,7 @@ impl MetricsObserver {
                 }
 
                 // Record experience type
-                collector.increment_sync(&format!(
+                collector.increment_sync(format!(
                     "experiences.type.{}",
                     format!("{:?}", experience.experience_type).to_lowercase()
                 ));
@@ -274,7 +274,7 @@ impl MetricsObserver {
 
             EventPayload::ProcessingFailed { stage, .. } => {
                 collector.increment_sync("processing.failed");
-                collector.increment_sync(&format!("processing.failed.{}", stage));
+                collector.increment_sync(format!("processing.failed.{}", stage));
             }
 
             EventPayload::Error { .. } => {

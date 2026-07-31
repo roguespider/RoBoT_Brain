@@ -12,18 +12,18 @@ pub async fn run_error_handling_tests(
     stats: &mut TestStats,
     _filter: Option<&str>,
 ) -> anyhow::Result<()> {
-    println!("\n--- Error Handling Tests ---");
+    crate::teeprintln!("\n--- Error Handling Tests ---");
     
     // Test invalid UUID handling
     match client.call_tool("get_memory", serde_json::json!({
         "id": "not-a-uuid"
     })).await {
         Ok(_) => {
-            println!("  ? test_invalid_uuid - Tool accepted invalid UUID (may be expected)");
+            crate::teeprintln!("  ? test_invalid_uuid - Tool accepted invalid UUID (may be expected)");
             stats.skipped += 1;
         }
         Err(_) => {
-            println!("  ✓ test_invalid_uuid - Correctly rejected invalid UUID");
+            crate::teeprintln!("  ✓ test_invalid_uuid - Correctly rejected invalid UUID");
             stats.passed += 1;
         }
     }
@@ -31,11 +31,11 @@ pub async fn run_error_handling_tests(
     // Test missing parameters
     match client.call_tool("store_memory", serde_json::json!({})).await {
         Ok(_) => {
-            println!("  ✓ test_missing_params - Tool accepted missing params (graceful fallback)");
+            crate::teeprintln!("  ✓ test_missing_params - Tool accepted missing params (graceful fallback)");
             stats.passed += 1;
         }
         Err(_) => {
-            println!("  ✓ test_missing_params - Correctly rejected missing params");
+            crate::teeprintln!("  ✓ test_missing_params - Correctly rejected missing params");
             stats.passed += 1;
         }
     }
@@ -46,11 +46,11 @@ pub async fn run_error_handling_tests(
         "memory_type": "invalid_type"
     })).await {
         Ok(_) => {
-            println!("  ✓ test_invalid_memory_type - Tool accepted invalid type (defaulted to note)");
+            crate::teeprintln!("  ✓ test_invalid_memory_type - Tool accepted invalid type (defaulted to note)");
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ✗ test_invalid_memory_type - Tool rejected invalid type: {}", e);
+            crate::teeprintln!("  ✗ test_invalid_memory_type - Tool rejected invalid type: {}", e);
             stats.failed += 1;
         }
     }

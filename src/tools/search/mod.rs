@@ -31,7 +31,7 @@ pub struct GetRecommendationsInput {
 /// Tool: Get reputation for a target
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct GetReputationInput {
-    pub target: String,
+    pub tool_name: String,
 }
 
 /// Search tool definitions
@@ -86,16 +86,16 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: GET_REPUTATION.to_string(),
-                description: "Get reputation score for a target (tool, file, workflow, etc.)".to_string(),
+                description: "Get reputation score for a tool".to_string(),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
-                        "target": {
+                        "tool_name": {
                             "type": "string",
-                            "description": "Target identifier"
+                            "description": "Tool name identifier"
                         }
                     },
-                    "required": ["target"]
+                    "required": ["tool_name"]
                 }),
             },
         ]
@@ -185,8 +185,8 @@ pub async fn execute_get_reputation(
 ) -> Result<ToolOutput> {
     let conn = database.connection()?;
     
-    // Search for mentions of the target
-    let results = queries::search_memory(&conn, &input.target, 100)?;
+    // Search for mentions of the tool
+    let results = queries::search_memory(&conn, &input.tool_name, 100)?;
     
     // Calculate simple reputation based on mentions
     let total_uses = results.len();
@@ -198,7 +198,7 @@ pub async fn execute_get_reputation(
     };
 
     Ok(ToolOutput::success(serde_json::json!({
-        "target": input.target,
+        "tool_name": input.tool_name,
         "score": score,
         "success_count": high_confidence,
         "failure_count": total_uses - high_confidence,

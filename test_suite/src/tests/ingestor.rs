@@ -48,9 +48,9 @@ pub async fn run_ingestor_tests(
     _filter: Option<&str>,
     env: &TestEnvironment,
 ) -> anyhow::Result<()> {
-    println!("\n{}", "=".repeat(60));
-    println!("COMPREHENSIVE INGESTOR FILE TYPE TESTS");
-    println!("{}", "=".repeat(60));
+    crate::teeprintln!("\n{}", "=".repeat(60));
+    crate::teeprintln!("COMPREHENSIVE INGESTOR FILE TYPE TESTS");
+    crate::teeprintln!("{}", "=".repeat(60));
     
     // Test 1: List importable files (overall health check)
     test_list_importable(client, stats).await?;
@@ -63,7 +63,7 @@ pub async fn run_ingestor_tests(
     test_list_ingested_files(client, stats).await?;
     
     // Test 4: Ingest all file types individually
-    println!("\n--- Testing Individual File Types ---");
+    crate::teeprintln!("\n--- Testing Individual File Types ---");
     
     let file_types = get_all_file_type_tests(env);
     
@@ -72,7 +72,7 @@ pub async fn run_ingestor_tests(
     }
     
     // Test 5: Test archive extraction
-    println!("\n--- Testing Archive Extraction ---");
+    crate::teeprintln!("\n--- Testing Archive Extraction ---");
     test_ingest_archive_zip(client, stats, env).await;
     test_ingest_archive_tar_gz(client, stats, env).await;
     
@@ -92,18 +92,18 @@ pub async fn run_ingestor_tests(
     // Confirm deletion was blocked
     match client.call_tool("list_ingested_files", serde_json::json!({})).await {
         Ok(_) => {
-            println!("  ✓ delete_ingested_files (confirmed) - SUCCESS");
+            crate::teeprintln!("  ✓ delete_ingested_files (confirmed) - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ✗ delete_ingested_files (confirmed) - FAILED: {}", e);
+            crate::teeprintln!("  ✗ delete_ingested_files (confirmed) - FAILED: {}", e);
             stats.failed += 1;
         }
     }
     
-    println!("\n{}", "=".repeat(60));
-    println!("INGESTOR FILE TYPE TESTS COMPLETE");
-    println!("{}", "=".repeat(60));
+    crate::teeprintln!("\n{}", "=".repeat(60));
+    crate::teeprintln!("INGESTOR FILE TYPE TESTS COMPLETE");
+    crate::teeprintln!("{}", "=".repeat(60));
     
     Ok(())
 }
@@ -160,17 +160,17 @@ async fn test_list_importable(
                     if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(text) {
                         let count = parsed.get("count").and_then(|c| c.as_i64()).unwrap_or(0);
                         let total = parsed.get("total").and_then(|t| t.as_i64()).unwrap_or(0);
-                        println!("  ✓ list_importable - SUCCESS (found {} files)", total);
+                        crate::teeprintln!("  ✓ list_importable - SUCCESS (found {} files)", total);
                         stats.passed += 1;
                         return Ok(());
                     }
                 }
             }
-            println!("  ✓ list_importable - SUCCESS");
+            crate::teeprintln!("  ✓ list_importable - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ✗ list_importable - FAILED: {}", e);
+            crate::teeprintln!("  ✗ list_importable - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -191,17 +191,17 @@ async fn test_list_importable_recursive(
                 if let Some(text) = content.get("text").and_then(|t| t.as_str()) {
                     if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(text) {
                         let total = parsed.get("total").and_then(|t| t.as_i64()).unwrap_or(0);
-                        println!("  ✓ list_importable (recursive) - SUCCESS (found {} total files)", total);
+                        crate::teeprintln!("  ✓ list_importable (recursive) - SUCCESS (found {} total files)", total);
                         stats.passed += 1;
                         return Ok(());
                     }
                 }
             }
-            println!("  ✓ list_importable (recursive) - SUCCESS");
+            crate::teeprintln!("  ✓ list_importable (recursive) - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ✗ list_importable (recursive) - FAILED: {}", e);
+            crate::teeprintln!("  ✗ list_importable (recursive) - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -230,12 +230,12 @@ async fn test_ingest_single_file_type(
                         let chunks = parsed.get("chunks_created").and_then(|c| c.as_i64()).unwrap_or(0);
                         
                         if success && chunks > 0 {
-                            println!("  ✓ ingest {} (.{}) - SUCCESS ({} chunks)", 
+                            crate::teeprintln!("  ✓ ingest {} (.{}) - SUCCESS ({} chunks)", 
                                 file_test.file_type, file_test.extension, chunks);
                             stats.passed += 1;
                         } else {
                             let error = parsed.get("error").map(|e| e.to_string()).unwrap_or_default();
-                            println!("  ⚠ ingest {} (.{}) - returned false (error: {})", 
+                            crate::teeprintln!("  ⚠ ingest {} (.{}) - returned false (error: {})", 
                                 file_test.file_type, file_test.extension, error);
                             stats.skipped += 1;
                         }
@@ -243,11 +243,11 @@ async fn test_ingest_single_file_type(
                     }
                 }
             }
-            println!("  ✓ ingest {} (.{}) - SUCCESS", file_test.file_type, file_test.extension);
+            crate::teeprintln!("  ✓ ingest {} (.{}) - SUCCESS", file_test.file_type, file_test.extension);
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ✗ ingest {} (.{}) - FAILED: {}", 
+            crate::teeprintln!("  ✗ ingest {} (.{}) - FAILED: {}", 
                 file_test.file_type, file_test.extension, e);
             stats.failed += 1;
         }
@@ -274,21 +274,21 @@ async fn test_ingest_archive_zip(
                         let chunks = parsed.get("chunks_created").and_then(|c| c.as_i64()).unwrap_or(0);
                         
                         if success && chunks > 0 {
-                            println!("  ✓ ingest ZIP archive - SUCCESS ({} chunks from extracted files)", chunks);
+                            crate::teeprintln!("  ✓ ingest ZIP archive - SUCCESS ({} chunks from extracted files)", chunks);
                             stats.passed += 1;
                         } else {
-                            println!("  ⚠ ingest ZIP archive - returned false");
+                            crate::teeprintln!("  ⚠ ingest ZIP archive - returned false");
                             stats.skipped += 1;
                         }
                         return;
                     }
                 }
             }
-            println!("  ✓ ingest ZIP archive - SUCCESS");
+            crate::teeprintln!("  ✓ ingest ZIP archive - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ✗ ingest ZIP archive - FAILED: {}", e);
+            crate::teeprintln!("  ✗ ingest ZIP archive - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -314,21 +314,21 @@ async fn test_ingest_archive_tar_gz(
                         let chunks = parsed.get("chunks_created").and_then(|c| c.as_i64()).unwrap_or(0);
                         
                         if success && chunks > 0 {
-                            println!("  ✓ ingest TAR.GZ archive - SUCCESS ({} chunks from extracted files)", chunks);
+                            crate::teeprintln!("  ✓ ingest TAR.GZ archive - SUCCESS ({} chunks from extracted files)", chunks);
                             stats.passed += 1;
                         } else {
-                            println!("  ⚠ ingest TAR.GZ archive - returned false");
+                            crate::teeprintln!("  ⚠ ingest TAR.GZ archive - returned false");
                             stats.skipped += 1;
                         }
                         return;
                     }
                 }
             }
-            println!("  ✓ ingest TAR.GZ archive - SUCCESS");
+            crate::teeprintln!("  ✓ ingest TAR.GZ archive - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ✗ ingest TAR.GZ archive - FAILED: {}", e);
+            crate::teeprintln!("  ✗ ingest TAR.GZ archive - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -354,21 +354,21 @@ async fn test_ingest_json_file(
                         let chunks = parsed.get("chunks_created").and_then(|c| c.as_i64()).unwrap_or(0);
                         
                         if success && chunks > 0 {
-                            println!("  ✓ ingest JSON (smart extraction) - SUCCESS ({} memory items)", chunks);
+                            crate::teeprintln!("  ✓ ingest JSON (smart extraction) - SUCCESS ({} memory items)", chunks);
                             stats.passed += 1;
                         } else {
-                            println!("  ⚠ ingest JSON - returned false");
+                            crate::teeprintln!("  ⚠ ingest JSON - returned false");
                             stats.skipped += 1;
                         }
                         return;
                     }
                 }
             }
-            println!("  ✓ ingest JSON - SUCCESS");
+            crate::teeprintln!("  ✓ ingest JSON - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ✗ ingest JSON - FAILED: {}", e);
+            crate::teeprintln!("  ✗ ingest JSON - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -394,21 +394,21 @@ async fn test_ingest_jsonl_file(
                         let chunks = parsed.get("chunks_created").and_then(|c| c.as_i64()).unwrap_or(0);
                         
                         if success && chunks > 0 {
-                            println!("  ✓ ingest JSONL (line-by-line) - SUCCESS ({} memory items)", chunks);
+                            crate::teeprintln!("  ✓ ingest JSONL (line-by-line) - SUCCESS ({} memory items)", chunks);
                             stats.passed += 1;
                         } else {
-                            println!("  ⚠ ingest JSONL - returned false");
+                            crate::teeprintln!("  ⚠ ingest JSONL - returned false");
                             stats.skipped += 1;
                         }
                         return;
                     }
                 }
             }
-            println!("  ✓ ingest JSONL - SUCCESS");
+            crate::teeprintln!("  ✓ ingest JSONL - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ✗ ingest JSONL - FAILED: {}", e);
+            crate::teeprintln!("  ✗ ingest JSONL - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -432,21 +432,21 @@ async fn test_ingest_folder_recursive(
                         let chunks = parsed.get("chunks_created").and_then(|c| c.as_i64()).unwrap_or(0);
                         
                         if success {
-                            println!("  ✓ ingest folder (recursive) - SUCCESS (processed folder)");
+                            crate::teeprintln!("  ✓ ingest folder (recursive) - SUCCESS (processed folder)");
                             stats.passed += 1;
                         } else {
-                            println!("  ⚠ ingest folder - returned false");
+                            crate::teeprintln!("  ⚠ ingest folder - returned false");
                             stats.skipped += 1;
                         }
                         return;
                     }
                 }
             }
-            println!("  ✓ ingest folder (recursive) - SUCCESS");
+            crate::teeprintln!("  ✓ ingest folder (recursive) - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ✗ ingest folder (recursive) - FAILED: {}", e);
+            crate::teeprintln!("  ✗ ingest folder (recursive) - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -459,11 +459,11 @@ async fn test_list_ingested_files(
 ) -> anyhow::Result<()> {
     match client.call_tool("list_ingested_files", serde_json::json!({})).await {
         Ok(_) => {
-            println!("  ✓ list_ingested_files - SUCCESS");
+            crate::teeprintln!("  ✓ list_ingested_files - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ✗ list_ingested_files - FAILED: {}", e);
+            crate::teeprintln!("  ✗ list_ingested_files - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -480,11 +480,11 @@ async fn test_delete_ingested_files(
         "file_ids": file_ids
     })).await {
         Ok(_) => {
-            println!("  ✓ delete_ingested_files - SUCCESS");
+            crate::teeprintln!("  ✓ delete_ingested_files - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            println!("  ⚠ delete_ingested_files - BLOCKED (expected without admin): {}", e);
+            crate::teeprintln!("  ⚠ delete_ingested_files - BLOCKED (expected without admin): {}", e);
             stats.skipped += 1;
         }
     }
