@@ -389,35 +389,35 @@ impl AnalysisSummary {
     
     /// Print summary in table format
     pub fn print_table(&self) {
-        println!("\n{}", "═".repeat(80));
-        println!("  CODE ANALYSIS SUMMARY");
-        println!("{}", "═".repeat(80));
-        println!();
-        println!("  {:<35} {:>10}", "Issue Type", "Count");
-        println!("  {}", "─".repeat(48));
-        println!("  {:<35} {:>10}", "#[allow(*)] annotations", self.allow_annotations);
-        println!("  {:<35} {:>10}", "unimplemented!() macros", self.unimplemented);
-        println!("  {:<35} {:>10}", "todo!() macros", self.todos);
-        println!("  {:<35} {:>10}", "panic!() stubs", self.panics);
-        println!("  {:<35} {:>10}", "Early return stubs", self.early_returns);
-        println!("  {:<35} {:>10}", "Underscore-prefixed code", self.underscore_prefixes);
-        println!("  {:<35} {:>10}", "Placeholder returns", self.placeholder_returns);
-        println!("  {:<35} {:>10}", "Stub patterns", self.stub_patterns);
-        println!("  {}", "─".repeat(48));
-        println!("  {:<35} {:>10}", "TOTAL ISSUES", self.total_issues);
-        println!();
+        crate::teeprintln!("\n{}", "═".repeat(80));
+        crate::teeprintln!("  CODE ANALYSIS SUMMARY");
+        crate::teeprintln!("{}", "═".repeat(80));
+        crate::teeprintln!("");
+        crate::teeprintln!("  {:<35} {:>10}", "Issue Type", "Count");
+        crate::teeprintln!("  {}", "─".repeat(48));
+        crate::teeprintln!("  {:<35} {:>10}", "#[allow(*)] annotations", self.allow_annotations);
+        crate::teeprintln!("  {:<35} {:>10}", "unimplemented!() macros", self.unimplemented);
+        crate::teeprintln!("  {:<35} {:>10}", "todo!() macros", self.todos);
+        crate::teeprintln!("  {:<35} {:>10}", "panic!() stubs", self.panics);
+        crate::teeprintln!("  {:<35} {:>10}", "Early return stubs", self.early_returns);
+        crate::teeprintln!("  {:<35} {:>10}", "Underscore-prefixed code", self.underscore_prefixes);
+        crate::teeprintln!("  {:<35} {:>10}", "Placeholder returns", self.placeholder_returns);
+        crate::teeprintln!("  {:<35} {:>10}", "Stub patterns", self.stub_patterns);
+        crate::teeprintln!("  {}", "─".repeat(48));
+        crate::teeprintln!("  {:<35} {:>10}", "TOTAL ISSUES", self.total_issues);
+        crate::teeprintln!("");
         
         if !self.issues_by_file.is_empty() {
-            println!("  Issues by File:");
-            println!("  {}", "─".repeat(48));
+            crate::teeprintln!("  Issues by File:");
+            crate::teeprintln!("  {}", "─".repeat(48));
             for (file, count) in &self.issues_by_file {
                 // Extract relative path
                 let relative = file.split("src/").last().unwrap_or(file);
-                println!("    {:<40} {:>6}", relative, count);
+                crate::teeprintln!("    {:<40} {:>6}", relative, count);
             }
         }
         
-        println!("{}", "═".repeat(80));
+        crate::teeprintln!("{}", "═".repeat(80));
     }
 }
 
@@ -584,49 +584,49 @@ impl LintSummary {
     
     /// Print lint summary and issues table
     pub fn print_report(&self) {
-        println!("\n{}", "═".repeat(100));
-        println!("  LINT ANALYSIS SUMMARY (clippy + cargo check)");
-        println!("{}", "═".repeat(100));
-        println!();
-        println!("  {:<20} {:>10}", "Lint Level", "Count");
-        println!("  {}", "─".repeat(33));
+        crate::teeprintln!("\n{}", "═".repeat(100));
+        crate::teeprintln!("  LINT ANALYSIS SUMMARY (clippy + cargo check)");
+        crate::teeprintln!("{}", "═".repeat(100));
+        crate::teeprintln!("");
+        crate::teeprintln!("  {:<20} {:>10}", "Lint Level", "Count");
+        crate::teeprintln!("  {}", "─".repeat(33));
         if self.errors > 0 {
-            println!("  {:<20} {:>10}", "Errors", self.errors);
+            crate::teeprintln!("  {:<20} {:>10}", "Errors", self.errors);
         }
         if self.warnings > 0 {
-            println!("  {:<20} {:>10}", "Warnings", self.warnings);
+            crate::teeprintln!("  {:<20} {:>10}", "Warnings", self.warnings);
         }
         if self.helps > 0 {
-            println!("  {:<20} {:>10}", "Help suggestions", self.helps);
+            crate::teeprintln!("  {:<20} {:>10}", "Help suggestions", self.helps);
         }
         if self.notes > 0 {
-            println!("  {:<20} {:>10}", "Notes", self.notes);
+            crate::teeprintln!("  {:<20} {:>10}", "Notes", self.notes);
         }
-        println!("  {}", "─".repeat(33));
-        println!("  {:<20} {:>10}", "TOTAL (E+W)", self.errors + self.warnings);
-        println!();
+        crate::teeprintln!("  {}", "─".repeat(33));
+        crate::teeprintln!("  {:<20} {:>10}", "TOTAL (E+W)", self.errors + self.warnings);
+        crate::teeprintln!("");
         
         if !self.issues_by_file.is_empty() && (self.errors > 0 || self.warnings > 0) {
-            println!("  Lint issues by File:");
-            println!("  {}", "─".repeat(33));
+            crate::teeprintln!("  Lint issues by File:");
+            crate::teeprintln!("  {}", "─".repeat(33));
             let mut files: Vec<_> = self.issues_by_file.iter().collect();
             files.sort_by(|a, b| b.1.cmp(a.1));
             for (file, count) in files.iter().take(10) {
                 let relative = file.split("src/").last().unwrap_or(file);
-                println!("    {:.<40} {:>6}", relative, count);
+                crate::teeprintln!("    {:.<40} {:>6}", relative, count);
             }
         }
         
         // Print detailed issues table if there are errors or warnings
         if !self.issues.is_empty() && self.issues.iter().any(|i| i.level == LintLevel::Error || i.level == LintLevel::Warning) {
-            println!();
-            println!("{}", "─".repeat(100));
-            println!("  DETAILED LINT ISSUES TABLE");
-            println!("{}", "─".repeat(100));
-            println!();
-            println!("┌{:─<8}┬{:─<6}┬{:─<50}┬{:─<30}┐", "", "", "", "");
-            println!("│{:^8}│{:^6}│{:^50}│{:^30}│", "Level", "Line", "File", "Message");
-            println!("├{:─<8}┼{:─<6}┼{:─<50}┼{:─<30}┤", "", "", "", "");
+            crate::teeprintln!("");
+            crate::teeprintln!("{}", "─".repeat(100));
+            crate::teeprintln!("  DETAILED LINT ISSUES TABLE");
+            crate::teeprintln!("{}", "─".repeat(100));
+            crate::teeprintln!("");
+            crate::teeprintln!("┌{:─<8}┬{:─<6}┬{:─<50}┬{:─<30}┐", "", "", "", "");
+            crate::teeprintln!("│{:^8}│{:^6}│{:^50}│{:^30}│", "Level", "Line", "File", "Message");
+            crate::teeprintln!("├{:─<8}┼{:─<6}┼{:─<50}┼{:─<30}┤", "", "", "", "");
             
             for issue in &self.issues {
                 if issue.level == LintLevel::Error || issue.level == LintLevel::Warning {
@@ -649,7 +649,7 @@ impl LintSummary {
                         LintLevel::Note => "NOTE",
                     };
                     
-                    println!("│{:^8}│{:^6}│{:.<50}│{:.<30}│", 
+                    crate::teeprintln!("│{:^8}│{:^6}│{:.<50}│{:.<30}│", 
                         level_str, 
                         issue.line_number, 
                         file_short, 
@@ -658,9 +658,9 @@ impl LintSummary {
                 }
             }
             
-            println!("└{:─<8}┴{:─<6}┴{:─<50}┴{:─<30}┘", "", "", "", "");
+            crate::teeprintln!("└{:─<8}┴{:─<6}┴{:─<50}┴{:─<30}┘", "", "", "", "");
         }
         
-        println!("{}", "═".repeat(100));
+        crate::teeprintln!("{}", "═".repeat(100));
     }
 }

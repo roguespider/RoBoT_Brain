@@ -130,9 +130,9 @@ impl TestReport {
     /// Print the full report in table format
     pub fn print_report(&self) {
         // Header
-        println!("\n{}", "═".repeat(100));
-        println!("  ROBO T BRAIN - COMPREHENSIVE END-TO-END TEST REPORT");
-        println!("{}", "═".repeat(100));
+        crate::teeprintln!("\n{}", "═".repeat(100));
+        crate::teeprintln!("  ROBO T BRAIN - COMPREHENSIVE END-TO-END TEST REPORT");
+        crate::teeprintln!("{}", "═".repeat(100));
         
         // Summary statistics
         self.print_summary();
@@ -161,14 +161,14 @@ impl TestReport {
         // Final verdict
         self.print_verdict();
         
-        println!("{}", "═".repeat(100));
+        crate::teeprintln!("{}", "═".repeat(100));
     }
     
     /// Print summary statistics
     fn print_summary(&self) {
-        println!("\n┌{:─<98}┐", "");
-        println!("│ {:^96} │", "SUMMARY");
-        println!("├{:─<98}┤", "");
+        crate::teeprintln!("\n┌{:─<98}┐", "");
+        crate::teeprintln!("│ {:^96} │", "SUMMARY");
+        crate::teeprintln!("├{:─<98}┤", "");
         
         let total = self.results.len();
         let passed = self.passed_count();
@@ -185,43 +185,43 @@ impl TestReport {
             0.0
         };
         
-        println!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
+        crate::teeprintln!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
             "Total Tests:", total, "", "", "");
-        println!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
+        crate::teeprintln!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
             "Passed:", passed, "", "", "");
-        println!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
+        crate::teeprintln!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
             "Failed:", failed, "", "", "");
-        println!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
+        crate::teeprintln!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
             "Errors:", errors, "", "", "");
-        println!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
+        crate::teeprintln!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
             "Skipped:", skipped, "", "", "");
-        println!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
+        crate::teeprintln!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
             "Blocked:", blocked, "", "", "");
-        println!("│  {:<30} {:>15.1}% {:>15} {:>15} {:>15} │", 
+        crate::teeprintln!("│  {:<30} {:>15.1}% {:>15} {:>15} {:>15} │", 
             "Pass Rate:", pass_rate, "", "", "");
-        println!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
+        crate::teeprintln!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
             "Code Issues:", code_issues, "", "", "");
         
         // Compiler errors and warnings
-        println!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
+        crate::teeprintln!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
             "Compiler Errors:", self.lint_errors, "", "", "");
-        println!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
+        crate::teeprintln!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
             "Compiler Warnings:", self.lint_warnings, "", "", "");
         
-        println!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
+        crate::teeprintln!("│  {:<30} {:>15} {:>15} {:>15} {:>15} │", 
             "Duration:", format!("{}ms", self.total_duration_ms), "", "", "");
         
-        println!("└{:─<98}┘", "");
+        crate::teeprintln!("└{:─<98}┘", "");
     }
     
     /// Print code issues table
     fn print_code_issues(&self) {
-        println!("\n┌{:─<98}┐", "");
-        println!("│ {:^96} │", "⚠️  CODE QUALITY ISSUES DETECTED");
-        println!("├{:─<96}:┤", "─");
-        println!("│  The following issues were found in the source code:");
-        println!("│  These may indicate incomplete implementations or technical debt:");
-        println!("│{:─<97}│", "");
+        crate::teeprintln!("\n┌{:─<98}┐", "");
+        crate::teeprintln!("│ {:^96} │", "⚠️  CODE QUALITY ISSUES DETECTED");
+        crate::teeprintln!("├{:─<96}:┤", "─");
+        crate::teeprintln!("│  The following issues were found in the source code:");
+        crate::teeprintln!("│  These may indicate incomplete implementations or technical debt:");
+        crate::teeprintln!("│{:─<97}│", "");
         
         // Group issues by type
         let mut issues_by_type: std::collections::HashMap<String, Vec<&CodeIssue>> = std::collections::HashMap::new();
@@ -231,10 +231,10 @@ impl TestReport {
         }
         
         for (issue_type, issues) in &issues_by_type {
-            println!("│");
-            println!("│  Issue Type: {}", issue_type);
-            println!("│  Count: {}", issues.len());
-            println!("│  ├── Files affected: {}", issues.iter()
+            crate::teeprintln!("│");
+            crate::teeprintln!("│  Issue Type: {}", issue_type);
+            crate::teeprintln!("│  Count: {}", issues.len());
+            crate::teeprintln!("│  ├── Files affected: {}", issues.iter()
                 .map(|i| i.file_path.file_name().unwrap_or_default().to_string_lossy().to_string())
                 .collect::<std::collections::HashSet<_>>()
                 .len());
@@ -244,19 +244,19 @@ impl TestReport {
                 let file_name = issue.file_path.file_name()
                     .map(|n| n.to_string_lossy().to_string())
                     .unwrap_or_else(|| "unknown".to_string());
-                println!("│  ├── Line {}: {} - {}", 
+                crate::teeprintln!("│  ├── Line {}: {} - {}", 
                     issue.line_number,
                     file_name,
                     issue.description.chars().take(50).collect::<String>()
                 );
             }
             if issues.len() > 3 {
-                println!("│  └── ... and {} more", issues.len() - 3);
+                crate::teeprintln!("│  └── ... and {} more", issues.len() - 3);
             }
         }
         
-        println!("│{:─<97}│", "");
-        println!("└{:─<97}┘", "");
+        crate::teeprintln!("│{:─<97}│", "");
+        crate::teeprintln!("└{:─<97}┘", "");
     }
     
     /// Print compiler errors and warnings table
@@ -267,29 +267,29 @@ impl TestReport {
             .collect();
         
         if error_warnings.is_empty() {
-            println!("\n┌{:─<98}┐", "");
-            println!("│ {:^96} │", "🔧  COMPILER ERRORS & WARNINGS");
-            println!("├{:─<98}┤", "");
-            println!("│");
-            println!("│  ✅ No compiler errors or warnings!");
-            println!("│");
-            println!("└{:─<98}┘", "");
+            crate::teeprintln!("\n┌{:─<98}┐", "");
+            crate::teeprintln!("│ {:^96} │", "🔧  COMPILER ERRORS & WARNINGS");
+            crate::teeprintln!("├{:─<98}┤", "");
+            crate::teeprintln!("│");
+            crate::teeprintln!("│  ✅ No compiler errors or warnings!");
+            crate::teeprintln!("│");
+            crate::teeprintln!("└{:─<98}┘", "");
             return;
         }
         
-        println!("\n┌{:─<98}┐", "");
-        println!("│ {:^96} │", "🔧  COMPILER ERRORS & WARNINGS");
-        println!("├{:─<98}┤", "");
-        println!("│");
-        println!("│  Compiler errors and warnings from cargo check / clippy:");
-        println!("│{:─<97}│", "");
+        crate::teeprintln!("\n┌{:─<98}┐", "");
+        crate::teeprintln!("│ {:^96} │", "🔧  COMPILER ERRORS & WARNINGS");
+        crate::teeprintln!("├{:─<98}┤", "");
+        crate::teeprintln!("│");
+        crate::teeprintln!("│  Compiler errors and warnings from cargo check / clippy:");
+        crate::teeprintln!("│{:─<97}│", "");
         
         // Table header
-        println!("│");
-        println!("├{:─<8}├{:─<6}├{:─<12}├{:─<68}┤", "─", "─", "─", "─");
-        println!("│ {:^6} │ {:^4} │ {:^10} │ {:^66} │", 
+        crate::teeprintln!("│");
+        crate::teeprintln!("├{:─<8}├{:─<6}├{:─<12}├{:─<68}┤", "─", "─", "─", "─");
+        crate::teeprintln!("│ {:^6} │ {:^4} │ {:^10} │ {:^66} │", 
             "Level", "Line", "Code", "Message");
-        println!("├{:─<8}┼{:─<6}┼{:─<12}┼{:─<68}┤", "─", "─", "─", "─");
+        crate::teeprintln!("├{:─<8}┼{:─<6}┼{:─<12}┼{:─<68}┤", "─", "─", "─", "─");
         
         // Print each error/warning
         for issue in &error_warnings {
@@ -307,7 +307,7 @@ impl TestReport {
             
             let msg_truncated = truncate(&issue.message, 66);
             
-            println!("│ {} {:^4} │ {:>4} │ {:^10} │ {:.<66} │", 
+            crate::teeprintln!("│ {} {:^4} │ {:>4} │ {:^10} │ {:.<66} │", 
                 level_icon,
                 level_str,
                 issue.line_number,
@@ -316,11 +316,11 @@ impl TestReport {
             );
         }
         
-        println!("├{:─<8}┴{:─<6}┴{:─<12}┴{:─<68}┤", "─", "─", "─", "─");
+        crate::teeprintln!("├{:─<8}┴{:─<6}┴{:─<12}┴{:─<68}┤", "─", "─", "─", "─");
         
         // Summary by file
-        println!("│");
-        println!("│  Summary by file:");
+        crate::teeprintln!("│");
+        crate::teeprintln!("│  Summary by file:");
         let mut by_file: std::collections::HashMap<String, (usize, usize)> = std::collections::HashMap::new();
         for issue in &error_warnings {
             let file_name = std::path::Path::new(&issue.file_path)
@@ -339,65 +339,65 @@ impl TestReport {
         for (file, (errs, warns)) in by_file.iter().take(5) {
             let err_icon = if *errs > 0 { "❌" } else { "" };
             let warn_icon = if *warns > 0 { "⚠️" } else { "" };
-            println!("│    {} {}{} - {} errors, {} warnings", 
+            crate::teeprintln!("│    {} {}{} - {} errors, {} warnings", 
                 file, err_icon, warn_icon, errs, warns);
         }
         
-        println!("│{:─<97}│", "");
-        println!("└{:─<97}┘", "");
+        crate::teeprintln!("│{:─<97}│", "");
+        crate::teeprintln!("└{:─<97}┘", "");
     }
     
     /// Print failed tests details
     fn print_failed_tests(&self) {
-        println!("\n┌{:─<98}┐", "");
-        println!("│ {:^96} │", "❌ FAILED TESTS");
-        println!("├{:─<96}:┤", "─");
+        crate::teeprintln!("\n┌{:─<98}┐", "");
+        crate::teeprintln!("│ {:^96} │", "❌ FAILED TESTS");
+        crate::teeprintln!("├{:─<96}:┤", "─");
         
         for result in self.failed_results() {
-            println!("│");
-            println!("│  Test ID: {}", result.requirement.id);
-            println!("│  Function: {}.{}", result.requirement.category, result.requirement.function_name);
-            println!("│  Expected: {}", result.requirement.expected_behavior);
-            println!("│  Error: {}", result.error_message.as_deref().unwrap_or("Unknown error"));
+            crate::teeprintln!("│");
+            crate::teeprintln!("│  Test ID: {}", result.requirement.id);
+            crate::teeprintln!("│  Function: {}.{}", result.requirement.category, result.requirement.function_name);
+            crate::teeprintln!("│  Expected: {}", result.requirement.expected_behavior);
+            crate::teeprintln!("│  Error: {}", result.error_message.as_deref().unwrap_or("Unknown error"));
             
             if !result.validation_results.is_empty() {
-                println!("│  Validation Results:");
+                crate::teeprintln!("│  Validation Results:");
                 for vr in &result.validation_results {
                     let status = if vr.passed { "✓" } else { "✗" };
-                    println!("│    {} {} - {}", status, vr.field, vr.message.as_deref().unwrap_or(""));
+                    crate::teeprintln!("│    {} {} - {}", status, vr.field, vr.message.as_deref().unwrap_or(""));
                 }
             }
         }
         
-        println!("│{:─<97}│", "");
-        println!("└{:─<97}┘", "");
+        crate::teeprintln!("│{:─<97}│", "");
+        crate::teeprintln!("└{:─<97}┘", "");
     }
     
     /// Print error tests details
     fn print_error_tests(&self) {
-        println!("\n┌{:─<98}┐", "");
-        println!("│ {:^96} │", "💥 ERROR TESTS");
-        println!("├{:─<96}:┤", "─");
+        crate::teeprintln!("\n┌{:─<98}┐", "");
+        crate::teeprintln!("│ {:^96} │", "💥 ERROR TESTS");
+        crate::teeprintln!("├{:─<96}:┤", "─");
         
         for result in self.error_results() {
-            println!("│");
-            println!("│  Test ID: {}", result.requirement.id);
-            println!("│  Function: {}.{}", result.requirement.category, result.requirement.function_name);
-            println!("│  Error: {}", result.error_message.as_deref().unwrap_or("Unknown error"));
+            crate::teeprintln!("│");
+            crate::teeprintln!("│  Test ID: {}", result.requirement.id);
+            crate::teeprintln!("│  Function: {}.{}", result.requirement.category, result.requirement.function_name);
+            crate::teeprintln!("│  Error: {}", result.error_message.as_deref().unwrap_or("Unknown error"));
         }
         
-        println!("│{:─<97}│", "");
-        println!("└{:─<97}┘", "");
+        crate::teeprintln!("│{:─<97}│", "");
+        crate::teeprintln!("└{:─<97}┘", "");
     }
     
     /// Print full test table
     fn print_full_table(&self) {
-        println!("\n┌{:─<98}┐", "");
-        println!("│ {:^96} │", "📋 FULL TEST RESULTS TABLE");
-        println!("├{:─<6}├{:─<20}├{:─<25}├{:─<8}├{:─<10}├{:─<25}┤", "─", "─", "─", "─", "─", "─");
-        println!("│ {:^4} │ {:^18} │ {:^23} │ {:^6} │ {:^8} │ {:^23} │", 
+        crate::teeprintln!("\n┌{:─<98}┐", "");
+        crate::teeprintln!("│ {:^96} │", "📋 FULL TEST RESULTS TABLE");
+        crate::teeprintln!("├{:─<6}├{:─<20}├{:─<25}├{:─<8}├{:─<10}├{:─<25}┤", "─", "─", "─", "─", "─", "─");
+        crate::teeprintln!("│ {:^4} │ {:^18} │ {:^23} │ {:^6} │ {:^8} │ {:^23} │", 
             "#", "Category", "Function", "Status", "Priority", "Result");
-        println!("├{:─<6}┼{:─<20}┼{:─<25}┼{:─<8}┼{:─<10}┼{:─<25}┤", "─", "─", "─", "─", "─", "─");
+        crate::teeprintln!("├{:─<6}┼{:─<20}┼{:─<25}┼{:─<8}┼{:─<10}┼{:─<25}┤", "─", "─", "─", "─", "─", "─");
         
         let mut categories: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
         
@@ -432,7 +432,7 @@ impl TestReport {
                 "OK".to_string()
             };
             
-            println!("│ {:>3} │ {:<20} │ {:<25} │ {} {:<4} │ {:<10} │ {:<25} │", 
+            crate::teeprintln!("│ {:>3} │ {:<20} │ {:<25} │ {} {:<4} │ {:<10} │ {:<25} │", 
                 idx + 1,
                 truncate(&result.requirement.category, 20),
                 truncate(&result.requirement.function_name, 25),
@@ -443,21 +443,21 @@ impl TestReport {
             );
         }
         
-        println!("└{:─<6}┴{:─<20}┴{:─<25}┴{:─<8}┴{:─<10}┴{:─<25}┘", "─", "─", "─", "─", "─", "─");
+        crate::teeprintln!("└{:─<6}┴{:─<20}┴{:─<25}┴{:─<8}┴{:─<10}┴{:─<25}┘", "─", "─", "─", "─", "─", "─");
         
         // Print category summary
-        println!("\n  Category Summary:");
+        crate::teeprintln!("\n  Category Summary:");
         for (cat, count) in categories {
             let passed = self.results.iter()
                 .filter(|r| r.requirement.category == cat && r.status == TestStatus::Pass)
                 .count();
-            println!("    {:<20} {}/{} passed", cat, passed, count);
+            crate::teeprintln!("    {:<20} {}/{} passed", cat, passed, count);
         }
     }
     
     /// Print final verdict
     fn print_verdict(&self) {
-        println!("\n┌{:─<98}┐", "");
+        crate::teeprintln!("\n┌{:─<98}┐", "");
         
         let all_passed = self.all_passed();
         let no_code_issues = self.code_issues.is_empty();
@@ -465,58 +465,58 @@ impl TestReport {
         let overall_success = all_passed && no_code_issues && no_lint_issues;
         
         if overall_success {
-            println!("│ {:^96} │", "🎉 VERDICT: ALL TESTS PASSED - READY FOR PRODUCTION");
-            println!("├{:─<98}┤", "");
-            println!("│");
-            println!("│  ✅ All {} functions tested and passed", self.results.len());
-            println!("│  ✅ No stub patterns or partial implementations detected");
-            println!("│  ✅ No #[allow(*)] annotations that hide issues");
-            println!("│  ✅ All sub-functions complete and working");
-            println!("│  ✅ No compiler errors or warnings");
-            println!("│");
+            crate::teeprintln!("│ {:^96} │", "🎉 VERDICT: ALL TESTS PASSED - READY FOR PRODUCTION");
+            crate::teeprintln!("├{:─<98}┤", "");
+            crate::teeprintln!("│");
+            crate::teeprintln!("│  ✅ All {} functions tested and passed", self.results.len());
+            crate::teeprintln!("│  ✅ No stub patterns or partial implementations detected");
+            crate::teeprintln!("│  ✅ No #[allow(*)] annotations that hide issues");
+            crate::teeprintln!("│  ✅ All sub-functions complete and working");
+            crate::teeprintln!("│  ✅ No compiler errors or warnings");
+            crate::teeprintln!("│");
         } else {
-            println!("│ {:^96} │", "⚠️  VERDICT: TESTS HAVE ISSUES - REVIEW REQUIRED");
-            println!("├{:─<98}┤", "");
-            println!("│");
+            crate::teeprintln!("│ {:^96} │", "⚠️  VERDICT: TESTS HAVE ISSUES - REVIEW REQUIRED");
+            crate::teeprintln!("├{:─<98}┤", "");
+            crate::teeprintln!("│");
             
             if !all_passed {
                 let failed = self.failed_count();
                 let errors = self.error_count();
-                println!("│  ❌ {} tests failed, {} errors", failed, errors);
+                crate::teeprintln!("│  ❌ {} tests failed, {} errors", failed, errors);
             }
             
             if !no_code_issues {
-                println!("│  ⚠️  {} code quality issues detected", self.code_issues.len());
-                println!("│     See code issues section above for details");
+                crate::teeprintln!("│  ⚠️  {} code quality issues detected", self.code_issues.len());
+                crate::teeprintln!("│     See code issues section above for details");
             }
             
             if !no_lint_issues {
-                println!("│  ⚠️  {} compiler errors, {} warnings", self.lint_errors, self.lint_warnings);
-                println!("│     See compiler errors & warnings section above");
+                crate::teeprintln!("│  ⚠️  {} compiler errors, {} warnings", self.lint_errors, self.lint_warnings);
+                crate::teeprintln!("│     See compiler errors & warnings section above");
             }
             
-            println!("│");
-            println!("│  Required actions:");
+            crate::teeprintln!("│");
+            crate::teeprintln!("│  Required actions:");
             let mut action_num = 1;
             if !all_passed {
-                println!("│    {}. Fix all failing tests", action_num);
+                crate::teeprintln!("│    {}. Fix all failing tests", action_num);
                 action_num += 1;
-                println!("│    {}. Ensure functions work end-to-end", action_num);
+                crate::teeprintln!("│    {}. Ensure functions work end-to-end", action_num);
                 action_num += 1;
             }
             if !no_code_issues {
-                println!("│    {}. Remove stub patterns and #[allow(*)] annotations", action_num);
+                crate::teeprintln!("│    {}. Remove stub patterns and #[allow(*)] annotations", action_num);
                 action_num += 1;
-                println!("│    {}. Implement missing functionality", action_num);
+                crate::teeprintln!("│    {}. Implement missing functionality", action_num);
                 action_num += 1;
             }
             if !no_lint_issues {
-                println!("│    {}. Fix compiler errors and warnings", action_num);
+                crate::teeprintln!("│    {}. Fix compiler errors and warnings", action_num);
             }
-            println!("│");
+            crate::teeprintln!("│");
         }
         
-        println!("└{:─<98}┘", "");
+        crate::teeprintln!("└{:─<98}┘", "");
     }
 }
 
@@ -532,16 +532,16 @@ fn truncate(s: &str, max_len: usize) -> String {
 /// Print issues table (standalone function for early reporting)
 pub fn print_issues_table(issues: &[CodeIssue]) {
     if issues.is_empty() {
-        println!("\n  ✅ No code quality issues detected in source!");
+        crate::teeprintln!("\n  ✅ No code quality issues detected in source!");
         return;
     }
     
-    println!("\n┌{:─<98}┐", "");
-    println!("│ {:^96} │", "⚠️  CODE QUALITY ISSUES TABLE");
-    println!("├{:─<10}├{:─<40}├{:─<10}├{:─<35}┤", "─", "─", "─", "─");
-    println!("│ {:^8} │ {:^38} │ {:^8} │ {:^33} │", 
+    crate::teeprintln!("\n┌{:─<98}┐", "");
+    crate::teeprintln!("│ {:^96} │", "⚠️  CODE QUALITY ISSUES TABLE");
+    crate::teeprintln!("├{:─<10}├{:─<40}├{:─<10}├{:─<35}┤", "─", "─", "─", "─");
+    crate::teeprintln!("│ {:^8} │ {:^38} │ {:^8} │ {:^33} │", 
         "Line", "File", "Type", "Description");
-    println!("├{:─<10}┼{:─<40}┼{:─<10}┼{:─<35}┤", "─", "─", "─", "─");
+    crate::teeprintln!("├{:─<10}┼{:─<40}┼{:─<10}┼{:─<35}┤", "─", "─", "─", "─");
     
     for issue in issues {
         let file_name = issue.file_path.file_name()
@@ -551,7 +551,7 @@ pub fn print_issues_table(issues: &[CodeIssue]) {
         let issue_type = issue.issue_type.to_string();
         let description = truncate(&issue.description, 33);
         
-        println!("│ {:>8} │ {:<40} │ {:<10} │ {:<35} │", 
+        crate::teeprintln!("│ {:>8} │ {:<40} │ {:<10} │ {:<35} │", 
             issue.line_number,
             truncate(&file_name, 40),
             truncate(&issue_type, 10),
@@ -559,5 +559,5 @@ pub fn print_issues_table(issues: &[CodeIssue]) {
         );
     }
     
-    println!("└{:─<10}┴{:─<40}┴{:─<10}┴{:─<35}┘", "─", "─", "─", "─");
+    crate::teeprintln!("└{:─<10}┴{:─<40}┴{:─<10}┴{:─<35}┘", "─", "─", "─", "─");
 }

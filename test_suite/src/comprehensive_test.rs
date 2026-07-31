@@ -20,14 +20,14 @@ pub async fn run_comprehensive_tests(
     let start_time = Instant::now();
     let mut report = TestReport::new();
     
-    println!("\n{}", "#".repeat(100));
-    println!("#  ROBO T BRAIN - COMPREHENSIVE END-TO-END TEST SUITE");
-    println!("#  Testing every function 100% end-to-end without stubs or #[allow(*)]");
-    println!("{}", "#".repeat(100));
+    crate::teeprintln!("\n{}", "#".repeat(100));
+    crate::teeprintln!("#  ROBO T BRAIN - COMPREHENSIVE END-TO-END TEST SUITE");
+    crate::teeprintln!("#  Testing every function 100% end-to-end without stubs or #[allow(*)]");
+    crate::teeprintln!("{}", "#".repeat(100));
     
     // Step 1: Analyze source code for issues
-    println!("\n📊 PHASE 1: SOURCE CODE ANALYSIS");
-    println!("{}", "─".repeat(100));
+    crate::teeprintln!("\n📊 PHASE 1: SOURCE CODE ANALYSIS");
+    crate::teeprintln!("{}", "─".repeat(100));
     
     let source_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("src");
     let analyzer = CodeAnalyzer::new(source_path);
@@ -41,25 +41,25 @@ pub async fn run_comprehensive_tests(
     print_issues_table(&code_issues);
     
     // Step 1b: Run lint analysis (clippy + cargo check)
-    println!("\n📋 PHASE 1B: LINT ANALYSIS (clippy + cargo check)");
-    println!("{}", "─".repeat(100));
+    crate::teeprintln!("\n📋 PHASE 1B: LINT ANALYSIS (clippy + cargo check)");
+    crate::teeprintln!("{}", "─".repeat(100));
     
     let project_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
     
-    println!("  Running clippy...");
+    crate::teeprintln!("  Running clippy...");
     let clippy_issues = match LintAnalyzer::run_clippy(&project_path) {
         Ok(issues) => issues,
         Err(e) => {
-            println!("    ⚠️  Clippy failed: {}", e);
+            crate::teeprintln!("    ⚠️  Clippy failed: {}", e);
             Vec::new()
         }
     };
     
-    println!("  Running cargo check...");
+    crate::teeprintln!("  Running cargo check...");
     let check_issues = match LintAnalyzer::run_check(&project_path) {
         Ok(issues) => issues,
         Err(e) => {
-            println!("    ⚠️  Cargo check failed: {}", e);
+            crate::teeprintln!("    ⚠️  Cargo check failed: {}", e);
             Vec::new()
         }
     };
@@ -79,37 +79,37 @@ pub async fn run_comprehensive_tests(
     report.set_lint_issues(all_lint_issues);
     
     // Step 2: Get all test requirements
-    println!("\n📋 PHASE 2: COLLECTING TEST REQUIREMENTS");
-    println!("{}", "─".repeat(100));
+    crate::teeprintln!("\n📋 PHASE 2: COLLECTING TEST REQUIREMENTS");
+    crate::teeprintln!("{}", "─".repeat(100));
     
     let requirements = FunctionRegistry::get_all_functions();
-    println!("  Found {} test requirements across {} categories", 
+    crate::teeprintln!("  Found {} test requirements across {} categories", 
         requirements.len(),
         get_category_count(&requirements));
     
     for category in get_categories(&requirements) {
         let count = requirements.iter().filter(|r| r.category == category).count();
-        println!("    - {}: {} tests", category, count);
+        crate::teeprintln!("    - {}: {} tests", category, count);
     }
     
     // Step 3: Run all tests
-    println!("\n🧪 PHASE 3: RUNNING END-TO-END TESTS");
-    println!("{}", "─".repeat(100));
+    crate::teeprintln!("\n🧪 PHASE 3: RUNNING END-TO-END TESTS");
+    crate::teeprintln!("{}", "─".repeat(100));
     
     // First, ensure workflow is initialized (required for most tests)
-    println!("\n  Initializing workflow...");
+    crate::teeprintln!("\n  Initializing workflow...");
     match client.call_tool("get_workflow", serde_json::json!({
         "purpose": "default"
     })).await {
-        Ok(_) => println!("    ✅ Workflow initialized"),
-        Err(e) => println!("    ⚠️  Workflow init warning: {}", e),
+        Ok(_) => crate::teeprintln!("    ✅ Workflow initialized"),
+        Err(e) => crate::teeprintln!("    ⚠️  Workflow init warning: {}", e),
     }
     
     // Print test table header
-    println!("\n  ┌{:─<5}┬{:─<20}┬{:─<30}┬{:─<8}┬{:─<50}┐", "", "", "", "", "");
-    println!("  │ {:^3} │ {:^18} │ {:^28} │ {:^6} │ {:^48} │", 
+    crate::teeprintln!("\n  ┌{:─<5}┬{:─<20}┬{:─<30}┬{:─<8}┬{:─<50}┐", "", "", "", "", "");
+    crate::teeprintln!("  │ {:^3} │ {:^18} │ {:^28} │ {:^6} │ {:^48} │", 
         "#", "Category", "Test Name", "Status", "Details");
-    println!("  ├{:─<5}┼{:─<20}┼{:─<30}┼{:─<8}┼{:─<50}┤", "", "", "", "", "");
+    crate::teeprintln!("  ├{:─<5}┼{:─<20}┼{:─<30}┼{:─<8}┼{:─<50}┤", "", "", "", "", "");
     
     // Run tests for each category
     let mut data_created: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
@@ -161,7 +161,7 @@ pub async fn run_comprehensive_tests(
             details 
         };
         
-        println!("  │ {:>3} │ {:<18} │ {:<28} │ {} │ {:<48} │", 
+        crate::teeprintln!("  │ {:>3} │ {:<18} │ {:<28} │ {} │ {:<48} │", 
             test_num, cat_str, name_str, status_icon, detail_str);
         
         report.add_result(result);
@@ -177,15 +177,15 @@ pub async fn run_comprehensive_tests(
         }
     }
     
-    println!("  └{:─<5}┴{:─<20}┴{:─<30}┴{:─<8}┴{:─<50}┘", "", "", "", "", "");
+    crate::teeprintln!("  └{:─<5}┴{:─<20}┴{:─<30}┴{:─<8}┴{:─<50}┘", "", "", "", "", "");
     
     // Step 4: Generate report
-    println!("\n📊 PHASE 4: GENERATING REPORT");
-    println!("{}", "─".repeat(100));
+    crate::teeprintln!("\n📊 PHASE 4: GENERATING REPORT");
+    crate::teeprintln!("{}", "─".repeat(100));
     
     report.print_report();
     
-    println!("\n  Total test duration: {:?}", start_time.elapsed());
+    crate::teeprintln!("\n  Total test duration: {:?}", start_time.elapsed());
     
     Ok(report)
 }
