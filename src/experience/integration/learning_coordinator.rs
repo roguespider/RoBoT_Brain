@@ -333,6 +333,7 @@ impl LearningCoordinator {
     ///
     /// Per Architecture §10:
     /// "Reflection asks: What happened? Why did it happen? Was the result expected? What should change?"
+    #[allow(unused_must_use)]
     async fn generate_reflection(&self, experience: &Experience) -> Result<crate::experience::reflection::Reflection> {
         let title = format!("Reflection on: {}", experience.title);
         
@@ -355,6 +356,7 @@ impl LearningCoordinator {
     ///
     /// Per Architecture §11:
     /// "Hypotheses enable discovery"
+    #[allow(unused_must_use)]
     async fn generate_hypotheses(&self, experience: &Experience) -> Result<Vec<String>> {
         let mut hypothesis_ids = Vec::new();
         
@@ -452,6 +454,7 @@ impl LearningCoordinator {
     ///
     /// Per Architecture §2.3:
     /// "Knowledge is information that has survived evaluation"
+    #[allow(unused_must_use)]
     async fn promote_to_knowledge(&self, experience: &Experience) -> Result<()> {
         let knowledge = KnowledgeItem::from_reflection(
             &experience.description,
@@ -496,6 +499,7 @@ impl LearningCoordinator {
     // ========================================================================
 
     /// Start exploration for a hypothesis
+    #[allow(unused_must_use)]
     pub async fn start_exploration(
         &self,
         _hypothesis_id: String,
@@ -522,6 +526,7 @@ impl LearningCoordinator {
     }
 
     /// Complete an exploration
+    #[allow(unused_must_use)]
     pub async fn complete_exploration(&self, exploration_id: &str) -> Result<()> {
         let mut store = self.explorations.write().await;
         
@@ -563,6 +568,7 @@ impl LearningCoordinator {
     ///
     /// Per Architecture §12:
     /// "Reputation determines how much each source of knowledge should be trusted"
+    #[allow(unused_must_use)]
     async fn update_reputation(&self, experience: &Experience) -> Result<()> {
         let source = &experience.context.source;
         let source_str = match source {
@@ -865,6 +871,7 @@ impl LearningCoordinator {
     /// Transfer knowledge from source domain to target domain
     ///
     /// Per Architecture §9: "Transfer learning applies knowledge from one domain to another"
+    #[allow(unused_must_use)]
     pub async fn transfer_knowledge(
         &self,
         source_domain: &str,

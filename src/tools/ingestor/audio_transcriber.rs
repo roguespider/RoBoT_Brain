@@ -319,8 +319,9 @@ fn load_mel_filters() -> Result<Vec<f32>> {
     let mut mel_filters = vec![0.0f32; n_mel * (n_fft / 2 + 1)];
     
     // Convert frequencies to mel scale
-    let f_min_mel = 2595.0 * (1.0 + f_min / 700.0).ln() / 2.30258509299;
-    let f_max_mel = 2595.0 * (1.0 + f_max / 700.0).ln() / 2.30258509299;
+    let ln_10 = std::f64::consts::LN_10 as f32;
+    let f_min_mel = 2595.0 * (1.0 + f_min / 700.0).ln() / ln_10;
+    let f_max_mel = 2595.0 * (1.0 + f_max / 700.0).ln() / ln_10;
     
     let mel_points: Vec<f32> = (0..=n_mel).map(|i| {
         f_min_mel + (f_max_mel - f_min_mel) * i as f32 / n_mel as f32
@@ -328,7 +329,7 @@ fn load_mel_filters() -> Result<Vec<f32>> {
     
     // Convert back to Hz
     let hz_points: Vec<f32> = mel_points.iter().map(|m| {
-        700.0 * ((m * 2.30258509299).exp() - 1.0)
+        700.0 * ((m * ln_10).exp() - 1.0)
     }).collect();
     
     // Convert to FFT bin numbers
@@ -392,13 +393,14 @@ pub fn transcribe_audio(path: &Path) -> Result<TranscriptionResult> {
     let analysis_text = generate_audio_analysis_text(&analysis, path);
     
     Ok(TranscriptionResult {
-        text: format!("{}\n\n{}",
+        text: format!(
+            "{}\n\n[Transcribed using Candle Whisper - {:.1}s audio]",
             if result.text.is_empty() {
                 analysis_text
             } else {
                 result.text
             },
-            format!("\n[Transcribed using Candle Whisper - {:.1}s audio]", duration_seconds)
+            duration_seconds
         ),
         language: result.language,
         duration_seconds: result.duration_seconds,
@@ -552,7 +554,7 @@ fn load_wav(path: &Path) -> Result<Vec<f32>> {
         
         pos += 8 + chunk_size;
         // Align to even byte
-        if chunk_size % 2 != 0 && pos % 2 != 0 {
+        if !chunk_size.is_multiple_of(2) && !pos.is_multiple_of(2) {
             pos += 1;
         }
     }

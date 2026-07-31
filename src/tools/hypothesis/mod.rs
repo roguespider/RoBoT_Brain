@@ -45,13 +45,6 @@ pub struct GetHypothesisInput {
     pub hypothesis_id: String,
 }
 
-/// Get observation by ID
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-
-pub struct GetObservationInput {
-    pub observation_id: String,
-}
-
 /// List hypotheses with optional filter
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct ListHypothesesInput {
@@ -65,14 +58,6 @@ pub struct ListHypothesesInput {
 pub struct ListObservationsInput {
     pub observation_type: Option<String>,
     pub limit: Option<usize>,
-}
-
-/// Link an observation to an experience
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
-
-pub struct LinkObservationToExperienceInput {
-    pub observation_id: String,
-    pub experience_id: String,
 }
 
 /// Get learned knowledge
@@ -310,7 +295,7 @@ pub mod definitions {
 // Re-export execution functions for use by MCP handlers
 pub use execute::{
     execute_record_observation, execute_create_hypothesis, execute_add_evidence,
-    execute_get_hypothesis, execute_get_observation, execute_list_hypotheses, 
+    execute_get_hypothesis, execute_list_hypotheses, 
     execute_list_observations, execute_evaluate_hypothesis, execute_get_knowledge, 
-    execute_extract_knowledge, execute_link_observation_to_experience,
+    execute_extract_knowledge,
 };

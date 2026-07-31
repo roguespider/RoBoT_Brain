@@ -28,7 +28,7 @@ impl HypothesisAnalytics {
 
     /// Analyze a collection of hypotheses.
     pub fn analyze(&self, hypotheses: &[Hypothesis]) -> HypothesisAnalyticsReport {
-        let mut total = hypotheses.len() as u32;
+        let total = hypotheses.len() as u32;
         let mut draft = 0u32;
         let mut active = 0u32;
         let mut supported = 0u32;
