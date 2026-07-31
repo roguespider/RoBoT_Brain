@@ -4,7 +4,7 @@
 //! Shows pass/fail status for each function with detailed information.
 
 use crate::function_registry::TestRequirement;
-use crate::code_analyzer::{CodeIssue, IssueType};
+use crate::code_analyzer::CodeIssue;
 
 /// Represents the result of a single test
 #[derive(Debug, Clone)]

@@ -226,19 +226,28 @@ impl CodeAnalyzer {
         let mut issues = Vec::new();
         
         // Pattern: Function that only returns Ok() or Err() immediately
-        let stub_return_regex = Regex::new(
+        let _stub_return_regex = match Regex::new(
             r"pub\s+async\s+fn\s+(\w+).*?\{[^}]*(Ok\(|Err\().*\}[^}]*$"
-        ).ok()?;
+        ) {
+            Ok(re) => Some(re),
+            Err(_) => None,
+        };
         
         // Pattern: Function that just returns default/unimplemented values
-        let placeholder_regex = Regex::new(
+        let _placeholder_regex = match Regex::new(
             r"(Vec::new\(\)|HashMap::new\(\)|None|Default::default\(\)|\[\].*to_vec\(\))"
-        ).ok()?;
+        ) {
+            Ok(re) => Some(re),
+            Err(_) => None,
+        };
         
         // Check for functions that are just stubs returning empty/default values
-        let stub_fn_regex = Regex::new(
+        let _stub_fn_regex = match Regex::new(
             r"pub\s+(async\s+)?fn\s+(\w+).*?\{(\s*(//[^\n]*\n)?\s*)*(Ok\(|Err\(|return)"
-        ).ok()?;
+        ) {
+            Ok(re) => Some(re),
+            Err(_) => None,
+        };
         
         for (line_num, line) in content.lines().enumerate() {
             let line_number = line_num + 1;
@@ -320,6 +329,7 @@ pub struct AnalysisSummary {
 
 impl AnalysisSummary {
     /// Check if there are any critical issues
+    #[allow(dead_code)]
     pub fn has_critical_issues(&self) -> bool {
         self.unimplemented > 0 || self.todos > 0 || self.stub_patterns > 0
     }

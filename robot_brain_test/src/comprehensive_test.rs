@@ -7,7 +7,7 @@ use crate::{TestMcpClient, TestStats};
 use crate::test_environment::TestEnvironment;
 use crate::function_registry::{FunctionRegistry, TestRequirement, ValidationCheck, CheckType};
 use crate::test_results::{TestReport, TestResult, TestStatus, ValidationResult};
-use crate::code_analyzer::{CodeAnalyzer, AnalysisSummary};
+use crate::code_analyzer::CodeAnalyzer;
 use crate::test_results::print_issues_table;
 use std::time::Instant;
 
@@ -380,7 +380,7 @@ fn validate_result(result: &serde_json::Value, check: &ValidationCheck) -> Valid
     let passed = match check.check_type {
         CheckType::HasField => has_field(result, &check.field),
         CheckType::IsNonEmpty => is_non_empty(result, &check.field),
-        CheckType::IsSuccess => is_success(result, &check.field, &check.expected_value),
+        CheckType::IsSuccess => is_success(result, &check.field, check.expected_value.as_deref()),
         CheckType::MatchesPattern => matches_pattern(result, &check.field, check.expected_value.as_deref()),
         CheckType::GreaterThan => greater_than(result, &check.field, check.expected_value.as_deref()),
         CheckType::LessThan => less_than(result, &check.field, check.expected_value.as_deref()),
@@ -439,17 +439,28 @@ fn has_field(result: &serde_json::Value, field: &str) -> bool {
 /// Check if field is non-empty
 fn is_non_empty(result: &serde_json::Value, field: &str) -> bool {
     if let Some(value) = result.get(field) {
-        return !value.is_null() && !value.is_empty();
+        return !value.is_null() && !is_json_value_empty(value);
     }
     
     // Check in data field
     if let Some(data) = result.get("data") {
         if let Some(value) = data.get(field) {
-            return !value.is_null() && !value.is_empty();
+            return !value.is_null() && !is_json_value_empty(value);
         }
     }
     
     false
+}
+
+/// Check if a JSON value is empty
+fn is_json_value_empty(value: &serde_json::Value) -> bool {
+    match value {
+        serde_json::Value::Null => true,
+        serde_json::Value::String(s) => s.is_empty(),
+        serde_json::Value::Array(a) => a.is_empty(),
+        serde_json::Value::Object(o) => o.is_empty(),
+        _ => false,
+    }
 }
 
 /// Check if success field has expected value

@@ -100,6 +100,7 @@ impl FunctionRegistry {
     }
     
     /// Get all unique tool names
+    #[allow(dead_code)]
     pub fn get_all_tool_names() -> Vec<&'static str> {
         vec![
             // Agent
