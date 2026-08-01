@@ -32,8 +32,7 @@ pub trait ExperienceObserver: Send + Sync {
     /// Determines whether this observer is interested in an event.
     ///
     /// By default every observer accepts every event.
-    fn accepts(&self, event: &ExperienceEvent) -> bool {
-        let _ = event;
+    fn accepts(&self, _event: &ExperienceEvent) -> bool {
         true
     }
 
