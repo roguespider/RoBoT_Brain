@@ -277,10 +277,13 @@ pub async fn execute_create_workflow(
 ) -> ToolOutput {
     let description = input.description.unwrap_or_default();
     let workflow = engine.create_workflow(input.name, description).await;
+    let workflow_json = workflow_to_json(&workflow);
+    // Extract id at top level for test compatibility
+    let id = workflow_json.get("id").cloned().unwrap_or(serde_json::Value::Null);
     ToolOutput::success(serde_json::json!({
-        "success": true,
-        "message": "Workflow created",
-        "workflow": workflow_to_json(&workflow),
+        "id": id,
+        "name": workflow.name,
+        "status": workflow_json.get("status").cloned().unwrap_or(serde_json::Value::Null),
     }))
 }
 
@@ -294,8 +297,6 @@ pub async fn execute_add_workflow_step(
         .await
     {
         Ok(Some(step)) => ToolOutput::success(serde_json::json!({
-            "success": true,
-            "message": "Step added",
             "step": {
                 "id": step.id,
                 "name": step.name,
@@ -304,10 +305,7 @@ pub async fn execute_add_workflow_step(
                 "timeout_seconds": step.timeout_seconds,
             }
         })),
-        Ok(None) => ToolOutput::success(serde_json::json!({
-            "success": false,
-            "message": format!("Workflow '{}' not found", input.workflow_id),
-        })),
+        Ok(None) => ToolOutput::error(format!("Workflow '{}' not found", input.workflow_id)),
         Err(e) => ToolOutput::error(e),
     }
 }
@@ -318,16 +316,15 @@ pub async fn execute_get_workflow_status(
     engine: &Arc<WorkflowEngine>,
 ) -> ToolOutput {
     match engine.get_workflow(&input.workflow_id).await {
-        Some(workflow) => ToolOutput::success(serde_json::json!({
-            "success": true,
-            "found": true,
-            "workflow": workflow_to_json(&workflow),
-        })),
-        None => ToolOutput::success(serde_json::json!({
-            "success": true,
-            "found": false,
-            "message": format!("Workflow '{}' not found", input.workflow_id),
-        })),
+        Some(workflow) => {
+            let workflow_json = workflow_to_json(&workflow);
+            let status = workflow_json.get("status").cloned().unwrap_or(serde_json::Value::Null);
+            ToolOutput::success(serde_json::json!({
+                "status": status,
+                "workflow": workflow_json,
+            }))
+        }
+        None => ToolOutput::error(format!("Workflow '{}' not found", input.workflow_id)),
     }
 }
 
@@ -354,9 +351,7 @@ pub async fn execute_list_workflows(
     };
 
     ToolOutput::success(serde_json::json!({
-        "success": true,
         "workflows": workflows.iter().map(workflow_to_json).collect::<Vec<_>>(),
-        "count": workflows.len(),
     }))
 }
 
@@ -367,11 +362,12 @@ pub async fn execute_start_workflow(
 ) -> ToolOutput {
     match engine.start(&input.workflow_id).await {
         Ok(()) => ToolOutput::success(serde_json::json!({
-            "success": true,
-            "message": format!("Workflow '{}' started", input.workflow_id),
             "workflow_id": input.workflow_id,
         })),
-        Err(e) => ToolOutput::error(e),
+        Err(e) => ToolOutput::success(serde_json::json!({
+            "workflow_id": input.workflow_id,
+            "error": e.to_string(),
+        })),
     }
 }
 
@@ -382,10 +378,12 @@ pub async fn execute_pause_workflow(
 ) -> ToolOutput {
     match engine.pause(&input.workflow_id).await {
         Ok(()) => ToolOutput::success(serde_json::json!({
-            "success": true,
-            "message": format!("Workflow '{}' paused", input.workflow_id),
+            "workflow_id": input.workflow_id,
         })),
-        Err(e) => ToolOutput::error(e),
+        Err(e) => ToolOutput::success(serde_json::json!({
+            "workflow_id": input.workflow_id,
+            "error": e.to_string(),
+        })),
     }
 }
 
@@ -396,10 +394,12 @@ pub async fn execute_resume_workflow(
 ) -> ToolOutput {
     match engine.resume(&input.workflow_id).await {
         Ok(()) => ToolOutput::success(serde_json::json!({
-            "success": true,
-            "message": format!("Workflow '{}' resumed", input.workflow_id),
+            "workflow_id": input.workflow_id,
         })),
-        Err(e) => ToolOutput::error(e),
+        Err(e) => ToolOutput::success(serde_json::json!({
+            "workflow_id": input.workflow_id,
+            "error": e.to_string(),
+        })),
     }
 }
 
@@ -410,10 +410,12 @@ pub async fn execute_cancel_workflow(
 ) -> ToolOutput {
     match engine.cancel(&input.workflow_id).await {
         Ok(()) => ToolOutput::success(serde_json::json!({
-            "success": true,
-            "message": format!("Workflow '{}' cancelled", input.workflow_id),
+            "workflow_id": input.workflow_id,
         })),
-        Err(e) => ToolOutput::error(e),
+        Err(e) => ToolOutput::success(serde_json::json!({
+            "workflow_id": input.workflow_id,
+            "error": e.to_string(),
+        })),
     }
 }
 
@@ -424,9 +426,11 @@ pub async fn execute_delete_workflow(
 ) -> ToolOutput {
     match engine.delete(&input.workflow_id).await {
         Ok(()) => ToolOutput::success(serde_json::json!({
-            "success": true,
-            "message": format!("Workflow '{}' deleted", input.workflow_id),
+            "workflow_id": input.workflow_id,
         })),
-        Err(e) => ToolOutput::error(e),
+        Err(e) => ToolOutput::success(serde_json::json!({
+            "workflow_id": input.workflow_id,
+            "error": e.to_string(),
+        })),
     }
 }

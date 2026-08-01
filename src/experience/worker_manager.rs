@@ -220,13 +220,19 @@ mod tests {
             self.name
         }
 
-        fn accepts(&self, _event: &ExperienceEvent) -> bool {
+        fn accepts(&self, event: &ExperienceEvent) -> bool {
+            // Track that accept was called with the event
             self.accepted_events.fetch_add(1, Ordering::SeqCst);
+            // Accept all events for testing purposes
+            let _ = event;
             true
         }
 
-        fn observe(&self, _event: &ExperienceEvent) -> anyhow::Result<()> {
+        fn observe(&self, event: &ExperienceEvent) -> anyhow::Result<()> {
+            // Track that observe was called with the event
             self.observed_count.fetch_add(1, Ordering::SeqCst);
+            // Process the event (for testing, we just track it)
+            let _ = event;
             Ok(())
         }
     }
