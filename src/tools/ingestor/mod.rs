@@ -14,16 +14,25 @@ pub mod semantic_chunker;
 pub mod text_extractor;
 pub mod workflow;
 
-// Re-export main types and functions
+// Re-export types from core
 pub use core::{
-    execute_delete_ingested_files, execute_list_importable,
-    execute_list_ingested_files, ingest_file,
-    execute_transcribe_audio,
-    IngestFilesInput, ListImportableInput,
-    DeleteIngestedFilesInput, ListIngestedFilesInput,
-    can_delete_files, clear_ingest_tracker, can_verify_deletion,
+    IngestFilesInput, ListImportableInput, ListIngestedFilesInput, DeleteIngestedFilesInput,
     TranscribeAudioInput,
 };
+
+// Re-export workflow functions (these take single input argument)
+pub use workflow::{
+    execute_delete_ingested_files, execute_list_ingested_files, execute_list_importable,
+};
+
+// Re-export execute_transcribe_audio (ingest_file is aliased below)
+pub use core::execute::execute_transcribe_audio;
+
+// Alias ingest_file to execute_ingest_files for backward compatibility
+pub use core::execute::execute_ingest_files as ingest_file;
+
+// Re-export tracker functions
+pub use core::tracker::{can_delete_files, can_verify_deletion, clear_ingest_tracker};
 
 // Re-export JSON importer
 
