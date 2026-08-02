@@ -9,6 +9,5 @@
 
 pub mod background;
 pub mod manager;
-pub mod tests;
 
 pub use manager::WorkerManager;

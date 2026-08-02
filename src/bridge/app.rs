@@ -1,14 +1,12 @@
-
-
 // src/bridge/app.rs
 // Root application container per Architecture §03
-
 
 use std::sync::Arc;
 use std::sync::Mutex;
 
 use anyhow::Result;
 
+use crate::bridge::acp::{AcpRegistry, AcpRouter};
 use crate::bridge::mcp::McpClient;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::rmcp::run_stdio_server;
@@ -19,22 +17,19 @@ use crate::experience::encounter_recorder::ExperienceRecorder;
 use crate::experience::event_handler::EventHandler;
 use crate::experience::evolution::EvolutionEngine;
 use crate::experience::hypothesis::HypothesisEngine;
-use crate::experience::integration::event_subscriber::{EventSubscriber, start_event_subscriber};
+use crate::experience::integration::event_subscriber::{start_event_subscriber, EventSubscriber};
 use crate::experience::integration::reflection_pipeline::ReflectionPipeline;
 use crate::experience::metrics::MetricsCollector;
-use crate::experience::observers::{
-    ReputationObserver, HypothesisObserver, MetricsObserver,
-};
+use crate::experience::observers::{HypothesisObserver, MetricsObserver, ReputationObserver};
 use crate::experience::reflection::ReflectionEngine;
 use crate::experience::reputation::decay::ReputationDecay;
 use crate::experience::scheduler::{Scheduler, TaskSchedule, TaskType};
 use crate::experience::scorer::ExperienceScorer;
 use crate::experience::worker_manager::WorkerManager;
 use crate::knowledge::KnowledgeStore;
-use crate::personality::{Personality, PersonalityTraits};
 use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory as MemWorkingMemory};
+use crate::personality::{Personality, PersonalityTraits};
 use crate::planner::{Planner, PolicyEngine};
-use crate::bridge::acp::{AcpRouter, AcpRegistry};
 use crate::skills::registry::SkillRegistry;
 use crate::tools;
 use crate::workflows::engine::WorkflowEngine;
@@ -42,7 +37,6 @@ use crate::workflows::engine::WorkflowEngine;
 /// Root application container.
 ///
 /// Owns long-running services required by RoBoT.
-#[allow(unused)]
 pub struct App {
     /// Persistent database layer.
     database: Arc<SqliteDatabase>,
@@ -67,7 +61,7 @@ pub struct App {
 
     /// Background task scheduler.
     scheduler: Arc<Scheduler>,
-    
+
     /// Memory pipeline for working→permanent consolidation.
     memory_pipeline: Arc<crate::memory::pipeline::MemoryPipeline>,
 
@@ -75,11 +69,9 @@ pub struct App {
     mcp_context: Arc<McpContext>,
 
     /// Personality system for behavioral characteristics.
-    #[allow(dead_code)]
     personality: Arc<std::sync::Mutex<Personality>>,
 
     /// ACP router for inter-agent communication.
-    #[allow(dead_code)]
     acp_router: Arc<AcpRouter>,
 }
 
@@ -93,8 +85,12 @@ impl App {
         let bus = Arc::new(ExperienceBus::new());
         let metrics = Arc::new(MetricsCollector::new());
         let scorer = ExperienceScorer::new();
-        let coordinator = Arc::new(ExperienceCoordinator::new(scorer, bus.clone(), metrics.clone()));
-        
+        let coordinator = Arc::new(ExperienceCoordinator::new(
+            scorer,
+            bus.clone(),
+            metrics.clone(),
+        ));
+
         // Create experience recorder for structured experience creation (Architecture §07)
         let experience_recorder = Arc::new(ExperienceRecorder::new(database.clone()));
 
@@ -118,22 +114,30 @@ impl App {
         // Each observer runs in its own dedicated worker
 
         // 1. ExperienceScorer - scores experiences
-        let scorer = Arc::new(ExperienceScorer::new()) as Arc<dyn crate::experience::observer::ExperienceObserver>;
+        let scorer = Arc::new(ExperienceScorer::new())
+            as Arc<dyn crate::experience::observer::ExperienceObserver>;
         worker_manager.register_observer(scorer).await?;
         tracing::info!("ExperienceScorer registered with WorkerManager");
 
         // 2. ReputationObserver - updates entity reputations
-        let reputation_observer = Arc::new(ReputationObserver::new()) as Arc<dyn crate::experience::observer::ExperienceObserver>;
-        worker_manager.register_observer(reputation_observer).await?;
+        let reputation_observer = Arc::new(ReputationObserver::new())
+            as Arc<dyn crate::experience::observer::ExperienceObserver>;
+        worker_manager
+            .register_observer(reputation_observer)
+            .await?;
         tracing::info!("ReputationObserver registered with WorkerManager");
 
         // 3. HypothesisObserver - generates and evaluates hypotheses
-        let hypothesis_observer = Arc::new(HypothesisObserver::new(hypothesis_engine.clone())) as Arc<dyn crate::experience::observer::ExperienceObserver>;
-        worker_manager.register_observer(hypothesis_observer).await?;
+        let hypothesis_observer = Arc::new(HypothesisObserver::new(hypothesis_engine.clone()))
+            as Arc<dyn crate::experience::observer::ExperienceObserver>;
+        worker_manager
+            .register_observer(hypothesis_observer)
+            .await?;
         tracing::info!("HypothesisObserver registered with WorkerManager");
 
         // 4. MetricsObserver - collects metrics from all events
-        let metrics_observer = Arc::new(MetricsObserver::new(metrics.clone())) as Arc<dyn crate::experience::observer::ExperienceObserver>;
+        let metrics_observer = Arc::new(MetricsObserver::new(metrics.clone()))
+            as Arc<dyn crate::experience::observer::ExperienceObserver>;
         worker_manager.register_observer(metrics_observer).await?;
         tracing::info!("MetricsObserver registered with WorkerManager");
 
@@ -143,7 +147,10 @@ impl App {
         tokio::spawn(async move {
             let mut receiver = manager_bus.subscribe();
             tracing::info!("Worker manager started, listening for events");
-            tracing::debug!("Event bus subscriber count: {}", manager_bus.subscriber_count());
+            tracing::debug!(
+                "Event bus subscriber count: {}",
+                manager_bus.subscriber_count()
+            );
             while let Ok(event) = receiver.recv().await {
                 // Broadcast to all workers - they filter based on accepts()
                 if let Err(e) = manager_clone.broadcast_event(event).await {
@@ -152,11 +159,14 @@ impl App {
             }
             manager_bus.unsubscribe();
         });
-        tracing::info!("Worker manager subscribed to bus (total subscribers: {})", bus.subscriber_count());
+        tracing::info!(
+            "Worker manager subscribed to bus (total subscribers: {})",
+            bus.subscriber_count()
+        );
 
         // Create working memory, lineage tracker, and knowledge store
         let knowledge_store = Arc::new(KnowledgeStore::new(10000));
-        
+
         // Create skills registry - manages reusable capabilities (Architecture §15)
         let skills_registry = Arc::new(SkillRegistry::new());
         skills_registry.load_defaults().await;
@@ -172,13 +182,13 @@ impl App {
             evolution_engine.clone(),
             knowledge_store.clone(),
         ));
-        
+
         // Create reflection pipeline for processing experiences into insights
         let reflection_pipeline = Arc::new(ReflectionPipeline::new(
             reflection_engine.clone(),
             bus.clone(),
         ));
-        
+
         // Start the event subscriber background task
         start_event_subscriber(bus.clone(), event_subscriber);
         tracing::info!("Event subscriber started for learning pipeline");
@@ -190,9 +200,11 @@ impl App {
             working_memory_core.clone(),
             permanent_memory.clone(),
         ));
-        
+
         // Create memory pipeline for working→permanent consolidation (Architecture §6.3, §07)
-        let memory_pipeline = Arc::new(crate::memory::pipeline::MemoryPipeline::new(database.clone()));
+        let memory_pipeline = Arc::new(crate::memory::pipeline::MemoryPipeline::new(
+            database.clone(),
+        ));
 
         // Load memories from database into in-memory caches on startup
         // This restores the caches from persistent storage
@@ -202,7 +214,9 @@ impl App {
         if let Err(e) = permanent_memory.load_from_database(&database).await {
             tracing::warn!("Failed to load permanent memory from database: {}", e);
         }
-        tracing::info!("Memory system initialized and loaded from database (Working: 1000, Permanent: 10000)");
+        tracing::info!(
+            "Memory system initialized and loaded from database (Working: 1000, Permanent: 10000)"
+        );
 
         // Create scheduler with background tasks (metrics already created above)
         let scheduler = Self::setup_scheduler(database.clone()).await?;
@@ -216,7 +230,8 @@ impl App {
             evolution_engine.clone(),
             metrics.clone(),
             database.clone(),
-        ).await;
+        )
+        .await;
 
         // Start scheduler background loop
         let scheduler_clone = scheduler.clone();
@@ -373,11 +388,11 @@ impl App {
                     let database = database_reflect.clone();
                     Box::pin(async move {
                         tracing::info!("Executing scheduled reflection task");
-                        
+
                         // Load recent experiences from database
                         let experiences = crate::database::queries::list_experiences(&database.connection()?, 100)
                             .unwrap_or_default();
-                        
+
                         if experiences.len() >= 3 {
                             // Analyze experiences for patterns
                             match reflection_engine.analyze_experiences(&experiences).await {
@@ -393,13 +408,13 @@ impl App {
                                 }
                             }
                         }
-                        
+
                         // Archive old reflections
                         let archived = reflection_engine.archive_old(30).await.unwrap_or(0);
                         if archived > 0 {
                             tracing::info!("Archived {} old reflections", archived);
                         }
-                        
+
                         Ok(())
                     })
                 }),
@@ -415,13 +430,13 @@ impl App {
                     let hypothesis_engine = hypothesis_engine_clone.clone();
                     Box::pin(async move {
                         tracing::info!("Executing scheduled hypothesis evaluation");
-                        
+
                         // Perform hypothesis maintenance
                         let mut engine = hypothesis_engine.lock().unwrap();
                         if let Err(e) = engine.maintenance() {
                             tracing::error!("Hypothesis evaluation failed: {}", e);
                         }
-                        
+
                         Ok(())
                     })
                 }),
@@ -437,7 +452,7 @@ impl App {
                     let metrics = metrics_clone.clone();
                     Box::pin(async move {
                         tracing::debug!("Executing scheduled metrics collection");
-                        
+
                         // Get metrics summary
                         let summary = metrics.summary().await;
                         tracing::debug!(
@@ -446,10 +461,10 @@ impl App {
                             summary.gauges.len(),
                             summary.metrics.len()
                         );
-                        
+
                         // Clear old metrics (older than 24 hours)
                         metrics.clear_old(24).await;
-                        
+
                         Ok(())
                     })
                 }),
@@ -465,7 +480,7 @@ impl App {
                     let evolution_engine = evolution_engine_clone.clone();
                     Box::pin(async move {
                         tracing::info!("Executing scheduled evolution maintenance");
-                        
+
                         // Evaluate and maintain all behaviors for promotion/demotion
                         match evolution_engine.evaluate_and_maintain().await {
                             Ok(summary) => {
@@ -481,13 +496,13 @@ impl App {
                                 tracing::error!("Evolution maintenance failed: {}", e);
                             }
                         }
-                        
+
                         // Archive deprecated behaviors
                         let archived = evolution_engine.archive_deprecated().await.unwrap_or(0);
                         if archived > 0 {
                             tracing::info!("Archived {} deprecated behaviors", archived);
                         }
-                        
+
                         Ok(())
                     })
                 }),
@@ -501,11 +516,11 @@ impl App {
                 Box::new(|| {
                     Box::pin(async move {
                         tracing::debug!("Executing scheduled exploration analysis");
-                        
+
                         // Exploration analysis would analyze exploration results
                         // For now, log that the task executed
                         tracing::debug!("Exploration analysis completed");
-                        
+
                         Ok(())
                     })
                 }),
@@ -519,13 +534,13 @@ impl App {
                 Box::new(move || {
                     Box::pin(async move {
                         tracing::info!("Executing scheduled cleanup");
-                        
+
                         // Clean up old events from database
                         let cutoff = chrono::Utc::now() - chrono::Duration::days(7);
-                        
+
                         // This would call cleanup queries if implemented
                         tracing::info!("Cleanup task executed (older than {})", cutoff);
-                        
+
                         Ok(())
                     })
                 }),
@@ -541,16 +556,18 @@ impl App {
                     let database = database_reput.clone();
                     Box::pin(async move {
                         tracing::debug!("Executing scheduled reputation decay");
-                        
+
                         // Load reputations and apply decay
-                        let reputations = crate::database::queries::list_reputations(&database.connection()?)
-                            .unwrap_or_default();
-                        
+                        let reputations =
+                            crate::database::queries::list_reputations(&database.connection()?)
+                                .unwrap_or_default();
+
                         let mut decayed_count = 0;
                         for mut reputation in reputations {
                             let original_score = reputation.score;
-                            reputation.score = ReputationDecay::apply(reputation.score, reputation.updated_at);
-                            
+                            reputation.score =
+                                ReputationDecay::apply(reputation.score, reputation.updated_at);
+
                             if (original_score - reputation.score).abs() > 0.001 {
                                 decayed_count += 1;
                                 // Save updated reputation
@@ -558,15 +575,19 @@ impl App {
                                     &database.connection()?,
                                     &reputation,
                                 ) {
-                                    tracing::warn!("Failed to update reputation {}: {}", reputation.id, e);
+                                    tracing::warn!(
+                                        "Failed to update reputation {}: {}",
+                                        reputation.id,
+                                        e
+                                    );
                                 }
                             }
                         }
-                        
+
                         if decayed_count > 0 {
                             tracing::debug!("Applied decay to {} reputations", decayed_count);
                         }
-                        
+
                         Ok(())
                     })
                 }),
@@ -585,19 +606,19 @@ impl App {
                     let database = database_clone.clone();
                     Box::pin(async move {
                         tracing::info!("Executing scheduled memory consolidation");
-                        
+
                         // Consolidate between in-memory caches (Architecture §6.3)
                         let stats = memory_retrieval.consolidate().await;
                         tracing::info!(
                             "Memory consolidation complete: {} promoted, {} archived, {} deleted, {} kept",
                             stats.promoted, stats.archived, stats.deleted, stats.kept
                         );
-                        
+
                         // Checkpoint caches to database for persistence
                         if let Err(e) = memory_retrieval.checkpoint_to_database(&database).await {
                             tracing::error!("Failed to checkpoint memories to database: {}", e);
                         }
-                        
+
                         Ok(())
                     })
                 }),
@@ -616,13 +637,13 @@ impl App {
                     let database = database_checkpoint.clone();
                     Box::pin(async move {
                         tracing::debug!("Executing scheduled memory checkpoint");
-                        
+
                         // Checkpoint caches to database for persistence
                         if let Err(e) = memory_retrieval.checkpoint_to_database(&database).await {
                             tracing::error!("Failed to checkpoint memories to database: {}", e);
                             return Err(e);
                         }
-                        
+
                         tracing::debug!("Memory checkpoint completed successfully");
                         Ok(())
                     })
@@ -655,73 +676,74 @@ impl App {
     // =========================================================================
     // Personality Methods (designed for future use)
     // =========================================================================
-    #[allow(dead_code)]
     /// Get reference to personality system
     pub fn personality(&self) -> Arc<std::sync::Mutex<Personality>> {
         self.personality.clone()
     }
 
-    #[allow(dead_code)]
     /// Get current personality traits
     pub fn get_personality_traits(&self) -> PersonalityTraits {
         self.personality.lock().unwrap().get_traits().clone()
     }
 
-    #[allow(dead_code)]
     /// Set personality traits
     pub fn set_personality_traits(&self, traits: PersonalityTraits) {
         self.personality.lock().unwrap().set_traits(traits);
     }
 
-    #[allow(dead_code)]
     /// Apply a personality preset (balanced, analytical, creative, cautious, bold)
     pub fn apply_personality_preset(&self, preset: &str) -> bool {
         self.personality.lock().unwrap().apply_preset(preset)
     }
 
-    #[allow(dead_code)]
     /// Get available personality presets
     pub fn list_personality_presets(&self) -> Vec<String> {
         self.personality.lock().unwrap().list_presets()
     }
 
-    #[allow(dead_code)]
     /// Get current personality preset name
     pub fn get_personality_preset(&self) -> String {
-        self.personality.lock().unwrap().get_current_preset().to_string()
+        self.personality
+            .lock()
+            .unwrap()
+            .get_current_preset()
+            .to_string()
     }
 
-    #[allow(dead_code)]
     /// Adapt personality based on experience outcome
     pub fn adapt_personality(&self, success: bool, risk_taken: bool) {
-        self.personality.lock().unwrap().adapt_from_experience(success, risk_taken);
+        self.personality
+            .lock()
+            .unwrap()
+            .adapt_from_experience(success, risk_taken);
     }
 
-    #[allow(dead_code)]
     /// Get communication style based on personality verbosity
     pub fn get_communication_style(&self) -> crate::personality::CommunicationStyle {
         self.personality.lock().unwrap().get_communication_style()
     }
 
-    #[allow(dead_code)]
     /// Decide if system should explore new approaches
     pub fn should_explore(&self, confidence: f32) -> bool {
         self.personality.lock().unwrap().should_explore(confidence)
     }
 
-    #[allow(dead_code)]
     /// Decide if system should take a risk
     pub fn should_take_risk(&self, potential_gain: f32, potential_loss: f32) -> bool {
-        self.personality.lock().unwrap().should_take_risk(potential_gain, potential_loss)
+        self.personality
+            .lock()
+            .unwrap()
+            .should_take_risk(potential_gain, potential_loss)
     }
 
-    #[allow(dead_code)]
     /// Get patience-based timeout
     pub fn get_personality_timeout(&self, base_timeout_secs: u64) -> u64 {
-        self.personality.lock().unwrap().get_timeout(base_timeout_secs)
+        self.personality
+            .lock()
+            .unwrap()
+            .get_timeout(base_timeout_secs)
     }
 
-    #[allow(dead_code)]
     /// Get personality success rate
     pub fn get_personality_success_rate(&self) -> f32 {
         self.personality.lock().unwrap().success_rate()
@@ -730,34 +752,31 @@ impl App {
     // =========================================================================
     // ACP (Agent Communication Protocol) Methods (designed for future use)
     // =========================================================================
-    #[allow(dead_code)]
     /// Get reference to ACP router
     pub fn acp_router(&self) -> Arc<AcpRouter> {
         self.acp_router.clone()
     }
 
-    #[allow(dead_code)]
     /// Get ACP registry for agent registration
     pub fn acp_registry(&self) -> Arc<AcpRegistry> {
         self.acp_router.registry()
     }
 
-    #[allow(dead_code)]
     /// Route an ACP message to the appropriate agent
-    pub fn route_acp_message(&self, message: crate::bridge::acp::AcpMessage) -> Result<Option<crate::bridge::acp::AcpMessage>> {
+    pub fn route_acp_message(
+        &self,
+        message: crate::bridge::acp::AcpMessage,
+    ) -> Result<Option<crate::bridge::acp::AcpMessage>> {
         self.acp_router.route(message)
     }
 
-    #[allow(dead_code)]
     /// List all registered ACP agents
     pub fn list_acp_agents(&self) -> Result<Vec<crate::bridge::acp::AcpAgentId>> {
         self.acp_router.registry().list_agents()
     }
 
-    #[allow(dead_code)]
     /// Get count of registered ACP agents
     pub fn acp_agent_count(&self) -> usize {
         self.acp_router.registry().count()
     }
-
 }

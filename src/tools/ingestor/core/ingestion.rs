@@ -14,14 +14,16 @@ use crate::memory::WorkingMemory;
 use crate::tools::ingestor::archive_handler::{
     create_archive_temp_dir, delete_empty_folders, process_archive,
 };
+use crate::tools::ingestor::audio_transcriber::{store_transcription_as_memory, transcribe_audio};
 use crate::tools::ingestor::file_collector::{
     collect_all_files_recursive, AUDIO_EXTENSIONS, IMAGE_EXTENSIONS, JSON_EXTENSIONS,
     TEXT_EXTENSIONS,
 };
 use crate::tools::ingestor::json_importer::{import_json_file, ExtractedJsonData};
 use crate::tools::ingestor::semantic_chunker::{get_file_type, parse_document};
-use crate::tools::ingestor::text_extractor::{extract_image_metadata, extract_text, validate_text_quality};
-use crate::tools::ingestor::audio_transcriber::{store_transcription_as_memory, transcribe_audio};
+use crate::tools::ingestor::text_extractor::{
+    extract_image_metadata, extract_text, validate_text_quality,
+};
 
 use super::types::IngestResult;
 
@@ -76,13 +78,17 @@ pub async fn ingest_archive(
     let text_files: Vec<PathBuf> = files
         .into_iter()
         .filter(|f| {
-            let ext = f.extension()
+            let ext = f
+                .extension()
                 .and_then(|e| e.to_str())
                 .unwrap_or("")
                 .to_lowercase();
-            TEXT_EXTENSIONS.contains(&ext.as_str()) ||
-            JSON_EXTENSIONS.contains(&ext.as_str()) ||
-            ext == "txt" || ext == "md" || ext == "html" || ext == "xml"
+            TEXT_EXTENSIONS.contains(&ext.as_str())
+                || JSON_EXTENSIONS.contains(&ext.as_str())
+                || ext == "txt"
+                || ext == "md"
+                || ext == "html"
+                || ext == "xml"
         })
         .collect();
 
@@ -100,14 +106,17 @@ pub async fn ingest_archive(
             chunks_created: 0,
             chunk_size_used: chunk_size,
             memory_ids: vec![],
-            error: Some("Archive contains no text-based files (only images, binaries, etc.)".to_string()),
+            error: Some(
+                "Archive contains no text-based files (only images, binaries, etc.)".to_string(),
+            ),
             remaining_count: 0,
         });
     }
 
     // Ingest the first text file
     let first_file = &text_files[0];
-    let result = ingest_single_file(first_file, chunk_size, memory_type, db, working_memory).await?;
+    let result =
+        ingest_single_file(first_file, chunk_size, memory_type, db, working_memory).await?;
 
     // Count remaining files BEFORE cleanup
     let remaining_files = collect_all_files_recursive(&temp_dir)?;
@@ -164,8 +173,8 @@ pub async fn ingest_single_file(
     }
 
     // Extract text content for other file types
-    let text = extract_text(path)
-        .with_context(|| format!("Failed to extract text from {}", filename))?;
+    let text =
+        extract_text(path).with_context(|| format!("Failed to extract text from {}", filename))?;
 
     if text.trim().is_empty() {
         return Ok(IngestResult {
@@ -196,10 +205,7 @@ pub async fn ingest_single_file(
     }
 
     // Get file extension for semantic parsing
-    let extension = path
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("txt");
+    let extension = path.extension().and_then(|e| e.to_str()).unwrap_or("txt");
     let file_type = get_file_type(extension);
 
     // Parse document into hierarchy tree
@@ -238,7 +244,7 @@ pub async fn ingest_single_file(
         file_path: path.to_string_lossy().to_string(),
         success: true,
         chunks_created: total_memories,
-        chunk_size_used: 0,  // Semantic chunking doesn't use fixed sizes
+        chunk_size_used: 0, // Semantic chunking doesn't use fixed sizes
         memory_ids,
         error: None,
         remaining_count: 0,
@@ -281,7 +287,10 @@ pub async fn ingest_json_file(
     let items_to_store = if result.items.is_empty() {
         // Try to read raw JSON content as a single fallback item
         if let Ok(raw_content) = std::fs::read_to_string(path) {
-            tracing::info!("JSON file had no structured items, storing raw content ({} chars)", raw_content.len());
+            tracing::info!(
+                "JSON file had no structured items, storing raw content ({} chars)",
+                raw_content.len()
+            );
             vec![ExtractedJsonData {
                 content: raw_content,
                 json_path: "root".to_string(),
@@ -338,7 +347,7 @@ pub async fn ingest_json_file(
             let memory = MemoryCard::new_hierarchical(
                 content,
                 memory_type.clone(),
-                None,  // Top level
+                None, // Top level
                 crate::database::models::HierarchyLevel::Section,
                 idx,
                 format!("{}/item[{}]", filename, idx),
@@ -440,7 +449,6 @@ pub async fn ingest_image_file(
 }
 
 /// Transcribe an audio file and store as memory
-#[allow(unused)]
 pub async fn ingest_audio_file(
     path: &Path,
     _chunk_size: usize,

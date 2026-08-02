@@ -1,5 +1,5 @@
 //! Function Registry Module
-//! 
+//!
 //! Defines all MCP tools and their test requirements.
 //! This registry is the source of truth for what functions need to be tested.
 
@@ -59,91 +59,147 @@ impl FunctionRegistry {
     /// Get all functions that need to be tested
     pub fn get_all_functions() -> Vec<TestRequirement> {
         let mut functions = Vec::new();
-        
+
         // Agent tools
         functions.extend(Self::agent_tools());
-        
+
         // Memory tools
         functions.extend(Self::memory_tools());
-        
+
         // Vector Index tools (Embedding operations)
         functions.extend(Self::vector_index_tools());
-        
+
         // Experience tools
         functions.extend(Self::experience_tools());
-        
+
         // Background Workers tools (per Architecture §22)
         functions.extend(Self::background_workers_tools());
-        
+
         // Reflection tools
         functions.extend(Self::reflection_tools());
-        
+
         // Search tools
         functions.extend(Self::search_tools());
-        
+
         // Ingestor tools
         functions.extend(Self::ingestor_tools());
-        
+
         // Hypothesis tools
         functions.extend(Self::hypothesis_tools());
-        
+
         // Exploration tools
         functions.extend(Self::exploration_tools());
-        
+
         // Knowledge tools
         functions.extend(Self::knowledge_tools());
-        
+
         // Planner tools
         functions.extend(Self::planner_tools());
-        
+
         // Workflow tools
         functions.extend(Self::workflow_tools());
-        
+
         // Skills tools
         functions.extend(Self::skills_tools());
-        
+
         functions
     }
-    
+
     /// Get all unique tool names
     #[allow(dead_code)]
     pub fn get_all_tool_names() -> Vec<&'static str> {
         vec![
             // Agent
-            "get_workflow", "list_tools", "get_tool",
+            "get_workflow",
+            "list_tools",
+            "get_tool",
             // Memory
-            "store_memory", "search_memory", "get_memory", "list_memories",
+            "store_memory",
+            "search_memory",
+            "get_memory",
+            "list_memories",
             // Experience
-            "record_experience", "get_experience", "list_experiences", "get_experience_stats",
+            "record_experience",
+            "get_experience",
+            "list_experiences",
+            "get_experience_stats",
             // Reflection
-            "create_reflection", "get_patterns", "get_insights", "analyze_patterns",
+            "create_reflection",
+            "get_patterns",
+            "get_insights",
+            "analyze_patterns",
             // Search
-            "global_search", "get_recommendations", "get_reputation",
+            "global_search",
+            "get_recommendations",
+            "get_reputation",
             // Ingestor
-            "ingest_files", "list_importable", "transcribe_audio", "list_ingested_files", "delete_ingested_files",
+            "ingest_files",
+            "list_importable",
+            "transcribe_audio",
+            "list_ingested_files",
+            "delete_ingested_files",
             // Hypothesis
-            "record_observation", "create_hypothesis", "add_evidence", "get_hypothesis",
-            "list_hypotheses", "list_observations", "evaluate_hypothesis", "get_knowledge", "extract_knowledge",
+            "record_observation",
+            "create_hypothesis",
+            "add_evidence",
+            "get_hypothesis",
+            "list_hypotheses",
+            "list_observations",
+            "evaluate_hypothesis",
+            "get_knowledge",
+            "extract_knowledge",
             // Exploration
-            "start_exploration", "get_exploration_status", "complete_exploration", "abandon_exploration",
-            "record_attempt", "add_exploration_hypothesis", "evaluate_exploration_hypothesis",
-            "promote_finding", "pause_exploration", "resume_exploration",
+            "start_exploration",
+            "get_exploration_status",
+            "complete_exploration",
+            "abandon_exploration",
+            "record_attempt",
+            "add_exploration_hypothesis",
+            "evaluate_exploration_hypothesis",
+            "promote_finding",
+            "pause_exploration",
+            "resume_exploration",
             // Knowledge
-            "add_knowledge", "query_knowledge", "get_mature_knowledge", "get_knowledge_stats",
+            "add_knowledge",
+            "query_knowledge",
+            "get_mature_knowledge",
+            "get_knowledge_stats",
             "record_knowledge_application",
             // Planner
-            "create_plan", "add_plan_step", "add_step_dependency", "get_plan",
-            "list_plans", "start_plan", "complete_step", "fail_step", "cancel_plan",
+            "create_plan",
+            "add_plan_step",
+            "add_step_dependency",
+            "get_plan",
+            "list_plans",
+            "start_plan",
+            "complete_step",
+            "fail_step",
+            "cancel_plan",
             // Workflow
-            "create_workflow", "add_workflow_step", "get_workflow_status", "list_workflows",
-            "start_workflow", "pause_workflow", "resume_workflow", "cancel_workflow", "delete_workflow",
+            "create_workflow",
+            "add_workflow_step",
+            "get_workflow_status",
+            "list_workflows",
+            "start_workflow",
+            "pause_workflow",
+            "resume_workflow",
+            "cancel_workflow",
+            "delete_workflow",
             // Skills
-            "register_skill", "discover_skill", "get_skill", "list_skills",
-            "update_skill_mastery", "get_skill_recommendations", "execute_skill",
-            "get_skill_stats", "apply_skill_decay", "enable_disable_skill", "search_skills",
+            "register_skill",
+            "discover_skill",
+            "get_skill",
+            "list_skills",
+            "update_skill_mastery",
+            "get_skill_recommendations",
+            "execute_skill",
+            "get_skill_stats",
+            "apply_skill_decay",
+            "enable_disable_skill",
+            "search_skills",
         ]
     }
-    
+
     fn agent_tools() -> Vec<TestRequirement> {
         vec![
             TestRequirement {
@@ -152,10 +208,19 @@ impl FunctionRegistry {
                 category: "Agent".to_string(),
                 requires_workflow: false,
                 requires_data: None,
-                expected_behavior: "Returns workflow rules when called with 'default' purpose".to_string(),
+                expected_behavior: "Returns workflow rules when called with 'default' purpose"
+                    .to_string(),
                 validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "workflow".to_string(), expected_value: None },
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
+                    ValidationCheck {
+                        check_type: CheckType::HasField,
+                        field: "workflow".to_string(),
+                        expected_value: None,
+                    },
+                    ValidationCheck {
+                        check_type: CheckType::IsSuccess,
+                        field: "success".to_string(),
+                        expected_value: None,
+                    },
                 ],
                 priority: 1,
             },
@@ -165,10 +230,13 @@ impl FunctionRegistry {
                 category: "Agent".to_string(),
                 requires_workflow: false,
                 requires_data: None,
-                expected_behavior: "Returns workflow rules when called with 'general' purpose".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "workflow".to_string(), expected_value: None },
-                ],
+                expected_behavior: "Returns workflow rules when called with 'general' purpose"
+                    .to_string(),
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "workflow".to_string(),
+                    expected_value: None,
+                }],
                 priority: 1,
             },
             TestRequirement {
@@ -178,9 +246,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Lists all available tools".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "tools".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "tools".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -189,10 +259,13 @@ impl FunctionRegistry {
                 category: "Agent".to_string(),
                 requires_workflow: true,
                 requires_data: None,
-                expected_behavior: "Lists memory tools when filtered by 'memory' category".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "tools".to_string(), expected_value: None },
-                ],
+                expected_behavior: "Lists memory tools when filtered by 'memory' category"
+                    .to_string(),
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "tools".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -203,14 +276,57 @@ impl FunctionRegistry {
                 requires_data: None,
                 expected_behavior: "Returns tool definition for 'store_memory'".to_string(),
                 validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "found".to_string(), expected_value: Some("true".to_string()) },
-                    ValidationCheck { check_type: CheckType::HasField, field: "tool".to_string(), expected_value: None },
+                    ValidationCheck {
+                        check_type: CheckType::HasField,
+                        field: "found".to_string(),
+                        expected_value: Some("true".to_string()),
+                    },
+                    ValidationCheck {
+                        check_type: CheckType::HasField,
+                        field: "tool".to_string(),
+                        expected_value: None,
+                    },
                 ],
+                priority: 2,
+            },
+            TestRequirement {
+                id: "agent_connect_mcp".to_string(),
+                function_name: "connect_mcp_server".to_string(),
+                category: "Agent".to_string(),
+                requires_workflow: true,
+                requires_data: None,
+                expected_behavior: "Connects to an external MCP server".to_string(),
+                validation: vec![
+                    ValidationCheck {
+                        check_type: CheckType::IsSuccess,
+                        field: "success".to_string(),
+                        expected_value: None,
+                    },
+                    ValidationCheck {
+                        check_type: CheckType::HasField,
+                        field: "connected".to_string(),
+                        expected_value: None,
+                    },
+                ],
+                priority: 2,
+            },
+            TestRequirement {
+                id: "agent_call_tool".to_string(),
+                function_name: "call_tool".to_string(),
+                category: "Agent".to_string(),
+                requires_workflow: true,
+                requires_data: None,
+                expected_behavior: "Calls a tool on a connected MCP server".to_string(),
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "content".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
         ]
     }
-    
+
     fn memory_tools() -> Vec<TestRequirement> {
         vec![
             TestRequirement {
@@ -305,7 +421,7 @@ impl FunctionRegistry {
             },
         ]
     }
-    
+
     // Vector Index operations (Embedding operations)
     fn vector_index_tools() -> Vec<TestRequirement> {
         vec![
@@ -315,11 +431,24 @@ impl FunctionRegistry {
                 category: "VectorIndex".to_string(),
                 requires_workflow: true,
                 requires_data: None,
-                expected_behavior: "Stores a vector embedding for semantic memory search".to_string(),
+                expected_behavior: "Stores a vector embedding for semantic memory search"
+                    .to_string(),
                 validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                    ValidationCheck { check_type: CheckType::HasField, field: "id".to_string(), expected_value: None },
-                    ValidationCheck { check_type: CheckType::HasField, field: "dimension".to_string(), expected_value: None },
+                    ValidationCheck {
+                        check_type: CheckType::IsSuccess,
+                        field: "success".to_string(),
+                        expected_value: None,
+                    },
+                    ValidationCheck {
+                        check_type: CheckType::HasField,
+                        field: "id".to_string(),
+                        expected_value: None,
+                    },
+                    ValidationCheck {
+                        check_type: CheckType::HasField,
+                        field: "dimension".to_string(),
+                        expected_value: None,
+                    },
                 ],
                 priority: 1,
             },
@@ -329,10 +458,20 @@ impl FunctionRegistry {
                 category: "VectorIndex".to_string(),
                 requires_workflow: true,
                 requires_data: None,
-                expected_behavior: "Gets an embedding by memory ID (returns found=false for non-existent)".to_string(),
+                expected_behavior:
+                    "Gets an embedding by memory ID (returns found=false for non-existent)"
+                        .to_string(),
                 validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                    ValidationCheck { check_type: CheckType::HasField, field: "found".to_string(), expected_value: None },
+                    ValidationCheck {
+                        check_type: CheckType::IsSuccess,
+                        field: "success".to_string(),
+                        expected_value: None,
+                    },
+                    ValidationCheck {
+                        check_type: CheckType::HasField,
+                        field: "found".to_string(),
+                        expected_value: None,
+                    },
                 ],
                 priority: 1,
             },
@@ -342,11 +481,24 @@ impl FunctionRegistry {
                 category: "VectorIndex".to_string(),
                 requires_workflow: true,
                 requires_data: None,
-                expected_behavior: "Searches for similar memories using vector cosine similarity".to_string(),
+                expected_behavior: "Searches for similar memories using vector cosine similarity"
+                    .to_string(),
                 validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                    ValidationCheck { check_type: CheckType::HasField, field: "results".to_string(), expected_value: None },
-                    ValidationCheck { check_type: CheckType::HasField, field: "count".to_string(), expected_value: None },
+                    ValidationCheck {
+                        check_type: CheckType::IsSuccess,
+                        field: "success".to_string(),
+                        expected_value: None,
+                    },
+                    ValidationCheck {
+                        check_type: CheckType::HasField,
+                        field: "results".to_string(),
+                        expected_value: None,
+                    },
+                    ValidationCheck {
+                        check_type: CheckType::HasField,
+                        field: "count".to_string(),
+                        expected_value: None,
+                    },
                 ],
                 priority: 1,
             },
@@ -358,9 +510,21 @@ impl FunctionRegistry {
                 requires_data: None,
                 expected_behavior: "Lists all memory embeddings".to_string(),
                 validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                    ValidationCheck { check_type: CheckType::HasField, field: "embeddings".to_string(), expected_value: None },
-                    ValidationCheck { check_type: CheckType::HasField, field: "count".to_string(), expected_value: None },
+                    ValidationCheck {
+                        check_type: CheckType::IsSuccess,
+                        field: "success".to_string(),
+                        expected_value: None,
+                    },
+                    ValidationCheck {
+                        check_type: CheckType::HasField,
+                        field: "embeddings".to_string(),
+                        expected_value: None,
+                    },
+                    ValidationCheck {
+                        check_type: CheckType::HasField,
+                        field: "count".to_string(),
+                        expected_value: None,
+                    },
                 ],
                 priority: 2,
             },
@@ -372,8 +536,16 @@ impl FunctionRegistry {
                 requires_data: None,
                 expected_behavior: "Deletes an embedding by memory ID".to_string(),
                 validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                    ValidationCheck { check_type: CheckType::HasField, field: "deleted".to_string(), expected_value: None },
+                    ValidationCheck {
+                        check_type: CheckType::IsSuccess,
+                        field: "success".to_string(),
+                        expected_value: None,
+                    },
+                    ValidationCheck {
+                        check_type: CheckType::HasField,
+                        field: "deleted".to_string(),
+                        expected_value: None,
+                    },
                 ],
                 priority: 2,
             },
@@ -385,14 +557,22 @@ impl FunctionRegistry {
                 requires_data: None,
                 expected_behavior: "Gets vector index statistics".to_string(),
                 validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                    ValidationCheck { check_type: CheckType::HasField, field: "total_embeddings".to_string(), expected_value: None },
+                    ValidationCheck {
+                        check_type: CheckType::IsSuccess,
+                        field: "success".to_string(),
+                        expected_value: None,
+                    },
+                    ValidationCheck {
+                        check_type: CheckType::HasField,
+                        field: "total_embeddings".to_string(),
+                        expected_value: None,
+                    },
                 ],
                 priority: 2,
             },
         ]
     }
-    
+
     fn experience_tools() -> Vec<TestRequirement> {
         vec![
             TestRequirement {
@@ -401,10 +581,13 @@ impl FunctionRegistry {
                 category: "Experience".to_string(),
                 requires_workflow: true,
                 requires_data: None,
-                expected_behavior: "Records a new experience with action, outcome, and tool name".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "id".to_string(), expected_value: None },
-                ],
+                expected_behavior: "Records a new experience with action, outcome, and tool name"
+                    .to_string(),
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "id".to_string(),
+                    expected_value: None,
+                }],
                 priority: 1,
             },
             TestRequirement {
@@ -412,11 +595,17 @@ impl FunctionRegistry {
                 function_name: "get_experience".to_string(),
                 category: "Experience".to_string(),
                 requires_workflow: true,
-                requires_data: Some(DataRequirement { data_type: "experience".to_string(), creation_tool: "record_experience".to_string(), min_count: 1 }),
+                requires_data: Some(DataRequirement {
+                    data_type: "experience".to_string(),
+                    creation_tool: "record_experience".to_string(),
+                    min_count: 1,
+                }),
                 expected_behavior: "Retrieves a specific experience by ID".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "id".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "id".to_string(),
+                    expected_value: None,
+                }],
                 priority: 1,
             },
             TestRequirement {
@@ -426,9 +615,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Lists recent experiences".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "experiences".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "experiences".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -438,14 +629,16 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Returns experience statistics".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "stats".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "stats".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
         ]
     }
-    
+
     // Background Workers (per Architecture §22)
     fn background_workers_tools() -> Vec<TestRequirement> {
         vec![
@@ -455,11 +648,24 @@ impl FunctionRegistry {
                 category: "BackgroundWorkers".to_string(),
                 requires_workflow: true,
                 requires_data: None,
-                expected_behavior: "Gets background worker statistics for all observers".to_string(),
+                expected_behavior: "Gets background worker statistics for all observers"
+                    .to_string(),
                 validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                    ValidationCheck { check_type: CheckType::HasField, field: "stats".to_string(), expected_value: None },
-                    ValidationCheck { check_type: CheckType::HasField, field: "worker_count".to_string(), expected_value: None },
+                    ValidationCheck {
+                        check_type: CheckType::IsSuccess,
+                        field: "success".to_string(),
+                        expected_value: None,
+                    },
+                    ValidationCheck {
+                        check_type: CheckType::HasField,
+                        field: "stats".to_string(),
+                        expected_value: None,
+                    },
+                    ValidationCheck {
+                        check_type: CheckType::HasField,
+                        field: "worker_count".to_string(),
+                        expected_value: None,
+                    },
                 ],
                 priority: 1,
             },
@@ -471,8 +677,16 @@ impl FunctionRegistry {
                 requires_data: None,
                 expected_behavior: "Gets worker stats filtered by observer name".to_string(),
                 validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                    ValidationCheck { check_type: CheckType::HasField, field: "stats".to_string(), expected_value: None },
+                    ValidationCheck {
+                        check_type: CheckType::IsSuccess,
+                        field: "success".to_string(),
+                        expected_value: None,
+                    },
+                    ValidationCheck {
+                        check_type: CheckType::HasField,
+                        field: "stats".to_string(),
+                        expected_value: None,
+                    },
                 ],
                 priority: 2,
             },
@@ -484,14 +698,22 @@ impl FunctionRegistry {
                 requires_data: None,
                 expected_behavior: "Gets the number of active background workers".to_string(),
                 validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                    ValidationCheck { check_type: CheckType::HasField, field: "worker_count".to_string(), expected_value: None },
+                    ValidationCheck {
+                        check_type: CheckType::IsSuccess,
+                        field: "success".to_string(),
+                        expected_value: None,
+                    },
+                    ValidationCheck {
+                        check_type: CheckType::HasField,
+                        field: "worker_count".to_string(),
+                        expected_value: None,
+                    },
                 ],
                 priority: 1,
             },
         ]
     }
-    
+
     fn reflection_tools() -> Vec<TestRequirement> {
         vec![
             TestRequirement {
@@ -501,9 +723,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Creates a new reflection".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 1,
             },
             TestRequirement {
@@ -513,9 +737,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Returns learned patterns".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "patterns".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "patterns".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -525,9 +751,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Returns insights from analysis".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "insights".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "insights".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -537,14 +765,16 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Performs pattern analysis".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
         ]
     }
-    
+
     fn search_tools() -> Vec<TestRequirement> {
         vec![
             TestRequirement {
@@ -554,9 +784,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Performs global search across all data".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "results".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "results".to_string(),
+                    expected_value: None,
+                }],
                 priority: 1,
             },
             TestRequirement {
@@ -566,9 +798,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Returns tool recommendations".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "recommendations".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "recommendations".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -578,26 +812,45 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Returns reputation data for a tool".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "tool_name".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "tool_name".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
         ]
     }
-    
-    fn ingestor_tools() -> Vec<TestRequirement> {
+
+    fn agent_tools() -> Vec<TestRequirement> {
         vec![
             TestRequirement {
-                id: "ingestor_list_importable".to_string(),
-                function_name: "list_importable".to_string(),
-                category: "Ingestor".to_string(),
+                id: "agent_get_workflow_default".to_string(),
+                function_name: "get_workflow".to_string(),
+                category: "Agent".to_string(),
+                requires_workflow: false,
+                requires_data: None,
+                expected_behavior: "Returns workflow rules when called with 'default' purpose"
+                    .to_string(),
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "workflow".to_string(),
+                    expected_value: None,
+                }],
+                priority: 1,
+            },
+            TestRequirement {
+                id: "agent_list_tools".to_string(),
+                function_name: "list_tools".to_string(),
+                category: "Agent".to_string(),
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Lists files available for import".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "files".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "files".to_string(),
+                    expected_value: None,
+                }],
                 priority: 1,
             },
             TestRequirement {
@@ -607,9 +860,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Lists files recursively including subdirectories".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "files".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "files".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -619,9 +874,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Ingests a text file".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 1,
             },
             TestRequirement {
@@ -631,9 +888,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Ingests a JSON file with smart extraction".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 1,
             },
             TestRequirement {
@@ -643,9 +902,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Ingests a code file (Rust)".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 1,
             },
             TestRequirement {
@@ -655,9 +916,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Lists all ingested files".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "files".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "files".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -667,14 +930,37 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Delete operation should be blocked without admin".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: Some("false".to_string()) },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: Some("false".to_string()),
+                }],
                 priority: 3,
+            },
+            TestRequirement {
+                id: "ingestor_transcribe_audio".to_string(),
+                function_name: "transcribe_audio".to_string(),
+                category: "Ingestor".to_string(),
+                requires_workflow: true,
+                requires_data: None,
+                expected_behavior: "Transcribes an audio file using Whisper AI".to_string(),
+                validation: vec![
+                    ValidationCheck {
+                        check_type: CheckType::HasField,
+                        field: "text".to_string(),
+                        expected_value: None,
+                    },
+                    ValidationCheck {
+                        check_type: CheckType::IsSuccess,
+                        field: "success".to_string(),
+                        expected_value: None,
+                    },
+                ],
+                priority: 2,
             },
         ]
     }
-    
+
     fn hypothesis_tools() -> Vec<TestRequirement> {
         vec![
             TestRequirement {
@@ -684,9 +970,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Records a new observation".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 1,
             },
             TestRequirement {
@@ -696,9 +984,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Creates a new hypothesis".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 1,
             },
             TestRequirement {
@@ -708,9 +998,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Adds supporting or contradicting evidence".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -720,9 +1012,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Returns the current hypothesis".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "hypothesis".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "hypothesis".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -732,9 +1026,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Lists all hypotheses".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "hypotheses".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "hypotheses".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -744,9 +1040,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Evaluates the current hypothesis".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "evaluation".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "evaluation".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -756,14 +1054,16 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Extracts knowledge from evaluated hypothesis".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
         ]
     }
-    
+
     fn exploration_tools() -> Vec<TestRequirement> {
         vec![
             TestRequirement {
@@ -773,9 +1073,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Starts a new exploration".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "id".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "id".to_string(),
+                    expected_value: None,
+                }],
                 priority: 1,
             },
             TestRequirement {
@@ -785,9 +1087,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Returns exploration status".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "status".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "status".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -797,9 +1101,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Records an exploration attempt".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -809,14 +1115,132 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Adds a hypothesis to exploration".to_string(),
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
+                priority: 2,
+            },
+            TestRequirement {
+                id: "exploration_complete".to_string(),
+                function_name: "complete_exploration".to_string(),
+                category: "Exploration".to_string(),
+                requires_workflow: true,
+                requires_data: Some(DataRequirement {
+                    data_type: "exploration".to_string(),
+                    creation_tool: "start_exploration".to_string(),
+                    min_count: 1,
+                }),
+                expected_behavior: "Completes an exploration with findings".to_string(),
                 validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
+                    ValidationCheck {
+                        check_type: CheckType::IsSuccess,
+                        field: "success".to_string(),
+                        expected_value: None,
+                    },
+                    ValidationCheck {
+                        check_type: CheckType::HasField,
+                        field: "findings".to_string(),
+                        expected_value: None,
+                    },
                 ],
+                priority: 2,
+            },
+            TestRequirement {
+                id: "exploration_abandon".to_string(),
+                function_name: "abandon_exploration".to_string(),
+                category: "Exploration".to_string(),
+                requires_workflow: true,
+                requires_data: Some(DataRequirement {
+                    data_type: "exploration".to_string(),
+                    creation_tool: "start_exploration".to_string(),
+                    min_count: 1,
+                }),
+                expected_behavior: "Abandons an exploration without completing it".to_string(),
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
+                priority: 2,
+            },
+            TestRequirement {
+                id: "exploration_evaluate_hypothesis".to_string(),
+                function_name: "evaluate_exploration_hypothesis".to_string(),
+                category: "Exploration".to_string(),
+                requires_workflow: true,
+                requires_data: Some(DataRequirement {
+                    data_type: "exploration".to_string(),
+                    creation_tool: "start_exploration".to_string(),
+                    min_count: 1,
+                }),
+                expected_behavior: "Sets the result for a hypothesis based on evidence".to_string(),
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
+                priority: 2,
+            },
+            TestRequirement {
+                id: "exploration_promote_finding".to_string(),
+                function_name: "promote_finding".to_string(),
+                category: "Exploration".to_string(),
+                requires_workflow: true,
+                requires_data: Some(DataRequirement {
+                    data_type: "exploration".to_string(),
+                    creation_tool: "start_exploration".to_string(),
+                    min_count: 1,
+                }),
+                expected_behavior: "Promotes a finding from an exploration to reusable knowledge"
+                    .to_string(),
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
+                priority: 2,
+            },
+            TestRequirement {
+                id: "exploration_pause".to_string(),
+                function_name: "pause_exploration".to_string(),
+                category: "Exploration".to_string(),
+                requires_workflow: true,
+                requires_data: Some(DataRequirement {
+                    data_type: "exploration".to_string(),
+                    creation_tool: "start_exploration".to_string(),
+                    min_count: 1,
+                }),
+                expected_behavior: "Pauses an active exploration".to_string(),
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
+                priority: 2,
+            },
+            TestRequirement {
+                id: "exploration_resume".to_string(),
+                function_name: "resume_exploration".to_string(),
+                category: "Exploration".to_string(),
+                requires_workflow: true,
+                requires_data: Some(DataRequirement {
+                    data_type: "exploration".to_string(),
+                    creation_tool: "start_exploration".to_string(),
+                    min_count: 1,
+                }),
+                expected_behavior: "Resumes a paused exploration".to_string(),
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
         ]
     }
-    
+
     fn knowledge_tools() -> Vec<TestRequirement> {
         vec![
             TestRequirement {
@@ -826,9 +1250,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Adds new knowledge".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "knowledge_id".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "knowledge_id".to_string(),
+                    expected_value: None,
+                }],
                 priority: 1,
             },
             TestRequirement {
@@ -836,11 +1262,17 @@ impl FunctionRegistry {
                 function_name: "query_knowledge".to_string(),
                 category: "Knowledge".to_string(),
                 requires_workflow: true,
-                requires_data: Some(DataRequirement { data_type: "knowledge".to_string(), creation_tool: "add_knowledge".to_string(), min_count: 1 }),
+                requires_data: Some(DataRequirement {
+                    data_type: "knowledge".to_string(),
+                    creation_tool: "add_knowledge".to_string(),
+                    min_count: 1,
+                }),
                 expected_behavior: "Queries knowledge base".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "items".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "items".to_string(),
+                    expected_value: None,
+                }],
                 priority: 1,
             },
             TestRequirement {
@@ -849,10 +1281,13 @@ impl FunctionRegistry {
                 category: "Knowledge".to_string(),
                 requires_workflow: true,
                 requires_data: None,
-                expected_behavior: "Gets knowledge that has been applied multiple times".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "items".to_string(), expected_value: None },
-                ],
+                expected_behavior: "Gets knowledge that has been applied multiple times"
+                    .to_string(),
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "items".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -862,9 +1297,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Returns knowledge statistics".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "total".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "total".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -873,16 +1310,21 @@ impl FunctionRegistry {
                 category: "Knowledge".to_string(),
                 requires_workflow: true,
                 requires_data: None,
-                expected_behavior: "Records knowledge application outcome (fails with fake UUID)".to_string(),
+                expected_behavior: "Records knowledge application outcome (fails with fake UUID)"
+                    .to_string(),
                 validation: vec![
                     // This test uses a fake UUID, so it will fail.
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: Some("false".to_string()) },
+                    ValidationCheck {
+                        check_type: CheckType::IsSuccess,
+                        field: "success".to_string(),
+                        expected_value: Some("false".to_string()),
+                    },
                 ],
                 priority: 2,
             },
         ]
     }
-    
+
     fn planner_tools() -> Vec<TestRequirement> {
         vec![
             TestRequirement {
@@ -892,9 +1334,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Creates a new plan".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "id".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "id".to_string(),
+                    expected_value: None,
+                }],
                 priority: 1,
             },
             TestRequirement {
@@ -904,9 +1348,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Adds a step to the current plan".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 1,
             },
             TestRequirement {
@@ -916,9 +1362,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Adds a dependency between steps".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -928,9 +1376,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Returns the current plan".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "plan".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "plan".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -940,9 +1390,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Starts executing the plan".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -952,9 +1404,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Marks a step as completed".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -964,9 +1418,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Marks a step as failed".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -976,9 +1432,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Cancels the current plan".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -988,14 +1446,16 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Lists all plans".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "plans".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "plans".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
         ]
     }
-    
+
     fn workflow_tools() -> Vec<TestRequirement> {
         vec![
             TestRequirement {
@@ -1005,9 +1465,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Creates a new workflow".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "id".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "id".to_string(),
+                    expected_value: None,
+                }],
                 priority: 1,
             },
             TestRequirement {
@@ -1017,9 +1479,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Adds a step to the workflow".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 1,
             },
             TestRequirement {
@@ -1029,9 +1493,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Returns workflow status".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "status".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "status".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -1041,9 +1507,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Starts workflow execution".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -1053,9 +1521,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Pauses workflow execution".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -1065,9 +1535,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Resumes workflow execution".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -1077,9 +1549,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Cancels workflow execution".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -1089,9 +1563,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Deletes a workflow".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -1101,14 +1577,16 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Lists all workflows".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "workflows".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "workflows".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
         ]
     }
-    
+
     fn skills_tools() -> Vec<TestRequirement> {
         vec![
             TestRequirement {
@@ -1118,9 +1596,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Registers a new skill".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "id".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "id".to_string(),
+                    expected_value: None,
+                }],
                 priority: 1,
             },
             TestRequirement {
@@ -1130,9 +1610,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Creates a skill from experience".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "id".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "id".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -1143,9 +1625,13 @@ impl FunctionRegistry {
                 requires_data: None,
                 expected_behavior: "Gets skill details (fails with fake UUID)".to_string(),
                 validation: vec![
-                    // This test uses a fake UUID, so it will fail. 
+                    // This test uses a fake UUID, so it will fail.
                     // For a real test, use requires_data to get a registered skill's ID.
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: Some("false".to_string()) },
+                    ValidationCheck {
+                        check_type: CheckType::IsSuccess,
+                        field: "success".to_string(),
+                        expected_value: Some("false".to_string()),
+                    },
                 ],
                 priority: 2,
             },
@@ -1156,9 +1642,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Lists all skills".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "skills".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "skills".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -1170,7 +1658,11 @@ impl FunctionRegistry {
                 expected_behavior: "Updates skill mastery (fails with fake UUID)".to_string(),
                 validation: vec![
                     // This test uses a fake UUID, so it will fail.
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: Some("false".to_string()) },
+                    ValidationCheck {
+                        check_type: CheckType::IsSuccess,
+                        field: "success".to_string(),
+                        expected_value: Some("false".to_string()),
+                    },
                 ],
                 priority: 2,
             },
@@ -1181,9 +1673,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Gets skill recommendations".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "recommendations".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "recommendations".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -1195,7 +1689,11 @@ impl FunctionRegistry {
                 expected_behavior: "Executes a skill (fails with fake UUID)".to_string(),
                 validation: vec![
                     // This test uses a fake UUID, so it will fail.
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: Some("false".to_string()) },
+                    ValidationCheck {
+                        check_type: CheckType::IsSuccess,
+                        field: "success".to_string(),
+                        expected_value: Some("false".to_string()),
+                    },
                 ],
                 priority: 2,
             },
@@ -1206,9 +1704,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Gets skill statistics".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "stats".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "stats".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
             TestRequirement {
@@ -1218,9 +1718,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Applies skill decay".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 3,
             },
             TestRequirement {
@@ -1230,9 +1732,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Enables or disables a skill".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::IsSuccess,
+                    field: "success".to_string(),
+                    expected_value: None,
+                }],
                 priority: 3,
             },
             TestRequirement {
@@ -1242,9 +1746,11 @@ impl FunctionRegistry {
                 requires_workflow: true,
                 requires_data: None,
                 expected_behavior: "Searches skills".to_string(),
-                validation: vec![
-                    ValidationCheck { check_type: CheckType::HasField, field: "results".to_string(), expected_value: None },
-                ],
+                validation: vec![ValidationCheck {
+                    check_type: CheckType::HasField,
+                    field: "results".to_string(),
+                    expected_value: None,
+                }],
                 priority: 2,
             },
         ]

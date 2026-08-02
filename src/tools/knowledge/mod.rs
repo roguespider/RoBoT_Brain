@@ -1,17 +1,14 @@
-
-
 // src/tools/knowledge/mod.rs
 //! Knowledge system MCP tools
 
-
-use std::sync::Arc;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::knowledge::{
-    KnowledgeItem, KnowledgeQuery, KnowledgeResult, KnowledgeStore, 
-    apply_query, rank_items, 
+    apply_query, rank_items,
     types::{KnowledgeConfidence, KnowledgeSource, KnowledgeStatus, KnowledgeType},
+    KnowledgeItem, KnowledgeQuery, KnowledgeResult, KnowledgeStore,
 };
 use crate::tools::ToolOutput;
 
@@ -73,7 +70,7 @@ pub mod definitions {
     pub const RECORD_KNOWLEDGE_APPLICATION: &str = "record_knowledge_application";
     pub const GET_KNOWLEDGE_STATS: &str = "get_knowledge_stats";
     pub const GET_MATURE_KNOWLEDGE: &str = "get_mature_knowledge";
-    
+
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         vec![
             crate::bridge::mcp::McpTool {
@@ -197,7 +194,7 @@ pub async fn execute_add_knowledge(
         Some(t) => KnowledgeType::Custom(t.to_string()),
         None => KnowledgeType::Insight,
     };
-    
+
     let source = match input.source.as_deref() {
         Some("user") => KnowledgeSource::User,
         Some("tool") => KnowledgeSource::Tool,
@@ -208,9 +205,9 @@ pub async fn execute_add_knowledge(
         Some(s) => KnowledgeSource::External(s.to_string()),
         None => KnowledgeSource::User,
     };
-    
+
     let confidence = input.confidence.unwrap_or(0.5);
-    
+
     let item = KnowledgeItem {
         id: Uuid::new_v4(),
         statement: input.statement,
@@ -228,9 +225,9 @@ pub async fn execute_add_knowledge(
         tags: input.tags.unwrap_or_default(),
         metadata: std::collections::HashMap::new(),
     };
-    
+
     let id = knowledge.add(item).await;
-    
+
     ToolOutput::success(serde_json::json!({
         "status": "added",
         "knowledge_id": id.to_string(),
@@ -244,7 +241,7 @@ pub async fn execute_query_knowledge(
     knowledge: &Arc<KnowledgeStore>,
 ) -> ToolOutput {
     let query_text = input.query.clone();
-    
+
     let ktype = input.knowledge_type.as_ref().map(|t| match t.as_str() {
         "fact" => KnowledgeType::Fact,
         "procedure" => KnowledgeType::Procedure,
@@ -255,7 +252,7 @@ pub async fn execute_query_knowledge(
         "concept" => KnowledgeType::Concept,
         t => KnowledgeType::Custom(t.to_string()),
     });
-    
+
     let query = KnowledgeQuery {
         text: Some(query_text.clone()),
         knowledge_type: ktype,
@@ -266,26 +263,30 @@ pub async fn execute_query_knowledge(
         include_related: false,
         limit: input.limit,
     };
-    
+
     let all_items = knowledge.get_all().await;
     let filtered = apply_query(&all_items, &query);
     let ranked = rank_items(filtered, &query);
-    
+
     let result = KnowledgeResult::new(ranked, query.clone());
-    
-    let items_json: Vec<serde_json::Value> = result.items.iter().map(|item| {
-        serde_json::json!({
-            "id": item.id.to_string(),
-            "statement": item.statement,
-            "type": format!("{:?}", item.knowledge_type),
-            "confidence": item.overall_confidence(),
-            "status": format!("{:?}", item.status),
-            "tags": item.tags,
-            "success_count": item.success_count,
-            "failure_count": item.failure_count,
+
+    let items_json: Vec<serde_json::Value> = result
+        .items
+        .iter()
+        .map(|item| {
+            serde_json::json!({
+                "id": item.id.to_string(),
+                "statement": item.statement,
+                "type": format!("{:?}", item.knowledge_type),
+                "confidence": item.overall_confidence(),
+                "status": format!("{:?}", item.status),
+                "tags": item.tags,
+                "success_count": item.success_count,
+                "failure_count": item.failure_count,
+            })
         })
-    }).collect();
-    
+        .collect();
+
     ToolOutput::success(serde_json::json!({
         "items": items_json,
         "total_matches": result.total_matches,
@@ -303,13 +304,13 @@ pub async fn execute_record_knowledge_application(
         Ok(id) => id,
         Err(_) => return ToolOutput::error("Invalid knowledge ID format"),
     };
-    
+
     let success = if input.success {
         knowledge.record_success(id).await
     } else {
         knowledge.record_failure(id).await
     };
-    
+
     if success {
         ToolOutput::success(serde_json::json!({
             "status": "recorded",
@@ -322,13 +323,12 @@ pub async fn execute_record_knowledge_application(
 }
 
 /// Execute get knowledge stats tool
-#[allow(unused)]
 pub async fn execute_get_knowledge_stats(
     _input: GetKnowledgeStatsInput,
     knowledge: &Arc<KnowledgeStore>,
 ) -> ToolOutput {
     let stats = knowledge.stats().await;
-    
+
     ToolOutput::success(serde_json::json!({
         "total": stats.total,
         "active": stats.active,
@@ -344,22 +344,25 @@ pub async fn execute_get_mature_knowledge(
     knowledge: &Arc<KnowledgeStore>,
 ) -> ToolOutput {
     let mut mature = knowledge.get_mature().await;
-    
+
     if let Some(l) = input.limit {
         mature.truncate(l);
     }
-    
-    let items_json: Vec<serde_json::Value> = mature.iter().map(|item| {
-        serde_json::json!({
-            "id": item.id.to_string(),
-            "statement": item.statement,
-            "type": format!("{:?}", item.knowledge_type),
-            "confidence": item.overall_confidence(),
-            "tags": item.tags,
-            "success_count": item.success_count,
+
+    let items_json: Vec<serde_json::Value> = mature
+        .iter()
+        .map(|item| {
+            serde_json::json!({
+                "id": item.id.to_string(),
+                "statement": item.statement,
+                "type": format!("{:?}", item.knowledge_type),
+                "confidence": item.overall_confidence(),
+                "tags": item.tags,
+                "success_count": item.success_count,
+            })
         })
-    }).collect();
-    
+        .collect();
+
     ToolOutput::success(serde_json::json!({
         "items": items_json,
         "count": items_json.len(),

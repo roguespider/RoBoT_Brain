@@ -2,14 +2,14 @@
 name = "robot_brain"
 version = "0.0.1"
 edition = "2021"
-description = "A Rust MCP server for Zed Editor with persistent memory and experience-based learning"
+description = "A Rust MCP server for lm studio or zed editor or anywhere you can use an mcp with persistent memory and experience-based learning"
 readme = "README.md"
 license = "AGPL-3.0-or-later"
-keywords = ["mcp", "zed", "ai", "memory", "agent"]
+keywords = ["mcp", "ai", "memory", "agent"]
 categories = ["command-line-utilities", "ai", "robotics"]
 repository = "https://github.com/roguespider/RoBoT_Brain"
 homepage = "https://github.com/roguespider/RoBoT_Brain"
-authors = ["RoBoT Team"]
+authors = ["Rogue Spider"]
 
 [profile.release]
 opt-level = 3

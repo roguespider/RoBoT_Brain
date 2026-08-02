@@ -1,6 +1,5 @@
 // robot_mcp/src/experience/scorer.rs
 
-
 use anyhow::Result;
 
 use crate::experience::{
@@ -31,7 +30,6 @@ pub struct EncounterScore {
     /// Reliability of the result (0.0-1.0)
     pub reliability: f32,
 }
-
 
 impl EncounterScore {
     /// Create a new encounter score with default values
@@ -114,7 +112,8 @@ impl ExperienceScorer {
 
         let sum_success = scores.iter().map(|s| s.success).sum::<f32>() / scores.len() as f32;
         let sum_quality = scores.iter().map(|s| s.quality).sum::<f32>() / scores.len() as f32;
-        let sum_reliability = scores.iter().map(|s| s.reliability).sum::<f32>() / scores.len() as f32;
+        let sum_reliability =
+            scores.iter().map(|s| s.reliability).sum::<f32>() / scores.len() as f32;
 
         EncounterScore {
             success: sum_success,
@@ -168,7 +167,6 @@ impl ExperienceScorer {
         score.clamp(0.0, 1.0)
     }
 
-    #[allow(unused)]
     fn calculate_novelty(&self, _experience: &Experience) -> f32 {
         // Future:
         // Compare embeddings against previous experiences.
@@ -204,10 +202,13 @@ impl ExperienceObserver for ExperienceScorer {
 
     fn observe(&self, event: &ExperienceEvent) -> Result<()> {
         use crate::experience::events::payload::EventPayload;
-        
+
         match &event.payload {
             // Process Scored events - already has the score calculated
-            EventPayload::Score { experience_id, score } => {
+            EventPayload::Score {
+                experience_id,
+                score,
+            } => {
                 tracing::debug!(
                     "ExperienceScorer received Scored event: {} with score {:?}",
                     experience_id,
@@ -224,7 +225,10 @@ impl ExperienceObserver for ExperienceScorer {
                 );
             }
             _ => {
-                tracing::trace!("ExperienceScorer ignoring event type: {:?}", event.event_type);
+                tracing::trace!(
+                    "ExperienceScorer ignoring event type: {:?}",
+                    event.event_type
+                );
             }
         }
         Ok(())

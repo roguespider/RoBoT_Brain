@@ -1,14 +1,14 @@
 //! Comprehensive End-to-End Test Module
-//! 
+//!
 //! This module provides true end-to-end testing for all MCP tools.
 //! It validates actual functionality without stubs or mocking.
 
-use crate::{TestMcpClient, TestStats};
-use crate::test_environment::TestEnvironment;
-use crate::function_registry::{FunctionRegistry, TestRequirement, ValidationCheck, CheckType};
-use crate::test_results::{TestReport, TestResult, TestStatus, ValidationResult};
 use crate::code_analyzer::{CodeAnalyzer, LintAnalyzer, LintSummary};
+use crate::function_registry::{CheckType, FunctionRegistry, TestRequirement, ValidationCheck};
+use crate::test_environment::TestEnvironment;
 use crate::test_results::print_issues_table;
+use crate::test_results::{TestReport, TestResult, TestStatus, ValidationResult};
+use crate::{TestMcpClient, TestStats};
 use std::time::Instant;
 
 /// Run the comprehensive end-to-end test suite
@@ -19,34 +19,36 @@ pub async fn run_comprehensive_tests(
 ) -> anyhow::Result<TestReport> {
     let start_time = Instant::now();
     let mut report = TestReport::new();
-    
+
     crate::teeprintln!("\n{}", "#".repeat(100));
     crate::teeprintln!("#  ROBO T BRAIN - COMPREHENSIVE END-TO-END TEST SUITE");
     crate::teeprintln!("#  Testing every function 100% end-to-end without stubs or #[allow(*)]");
     crate::teeprintln!("{}", "#".repeat(100));
-    
+
     // Step 1: Analyze source code for issues
     crate::teeprintln!("\n📊 PHASE 1: SOURCE CODE ANALYSIS");
     crate::teeprintln!("{}", "─".repeat(100));
-    
-    let source_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..").join("src");
+
+    let source_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("src");
     let analyzer = CodeAnalyzer::new(source_path.clone());
     let code_issues = analyzer.analyze();
     let summary = analyzer.get_summary(&code_issues);
-    
+
     summary.print_table();
     report.set_code_issues(code_issues.clone());
     report.set_source_path(source_path.clone());
-    
+
     // Print issues table
     print_issues_table(&code_issues, &source_path);
-    
+
     // Step 1b: Run lint analysis (clippy + cargo check)
     crate::teeprintln!("\n📋 PHASE 1B: LINT ANALYSIS (clippy + cargo check)");
     crate::teeprintln!("{}", "─".repeat(100));
-    
+
     let project_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
-    
+
     crate::teeprintln!("  Running clippy...");
     let clippy_issues = match LintAnalyzer::run_clippy(&project_path) {
         Ok(issues) => issues,
@@ -55,7 +57,7 @@ pub async fn run_comprehensive_tests(
             Vec::new()
         }
     };
-    
+
     crate::teeprintln!("  Running cargo check...");
     let check_issues = match LintAnalyzer::run_check(&project_path) {
         Ok(issues) => issues,
@@ -64,62 +66,98 @@ pub async fn run_comprehensive_tests(
             Vec::new()
         }
     };
-    
+
     // Combine and dedupe issues
     let mut all_lint_issues = clippy_issues;
     for issue in check_issues {
-        if !all_lint_issues.iter().any(|i| i.file_path == issue.file_path && i.line_number == issue.line_number && i.message == issue.message) {
+        if !all_lint_issues.iter().any(|i| {
+            i.file_path == issue.file_path
+                && i.line_number == issue.line_number
+                && i.message == issue.message
+        }) {
             all_lint_issues.push(issue);
         }
     }
-    
+
     let lint_summary = LintSummary::new(all_lint_issues.clone());
     lint_summary.print_report();
-    
+
     // Store lint issues in report
     report.set_lint_issues(all_lint_issues);
-    
+
     // Step 2: Get all test requirements
     crate::teeprintln!("\n📋 PHASE 2: COLLECTING TEST REQUIREMENTS");
     crate::teeprintln!("{}", "─".repeat(100));
-    
+
     let requirements = FunctionRegistry::get_all_functions();
-    crate::teeprintln!("  Found {} test requirements across {} categories", 
+    crate::teeprintln!(
+        "  Found {} test requirements across {} categories",
         requirements.len(),
-        get_category_count(&requirements));
-    
+        get_category_count(&requirements)
+    );
+
     for category in get_categories(&requirements) {
-        let count = requirements.iter().filter(|r| r.category == category).count();
+        let count = requirements
+            .iter()
+            .filter(|r| r.category == category)
+            .count();
         crate::teeprintln!("    - {}: {} tests", category, count);
     }
-    
+
     // Step 3: Run all tests
     crate::teeprintln!("\n🧪 PHASE 3: RUNNING END-TO-END TESTS");
     crate::teeprintln!("{}", "─".repeat(100));
-    
+
     // First, ensure workflow is initialized (required for most tests)
     crate::teeprintln!("\n  Initializing workflow...");
-    match client.call_tool("get_workflow", serde_json::json!({
-        "purpose": "default"
-    })).await {
+    match client
+        .call_tool(
+            "get_workflow",
+            serde_json::json!({
+                "purpose": "default"
+            }),
+        )
+        .await
+    {
         Ok(_) => crate::teeprintln!("    ✅ Workflow initialized"),
         Err(e) => crate::teeprintln!("    ⚠️  Workflow init warning: {}", e),
     }
-    
+
     // Print test table header
-    crate::teeprintln!("\n  ┌{:─<5}┬{:─<20}┬{:─<30}┬{:─<8}┬{:─<50}┐", "", "", "", "", "");
-    crate::teeprintln!("  │ {:^3} │ {:^18} │ {:^28} │ {:^6} │ {:^48} │", 
-        "#", "Category", "Test Name", "Status", "Details");
-    crate::teeprintln!("  ├{:─<5}┼{:─<20}┼{:─<30}┼{:─<8}┼{:─<50}┤", "", "", "", "", "");
-    
+    crate::teeprintln!(
+        "\n  ┌{:─<5}┬{:─<20}┬{:─<30}┬{:─<8}┬{:─<50}┐",
+        "",
+        "",
+        "",
+        "",
+        ""
+    );
+    crate::teeprintln!(
+        "  │ {:^3} │ {:^18} │ {:^28} │ {:^6} │ {:^48} │",
+        "#",
+        "Category",
+        "Test Name",
+        "Status",
+        "Details"
+    );
+    crate::teeprintln!(
+        "  ├{:─<5}┼{:─<20}┼{:─<30}┼{:─<8}┼{:─<50}┤",
+        "",
+        "",
+        "",
+        "",
+        ""
+    );
+
     // Run tests for each category
-    let mut data_created: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+    let mut data_created: std::collections::HashMap<String, Vec<String>> =
+        std::collections::HashMap::new();
     let mut test_num = 0;
-    
+
     for requirement in &requirements {
         test_num += 1;
         let result = run_single_test(client, requirement, &data_created, env).await;
-        
+
         // Track created data for dependent tests
         if result.status == TestStatus::Pass {
             if let Some(data_req) = &requirement.requires_data {
@@ -129,7 +167,7 @@ pub async fn run_comprehensive_tests(
                     .push(requirement.id.clone());
             }
         }
-        
+
         // Print test result in table format
         let status_icon = match result.status {
             TestStatus::Pass => "✅ PASS",
@@ -138,35 +176,44 @@ pub async fn run_comprehensive_tests(
             TestStatus::Skipped => "⏭️  SKIP",
             TestStatus::Blocked => "🚫 BLOCK",
         };
-        
+
         let details = if result.status == TestStatus::Pass {
             "OK".to_string()
         } else {
-            result.error_message.clone().unwrap_or_else(|| "Unknown error".to_string())
+            result
+                .error_message
+                .clone()
+                .unwrap_or_else(|| "Unknown error".to_string())
         };
-        
+
         // Truncate for table
-        let cat_str = if requirement.category.len() > 18 { 
-            format!("{}...", &requirement.category[..15]) 
-        } else { 
-            requirement.category.clone() 
+        let cat_str = if requirement.category.len() > 18 {
+            format!("{}...", &requirement.category[..15])
+        } else {
+            requirement.category.clone()
         };
-        let name_str = if requirement.function_name.len() > 28 { 
-            format!("{}...", &requirement.function_name[..25]) 
-        } else { 
-            requirement.function_name.clone() 
+        let name_str = if requirement.function_name.len() > 28 {
+            format!("{}...", &requirement.function_name[..25])
+        } else {
+            requirement.function_name.clone()
         };
-        let detail_str = if details.len() > 48 { 
-            format!("{}...", &details[..45]) 
-        } else { 
-            details 
+        let detail_str = if details.len() > 48 {
+            format!("{}...", &details[..45])
+        } else {
+            details
         };
-        
-        crate::teeprintln!("  │ {:>3} │ {:<18} │ {:<28} │ {} │ {:<48} │", 
-            test_num, cat_str, name_str, status_icon, detail_str);
-        
+
+        crate::teeprintln!(
+            "  │ {:>3} │ {:<18} │ {:<28} │ {} │ {:<48} │",
+            test_num,
+            cat_str,
+            name_str,
+            status_icon,
+            detail_str
+        );
+
         report.add_result(result);
-        
+
         // Update stats
         if let Some(r) = report.results.last() {
             match r.status {
@@ -177,17 +224,24 @@ pub async fn run_comprehensive_tests(
             }
         }
     }
-    
-    crate::teeprintln!("  └{:─<5}┴{:─<20}┴{:─<30}┴{:─<8}┴{:─<50}┘", "", "", "", "", "");
-    
+
+    crate::teeprintln!(
+        "  └{:─<5}┴{:─<20}┴{:─<30}┴{:─<8}┴{:─<50}┘",
+        "",
+        "",
+        "",
+        "",
+        ""
+    );
+
     // Step 4: Generate report
     crate::teeprintln!("\n📊 PHASE 4: GENERATING REPORT");
     crate::teeprintln!("{}", "─".repeat(100));
-    
+
     report.print_report();
-    
+
     crate::teeprintln!("\n  Total test duration: {:?}", start_time.elapsed());
-    
+
     Ok(report)
 }
 
@@ -200,13 +254,13 @@ async fn run_single_test(
 ) -> TestResult {
     let start = Instant::now();
     let mut validation_results = Vec::new();
-    
+
     // Build the arguments for this tool
     let args = build_test_arguments(requirement, env);
-    
+
     // Call the tool
     let tool_result = client.call_tool(&requirement.function_name, args).await;
-    
+
     // Run validation even if there's an error (for tests that expect errors)
     let result_for_validation = match &tool_result {
         Ok(result) => result.clone(),
@@ -219,21 +273,29 @@ async fn run_single_test(
             })
         }
     };
-    
+
     for check in &requirement.validation {
         let vr = validate_result(&result_for_validation, check);
         validation_results.push(vr);
     }
-    
+
     match tool_result {
         Ok(_result) => {
             // Check if all validations passed
             let all_passed = validation_results.iter().all(|v| v.passed);
-            
+
             TestResult {
                 requirement: requirement.clone(),
-                status: if all_passed { TestStatus::Pass } else { TestStatus::Fail },
-                error_message: if all_passed { None } else { Some("Validation failed".to_string()) },
+                status: if all_passed {
+                    TestStatus::Pass
+                } else {
+                    TestStatus::Fail
+                },
+                error_message: if all_passed {
+                    None
+                } else {
+                    Some("Validation failed".to_string())
+                },
                 duration_ms: start.elapsed().as_millis() as u64,
                 validation_results,
             }
@@ -243,10 +305,14 @@ async fn run_single_test(
             let expects_error = requirement.validation.iter().any(|v| {
                 v.check_type == CheckType::IsSuccess && v.expected_value.as_deref() == Some("false")
             });
-            
+
             TestResult {
                 requirement: requirement.clone(),
-                status: if expects_error { TestStatus::Pass } else { TestStatus::Error },
+                status: if expects_error {
+                    TestStatus::Pass
+                } else {
+                    TestStatus::Error
+                },
                 error_message: Some(e.to_string()),
                 duration_ms: start.elapsed().as_millis() as u64,
                 validation_results,
@@ -272,7 +338,16 @@ fn build_test_arguments(requirement: &TestRequirement, env: &TestEnvironment) ->
         "agent_get_tool" => serde_json::json!({
             "name": "store_memory"
         }),
-        
+        "agent_connect_mcp" => serde_json::json!({
+            "name": "test_server",
+            "command": "echo",
+            "args": []
+        }),
+        "agent_call_tool" => serde_json::json!({
+            "tool_name": "get_workflow",
+            "arguments": "{\"purpose\": \"general\"}"
+        }),
+
         // Memory tools
         "memory_store_basic" => serde_json::json!({
             "content": "Test memory content",
@@ -297,7 +372,7 @@ fn build_test_arguments(requirement: &TestRequirement, env: &TestEnvironment) ->
         "memory_list_filtered" => serde_json::json!({
             "memory_type": "note"
         }),
-        
+
         // Vector Index tools (Embedding operations)
         "vector_store_embedding" => serde_json::json!({
             "memory_id": "00000000-0000-0000-0000-000000000001",
@@ -319,7 +394,7 @@ fn build_test_arguments(requirement: &TestRequirement, env: &TestEnvironment) ->
             "memory_id": "00000000-0000-0000-0000-000000000001"
         }),
         "vector_get_embedding_stats" => serde_json::json!({}),
-        
+
         // Experience tools
         "experience_record" => serde_json::json!({
             "action": "Test Action",
@@ -331,14 +406,14 @@ fn build_test_arguments(requirement: &TestRequirement, env: &TestEnvironment) ->
         }),
         "experience_list" => serde_json::json!({}),
         "experience_stats" => serde_json::json!({}),
-        
+
         // Background Workers tools (per Architecture §22)
         "worker_get_stats" => serde_json::json!({}),
         "worker_get_stats_filtered" => serde_json::json!({
             "observer_name": "ExperienceScorer"
         }),
         "worker_get_count" => serde_json::json!({}),
-        
+
         // Reflection tools
         "reflection_create" => serde_json::json!({
             "title": "Test Reflection",
@@ -347,7 +422,7 @@ fn build_test_arguments(requirement: &TestRequirement, env: &TestEnvironment) ->
         "reflection_get_patterns" => serde_json::json!({}),
         "reflection_get_insights" => serde_json::json!({}),
         "reflection_analyze" => serde_json::json!({}),
-        
+
         // Search tools
         "search_global" => serde_json::json!({
             "query": "test"
@@ -356,7 +431,7 @@ fn build_test_arguments(requirement: &TestRequirement, env: &TestEnvironment) ->
         "search_reputation" => serde_json::json!({
             "tool_name": "store_memory"
         }),
-        
+
         // Ingestor tools
         "ingestor_list_importable" => serde_json::json!({}),
         "ingestor_list_importable_recursive" => serde_json::json!({
@@ -376,37 +451,82 @@ fn build_test_arguments(requirement: &TestRequirement, env: &TestEnvironment) ->
         "ingestor_delete_blocked" => serde_json::json!({
             "file_ids": ["test_file_id"]
         }),
-        
+        "ingestor_transcribe_audio" => serde_json::json!({
+            "path": env.files_folder.join("sample.mp3").to_string_lossy().to_string(),
+            "store_as_memory": true
+        }),
+
         // Hypothesis tools
         "hypothesis_record_observation" => serde_json::json!({
             "observation_type": "pattern",
-            "content": "Test observation content"
+            "content": "Test observation content",
+            "context": "test_context"
         }),
         "hypothesis_create" => serde_json::json!({
-            "hypothesis": "Users prefer memory-first approach"
+            "statement": "Users prefer memory-first approach",
+            "domain": "testing"
         }),
         "hypothesis_add_evidence" => serde_json::json!({
+            "hypothesis_id": "00000000-0000-0000-0000-000000000001",
+            "content": "Test evidence content",
             "evidence_type": "support",
+            "direction": "support",
             "strength": 0.8
         }),
-        "hypothesis_get" => serde_json::json!({}),
+        "hypothesis_get" => serde_json::json!({
+            "hypothesis_id": "00000000-0000-0000-0000-000000000001"
+        }),
         "hypothesis_list" => serde_json::json!({}),
-        "hypothesis_evaluate" => serde_json::json!({}),
-        "hypothesis_extract" => serde_json::json!({}),
-        
+        "hypothesis_evaluate" => serde_json::json!({
+            "hypothesis_id": "00000000-0000-0000-0000-000000000001"
+        }),
+        "hypothesis_extract" => serde_json::json!({
+            "hypothesis_id": "00000000-0000-0000-0000-000000000001",
+            "knowledge_content": "Extracted knowledge"
+        }),
+
         // Exploration tools
         "exploration_start" => serde_json::json!({
-            "topic": "Test Exploration"
+            "title": "Test Exploration",
+            "purpose": "Testing purposes"
         }),
-        "exploration_status" => serde_json::json!({}),
+        "exploration_status" => serde_json::json!({
+            "exploration_id": "00000000-0000-0000-0000-000000000001"
+        }),
         "exploration_record_attempt" => serde_json::json!({
-            "attempt": "Test attempt",
-            "result": "partial"
+            "exploration_id": "00000000-0000-0000-0000-000000000001",
+            "action": "Test attempt",
+            "expected_result": "Expected outcome",
+            "actual_result": "Actual outcome"
         }),
         "exploration_add_hypothesis" => serde_json::json!({
-            "hypothesis": "Test hypothesis"
+            "exploration_id": "00000000-0000-0000-0000-000000000001",
+            "statement": "Test hypothesis",
+            "initial_confidence": 0.7
         }),
-        
+        "exploration_complete" => serde_json::json!({
+            "exploration_id": "00000000-0000-0000-0000-000000000001",
+            "findings": [{"description": "Test finding", "confidence": 0.9}]
+        }),
+        "exploration_abandon" => serde_json::json!({
+            "exploration_id": "00000000-0000-0000-0000-000000000001"
+        }),
+        "exploration_evaluate_hypothesis" => serde_json::json!({
+            "exploration_id": "00000000-0000-0000-0000-000000000001",
+            "hypothesis_id": "00000000-0000-0000-0000-000000000002",
+            "result": "supported"
+        }),
+        "exploration_promote_finding" => serde_json::json!({
+            "exploration_id": "00000000-0000-0000-0000-000000000001",
+            "finding_id": "00000000-0000-0000-0000-000000000003"
+        }),
+        "exploration_pause" => serde_json::json!({
+            "exploration_id": "00000000-0000-0000-0000-000000000001"
+        }),
+        "exploration_resume" => serde_json::json!({
+            "exploration_id": "00000000-0000-0000-0000-000000000001"
+        }),
+
         // Knowledge tools
         "knowledge_add" => serde_json::json!({
             "statement": "Test knowledge content"
@@ -422,7 +542,7 @@ fn build_test_arguments(requirement: &TestRequirement, env: &TestEnvironment) ->
             "knowledge_id": "00000000-0000-0000-0000-000000000000",
             "success": true
         }),
-        
+
         // Planner tools
         "planner_create" => serde_json::json!({
             "description": "Test Plan"
@@ -431,21 +551,28 @@ fn build_test_arguments(requirement: &TestRequirement, env: &TestEnvironment) ->
             "description": "Step 1"
         }),
         "planner_add_dependency" => serde_json::json!({
-            "from_step": 0,
-            "to_step": 1
+            "step_id": "00000000-0000-0000-0000-000000000001",
+            "depends_on": "00000000-0000-0000-0000-000000000002"
         }),
-        "planner_get" => serde_json::json!({}),
-        "planner_start" => serde_json::json!({}),
+        "planner_get" => serde_json::json!({
+            "plan_id": "00000000-0000-0000-0000-000000000000"
+        }),
+        "planner_start" => serde_json::json!({
+            "plan_id": "00000000-0000-0000-0000-000000000000"
+        }),
         "planner_complete_step" => serde_json::json!({
-            "step_index": 0
+            "plan_id": "00000000-0000-0000-0000-000000000000",
+            "step_id": "00000000-0000-0000-0000-000000000001",
+            "result": "Success"
         }),
         "planner_fail_step" => serde_json::json!({
-            "step_index": 1,
+            "plan_id": "00000000-0000-0000-0000-000000000000",
+            "step_id": "00000000-0000-0000-0000-000000000002",
             "error": "Test failure"
         }),
         "planner_cancel" => serde_json::json!({}),
         "planner_list" => serde_json::json!({}),
-        
+
         // Workflow tools
         "workflow_create" => serde_json::json!({
             "name": "Test Workflow"
@@ -461,7 +588,7 @@ fn build_test_arguments(requirement: &TestRequirement, env: &TestEnvironment) ->
         "workflow_cancel" => serde_json::json!({}),
         "workflow_delete" => serde_json::json!({}),
         "workflow_list" => serde_json::json!({}),
-        
+
         // Skills tools
         "skills_register" => serde_json::json!({
             "name": "test_skill",
@@ -485,7 +612,8 @@ fn build_test_arguments(requirement: &TestRequirement, env: &TestEnvironment) ->
         "skills_recommendations" => serde_json::json!({}),
         "skills_execute" => serde_json::json!({
             "skill_id": "00000000-0000-0000-0000-000000000000",
-            "task": "test task"
+            "task": "test task",
+            "parameters": null
         }),
         "skills_stats" => serde_json::json!({}),
         "skills_decay" => serde_json::json!({
@@ -498,7 +626,7 @@ fn build_test_arguments(requirement: &TestRequirement, env: &TestEnvironment) ->
         "skills_search" => serde_json::json!({
             "query": "test"
         }),
-        
+
         // Default: empty arguments
         _ => serde_json::json!({}),
     }
@@ -510,16 +638,24 @@ fn validate_result(result: &serde_json::Value, check: &ValidationCheck) -> Valid
         CheckType::HasField => has_field(result, &check.field),
         CheckType::IsNonEmpty => is_non_empty(result, &check.field),
         CheckType::IsSuccess => is_success(result, &check.field, check.expected_value.as_deref()),
-        CheckType::MatchesPattern => matches_pattern(result, &check.field, check.expected_value.as_deref()),
-        CheckType::GreaterThan => greater_than(result, &check.field, check.expected_value.as_deref()),
+        CheckType::MatchesPattern => {
+            matches_pattern(result, &check.field, check.expected_value.as_deref())
+        }
+        CheckType::GreaterThan => {
+            greater_than(result, &check.field, check.expected_value.as_deref())
+        }
         CheckType::LessThan => less_than(result, &check.field, check.expected_value.as_deref()),
     };
-    
+
     ValidationResult {
         check_type: format!("{:?}", check.check_type),
         field: check.field.clone(),
         passed,
-        message: Some(if passed { "OK".to_string() } else { "Failed".to_string() }),
+        message: Some(if passed {
+            "OK".to_string()
+        } else {
+            "Failed".to_string()
+        }),
     }
 }
 
@@ -529,14 +665,18 @@ fn has_field(result: &serde_json::Value, field: &str) -> bool {
     if field.contains('.') {
         return has_nested_field(result, field);
     }
-    
+
     // Try to find the field in various locations
     if result.get(field).is_some() {
         return true;
     }
-    
+
     // Check in content[0].text (MCP response format)
-    if let Some(content) = result.get("content").and_then(|c| c.as_array()).and_then(|arr| arr.first()) {
+    if let Some(content) = result
+        .get("content")
+        .and_then(|c| c.as_array())
+        .and_then(|arr| arr.first())
+    {
         if let Some(text) = content.get("text").and_then(|t| t.as_str()) {
             if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(text) {
                 if has_nested_field(&parsed, field) {
@@ -545,20 +685,24 @@ fn has_field(result: &serde_json::Value, field: &str) -> bool {
             }
         }
     }
-    
+
     // Check in data field
     if let Some(data) = result.get("data") {
         if has_nested_field(data, field) {
             return true;
         }
     }
-    
+
     // Check nested in success field (for ToolOutput format)
     if field == "success" {
         if result.get("success").is_some() {
             return true;
         }
-        if let Some(content) = result.get("content").and_then(|c| c.as_array()).and_then(|arr| arr.first()) {
+        if let Some(content) = result
+            .get("content")
+            .and_then(|c| c.as_array())
+            .and_then(|arr| arr.first())
+        {
             if let Some(text) = content.get("text").and_then(|t| t.as_str()) {
                 if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(text) {
                     return parsed.get("success").is_some();
@@ -566,7 +710,7 @@ fn has_field(result: &serde_json::Value, field: &str) -> bool {
             }
         }
     }
-    
+
     false
 }
 
@@ -576,7 +720,7 @@ fn has_nested_field(result: &serde_json::Value, path: &str) -> bool {
     if parts.is_empty() {
         return false;
     }
-    
+
     let first = parts[0];
     if let Some(value) = result.get(first) {
         if parts.len() == 1 {
@@ -594,14 +738,14 @@ fn is_non_empty(result: &serde_json::Value, field: &str) -> bool {
     if let Some(value) = result.get(field) {
         return !value.is_null() && !is_json_value_empty(value);
     }
-    
+
     // Check in data field
     if let Some(data) = result.get("data") {
         if let Some(value) = data.get(field) {
             return !value.is_null() && !is_json_value_empty(value);
         }
     }
-    
+
     false
 }
 
@@ -619,13 +763,13 @@ fn is_json_value_empty(value: &serde_json::Value) -> bool {
 /// Check if success field has expected value
 fn is_success(result: &serde_json::Value, _field: &str, expected: Option<&str>) -> bool {
     // Check for isError field (MCP response format)
-    let is_error = result.get("isError")
+    let is_error = result
+        .get("isError")
         .and_then(|e| e.as_bool())
         .unwrap_or(false);
 
     // Also check for success field in the JSON content (ToolOutput format)
-    let content_success = result.get("success")
-        .and_then(|s| s.as_bool());
+    let content_success = result.get("success").and_then(|s| s.as_bool());
 
     // If isError is true, treat as failure regardless of content
     // If isError is not present, check content's success field
@@ -675,9 +819,7 @@ fn less_than(result: &serde_json::Value, field: &str, max_value: Option<&str>) -
 
 /// Get unique categories from requirements
 fn get_categories(requirements: &[TestRequirement]) -> Vec<String> {
-    let mut categories: Vec<String> = requirements.iter()
-        .map(|r| r.category.clone())
-        .collect();
+    let mut categories: Vec<String> = requirements.iter().map(|r| r.category.clone()).collect();
     categories.sort();
     categories.dedup();
     categories

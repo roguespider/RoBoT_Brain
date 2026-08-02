@@ -6,16 +6,18 @@
 //! "Hypotheses Enable Discovery"
 //! A hypothesis is: A proposed explanation, Supported by evidence, Assigned confidence, Tested through future experience
 
-use std::sync::Arc;
 use anyhow::Result;
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::experience::bus::ExperienceBus;
 use crate::experience::events::ExperienceEvent;
-use crate::experience::types::Experience;
-use crate::experience::hypothesis::HypothesisEngine;
-use crate::experience::hypothesis::core::hypothesis::{Hypothesis, HypothesisCategory, HypothesisConfidence, HypothesisStatus};
+use crate::experience::hypothesis::core::hypothesis::{
+    Hypothesis, HypothesisCategory, HypothesisConfidence, HypothesisStatus,
+};
 use crate::experience::hypothesis::services::generator::HypothesisGenerator;
+use crate::experience::hypothesis::HypothesisEngine;
+use crate::experience::types::Experience;
 
 /// Configuration for hypothesis generation
 #[derive(Debug, Clone)]
@@ -62,12 +64,9 @@ pub struct HypothesisPipeline {
 
 impl HypothesisPipeline {
     /// Create a new hypothesis pipeline
-    pub fn new(
-        engine: Arc<HypothesisEngine>,
-        bus: Arc<ExperienceBus>,
-    ) -> Self {
+    pub fn new(engine: Arc<HypothesisEngine>, bus: Arc<ExperienceBus>) -> Self {
         let generator = Arc::new(HypothesisGenerator::new());
-        
+
         Self {
             config: HypothesisPipelineConfig::default(),
             engine,
@@ -84,7 +83,7 @@ impl HypothesisPipeline {
         bus: Arc<ExperienceBus>,
     ) -> Self {
         let generator = Arc::new(HypothesisGenerator::new());
-        
+
         Self {
             config,
             engine,
@@ -103,24 +102,21 @@ impl HypothesisPipeline {
         if let Some(mut hypothesis) = self.generator.generate(experience)? {
             // Set appropriate category based on experience type
             hypothesis.category = self.categorize_from_experience(experience);
-            
+
             // Calculate initial confidence
             hypothesis.confidence = self.calculate_initial_confidence(experience);
-            
+
             // Only store if confidence meets threshold
             if hypothesis.confidence.value >= self.config.min_confidence {
                 let id = hypothesis.id.0.clone();
-                
+
                 let mut store = self.hypotheses.write().await;
                 store.insert(id.clone(), hypothesis);
-                
+
                 // Publish HypothesisGenerated event
-                let event = ExperienceEvent::hypothesis_generated(
-                    experience.id,
-                    Uuid::new_v4(),
-                );
+                let event = ExperienceEvent::hypothesis_generated(experience.id, Uuid::new_v4());
                 let _ = self.bus.publish(event);
-                
+
                 tracing::info!("Generated hypothesis: {}", id);
                 return Ok(vec![id]);
             }
@@ -135,25 +131,30 @@ impl HypothesisPipeline {
     /// "Evidence strengthens beliefs"
     pub async fn add_supporting_evidence(&self, hypothesis_id: &str, evidence: &str) -> Result<()> {
         let mut store = self.hypotheses.write().await;
-        
+
         if let Some(hypothesis) = store.get_mut(hypothesis_id) {
             hypothesis.add_supporting_evidence(evidence);
             hypothesis.confirmations += 1;
-            
+
             // Update confidence
-            hypothesis.confidence.increase(self.config.supporting_evidence_weight);
+            hypothesis
+                .confidence
+                .increase(self.config.supporting_evidence_weight);
             hypothesis.touch();
-            
+
             // Check if validated
             if hypothesis.confidence.value >= self.config.validation_threshold {
                 hypothesis.status = HypothesisStatus::Supported;
                 self.publish_validation(hypothesis_id, true).await?;
             }
-            
-            tracing::debug!("Added supporting evidence to hypothesis {}, new confidence: {}", 
-                hypothesis_id, hypothesis.confidence.value);
+
+            tracing::debug!(
+                "Added supporting evidence to hypothesis {}, new confidence: {}",
+                hypothesis_id,
+                hypothesis.confidence.value
+            );
         }
-        
+
         Ok(())
     }
 
@@ -161,27 +162,36 @@ impl HypothesisPipeline {
     ///
     /// Per Architecture §11:
     /// "Evidence can weaken beliefs"
-    pub async fn add_contradicting_evidence(&self, hypothesis_id: &str, evidence: &str) -> Result<()> {
+    pub async fn add_contradicting_evidence(
+        &self,
+        hypothesis_id: &str,
+        evidence: &str,
+    ) -> Result<()> {
         let mut store = self.hypotheses.write().await;
-        
+
         if let Some(hypothesis) = store.get_mut(hypothesis_id) {
             hypothesis.add_contradicting_evidence(evidence);
             hypothesis.contradictions += 1;
-            
+
             // Update confidence (decrease more than supporting evidence increases)
-            hypothesis.confidence.decrease(self.config.contradicting_evidence_weight);
+            hypothesis
+                .confidence
+                .decrease(self.config.contradicting_evidence_weight);
             hypothesis.touch();
-            
+
             // Check if rejected
             if hypothesis.confidence.is_uncertain() {
                 hypothesis.status = HypothesisStatus::Rejected;
                 self.publish_validation(hypothesis_id, false).await?;
             }
-            
-            tracing::debug!("Added contradicting evidence to hypothesis {}, new confidence: {}", 
-                hypothesis_id, hypothesis.confidence.value);
+
+            tracing::debug!(
+                "Added contradicting evidence to hypothesis {}, new confidence: {}",
+                hypothesis_id,
+                hypothesis.confidence.value
+            );
         }
-        
+
         Ok(())
     }
 
@@ -194,7 +204,8 @@ impl HypothesisPipeline {
     /// List all active hypotheses
     pub async fn list_active(&self) -> Vec<Hypothesis> {
         let store = self.hypotheses.read().await;
-        store.values()
+        store
+            .values()
             .filter(|h| h.status == HypothesisStatus::Active || h.status == HypothesisStatus::Draft)
             .cloned()
             .collect()
@@ -203,7 +214,8 @@ impl HypothesisPipeline {
     /// List validated hypotheses (ready for knowledge promotion)
     pub async fn list_validated(&self) -> Vec<Hypothesis> {
         let store = self.hypotheses.read().await;
-        store.values()
+        store
+            .values()
             .filter(|h| h.status == HypothesisStatus::Supported)
             .filter(|h| h.confidence.is_confident())
             .cloned()
@@ -213,21 +225,24 @@ impl HypothesisPipeline {
     /// Archive old hypotheses
     pub async fn archive_old(&self, max_age_days: i64) -> Result<usize> {
         use chrono::{Duration, Utc};
-        
+
         let cutoff = Utc::now() - Duration::days(max_age_days);
         let mut store = self.hypotheses.write().await;
         let mut archived = 0;
-        
-        store.retain(#[allow(unused)] |_id, hypothesis| {
-            if hypothesis.updated_at < cutoff && hypothesis.status != HypothesisStatus::Archived {
-                hypothesis.status = HypothesisStatus::Archived;
-                archived += 1;
-                false // Remove from active store
-            } else {
-                true
-            }
-        });
-        
+
+        store.retain(
+            |_id, hypothesis| {
+                if hypothesis.updated_at < cutoff && hypothesis.status != HypothesisStatus::Archived
+                {
+                    hypothesis.status = HypothesisStatus::Archived;
+                    archived += 1;
+                    false // Remove from active store
+                } else {
+                    true
+                }
+            },
+        );
+
         tracing::info!("Archived {} old hypotheses", archived);
         Ok(archived)
     }
@@ -239,7 +254,9 @@ impl HypothesisPipeline {
     /// Categorize hypothesis based on experience type
     fn categorize_from_experience(&self, experience: &Experience) -> HypothesisCategory {
         match experience.experience_type {
-            crate::experience::types::ExperienceType::ToolExecution => HypothesisCategory::Behavioral,
+            crate::experience::types::ExperienceType::ToolExecution => {
+                HypothesisCategory::Behavioral
+            }
             crate::experience::types::ExperienceType::Planning => HypothesisCategory::Workflow,
             crate::experience::types::ExperienceType::Exploration => HypothesisCategory::Prediction,
             crate::experience::types::ExperienceType::Hypothesis => HypothesisCategory::Knowledge,

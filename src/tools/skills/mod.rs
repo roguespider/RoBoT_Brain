@@ -2,13 +2,12 @@
 //! Skills tool implementations
 //! Per Architecture §15: Skills represent reusable capabilities discovered through experience
 
-
 use crate::bridge::mcp::McpContext;
-use crate::skills::registry::{Skill, SkillCategory, SkillMetadata, SkillSource, ExecutionContext};
+use crate::skills::registry::{ExecutionContext, Skill, SkillCategory, SkillMetadata, SkillSource};
 use crate::tools::ToolOutput;
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
 use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 
 // =============================================================================
 // INPUT TYPES
@@ -112,8 +111,8 @@ pub mod definitions {
                     "properties": {
                         "name": { "type": "string", "description": "Unique name for the skill" },
                         "description": { "type": "string", "description": "Description of what the skill does" },
-                        "category": { 
-                            "type": "string", 
+                        "category": {
+                            "type": "string",
                             "description": "Category: file_operation, code_analysis, search, memory, learning, planning, communication, web, database, system, custom",
                             "enum": ["file_operation", "code_analysis", "search", "memory", "learning", "planning", "communication", "web", "database", "system", "custom"]
                         },
@@ -261,7 +260,10 @@ pub async fn execute_register_skill(
         examples: input.examples.unwrap_or_default(),
     });
 
-    let skill_id = context.skills.register(skill).await
+    let skill_id = context
+        .skills
+        .register(skill)
+        .await
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
     Ok(ToolOutput::success(serde_json::json!({
@@ -277,8 +279,9 @@ pub async fn execute_discover_skill(
     context: &McpContext,
 ) -> Result<ToolOutput> {
     use uuid::Uuid;
-    
-    let experience_id = input.source_experience_id
+
+    let experience_id = input
+        .source_experience_id
         .parse::<Uuid>()
         .map_err(|e| anyhow::anyhow!("Invalid experience ID: {}", e))?;
 
@@ -289,7 +292,10 @@ pub async fn execute_discover_skill(
         experience_id,
     );
 
-    let skill_id = context.skills.register(skill).await
+    let skill_id = context
+        .skills
+        .register(skill)
+        .await
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
     Ok(ToolOutput::success(serde_json::json!({
@@ -302,11 +308,11 @@ pub async fn execute_discover_skill(
 }
 
 /// Execute get_skill tool
-pub async fn execute_get_skill(
-    input: GetSkillInput,
-    context: &McpContext,
-) -> Result<ToolOutput> {
-    let skill = context.skills.get(&input.skill_id).await
+pub async fn execute_get_skill(input: GetSkillInput, context: &McpContext) -> Result<ToolOutput> {
+    let skill = context
+        .skills
+        .get(&input.skill_id)
+        .await
         .ok_or_else(|| anyhow::anyhow!("Skill not found: {}", input.skill_id))?;
 
     Ok(ToolOutput::success(serde_json::json!({
@@ -340,25 +346,31 @@ pub async fn execute_list_skills(
     context: &McpContext,
 ) -> Result<ToolOutput> {
     let skills = if let Some(category) = &input.category {
-        context.skills.list_by_category(parse_category(category)?).await
+        context
+            .skills
+            .list_by_category(parse_category(category)?)
+            .await
     } else if input.enabled_only.unwrap_or(false) {
         context.skills.list_enabled().await
     } else {
         context.skills.list().await
     };
 
-    let skill_list: Vec<serde_json::Value> = skills.iter().map(|s| {
-        serde_json::json!({
-            "id": s.id,
-            "name": s.metadata.name,
-            "description": s.metadata.description,
-            "category": s.metadata.category.as_str(),
-            "enabled": s.enabled,
-            "mastery": s.mastery,
-            "usage_count": s.usage_count,
-            "success_rate": s.success_rate(),
+    let skill_list: Vec<serde_json::Value> = skills
+        .iter()
+        .map(|s| {
+            serde_json::json!({
+                "id": s.id,
+                "name": s.metadata.name,
+                "description": s.metadata.description,
+                "category": s.metadata.category.as_str(),
+                "enabled": s.enabled,
+                "mastery": s.mastery,
+                "usage_count": s.usage_count,
+                "success_rate": s.success_rate(),
+            })
         })
-    }).collect();
+        .collect();
 
     Ok(ToolOutput::success(serde_json::json!({
         "skills": skill_list,
@@ -372,10 +384,16 @@ pub async fn execute_update_skill_mastery(
     context: &McpContext,
 ) -> Result<ToolOutput> {
     let success = input.success.unwrap_or(true);
-    context.skills.record_usage(&input.skill_id, success).await
+    context
+        .skills
+        .record_usage(&input.skill_id, success)
+        .await
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-    let skill = context.skills.get(&input.skill_id).await
+    let skill = context
+        .skills
+        .get(&input.skill_id)
+        .await
         .ok_or_else(|| anyhow::anyhow!("Skill not found"))?;
 
     Ok(ToolOutput::success(serde_json::json!({
@@ -437,7 +455,10 @@ pub async fn execute_execute_skill(
     input: ExecuteSkillInput,
     context: &McpContext,
 ) -> Result<ToolOutput> {
-    let skill = context.skills.get(&input.skill_id).await
+    let skill = context
+        .skills
+        .get(&input.skill_id)
+        .await
         .ok_or_else(|| anyhow::anyhow!("Skill not found: {}", input.skill_id))?;
 
     if !skill.enabled {
@@ -455,7 +476,9 @@ pub async fn execute_execute_skill(
 
     // Create execution context
     let exec_context = ExecutionContext {
-        task: input.task.unwrap_or_else(|| skill.metadata.description.clone()),
+        task: input
+            .task
+            .unwrap_or_else(|| skill.metadata.description.clone()),
         parameters: input.parameters.unwrap_or_default(),
         working_memory: std::collections::HashMap::new(),
         knowledge_context: Vec::new(),
@@ -499,7 +522,10 @@ pub async fn execute_execute_skill(
     };
 
     // Record successful execution
-    context.skills.record_usage(&input.skill_id, true).await
+    context
+        .skills
+        .record_usage(&input.skill_id, true)
+        .await
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
     let updated_skill = context.skills.get(&input.skill_id).await.unwrap();
@@ -513,7 +539,6 @@ pub async fn execute_execute_skill(
 }
 
 /// Execute get_skill_stats tool
-#[allow(unused)]
 pub async fn execute_get_skill_stats(
     _input: GetSkillStatsInput,
     context: &McpContext,
@@ -566,14 +591,20 @@ pub async fn execute_enable_disable_skill(
     context: &McpContext,
 ) -> Result<ToolOutput> {
     if input.enable.unwrap_or(false) {
-        context.skills.enable(&input.skill_id).await
+        context
+            .skills
+            .enable(&input.skill_id)
+            .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
         Ok(ToolOutput::success(serde_json::json!({
             "status": "enabled",
             "skill_id": input.skill_id
         })))
     } else {
-        context.skills.disable(&input.skill_id).await
+        context
+            .skills
+            .disable(&input.skill_id)
+            .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
         Ok(ToolOutput::success(serde_json::json!({
             "status": "disabled",
@@ -588,20 +619,28 @@ pub async fn execute_search_skills(
     context: &McpContext,
 ) -> Result<ToolOutput> {
     let all_skills = context.skills.list().await;
-    
-    let results: Vec<_> = all_skills.iter()
+
+    let results: Vec<_> = all_skills
+        .iter()
         .filter(|s| {
-            let matches_query = s.metadata.name.to_lowercase().contains(&input.query.to_lowercase())
-                || s.metadata.description.to_lowercase().contains(&input.query.to_lowercase());
-            
-            let matches_category = input.category.as_ref()
+            let matches_query = s
+                .metadata
+                .name
+                .to_lowercase()
+                .contains(&input.query.to_lowercase())
+                || s.metadata
+                    .description
+                    .to_lowercase()
+                    .contains(&input.query.to_lowercase());
+
+            let matches_category = input
+                .category
+                .as_ref()
                 .map(|c| s.metadata.category.as_str() == c)
                 .unwrap_or(true);
-            
-            let matches_mastery = input.min_mastery
-                .map(|m| s.mastery >= m)
-                .unwrap_or(true);
-            
+
+            let matches_mastery = input.min_mastery.map(|m| s.mastery >= m).unwrap_or(true);
+
             matches_query && matches_category && matches_mastery
         })
         .map(|s| {

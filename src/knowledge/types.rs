@@ -2,7 +2,6 @@
 
 //! Core types for the Knowledge System
 
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -38,7 +37,7 @@ pub struct KnowledgeItem {
 
     /// Evidence supporting this knowledge
     pub supporting_evidence: Vec<Uuid>,
-    
+
     /// Evidence contradicting this knowledge
     pub contradicting_evidence: Vec<Uuid>,
 
@@ -66,11 +65,7 @@ pub struct KnowledgeItem {
 
 impl KnowledgeItem {
     /// Create a new knowledge item from reflection output
-    pub fn from_reflection(
-        insight: &str,
-        confidence: f32,
-        source_experience: Uuid,
-    ) -> Self {
+    pub fn from_reflection(insight: &str, confidence: f32, source_experience: Uuid) -> Self {
         let now = Utc::now();
         Self {
             id: Uuid::new_v4(),
@@ -125,8 +120,7 @@ impl KnowledgeItem {
 /// ============================================================================
 /// KNOWLEDGE TYPE
 /// ============================================================================
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Default)]
 pub enum KnowledgeType {
     /// Factual knowledge (tested and verified)
     #[default]
@@ -147,12 +141,10 @@ pub enum KnowledgeType {
     Custom(String),
 }
 
-
 /// ============================================================================
 /// KNOWLEDGE STATUS
 /// ============================================================================
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum KnowledgeStatus {
     /// Newly created, needs validation
     #[default]
@@ -168,7 +160,6 @@ pub enum KnowledgeStatus {
     /// Merged with other knowledge
     Merged,
 }
-
 
 /// ============================================================================
 /// KNOWLEDGE CONFIDENCE
@@ -188,7 +179,7 @@ impl KnowledgeConfidence {
             dimensions: ConfidenceDimensions {
                 source_reliability: overall,
                 evidence_strength: overall,
-                recency: 1.0, // New knowledge has full recency
+                recency: 1.0,   // New knowledge has full recency
                 frequency: 0.5, // Default middle frequency
                 context_relevance: 0.5,
                 historical_accuracy: overall,
@@ -225,20 +216,19 @@ impl KnowledgeConfidence {
 
     /// Adjust source reliability (e.g., from reputation)
     pub fn adjust_source_reliability(&mut self, delta: f32) {
-        self.dimensions.source_reliability = 
+        self.dimensions.source_reliability =
             (self.dimensions.source_reliability + delta).clamp(0.0, 1.0);
     }
 
     /// Adjust historical accuracy (e.g., from success/failure)
     pub fn adjust_historical_accuracy(&mut self, delta: f32) {
-        self.dimensions.historical_accuracy = 
+        self.dimensions.historical_accuracy =
             (self.dimensions.historical_accuracy + delta).clamp(0.0, 1.0);
     }
 
     /// Adjust frequency (e.g., from repeated confirmation)
     pub fn adjust_frequency(&mut self, delta: f32) {
-        self.dimensions.frequency = 
-            (self.dimensions.frequency + delta).clamp(0.0, 1.0);
+        self.dimensions.frequency = (self.dimensions.frequency + delta).clamp(0.0, 1.0);
     }
 
     /// Update recency based on time since last update
@@ -275,8 +265,7 @@ pub struct ConfidenceDimensions {
 /// KNOWLEDGE SOURCE
 //  ============================================================================
 /// Where knowledge originated (per architecture #12: Reputation)
-#[derive(Debug, Clone, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
 pub enum KnowledgeSource {
     /// Created from user input
     #[default]
@@ -295,7 +284,6 @@ pub enum KnowledgeSource {
     External(String), // source_name
 }
 
-
 /// ============================================================================
 /// KNOWLEDGE RELATION
 //  ============================================================================
@@ -310,8 +298,7 @@ pub struct KnowledgeRelation {
     pub strength: f32,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum RelationType {
     /// Supports/strengthens this knowledge
     Supports,
@@ -327,7 +314,6 @@ pub enum RelationType {
     /// Prerequisite
     Prerequisite,
 }
-
 
 // ============================================================================
 /// KNOWLEDGE DEPENDENCIES
@@ -355,7 +341,7 @@ impl KnowledgeDependency {
             version_constraint: None,
         }
     }
-    
+
     pub fn with_version(mut self, version: impl Into<String>) -> Self {
         self.version_constraint = Some(version.into());
         self
@@ -363,8 +349,7 @@ impl KnowledgeDependency {
 }
 
 /// Types of dependencies between knowledge items
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum DependencyType {
     /// Knowledge requires this to function
     #[default]
@@ -376,7 +361,6 @@ pub enum DependencyType {
     /// Knowledge replaces this
     Replaces,
 }
-
 
 // ============================================================================
 /// KNOWLEDGE VERSION
@@ -407,7 +391,7 @@ impl KnowledgeVersion {
             is_active: false,
         }
     }
-    
+
     /// Parse and validate semver version string
     pub fn parse(version: &str) -> Option<(u32, u32, u32)> {
         let parts: Vec<&str> = version.split('.').collect();
@@ -419,7 +403,7 @@ impl KnowledgeVersion {
         let patch = parts[2].parse().ok()?;
         Some((major, minor, patch))
     }
-    
+
     /// Check if this version satisfies a constraint
     pub fn satisfies_constraint(&self, constraint: &str) -> bool {
         // Simple constraint checking (supports >=, <=, =, >, <)
@@ -442,40 +426,32 @@ impl KnowledgeVersion {
         // Exact match
         self.version == constraint
     }
-    
+
     fn satisfies_single_constraint(&self, op: &str, other_ver: &str) -> bool {
-        let (Some((s_major, s_minor, s_patch)), Some((o_major, o_minor, o_patch))) = 
-            (Self::parse(&self.version), Self::parse(other_ver)) else {
+        let (Some((s_major, s_minor, s_patch)), Some((o_major, o_minor, o_patch))) =
+            (Self::parse(&self.version), Self::parse(other_ver))
+        else {
             return false;
         };
-        
+
         match op {
-            ">=" => {
-                (s_major, s_minor, s_patch) >= (o_major, o_minor, o_patch)
-            },
-            "<=" => {
-                (s_major, s_minor, s_patch) <= (o_major, o_minor, o_patch)
-            },
-            ">" => {
-                (s_major, s_minor, s_patch) > (o_major, o_minor, o_patch)
-            },
-            "<" => {
-                (s_major, s_minor, s_patch) < (o_major, o_minor, o_patch)
-            },
-            "=" => {
-                (s_major, s_minor, s_patch) == (o_major, o_minor, o_patch)
-            },
+            ">=" => (s_major, s_minor, s_patch) >= (o_major, o_minor, o_patch),
+            "<=" => (s_major, s_minor, s_patch) <= (o_major, o_minor, o_patch),
+            ">" => (s_major, s_minor, s_patch) > (o_major, o_minor, o_patch),
+            "<" => (s_major, s_minor, s_patch) < (o_major, o_minor, o_patch),
+            "=" => (s_major, s_minor, s_patch) == (o_major, o_minor, o_patch),
             _ => false,
         }
     }
-    
+
     /// Compare two versions
     pub fn compare(&self, other: &str) -> std::cmp::Ordering {
-        let (Some((s_maj, s_min, s_pat)), Some((o_maj, o_min, o_pat))) = 
-            (Self::parse(&self.version), Self::parse(other)) else {
+        let (Some((s_maj, s_min, s_pat)), Some((o_maj, o_min, o_pat))) =
+            (Self::parse(&self.version), Self::parse(other))
+        else {
             return std::cmp::Ordering::Equal;
         };
-        
+
         (s_maj, s_min, s_pat).cmp(&(o_maj, o_min, o_pat))
     }
 }
@@ -500,46 +476,48 @@ impl KnowledgeVersionInfo {
             previous_version: None,
         }
     }
-    
+
     /// Create a new version, deactivating the current one
     pub fn create_version(&mut self, version: &str, changelog: &str, confidence: f32) {
         // Deactivate current version
-        if let Some(current) = self.versions.iter_mut().find(|v| v.version == self.current_version) {
+        if let Some(current) = self
+            .versions
+            .iter_mut()
+            .find(|v| v.version == self.current_version)
+        {
             current.is_active = false;
         }
-        
+
         // Store previous
         self.previous_version = Some(self.current_version.clone());
-        
+
         // Create new version
         let mut new_ver = KnowledgeVersion::new(version, changelog, confidence);
         new_ver.is_active = true;
         self.versions.push(new_ver);
         self.current_version = version.to_string();
     }
-    
+
     /// Get the active version
     pub fn get_active(&self) -> Option<&KnowledgeVersion> {
         self.versions.iter().find(|v| v.is_active)
     }
-    
+
     /// Bump version number
-    #[allow(unused)]
     pub fn bump_major(&mut self) {
         if let Some((major, _minor, _patch)) = KnowledgeVersion::parse(&self.current_version) {
             let new_ver = format!("{}.{}.{}", major + 1, 0, 0);
             self.create_version(&new_ver, "Major version bump", 0.5);
         }
     }
-    
-    #[allow(unused)]
+
     pub fn bump_minor(&mut self) {
         if let Some((major, minor, _patch)) = KnowledgeVersion::parse(&self.current_version) {
             let new_ver = format!("{}.{}.{}", major, minor + 1, 0);
             self.create_version(&new_ver, "Minor version bump", 0.5);
         }
     }
-    
+
     pub fn bump_patch(&mut self) {
         if let Some((major, minor, patch)) = KnowledgeVersion::parse(&self.current_version) {
             let new_ver = format!("{}.{}.{}", major, minor, patch + 1);

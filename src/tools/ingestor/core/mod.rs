@@ -8,8 +8,7 @@ pub mod tracker;
 pub mod types;
 
 // Re-exports for types (transitive - used by ingestor/mod.rs)
-#[allow(unused_imports)]
 pub use types::{
-    IngestFilesInput, ListImportableInput, ListIngestedFilesInput, DeleteIngestedFilesInput,
+    DeleteIngestedFilesInput, IngestFilesInput, ListImportableInput, ListIngestedFilesInput,
     TranscribeAudioInput, DEFAULT_INGEST_TIMEOUT_SECS,
 };

@@ -8,7 +8,6 @@ use crate::tools::ingestor::file_collector::{
 };
 
 /// Default chunk size for text splitting
-#[allow(dead_code)]
 pub const DEFAULT_CHUNK_SIZE: usize = 1000;
 
 /// Resolve a file path string to an actual PathBuf that can be used for file operations.
@@ -40,7 +39,6 @@ pub fn resolve_path(path: &str) -> std::io::Result<PathBuf> {
 }
 
 /// Check if a file is an archive based on its extension
-#[allow(dead_code)]
 pub fn is_archive_file(path: &Path) -> bool {
     is_supported_extension(path, ARCHIVE_EXTENSIONS)
 }
