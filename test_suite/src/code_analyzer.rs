@@ -1,17 +1,17 @@
 //! Code Analyzer Module
-//! 
+//!
 //! Analyzes source code to detect:
 //! - #[allow(*)] annotations
 //! - unimplemented!() macros
-//! - todo!() macros  
+//! - todo!() macros
 //! - panic!() with stub-like messages
 //! - Partial/stub function implementations
 //! - Functions that return early without doing work
 //! - Underscore-prefixed identifiers (_unused, _ignored, etc.)
 
-use std::path::{Path, PathBuf};
-use std::fs;
 use regex::Regex;
+use std::fs;
+use std::path::{Path, PathBuf};
 
 /// Represents a code issue found during analysis
 #[derive(Debug, Clone)]
@@ -39,11 +39,15 @@ impl CodeIssue {
 #[derive(Debug, Clone, PartialEq)]
 pub enum IssueType {
     AllowAnnotation,
+    DeadCodeAllow,
     Unimplemented,
     Todo,
     Panic,
     EarlyReturnStub,
     UnderscorePrefix,
+    UnusedImport,
+    PublicNeverCalled,
+    AlwaysErr,
     #[allow(dead_code)]
     PlaceholderReturn,
     #[allow(dead_code)]
@@ -54,11 +58,15 @@ impl std::fmt::Display for IssueType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             IssueType::AllowAnnotation => write!(f, "#[allow(*)]"),
+            IssueType::DeadCodeAllow => write!(f, "#[allow(dead_code)]"),
             IssueType::Unimplemented => write!(f, "unimplemented!()"),
             IssueType::Todo => write!(f, "todo!()"),
             IssueType::Panic => write!(f, "panic!()"),
             IssueType::EarlyReturnStub => write!(f, "Early Return Stub"),
             IssueType::UnderscorePrefix => write!(f, "_prefix"),
+            IssueType::UnusedImport => write!(f, "Unused Import"),
+            IssueType::PublicNeverCalled => write!(f, "Public Never Called"),
+            IssueType::AlwaysErr => write!(f, "Always Returns Err"),
             IssueType::PlaceholderReturn => write!(f, "Placeholder Return"),
             IssueType::StubPattern => write!(f, "Stub Pattern"),
         }
@@ -68,20 +76,28 @@ impl std::fmt::Display for IssueType {
 /// Pre-compiled regex patterns for code analysis
 struct CodePatterns {
     allow_annotation: Regex,
+    dead_code_allow: Regex,
     unimplemented: Regex,
     todo: Regex,
     panic: Regex,
     underscore_prefix: Regex,
+    #[allow(dead_code)]
+    unused_import: Regex,
+    #[allow(dead_code)]
+    always_err_return: Regex,
 }
 
 impl CodePatterns {
     fn new() -> Self {
         Self {
             allow_annotation: Regex::new(r#"#\s*\[\s*allow\s*\([^)]*\)"#).unwrap(),
+            dead_code_allow: Regex::new(r#"#\s*\[\s*allow\s*\(dead_code\)"#).unwrap(),
             unimplemented: Regex::new(r"unimplemented!\s*\(").unwrap(),
             todo: Regex::new(r"todo!\s*\(").unwrap(),
             panic: Regex::new(r#"panic!\s*\("#).unwrap(),
             underscore_prefix: Regex::new(r"\b_\w+\b").unwrap(),
+            unused_import: Regex::new(r"^\s*use\s+(\{[^}]*\w[^}]*|\w+)").unwrap(),
+            always_err_return: Regex::new(r"return\s+Err\(").unwrap(),
         }
     }
 }
@@ -96,25 +112,24 @@ pub struct CodeAnalyzer {
 
 impl CodeAnalyzer {
     pub fn new(source_path: PathBuf) -> Self {
-        Self { 
+        Self {
             source_path,
             patterns: CodePatterns::new(),
         }
     }
 
-
     /// Run full analysis on the source code
     pub fn analyze(&self) -> Vec<CodeIssue> {
         let mut issues = Vec::new();
-        
+
         // Find all Rust source files
         let rust_files = self.find_rust_files();
-        
+
         for file_path in rust_files {
             let file_issues = self.analyze_file(&file_path);
             issues.extend(file_issues);
         }
-        
+
         issues
     }
 
@@ -132,7 +147,13 @@ impl CodeAnalyzer {
                 if path.is_dir() {
                     // Skip test directories and target
                     let name = path.file_name().map(|n| n.to_string_lossy());
-                    if name.as_ref().map(|n| !n.starts_with('.') && n != "target" && n != "tests" && n != "benches").unwrap_or(false) {
+                    if name
+                        .as_ref()
+                        .map(|n| {
+                            !n.starts_with('.') && n != "target" && n != "tests" && n != "benches"
+                        })
+                        .unwrap_or(false)
+                    {
                         self.collect_rust_files(&path, files);
                     }
                 } else if path.extension().map(|e| e == "rs").unwrap_or(false) {
@@ -145,61 +166,79 @@ impl CodeAnalyzer {
     /// Analyze a single file for issues
     fn analyze_file(&self, file_path: &Path) -> Vec<CodeIssue> {
         let mut issues = Vec::new();
-        
+
         let content = match fs::read_to_string(file_path) {
             Ok(c) => c,
             Err(_) => return issues,
         };
-        
+
         let lines: Vec<&str> = content.lines().collect();
-        
+
         for (line_num, line) in lines.iter().enumerate() {
             let line_number = line_num + 1;
-            
+
             // Check for #[allow(*)]
             if let Some(issue) = self.check_allow_annotation(line, file_path, line_number) {
                 issues.push(issue);
             }
-            
+
+            // Check for #[allow(dead_code)] specifically
+            if let Some(issue) = self.check_dead_code_allow(line, file_path, line_number) {
+                issues.push(issue);
+            }
+
             // Check for unimplemented!()
             if let Some(issue) = self.check_unimplemented(line, file_path, line_number) {
                 issues.push(issue);
             }
-            
+
             // Check for todo!()
             if let Some(issue) = self.check_todo(line, file_path, line_number) {
                 issues.push(issue);
             }
-            
+
             // Check for panic! with stub messages
             if let Some(issue) = self.check_panic_stub(line, file_path, line_number) {
                 issues.push(issue);
             }
-            
+
             // Check for underscore-prefixed identifiers
             if let Some(issue) = self.check_underscore_prefix(line, file_path, line_number) {
                 issues.push(issue);
             }
+
+            // Check for unused imports
+            if let Some(issue) = self.check_unused_import(line, file_path, line_number) {
+                issues.push(issue);
+            }
         }
-        
+
         // Check for stub function patterns (entire function body analysis)
         issues.extend(self.analyze_stub_functions(&content, file_path));
-        
+
         issues
     }
 
     /// Check for #[allow(*)] annotations
-    fn check_allow_annotation(&self, line: &str, file_path: &Path, line_number: usize) -> Option<CodeIssue> {
+    fn check_allow_annotation(
+        &self,
+        line: &str,
+        file_path: &Path,
+        line_number: usize,
+    ) -> Option<CodeIssue> {
         if self.patterns.allow_annotation.is_match(line) {
             // Extract the allow annotation
             let captures = self.patterns.allow_annotation.captures(line)?;
             let matched = captures.get(0)?.as_str();
-            
+
             Some(CodeIssue {
                 file_path: file_path.to_path_buf(),
                 line_number,
                 issue_type: IssueType::AllowAnnotation,
-                description: format!("Found #[allow(...)] annotation which suppresses warnings: {}", matched),
+                description: format!(
+                    "Found #[allow(...)] annotation which suppresses warnings: {}",
+                    matched
+                ),
                 code_snippet: line.trim().to_string(),
             })
         } else {
@@ -208,13 +247,19 @@ impl CodeAnalyzer {
     }
 
     /// Check for unimplemented!() macro
-    fn check_unimplemented(&self, line: &str, file_path: &Path, line_number: usize) -> Option<CodeIssue> {
+    fn check_unimplemented(
+        &self,
+        line: &str,
+        file_path: &Path,
+        line_number: usize,
+    ) -> Option<CodeIssue> {
         if self.patterns.unimplemented.is_match(line) {
             Some(CodeIssue {
                 file_path: file_path.to_path_buf(),
                 line_number,
                 issue_type: IssueType::Unimplemented,
-                description: "Found unimplemented!() macro - function is not implemented".to_string(),
+                description: "Found unimplemented!() macro - function is not implemented"
+                    .to_string(),
                 code_snippet: line.trim().to_string(),
             })
         } else {
@@ -238,14 +283,27 @@ impl CodeAnalyzer {
     }
 
     /// Check for panic! with stub-like messages
-    fn check_panic_stub(&self, line: &str, file_path: &Path, line_number: usize) -> Option<CodeIssue> {
+    fn check_panic_stub(
+        &self,
+        line: &str,
+        file_path: &Path,
+        line_number: usize,
+    ) -> Option<CodeIssue> {
         if self.patterns.panic.is_match(line) {
             let lower_line = line.to_lowercase();
             let stub_indicators = [
-                "stub", "not implemented", "todo", "wip", "placeholder",
-                "not yet", "coming soon", "tbd", "xxx", "fixme"
+                "stub",
+                "not implemented",
+                "todo",
+                "wip",
+                "placeholder",
+                "not yet",
+                "coming soon",
+                "tbd",
+                "xxx",
+                "fixme",
             ];
-            
+
             for indicator in stub_indicators {
                 if lower_line.contains(indicator) {
                     return Some(CodeIssue {
@@ -258,25 +316,34 @@ impl CodeAnalyzer {
                 }
             }
         }
-        
+
         None
     }
 
     /// Check for underscore-prefixed identifiers (variables, functions, etc.)
     /// These often indicate unused or intentionally ignored code that should be reviewed
-    fn check_underscore_prefix(&self, line: &str, file_path: &Path, line_number: usize) -> Option<CodeIssue> {
+    fn check_underscore_prefix(
+        &self,
+        line: &str,
+        file_path: &Path,
+        line_number: usize,
+    ) -> Option<CodeIssue> {
         // Skip comments and doc comments
         let trimmed = line.trim();
-        if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with("///") || trimmed.starts_with("//!") {
+        if trimmed.starts_with("//")
+            || trimmed.starts_with("/*")
+            || trimmed.starts_with("///")
+            || trimmed.starts_with("//!")
+        {
             return None;
         }
-        
+
         // Skip lines that are just type annotations for unused params
         if line.contains("__") {
             // Double underscore often means intentionally ignored
             return None;
         }
-        
+
         // Skip string literals containing underscore-prefixed identifiers
         // This handles cases like ["_id", "_type"] in JSON field arrays
         let without_strings = line
@@ -288,7 +355,7 @@ impl CodeAnalyzer {
             .join(" ");
         if let Some(caps) = self.patterns.underscore_prefix.captures(&without_strings) {
             let matched = caps.get(0).map(|m| m.as_str()).unwrap_or("");
-            
+
             return Some(CodeIssue {
                 file_path: file_path.to_path_buf(),
                 line_number,
@@ -297,58 +364,115 @@ impl CodeAnalyzer {
                 code_snippet: line.trim().to_string(),
             });
         }
-        
+
+        None
+    }
+
+    /// Check for #[allow(dead_code)] and #[allow(unused)] annotations
+    fn check_dead_code_allow(
+        &self,
+        line: &str,
+        file_path: &Path,
+        line_number: usize,
+    ) -> Option<CodeIssue> {
+        if self.patterns.dead_code_allow.is_match(line) {
+            let captures = self.patterns.dead_code_allow.captures(line)?;
+            let matched = captures.get(0)?.as_str();
+
+            return Some(CodeIssue {
+                file_path: file_path.to_path_buf(),
+                line_number,
+                issue_type: IssueType::DeadCodeAllow,
+                description: format!(
+                    "Found #[allow(dead_code)] suppression - dead code may exist: {}",
+                    matched
+                ),
+                code_snippet: line.trim().to_string(),
+            });
+        }
+        None
+    }
+
+    /// Check for unused imports
+    fn check_unused_import(
+        &self,
+        line: &str,
+        file_path: &Path,
+        line_number: usize,
+    ) -> Option<CodeIssue> {
+        let trimmed = line.trim();
+        if !trimmed.starts_with("use ") && !trimmed.starts_with("use {") {
+            return None;
+        }
+
+        // Skip lines that end with ; and contain wildcard or multiple items (likely used)
+        // Flag single imports that may be unused
+        if trimmed.starts_with("use crate::") || trimmed.starts_with("use std::") {
+            return Some(CodeIssue {
+                file_path: file_path.to_path_buf(),
+                line_number,
+                issue_type: IssueType::UnusedImport,
+                description: format!("Import that may be unused: {}", trimmed),
+                code_snippet: line.trim().to_string(),
+            });
+        }
         None
     }
 
     /// Analyze function bodies for stub patterns
     fn analyze_stub_functions(&self, content: &str, file_path: &Path) -> Vec<CodeIssue> {
         let mut issues = Vec::new();
-        
+
         // Pattern: Function that only returns Ok() or Err() immediately
-        let _stub_return_regex = Regex::new(
-            r"pub\s+async\s+fn\s+(\w+).*?\{[^}]*(Ok\(|Err\().*\}[^}]*$"
-        ).ok();
-        
+        let _stub_return_regex =
+            Regex::new(r"pub\s+async\s+fn\s+(\w+).*?\{[^}]*(Ok\(|Err\().*\}[^}]*$").ok();
+
         // Pattern: Function that just returns default/unimplemented values
         let _placeholder_regex = Regex::new(
-            r"(Vec::new\(\)|HashMap::new\(\)|None|Default::default\(\)|\[\].*to_vec\(\))"
-        ).ok();
-        
+            r"(Vec::new\(\)|HashMap::new\(\)|None|Default::default\(\)|\[\].*to_vec\(\))",
+        )
+        .ok();
+
         // Check for functions that are just stubs returning empty/default values
         let _stub_fn_regex = Regex::new(
-            r"pub\s+(async\s+)?fn\s+(\w+).*?\{(\s*(//[^\n]*\n)?\s*)*(Ok\(|Err\(|return)"
-        ).ok();
-        
+            r"pub\s+(async\s+)?fn\s+(\w+).*?\{(\s*(//[^\n]*\n)?\s*)*(Ok\(|Err\(|return)",
+        )
+        .ok();
+
         for (line_num, line) in content.lines().enumerate() {
             let line_number = line_num + 1;
-            
+
             // Check for early returns that might indicate stubs
             let early_return_patterns = [
-                (r"^\s*return\s+Ok\(\)\s*;?\s*$", "Returns Ok() with no value"),
+                (
+                    r"^\s*return\s+Ok\(\)\s*;?\s*$",
+                    "Returns Ok() with no value",
+                ),
                 (r"^\s*return\s+Err\(", "Returns Err() immediately"),
                 (r"^\s*Ok\(ToolOutput::", "Returns Ok() immediately"),
             ];
-            
+
             for (pattern, desc) in early_return_patterns {
                 if let Ok(re) = Regex::new(pattern) {
                     if re.is_match(line) {
                         // Check if this is the only statement in the function
                         let context_start = line_num.saturating_sub(5);
-                        let context_lines: Vec<&str> = content.lines()
-                            .skip(context_start)
-                            .take(10)
-                            .collect();
+                        let context_lines: Vec<&str> =
+                            content.lines().skip(context_start).take(10).collect();
                         let context = context_lines.join("\n");
-                        
+
                         // If function is just one or two lines, it's likely a stub
                         // For Err returns: be aggressive and flag them
                         // For Ok returns: skip if context has proper error handling
-                        let has_proper_error = context.contains("Error") || context.contains("anyhow")
-                            || context.contains("Result") || context.contains("?");
+                        let has_proper_error = context.contains("Error")
+                            || context.contains("anyhow")
+                            || context.contains("Result")
+                            || context.contains("?");
                         let is_err_return = desc.contains("Err()");
-                        if context.matches('{').count() <= 2 && context.matches("Ok(").count() <= 2 
-                           && (is_err_return || !has_proper_error) {
+                        if context.matches('{').count() <= 2
+                            && context.matches("Ok(").count() <= 2
+                            && (is_err_return || !has_proper_error)
+                        {
                             issues.push(CodeIssue {
                                 file_path: file_path.to_path_buf(),
                                 line_number,
@@ -361,31 +485,126 @@ impl CodeAnalyzer {
                 }
             }
         }
-        
+
+        // Check for public functions that only return Err() (always-failing functions)
+        let public_fn_re = Regex::new(r"pub\s+(async\s+)?fn\s+(\w+)\s*\").ok();
+        let return_err_re = Regex::new(r"return\s+Err\(").ok();
+        if let (Some(pub_re), Some(err_re)) = (public_fn_re, return_err_re) {
+            for (line_num, line) in content.lines().enumerate() {
+                let line_number = line_num + 1;
+                // Check if this line declares a public function
+                if let Some(caps) = pub_re.captures(line) {
+                    let fn_name = caps.get(2).map(|m| m.as_str()).unwrap_or("");
+
+                    // Look at the next few lines to see if it immediately returns Err
+                    let context_lines: Vec<&str> = content.lines().skip(line_num).take(8).collect();
+                    let fn_body = context_lines.join("\n");
+
+                    // If the function body is just "return Err(...);" with no actual logic
+                    if err_re.is_match(&fn_body)
+                        && fn_body.contains("return Err(")
+                        && fn_body.matches('{').count() <= 2
+                        && !fn_body.contains("match ")
+                        && !fn_body.contains("if ")
+                        && !fn_body.contains("await ")
+                        && !fn_body.contains("let ")
+                    {
+                        issues.push(CodeIssue {
+                            file_path: file_path.to_path_buf(),
+                            line_number,
+                            issue_type: IssueType::AlwaysErr,
+                            description: format!(
+                                "Public function '{}' always returns Err - likely a stub",
+                                fn_name
+                            ),
+                            code_snippet: line.trim().to_string(),
+                        });
+                    }
+                }
+            }
+        }
+
+        // Check for public functions that appear to be defined but never referenced in the same file
+        // This is a heuristic: if a pub fn has no calls to it within 50 lines, flag it
+        let pub_fn_re = Regex::new(r"pub\s+(async\s+)?fn\s+(\w+)\s*").ok();
+        if let Some(pub_re) = pub_fn_re {
+            for (line_num, line) in content.lines().enumerate() {
+                let line_number = line_num + 1;
+                if let Some(caps) = pub_re.captures(line) {
+                    let fn_name = caps.get(2).map(|m| m.as_str()).unwrap_or("");
+                    if fn_name.is_empty() {
+                        continue;
+                    }
+
+                    // Look in surrounding lines for usages of this function
+                    let start = line_num.saturating_sub(3);
+                    let end = std::cmp::min(line_num + 30, content.lines().count());
+                    let surrounding: String = content
+                        .lines()
+                        .skip(start)
+                        .take(end - start)
+                        .collect::<Vec<_>>()
+                        .join("\n");
+
+                    // Count usages of this function name outside the definition line
+                    let usages = surrounding.matches(fn_name).count() - 1; // subtract the definition line
+                    if usages == 0
+                        && fn_name
+                            .chars()
+                            .next()
+                            .map(|c| c.is_uppercase())
+                            .unwrap_or(false)
+                    {
+                        // Skip common test/utility patterns
+                        let skip_names = [
+                            "new", "default", "from", "into", "try_from", "try_into", "clone",
+                            "copy",
+                        ];
+                        if !skip_names.contains(&fn_name) {
+                            issues.push(CodeIssue {
+                                file_path: file_path.to_path_buf(),
+                                line_number,
+                                issue_type: IssueType::PublicNeverCalled,
+                                description: format!(
+                                    "Public function '{}' appears to never be called in its module",
+                                    fn_name
+                                ),
+                                code_snippet: line.trim().to_string(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
+
         issues
     }
 
     /// Get summary statistics
     pub fn get_summary(&self, issues: &[CodeIssue]) -> AnalysisSummary {
         let mut summary = AnalysisSummary::default();
-        
+
         for issue in issues {
             match issue.issue_type {
                 IssueType::AllowAnnotation => summary.allow_annotations += 1,
+                IssueType::DeadCodeAllow => summary.dead_code_allows += 1,
                 IssueType::Unimplemented => summary.unimplemented += 1,
                 IssueType::Todo => summary.todos += 1,
                 IssueType::Panic => summary.panics += 1,
                 IssueType::EarlyReturnStub => summary.early_returns += 1,
                 IssueType::UnderscorePrefix => summary.underscore_prefixes += 1,
+                IssueType::UnusedImport => summary.unused_imports += 1,
+                IssueType::PublicNeverCalled => summary.public_never_called += 1,
+                IssueType::AlwaysErr => summary.always_err += 1,
                 IssueType::PlaceholderReturn => summary.placeholder_returns += 1,
                 IssueType::StubPattern => summary.stub_patterns += 1,
             }
-            
+
             // Count by file
             let file_key = issue.file_path.to_string_lossy().to_string();
             *summary.issues_by_file.entry(file_key).or_insert(0) += 1;
         }
-        
+
         summary.total_issues = issues.len();
         summary
     }
@@ -396,11 +615,15 @@ impl CodeAnalyzer {
 pub struct AnalysisSummary {
     pub total_issues: usize,
     pub allow_annotations: usize,
+    pub dead_code_allows: usize,
     pub unimplemented: usize,
     pub todos: usize,
     pub panics: usize,
     pub early_returns: usize,
     pub underscore_prefixes: usize,
+    pub unused_imports: usize,
+    pub public_never_called: usize,
+    pub always_err: usize,
     pub placeholder_returns: usize,
     pub stub_patterns: usize,
     pub issues_by_file: std::collections::HashMap<String, usize>,
@@ -412,7 +635,7 @@ impl AnalysisSummary {
     pub fn has_critical_issues(&self) -> bool {
         self.unimplemented > 0 || self.todos > 0 || self.stub_patterns > 0
     }
-    
+
     /// Print summary in table format
     pub fn print_table(&self) {
         crate::teeprintln!("\n{}", "═".repeat(80));
@@ -421,18 +644,46 @@ impl AnalysisSummary {
         crate::teeprintln!("");
         crate::teeprintln!("  {:<35} {:>10}", "Issue Type", "Count");
         crate::teeprintln!("  {}", "─".repeat(48));
-        crate::teeprintln!("  {:<35} {:>10}", "#[allow(*)] annotations", self.allow_annotations);
-        crate::teeprintln!("  {:<35} {:>10}", "unimplemented!() macros", self.unimplemented);
+        crate::teeprintln!(
+            "  {:<35} {:>10}",
+            "#[allow(*)] annotations",
+            self.allow_annotations
+        );
+        crate::teeprintln!(
+            "  {:<35} {:>10}",
+            "#[allow(dead_code)] suppression",
+            self.dead_code_allows
+        );
+        crate::teeprintln!(
+            "  {:<35} {:>10}",
+            "unimplemented!() macros",
+            self.unimplemented
+        );
         crate::teeprintln!("  {:<35} {:>10}", "todo!() macros", self.todos);
         crate::teeprintln!("  {:<35} {:>10}", "panic!() stubs", self.panics);
         crate::teeprintln!("  {:<35} {:>10}", "Early return stubs", self.early_returns);
-        crate::teeprintln!("  {:<35} {:>10}", "Underscore-prefixed code", self.underscore_prefixes);
-        crate::teeprintln!("  {:<35} {:>10}", "Placeholder returns", self.placeholder_returns);
+        crate::teeprintln!(
+            "  {:<35} {:>10}",
+            "Underscore-prefixed code",
+            self.underscore_prefixes
+        );
+        crate::teeprintln!("  {:<35} {:>10}", "Unused imports", self.unused_imports);
+        crate::teeprintln!(
+            "  {:<35} {:>10}",
+            "Public never called",
+            self.public_never_called
+        );
+        crate::teeprintln!("  {:<35} {:>10}", "Always returns Err", self.always_err);
+        crate::teeprintln!(
+            "  {:<35} {:>10}",
+            "Placeholder returns",
+            self.placeholder_returns
+        );
         crate::teeprintln!("  {:<35} {:>10}", "Stub patterns", self.stub_patterns);
         crate::teeprintln!("  {}", "─".repeat(48));
         crate::teeprintln!("  {:<35} {:>10}", "TOTAL ISSUES", self.total_issues);
         crate::teeprintln!("");
-        
+
         if !self.issues_by_file.is_empty() {
             crate::teeprintln!("  Issues by File:");
             crate::teeprintln!("  {}", "─".repeat(48));
@@ -442,7 +693,7 @@ impl AnalysisSummary {
                 crate::teeprintln!("    {:<40} {:>6}", relative, count);
             }
         }
-        
+
         crate::teeprintln!("{}", "═".repeat(80));
     }
 }
@@ -493,56 +744,70 @@ impl LintAnalyzer {
             .args(["clippy", "--", "-D", "warnings", "--cap-lints", "warn"])
             .current_dir(project_path)
             .output()?;
-        
+
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let combined = format!("{}\n{}", stdout, stderr);
-        
+
         Ok(Self::parse_lint_output(&combined))
     }
-    
+
     /// Run cargo check and parse the output
     pub fn run_check(project_path: &Path) -> anyhow::Result<Vec<LintIssue>> {
         let output = Command::new("cargo")
             .args(["check", "--message-format=short"])
             .current_dir(project_path)
             .output()?;
-        
+
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
         let combined = format!("{}\n{}", stdout, stderr);
-        
+
         Ok(Self::parse_lint_output(&combined))
     }
-    
+
     /// Parse lint output into structured issues
     fn parse_lint_output(output: &str) -> Vec<LintIssue> {
         let mut issues = Vec::new();
-        
+
         // Pattern for rustc/clipp output: file:line:col: level: code (message)
         let re = regex::Regex::new(
             r"^(.+?):(\d+):(\d+):\s*((?:error|warning|help|note)+(?:\[\w+\])?):\s*((?:\w+)+)\s*(.*)$"
         ).unwrap_or_else(|_| regex::Regex::new(r"^.+$").unwrap());
-        
+
         for line in output.lines() {
             // Try main pattern first
             if let Some(caps) = re.captures(line) {
                 let file = caps.get(1).map(|m| m.as_str()).unwrap_or("").to_string();
-                let line_num: usize = caps.get(2).and_then(|m| m.as_str().parse().ok()).unwrap_or(0);
-                let col: usize = caps.get(3).and_then(|m| m.as_str().parse().ok()).unwrap_or(0);
+                let line_num: usize = caps
+                    .get(2)
+                    .and_then(|m| m.as_str().parse().ok())
+                    .unwrap_or(0);
+                let col: usize = caps
+                    .get(3)
+                    .and_then(|m| m.as_str().parse().ok())
+                    .unwrap_or(0);
                 let level_str = caps.get(4).map(|m| m.as_str()).unwrap_or("warning");
                 let code = caps.get(5).map(|m| m.as_str()).unwrap_or("").to_string();
-                let message = caps.get(6).map(|m| m.as_str().trim()).unwrap_or("").to_string();
-                
+                let message = caps
+                    .get(6)
+                    .map(|m| m.as_str().trim())
+                    .unwrap_or("")
+                    .to_string();
+
                 let level = match level_str.trim() {
                     s if s.contains("error") => LintLevel::Error,
                     s if s.contains("warning") => LintLevel::Warning,
                     s if s.contains("help") => LintLevel::Help,
                     _ => LintLevel::Note,
                 };
-                
+
                 // Skip empty messages and notes/help without code
-                if !message.is_empty() && (level == LintLevel::Error || level == LintLevel::Warning || !code.is_empty()) {
+                if !message.is_empty()
+                    && (level == LintLevel::Error
+                        || level == LintLevel::Warning
+                        || !code.is_empty())
+                {
                     issues.push(LintIssue {
                         file_path: file,
                         line_number: line_num,
@@ -554,7 +819,7 @@ impl LintAnalyzer {
                 }
             }
         }
-        
+
         // Deduplicate
         issues.sort_by(|a, b| {
             let file_cmp = a.file_path.cmp(&b.file_path);
@@ -565,7 +830,7 @@ impl LintAnalyzer {
             }
         });
         issues.dedup();
-        
+
         issues
     }
 }
@@ -587,7 +852,7 @@ impl LintSummary {
             issues,
             ..Default::default()
         };
-        
+
         for issue in &summary.issues {
             match issue.level {
                 LintLevel::Error => summary.errors += 1,
@@ -595,19 +860,19 @@ impl LintSummary {
                 LintLevel::Help => summary.helps += 1,
                 LintLevel::Note => summary.notes += 1,
             }
-            
+
             let file_key = issue.file_path.clone();
             *summary.issues_by_file.entry(file_key).or_insert(0) += 1;
         }
-        
+
         summary
     }
-    
+
     #[allow(dead_code)]
     pub fn total_count(&self) -> usize {
         self.errors + self.warnings
     }
-    
+
     /// Print lint summary and issues table
     pub fn print_report(&self) {
         crate::teeprintln!("\n{}", "═".repeat(100));
@@ -629,9 +894,13 @@ impl LintSummary {
             crate::teeprintln!("  {:<20} {:>10}", "Notes", self.notes);
         }
         crate::teeprintln!("  {}", "─".repeat(33));
-        crate::teeprintln!("  {:<20} {:>10}", "TOTAL (E+W)", self.errors + self.warnings);
+        crate::teeprintln!(
+            "  {:<20} {:>10}",
+            "TOTAL (E+W)",
+            self.errors + self.warnings
+        );
         crate::teeprintln!("");
-        
+
         if !self.issues_by_file.is_empty() && (self.errors > 0 || self.warnings > 0) {
             crate::teeprintln!("  Lint issues by File:");
             crate::teeprintln!("  {}", "─".repeat(33));
@@ -642,51 +911,63 @@ impl LintSummary {
                 crate::teeprintln!("    {:.<40} {:>6}", relative, count);
             }
         }
-        
+
         // Print detailed issues table if there are errors or warnings
-        if !self.issues.is_empty() && self.issues.iter().any(|i| i.level == LintLevel::Error || i.level == LintLevel::Warning) {
+        if !self.issues.is_empty()
+            && self
+                .issues
+                .iter()
+                .any(|i| i.level == LintLevel::Error || i.level == LintLevel::Warning)
+        {
             crate::teeprintln!("");
             crate::teeprintln!("{}", "─".repeat(100));
             crate::teeprintln!("  DETAILED LINT ISSUES TABLE");
             crate::teeprintln!("{}", "─".repeat(100));
             crate::teeprintln!("");
             crate::teeprintln!("┌{:─<8}┬{:─<6}┬{:─<50}┬{:─<30}┐", "", "", "", "");
-            crate::teeprintln!("│{:^8}│{:^6}│{:^50}│{:^30}│", "Level", "Line", "File", "Message");
+            crate::teeprintln!(
+                "│{:^8}│{:^6}│{:^50}│{:^30}│",
+                "Level",
+                "Line",
+                "File",
+                "Message"
+            );
             crate::teeprintln!("├{:─<8}┼{:─<6}┼{:─<50}┼{:─<30}┤", "", "", "", "");
-            
+
             for issue in &self.issues {
                 if issue.level == LintLevel::Error || issue.level == LintLevel::Warning {
                     let file_short = if issue.file_path.len() > 48 {
-                        format!("...{}", &issue.file_path[issue.file_path.len()-45..])
+                        format!("...{}", &issue.file_path[issue.file_path.len() - 45..])
                     } else {
                         issue.file_path.clone()
                     };
-                    
+
                     let msg_short = if issue.message.len() > 28 {
                         format!("{}...", &issue.message[..25])
                     } else {
                         issue.message.clone()
                     };
-                    
+
                     let level_str = match issue.level {
                         LintLevel::Error => "ERROR",
                         LintLevel::Warning => "WARN",
                         LintLevel::Help => "HELP",
                         LintLevel::Note => "NOTE",
                     };
-                    
-                    crate::teeprintln!("│{:^8}│{:^6}│{:.<50}│{:.<30}│", 
-                        level_str, 
-                        issue.line_number, 
-                        file_short, 
+
+                    crate::teeprintln!(
+                        "│{:^8}│{:^6}│{:.<50}│{:.<30}│",
+                        level_str,
+                        issue.line_number,
+                        file_short,
                         msg_short
                     );
                 }
             }
-            
+
             crate::teeprintln!("└{:─<8}┴{:─<6}┴{:─<50}┴{:─<30}┘", "", "", "", "");
         }
-        
+
         crate::teeprintln!("{}", "═".repeat(100));
     }
 }

@@ -2,11 +2,8 @@
 
 // Experience system coordinator per Architecture §07
 
-
 use crate::experience::{
-    bus::ExperienceBus,
-    events::ExperienceEvent,
-    metrics::MetricsCollector,
+    bus::ExperienceBus, events::ExperienceEvent, metrics::MetricsCollector,
     scorer::ExperienceScorer, types::*,
 };
 use std::sync::Arc;
@@ -23,7 +20,11 @@ pub struct ExperienceCoordinator {
 }
 
 impl ExperienceCoordinator {
-    pub fn new(scorer: ExperienceScorer, bus: Arc<ExperienceBus>, metrics: Arc<MetricsCollector>) -> Self {
+    pub fn new(
+        scorer: ExperienceScorer,
+        bus: Arc<ExperienceBus>,
+        metrics: Arc<MetricsCollector>,
+    ) -> Self {
         Self {
             scorer,
             bus,
@@ -32,7 +33,7 @@ impl ExperienceCoordinator {
     }
 
     /// Process a completed experience through the learning pipeline.
-    /// 
+    ///
     /// This method:
     /// 1. Scores the experience
     /// 2. Records metrics
@@ -48,13 +49,19 @@ impl ExperienceCoordinator {
         let metrics_clone = self.metrics.clone();
         let outcome_kind = experience.outcome.kind;
         tokio::spawn(async move {
-            metrics_clone.increment(metric_names::EXPERIENCES_RECORDED).await;
+            metrics_clone
+                .increment(metric_names::EXPERIENCES_RECORDED)
+                .await;
             match outcome_kind {
                 OutcomeKind::Success | OutcomeKind::Partial => {
-                    metrics_clone.increment(metric_names::EXPERIENCES_SUCCESS).await;
+                    metrics_clone
+                        .increment(metric_names::EXPERIENCES_SUCCESS)
+                        .await;
                 }
                 OutcomeKind::Failure => {
-                    metrics_clone.increment(metric_names::EXPERIENCES_FAILURE).await;
+                    metrics_clone
+                        .increment(metric_names::EXPERIENCES_FAILURE)
+                        .await;
                 }
                 _ => {}
             }
@@ -73,7 +80,7 @@ impl ExperienceCoordinator {
     }
 
     /// Record that an experience was created (legacy method - use process() instead)
-    /// 
+    ///
     /// Note: This only emits an event with the ID, not the full experience.
     /// The downstream handlers expect EventPayload::ExperienceRecord with the full experience.
     /// Use process() which emits both Scored and ExperienceRecorded with full data.
@@ -116,7 +123,9 @@ impl ExperienceCoordinator {
         use crate::experience::metrics::metric_names;
         let metrics = self.metrics.clone();
         tokio::spawn(async move {
-            metrics.increment(metric_names::EXPLORATIONS_COMPLETED).await;
+            metrics
+                .increment(metric_names::EXPLORATIONS_COMPLETED)
+                .await;
         });
         let exploration_id = Uuid::new_v4();
         let event = ExperienceEvent::exploration_completed(id, exploration_id);

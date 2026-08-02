@@ -10,19 +10,19 @@
 //!                 ↓           ↓           ↓           ↓
 //!            Exploration  Evolution   Memory      Sources
 
-use std::collections::HashMap;
-use std::sync::{Arc, RwLock, Mutex};
 use anyhow::Result;
 use chrono::Utc;
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex, RwLock};
 
+use crate::experience::events::payload::EventPayload;
 use crate::experience::events::ExperienceEvent;
 use crate::experience::events::ExperienceEventType;
-use crate::experience::events::payload::EventPayload;
-use crate::experience::observer::ExperienceObserver;
-use crate::experience::reputation::reputation::Reputation;
-use crate::experience::reputation::factors::ReputationFactor;
 use crate::experience::hypothesis::HypothesisEngine;
 use crate::experience::metrics::MetricsCollector;
+use crate::experience::observer::ExperienceObserver;
+use crate::experience::reputation::factors::ReputationFactor;
+use crate::experience::reputation::reputation::Reputation;
 
 /// ============================================================================
 /// REPUTATION OBSERVER
@@ -64,17 +64,20 @@ impl ExperienceObserver for ReputationObserver {
         match &event.payload {
             EventPayload::ExperienceRecord { experience, .. } => {
                 let entity_id = format!("experience_{}", experience.id);
-                let mut reputations = self.reputations.write()
+                let mut reputations = self
+                    .reputations
+                    .write()
                     .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
-                let reputation = reputations.entry(entity_id.clone())
+                let reputation = reputations
+                    .entry(entity_id.clone())
                     .or_insert_with(|| Reputation::new(entity_id.clone()));
-                
+
                 let delta = match experience.outcome.kind {
                     crate::experience::types::OutcomeKind::Success => 0.1,
                     crate::experience::types::OutcomeKind::Failure => -0.1,
                     _ => 0.0,
                 };
-                
+
                 if delta != 0.0 {
                     reputation.apply(
                         entity_id.clone(),
@@ -86,9 +89,12 @@ impl ExperienceObserver for ReputationObserver {
                 }
             }
             EventPayload::Reputation { entity_id, change } => {
-                let mut reputations = self.reputations.write()
+                let mut reputations = self
+                    .reputations
+                    .write()
                     .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
-                let reputation = reputations.entry(entity_id.clone())
+                let reputation = reputations
+                    .entry(entity_id.clone())
                     .or_insert_with(|| Reputation::new(entity_id.clone()));
                 reputation.apply(
                     entity_id.clone(),
@@ -96,7 +102,10 @@ impl ExperienceObserver for ReputationObserver {
                     *change as f64,
                     "Reputation update from event".to_string(),
                 );
-                tracing::debug!("ReputationObserver processed reputation change for {}", entity_id);
+                tracing::debug!(
+                    "ReputationObserver processed reputation change for {}",
+                    entity_id
+                );
             }
             EventPayload::ReputationUpdated { previous, current } => {
                 tracing::debug!("ReputationObserver: {} -> {}", previous, current);
@@ -142,9 +151,18 @@ impl ExperienceObserver for HypothesisObserver {
                 engine.process_experience(experience)?;
                 tracing::debug!("HypothesisObserver processed experience: {}", experience.id);
             }
-            EventPayload::EvidenceRecord { hypothesis_id, direction, strength, .. } => {
-                tracing::debug!("HypothesisObserver: evidence for {} - {} (strength: {})", 
-                    hypothesis_id, direction, strength);
+            EventPayload::EvidenceRecord {
+                hypothesis_id,
+                direction,
+                strength,
+                ..
+            } => {
+                tracing::debug!(
+                    "HypothesisObserver: evidence for {} - {} (strength: {})",
+                    hypothesis_id,
+                    direction,
+                    strength
+                );
             }
             _ => {}
         }
@@ -211,10 +229,17 @@ impl MetricsObserver {
                 collector.increment_sync("hypotheses.generated");
                 collector.record_sync("hypothesis_created_at", Utc::now().timestamp() as f64);
                 // Track initial hypothesis confidence
-                collector.record_sync("hypothesis.initial_confidence", hypothesis.confidence.value as f64);
+                collector.record_sync(
+                    "hypothesis.initial_confidence",
+                    hypothesis.confidence.value as f64,
+                );
             }
 
-            EventPayload::HypothesisValidation { hypothesis_id, result, .. } => {
+            EventPayload::HypothesisValidation {
+                hypothesis_id,
+                result,
+                ..
+            } => {
                 collector.increment_sync("hypotheses.validated");
                 // Track validation result
                 match result.as_str() {
@@ -229,7 +254,12 @@ impl MetricsObserver {
                 let _ = hypothesis_id;
             }
 
-            EventPayload::EvidenceRecord { hypothesis_id, direction, strength, .. } => {
+            EventPayload::EvidenceRecord {
+                hypothesis_id,
+                direction,
+                strength,
+                ..
+            } => {
                 collector.increment_sync("evidence.recorded");
                 collector.record_sync("evidence.strength", *strength as f64);
                 match direction.as_str() {
@@ -291,7 +321,6 @@ impl ExperienceObserver for MetricsObserver {
         "MetricsObserver"
     }
 
-    #[allow(unused)]
     fn accepts(&self, _event: &ExperienceEvent) -> bool {
         true
     }

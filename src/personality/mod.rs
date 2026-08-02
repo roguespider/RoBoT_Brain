@@ -71,7 +71,6 @@ impl Default for PersonalityTraits {
 
 /// Communication style preferences
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
-#[allow(dead_code)]
 pub enum CommunicationStyle {
     /// Minimal output, just essential information
     Concise,
@@ -84,12 +83,12 @@ pub enum CommunicationStyle {
 
 impl CommunicationStyle {
     /// Get format string for response based on style
-    #[allow(dead_code)]
     pub fn format_response(&self, content: &str) -> String {
         match self {
             CommunicationStyle::Concise => {
                 // Strip extra whitespace, take first paragraph
-                content.lines()
+                content
+                    .lines()
                     .map(|l| l.trim())
                     .filter(|l| !l.is_empty())
                     .take(2)
@@ -98,23 +97,21 @@ impl CommunicationStyle {
             }
             CommunicationStyle::Balanced => {
                 // Take first few paragraphs
-                content.lines()
+                content
+                    .lines()
                     .map(|l| l.trim())
                     .filter(|l| !l.is_empty())
                     .take(5)
                     .collect::<Vec<_>>()
                     .join("\n")
             }
-            CommunicationStyle::Detailed => {
-                content.to_string()
-            }
+            CommunicationStyle::Detailed => content.to_string(),
         }
     }
 }
 
 /// Decision context for personality-based choices
 #[derive(Debug, Clone, Default)]
-#[allow(dead_code)]
 pub struct DecisionContext {
     /// Current confidence in the approach (0.0 - 1.0)
     pub confidence: f32,
@@ -130,7 +127,6 @@ pub struct DecisionContext {
 
 /// Decision made by personality system
 #[derive(Debug, Clone)]
-#[allow(dead_code)]
 pub struct Decision {
     /// Whether to take the proposed action
     pub should_act: bool,
@@ -144,7 +140,6 @@ pub struct Decision {
 
 /// Approach style for decisions
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-#[allow(dead_code)]
 pub enum DecisionApproach {
     /// Quick, minimal processing
     Fast,
@@ -156,7 +151,6 @@ pub enum DecisionApproach {
 }
 
 /// Personality system that influences decision-making
-#[allow(dead_code)]
 pub struct Personality {
     /// Current personality traits
     traits: PersonalityTraits,
@@ -172,7 +166,6 @@ pub struct Personality {
     success_count: u32,
 }
 
-#[allow(dead_code)]
 impl Personality {
     /// Create a new personality with default traits
     pub fn new() -> Self {
@@ -181,45 +174,57 @@ impl Personality {
         // Define personality presets
         presets.insert("balanced".to_string(), PersonalityTraits::default());
 
-        presets.insert("analytical".to_string(), PersonalityTraits {
-            curiosity: 0.8,
-            caution: 0.8,
-            creativity: 0.4,
-            patience: 0.9,
-            thoroughness: 0.95,
-            verbosity: 0.4,
-            risk_tolerance: 0.2,
-        });
+        presets.insert(
+            "analytical".to_string(),
+            PersonalityTraits {
+                curiosity: 0.8,
+                caution: 0.8,
+                creativity: 0.4,
+                patience: 0.9,
+                thoroughness: 0.95,
+                verbosity: 0.4,
+                risk_tolerance: 0.2,
+            },
+        );
 
-        presets.insert("creative".to_string(), PersonalityTraits {
-            curiosity: 0.9,
-            caution: 0.3,
-            creativity: 0.95,
-            patience: 0.5,
-            thoroughness: 0.5,
-            verbosity: 0.7,
-            risk_tolerance: 0.7,
-        });
+        presets.insert(
+            "creative".to_string(),
+            PersonalityTraits {
+                curiosity: 0.9,
+                caution: 0.3,
+                creativity: 0.95,
+                patience: 0.5,
+                thoroughness: 0.5,
+                verbosity: 0.7,
+                risk_tolerance: 0.7,
+            },
+        );
 
-        presets.insert("cautious".to_string(), PersonalityTraits {
-            curiosity: 0.5,
-            caution: 0.95,
-            creativity: 0.3,
-            patience: 0.8,
-            thoroughness: 0.9,
-            verbosity: 0.3,
-            risk_tolerance: 0.1,
-        });
+        presets.insert(
+            "cautious".to_string(),
+            PersonalityTraits {
+                curiosity: 0.5,
+                caution: 0.95,
+                creativity: 0.3,
+                patience: 0.8,
+                thoroughness: 0.9,
+                verbosity: 0.3,
+                risk_tolerance: 0.1,
+            },
+        );
 
-        presets.insert("bold".to_string(), PersonalityTraits {
-            curiosity: 0.7,
-            caution: 0.2,
-            creativity: 0.7,
-            patience: 0.4,
-            thoroughness: 0.6,
-            verbosity: 0.6,
-            risk_tolerance: 0.9,
-        });
+        presets.insert(
+            "bold".to_string(),
+            PersonalityTraits {
+                curiosity: 0.7,
+                caution: 0.2,
+                creativity: 0.7,
+                patience: 0.4,
+                thoroughness: 0.6,
+                verbosity: 0.6,
+                risk_tolerance: 0.9,
+            },
+        );
 
         Self {
             traits: PersonalityTraits::default(),
@@ -272,11 +277,17 @@ impl Personality {
         match trait_name {
             "curiosity" => self.traits.curiosity = (self.traits.curiosity + delta).clamp(0.0, 1.0),
             "caution" => self.traits.caution = (self.traits.caution + delta).clamp(0.0, 1.0),
-            "creativity" => self.traits.creativity = (self.traits.creativity + delta).clamp(0.0, 1.0),
+            "creativity" => {
+                self.traits.creativity = (self.traits.creativity + delta).clamp(0.0, 1.0)
+            }
             "patience" => self.traits.patience = (self.traits.patience + delta).clamp(0.0, 1.0),
-            "thoroughness" => self.traits.thoroughness = (self.traits.thoroughness + delta).clamp(0.0, 1.0),
+            "thoroughness" => {
+                self.traits.thoroughness = (self.traits.thoroughness + delta).clamp(0.0, 1.0)
+            }
             "verbosity" => self.traits.verbosity = (self.traits.verbosity + delta).clamp(0.0, 1.0),
-            "risk_tolerance" => self.traits.risk_tolerance = (self.traits.risk_tolerance + delta).clamp(0.0, 1.0),
+            "risk_tolerance" => {
+                self.traits.risk_tolerance = (self.traits.risk_tolerance + delta).clamp(0.0, 1.0)
+            }
             _ => {}
         }
         self.current_preset = "custom".to_string();
@@ -355,7 +366,11 @@ impl Personality {
             self.traits.curiosity,
             self.traits.caution,
             self.traits.risk_tolerance,
-            if should_act { "choosing to act" } else { "choosing caution" }
+            if should_act {
+                "choosing to act"
+            } else {
+                "choosing caution"
+            }
         );
 
         Decision {
@@ -471,13 +486,13 @@ mod tests {
     #[test]
     fn test_communication_style() {
         let mut p = Personality::new();
-        
+
         p.traits_mut().verbosity = 0.2;
         assert_eq!(p.get_communication_style(), CommunicationStyle::Concise);
-        
+
         p.traits_mut().verbosity = 0.5;
         assert_eq!(p.get_communication_style(), CommunicationStyle::Balanced);
-        
+
         p.traits_mut().verbosity = 0.8;
         assert_eq!(p.get_communication_style(), CommunicationStyle::Detailed);
     }
@@ -486,13 +501,13 @@ mod tests {
     fn test_format_response() {
         let mut p = Personality::new();
         p.traits_mut().verbosity = 0.8;
-        
+
         let content = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5";
         let formatted = p.format_response(content);
-        
+
         // Detailed style should keep most content
         assert!(formatted.len() > 10);
-        
+
         // Concise style should truncate
         p.traits_mut().verbosity = 0.1;
         let concise = p.format_response(content);
@@ -502,37 +517,37 @@ mod tests {
     #[test]
     fn test_should_explore() {
         let mut p = Personality::new();
-        
+
         // High curiosity, low caution = explore
         p.traits_mut().curiosity = 0.9;
         p.traits_mut().caution = 0.2;
         assert!(p.should_explore(0.5));
-        
+
         // Low curiosity, high caution = don't explore
         p.traits_mut().curiosity = 0.2;
         p.traits_mut().caution = 0.9;
         assert!(!p.should_explore(0.5));
-        
+
         // Test with moderate traits and varying confidence
         p.traits_mut().curiosity = 0.4;
         p.traits_mut().caution = 0.6;
         // Exploration tendency = 0.4 * 0.6 + 0.4 * 0.4 = 0.24 + 0.16 = 0.40
         // With confidence 0.9: 0.40 + 0.1 * 0.3 = 0.43 < 0.5 = false
         assert!(!p.should_explore(0.9)); // High confidence
-        // With confidence 0.5: 0.40 + 0.5 * 0.3 = 0.55 > 0.5 = true
+                                         // With confidence 0.5: 0.40 + 0.5 * 0.3 = 0.55 > 0.5 = true
         assert!(p.should_explore(0.5)); // Low confidence
     }
 
     #[test]
     fn test_should_take_risk() {
         let mut p = Personality::new();
-        
+
         // Low risk tolerance = don't take risk
         p.traits_mut().risk_tolerance = 0.1;
         // risk_ratio = 0.6 / 0.401 = 1.5, adjusted = 1.5 * 1.1 = 1.65 > 1 = true
         // Need very low ratio
         assert!(!p.should_take_risk(0.3, 0.7)); // Bad ratio
-        
+
         // High risk tolerance = take risk with decent ratio
         p.traits_mut().risk_tolerance = 0.9;
         // risk_ratio = 0.6 / 0.401 = 1.5, adjusted = 1.5 * 1.9 = 2.85 > 1 = true
@@ -542,11 +557,11 @@ mod tests {
     #[test]
     fn test_get_timeout() {
         let mut p = Personality::new();
-        
+
         p.traits_mut().patience = 0.5;
         let timeout = p.get_timeout(100);
         assert_eq!(timeout, 150); // 100 * (1 + 0.5)
-        
+
         p.traits_mut().patience = 1.0;
         let timeout = p.get_timeout(100);
         assert_eq!(timeout, 200); // 100 * (1 + 1.0)
@@ -556,7 +571,7 @@ mod tests {
     fn test_decide() {
         let mut p = Personality::new();
         assert!(p.apply_preset("cautious"));
-        
+
         let context = DecisionContext {
             confidence: 0.3,
             potential_gain: 0.8,
@@ -564,7 +579,7 @@ mod tests {
             uncertainty: 0.6,
             time_available: 60,
         };
-        
+
         let decision = p.decide(&context);
         assert!(decision.reason.contains("cautious"));
         assert_eq!(decision.approach, DecisionApproach::Thorough);
@@ -573,10 +588,10 @@ mod tests {
     #[test]
     fn test_should_use_creativity() {
         let mut p = Personality::new();
-        
+
         p.traits_mut().creativity = 0.9;
         assert!(p.should_use_creativity(0.5));
-        
+
         p.traits_mut().creativity = 0.2;
         assert!(!p.should_use_creativity(0.5));
     }
@@ -585,10 +600,10 @@ mod tests {
     fn test_success_rate() {
         let mut p = Personality::new();
         assert_eq!(p.success_rate(), 0.5); // No experience
-        
+
         p.adapt_from_experience(true, false);
         assert_eq!(p.success_rate(), 1.0);
-        
+
         p.adapt_from_experience(false, false);
         assert_eq!(p.success_rate(), 0.5);
     }

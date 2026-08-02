@@ -12,7 +12,5 @@ pub mod candidates;
 pub mod lineage;
 pub mod pipeline;
 
-#[allow(unused)]
 pub use working_memory::WorkingMemory;
-#[allow(unused)]
 pub use lineage::LineageTracker;

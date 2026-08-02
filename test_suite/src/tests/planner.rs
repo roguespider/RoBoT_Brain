@@ -1,7 +1,3 @@
-
-
-
-
 //! Planner tool tests
 use crate::TestMcpClient;
 use crate::TestStats;
@@ -13,26 +9,50 @@ pub async fn run_planner_tests(
     _filter: Option<&str>,
 ) -> anyhow::Result<()> {
     crate::teeprintln!("\n--- Planner Tools Tests ---");
-    
+
     test_create_plan(client, stats, "Complete feature implementation").await?;
     test_add_plan_step(client, stats, "Step 1: Design").await?;
     test_add_plan_step(client, stats, "Step 2: Implement").await?;
     test_add_plan_step(client, stats, "Step 3: Test").await?;
-    test_add_step_dependency(client, stats, 0, 1).await?;
-    test_add_step_dependency(client, stats, 1, 2).await?;
-    test_get_plan(client, stats).await?;
-    test_start_plan(client, stats).await?;
-    test_complete_step(client, stats, 0).await?;
-    test_fail_step(client, stats, 1).await?;
-    
+    test_add_step_dependency(
+        client,
+        stats,
+        "00000000-0000-0000-0000-000000000001",
+        "00000000-0000-0000-0000-000000000002",
+    )
+    .await?;
+    test_add_step_dependency(
+        client,
+        stats,
+        "00000000-0000-0000-0000-000000000002",
+        "00000000-0000-0000-0000-000000000003",
+    )
+    .await?;
+    test_get_plan(client, stats, "00000000-0000-0000-0000-000000000000").await?;
+    test_start_plan(client, stats, "00000000-0000-0000-0000-000000000000").await?;
+    test_complete_step(
+        client,
+        stats,
+        "00000000-0000-0000-0000-000000000001",
+        "Success",
+    )
+    .await?;
+    test_fail_step(
+        client,
+        stats,
+        "00000000-0000-0000-0000-000000000002",
+        "Test failure",
+    )
+    .await?;
+
     // Test cancel
     test_create_plan(client, stats, "Cancel test").await?;
     test_cancel_plan(client, stats).await?;
-    
+
     // Test list plans
     test_list_plans(client, stats, None).await?;
     test_list_plans(client, stats, Some("active")).await?;
-    
+
     Ok(())
 }
 
@@ -41,11 +61,21 @@ async fn test_create_plan(
     stats: &mut TestStats,
     description: &str,
 ) -> anyhow::Result<()> {
-    match client.call_tool("create_plan", serde_json::json!({
-        "description": description
-    })).await {
+    match client
+        .call_tool(
+            "create_plan",
+            serde_json::json!({
+                "goal": description
+            }),
+        )
+        .await
+    {
         Ok(_) => {
-            let truncated = if description.len() > 30 { &description[..30] } else { description };
+            let truncated = if description.len() > 30 {
+                &description[..30]
+            } else {
+                description
+            };
             crate::teeprintln!("  ✓ create_plan('{}...') - SUCCESS", truncated);
             stats.passed += 1;
         }
@@ -62,9 +92,17 @@ async fn test_add_plan_step(
     stats: &mut TestStats,
     description: &str,
 ) -> anyhow::Result<()> {
-    match client.call_tool("add_plan_step", serde_json::json!({
-        "description": description
-    })).await {
+    match client
+        .call_tool(
+            "add_plan_step",
+            serde_json::json!({
+                "plan_id": "00000000-0000-0000-0000-000000000000",
+                "action": description,
+                "description": description
+            }),
+        )
+        .await
+    {
         Ok(_) => {
             crate::teeprintln!("  ✓ add_plan_step('{}') - SUCCESS", description);
             stats.passed += 1;
@@ -80,15 +118,25 @@ async fn test_add_plan_step(
 async fn test_add_step_dependency(
     client: &mut TestMcpClient,
     stats: &mut TestStats,
-    from_step: usize,
-    to_step: usize,
+    step_id: &str,
+    depends_on: &str,
 ) -> anyhow::Result<()> {
-    match client.call_tool("add_step_dependency", serde_json::json!({
-        "from_step": from_step,
-        "to_step": to_step
-    })).await {
+    match client
+        .call_tool(
+            "add_step_dependency",
+            serde_json::json!({
+                "plan_id": "00000000-0000-0000-0000-000000000000",
+                "step_id": step_id,
+                "depends_on": depends_on
+            }),
+        )
+        .await
+    {
         Ok(_) => {
-            crate::teeprintln!("  ✓ add_step_dependency - SUCCESS");
+            crate::teeprintln!(
+                "  ✓ add_step_dependency({}) - SUCCESS",
+                step_id.chars().take(8).collect::<String>()
+            );
             stats.passed += 1;
         }
         Err(e) => {
@@ -102,10 +150,22 @@ async fn test_add_step_dependency(
 async fn test_get_plan(
     client: &mut TestMcpClient,
     stats: &mut TestStats,
+    plan_id: &str,
 ) -> anyhow::Result<()> {
-    match client.call_tool("get_plan", serde_json::json!({})).await {
+    match client
+        .call_tool(
+            "get_plan",
+            serde_json::json!({
+                "plan_id": plan_id
+            }),
+        )
+        .await
+    {
         Ok(_) => {
-            crate::teeprintln!("  ✓ get_plan - SUCCESS");
+            crate::teeprintln!(
+                "  ✓ get_plan({}) - SUCCESS",
+                plan_id.chars().take(8).collect::<String>()
+            );
             stats.passed += 1;
         }
         Err(e) => {
@@ -119,10 +179,22 @@ async fn test_get_plan(
 async fn test_start_plan(
     client: &mut TestMcpClient,
     stats: &mut TestStats,
+    plan_id: &str,
 ) -> anyhow::Result<()> {
-    match client.call_tool("start_plan", serde_json::json!({})).await {
+    match client
+        .call_tool(
+            "start_plan",
+            serde_json::json!({
+                "plan_id": plan_id
+            }),
+        )
+        .await
+    {
         Ok(_) => {
-            crate::teeprintln!("  ✓ start_plan - SUCCESS");
+            crate::teeprintln!(
+                "  ✓ start_plan({}) - SUCCESS",
+                plan_id.chars().take(8).collect::<String>()
+            );
             stats.passed += 1;
         }
         Err(e) => {
@@ -136,17 +208,29 @@ async fn test_start_plan(
 async fn test_complete_step(
     client: &mut TestMcpClient,
     stats: &mut TestStats,
-    step_index: usize,
+    step_id: &str,
+    result: &str,
 ) -> anyhow::Result<()> {
-    match client.call_tool("complete_step", serde_json::json!({
-        "step_index": step_index
-    })).await {
+    match client
+        .call_tool(
+            "complete_step",
+            serde_json::json!({
+                "plan_id": "00000000-0000-0000-0000-000000000000",
+                "step_id": step_id,
+                "result": result
+            }),
+        )
+        .await
+    {
         Ok(_) => {
-            crate::teeprintln!("  ✓ complete_step({}) - SUCCESS", step_index);
+            crate::teeprintln!(
+                "  ✓ complete_step({}) - SUCCESS",
+                step_id.chars().take(8).collect::<String>()
+            );
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ complete_step({}) - FAILED: {}", step_index, e);
+            crate::teeprintln!("  ✗ complete_step - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -156,29 +240,45 @@ async fn test_complete_step(
 async fn test_fail_step(
     client: &mut TestMcpClient,
     stats: &mut TestStats,
-    step_index: usize,
+    step_id: &str,
+    error_msg: &str,
 ) -> anyhow::Result<()> {
-    match client.call_tool("fail_step", serde_json::json!({
-        "step_index": step_index,
-        "error": "Test failure"
-    })).await {
+    match client
+        .call_tool(
+            "fail_step",
+            serde_json::json!({
+                "plan_id": "00000000-0000-0000-0000-000000000000",
+                "step_id": step_id,
+                "error": error_msg
+            }),
+        )
+        .await
+    {
         Ok(_) => {
-            crate::teeprintln!("  ✓ fail_step({}) - SUCCESS", step_index);
+            crate::teeprintln!(
+                "  ✓ fail_step({}) - SUCCESS",
+                step_id.chars().take(8).collect::<String>()
+            );
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ fail_step({}) - FAILED: {}", step_index, e);
+            crate::teeprintln!("  ✗ fail_step - FAILED: {}", e);
             stats.failed += 1;
         }
     }
     Ok(())
 }
 
-async fn test_cancel_plan(
-    client: &mut TestMcpClient,
-    stats: &mut TestStats,
-) -> anyhow::Result<()> {
-    match client.call_tool("cancel_plan", serde_json::json!({})).await {
+async fn test_cancel_plan(client: &mut TestMcpClient, stats: &mut TestStats) -> anyhow::Result<()> {
+    match client
+        .call_tool(
+            "cancel_plan",
+            serde_json::json!({
+                "plan_id": "00000000-0000-0000-0000-000000000000"
+            }),
+        )
+        .await
+    {
         Ok(_) => {
             crate::teeprintln!("  ✓ cancel_plan - SUCCESS");
             stats.passed += 1;
@@ -200,7 +300,7 @@ async fn test_list_plans(
     if let Some(s) = status {
         args["status"] = serde_json::json!(s);
     }
-    
+
     match client.call_tool("list_plans", args).await {
         Ok(_) => {
             let s = status.unwrap_or("all");

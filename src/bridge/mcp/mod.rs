@@ -10,8 +10,5 @@ pub mod types;
 
 // Re-export commonly used types
 pub use client::McpClient;
-#[allow(unused_imports)]
-pub use client::ToolError;
 pub use context::McpContext;
-#[allow(unused_imports)]
-pub use types::{McpTool, McpCapabilities, McpClientInfo, McpServerInfo};
+pub use types::{McpCapabilities, McpClientInfo, McpServerInfo, McpTool};

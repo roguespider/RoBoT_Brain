@@ -1,8 +1,5 @@
-
-
 // src/tools/experience/mod.rs
 // Experience-related MCP tools
-
 
 use std::sync::Arc;
 
@@ -65,7 +62,7 @@ pub mod definitions {
     pub const GET_EXPERIENCE: &str = "get_experience";
     pub const GET_WORKER_STATS: &str = "get_worker_stats";
     pub const GET_WORKER_COUNT: &str = "get_worker_count";
-    
+
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         vec![
             crate::bridge::mcp::McpTool {
@@ -219,7 +216,7 @@ pub async fn execute_record_experience(
         parse_experience_type(&input.experience_type),
         vec![], // observation_ids populated by observer
     );
-    
+
     // Set outcome
     experience.outcome = outcome_kind_to_experience_outcome(input.outcome);
 
@@ -243,21 +240,20 @@ pub async fn execute_record_experience(
 }
 
 /// Execute get experience stats tool
-#[allow(unused)]
 pub async fn execute_get_experience_stats(
     _input: GetExperienceStatsInput,
     database: &Arc<SqliteDatabase>,
 ) -> Result<ToolOutput> {
     let conn = database.connection()?;
     let memories = queries::search_memory(&conn, "Experience:", 1000)?;
-    
+
     let total = memories.len();
-    
+
     // Count by type (simplified - counts all experiences)
     let by_type = serde_json::json!({
         "total": total
     });
-    
+
     // Count by outcome
     let mut success = 0;
     let mut failure = 0;
@@ -268,7 +264,7 @@ pub async fn execute_get_experience_stats(
             failure += 1;
         }
     }
-    
+
     let by_outcome = serde_json::json!({
         "success": success,
         "failure": failure
@@ -289,7 +285,7 @@ pub async fn execute_list_experiences(
     let limit = input.limit.unwrap_or(20);
     let conn = database.connection()?;
     let memories = queries::search_memory(&conn, "Experience:", limit)?;
-    
+
     let experiences: Vec<serde_json::Value> = memories
         .into_iter()
         .map(|m| {
@@ -314,9 +310,8 @@ pub async fn execute_get_experience(
     input: GetExperienceInput,
     database: &Arc<SqliteDatabase>,
 ) -> Result<ToolOutput> {
-    let uuid = Uuid::parse_str(&input.id)
-        .map_err(|e| anyhow::anyhow!("Invalid UUID: {}", e))?;
-    
+    let uuid = Uuid::parse_str(&input.id).map_err(|e| anyhow::anyhow!("Invalid UUID: {}", e))?;
+
     let conn = database.connection()?;
     let memory = queries::get_memory(&conn, uuid)?;
 
@@ -348,8 +343,9 @@ pub async fn execute_get_worker_stats(
     input: GetWorkerStatsInput,
     worker_manager: &Arc<WorkerManager>,
 ) -> Result<ToolOutput> {
-    let stats = if let Some(observer_name) = &input.observer_name {
-        worker_manager.get_observer_stats(observer_name).await
+    let stats =
+        if let Some(observer_name) = &input.observer_name {
+            worker_manager.get_observer_stats(observer_name).await
             .map(|s| {
                 serde_json::json!([{
                     "observer_name": s.observer_name,
@@ -359,9 +355,9 @@ pub async fn execute_get_worker_stats(
                 }])
             })
             .unwrap_or_else(|| serde_json::json!([]))
-    } else {
-        let all_stats = worker_manager.get_stats().await;
-        serde_json::json!(all_stats.iter().map(|s| {
+        } else {
+            let all_stats = worker_manager.get_stats().await;
+            serde_json::json!(all_stats.iter().map(|s| {
             serde_json::json!({
                 "observer_name": s.observer_name,
                 "jobs_processed": s.jobs_processed.load(std::sync::atomic::Ordering::SeqCst),
@@ -369,7 +365,7 @@ pub async fn execute_get_worker_stats(
                 "jobs_retried": s.jobs_retried.load(std::sync::atomic::Ordering::SeqCst),
             })
         }).collect::<Vec<_>>())
-    };
+        };
 
     Ok(ToolOutput::success(serde_json::json!({
         "stats": stats,
@@ -378,11 +374,9 @@ pub async fn execute_get_worker_stats(
 }
 
 /// Execute get worker count tool
-pub async fn execute_get_worker_count(
-    worker_manager: &Arc<WorkerManager>,
-) -> Result<ToolOutput> {
+pub async fn execute_get_worker_count(worker_manager: &Arc<WorkerManager>) -> Result<ToolOutput> {
     let count = worker_manager.worker_count().await;
-    
+
     Ok(ToolOutput::success(serde_json::json!({
         "worker_count": count
     })))

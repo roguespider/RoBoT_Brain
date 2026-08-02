@@ -1,9 +1,6 @@
-
-
 // src/tools/memory/mod.rs
 // Memory-related MCP tools
 // Per Architecture §07: Every experience originates from observations
-
 
 use std::sync::Arc;
 
@@ -15,8 +12,8 @@ use crate::database::models::{MemoryCard, MemoryType, Observation};
 use crate::database::queries;
 use crate::database::sqlite::SqliteDatabase;
 use crate::experience::types::{Experience, ExperienceContext, ExperienceOutcome, ExperienceType};
-use crate::memory::{MemoryRetrieval, WorkingMemory};
 use crate::memory::types::{MemoryItem, MemoryLayer};
+use crate::memory::{MemoryRetrieval, WorkingMemory};
 use crate::tools::ToolOutput;
 
 /// Tool: Store a new memory
@@ -61,7 +58,7 @@ pub mod definitions {
     pub const LIST_EMBEDDINGS: &str = "list_embeddings";
     pub const DELETE_EMBEDDING: &str = "delete_embedding";
     pub const GET_EMBEDDING_STATS: &str = "get_embedding_stats";
-    
+
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         vec![
             crate::bridge::mcp::McpTool {
@@ -274,7 +271,7 @@ fn parse_memory_type(s: &str) -> MemoryType {
 /// Execute store memory tool
 /// Per Architecture §07: Every experience originates from observations
 /// Per Architecture §1: Memory is a component. Experience is the source of learning.
-/// Per Architecture §4: "Actions, observations, decisions, successes, failures, 
+/// Per Architecture §4: "Actions, observations, decisions, successes, failures,
 ///                      and discoveries should create experiences."
 /// Per Architecture §6.3: Stores in Working Memory (fast, volatile, in-memory cache)
 pub async fn execute_store_memory(
@@ -283,7 +280,7 @@ pub async fn execute_store_memory(
     working_memory: &Arc<WorkingMemory>,
 ) -> Result<ToolOutput> {
     let memory_type = parse_memory_type(&input.memory_type);
-    
+
     // Step 1: Create an Observation (Per Architecture §07 invariant)
     // "Every experience originates from one or more observations"
     let content_preview = if input.content.len() > 100 {
@@ -297,14 +294,14 @@ pub async fn execute_store_memory(
         "memory_store".to_string(),
     );
     let observation_id = observation.id;
-    
+
     // Step 2: Create an Experience with observation origin (Per Architecture §07)
     // "Experience answers: What happened, what did we learn, and what should change?"
     let mut experience = Experience::new(
         format!("Memory stored: {}", input.memory_type),
         format!("Stored {} memory: {}", input.memory_type, content_preview),
         ExperienceType::MemoryStore,
-        vec![observation_id],  // Observation origins per §07
+        vec![observation_id], // Observation origins per §07
     );
     experience.context = ExperienceContext {
         memory_type: Some(input.memory_type.clone()),
@@ -313,11 +310,8 @@ pub async fn execute_store_memory(
         ..Default::default()
     };
     experience.outcome = ExperienceOutcome::success();
-    experience.tags = vec![
-        "memory".to_string(),
-        memory_type.to_string(),
-    ];
-    
+    experience.tags = vec!["memory".to_string(), memory_type.to_string()];
+
     // Step 3: Create the MemoryItem for Working Memory cache (Architecture §6.3)
     let mut memory_item = MemoryItem::new(
         MemoryLayer::Working,
@@ -332,27 +326,27 @@ pub async fn execute_store_memory(
             memory_item.add_tag(tag);
         }
     }
-    
+
     let memory_id = memory_item.id;
     let experience_id = experience.id;
-    
+
     // Store in Working Memory cache (Architecture §6.3)
     // This is the PRIMARY storage - fast, in-memory
     working_memory.store(memory_item.clone()).await;
-    
+
     // Also checkpoint to database for persistence
     let conn = database.connection()?;
-    
+
     // Store observation first (per Architecture §07: experiences originate from observations)
     queries::insert_observation(&conn, &observation)?;
-    
+
     // Commit and store experience (commit returns Result<(), &'static str>)
     if let Err(e) = experience.commit() {
         tracing::warn!("Experience already committed: {}", e);
     }
     let memory_from_exp = MemoryCard::from_experience(&experience);
     queries::insert_memory(&conn, &memory_from_exp)?;
-    
+
     // Also store the actual memory in database for recovery
     let memory_card: MemoryCard = memory_item.into();
     queries::insert_memory(&conn, &memory_card)?;
@@ -399,14 +393,14 @@ pub async fn execute_search_memory(
     memory_retrieval: &Arc<MemoryRetrieval>,
 ) -> Result<ToolOutput> {
     let limit = input.limit.unwrap_or(10);
-    
+
     // Search using MemoryRetrieval service (Architecture §6.3)
     // This queries both Working Memory and Permanent Memory caches
     let results = memory_retrieval.retrieve(&input.query).await;
-    
+
     // Take only the requested limit
     let results: Vec<_> = results.into_iter().take(limit).collect();
-    
+
     // Create observation for memory lookup (Per Architecture §07)
     let query_preview = if input.query.len() > 50 {
         format!("{}...", &input.query[..50])
@@ -420,11 +414,15 @@ pub async fn execute_search_memory(
     );
     let conn = database.connection()?;
     queries::insert_observation(&conn, &observation)?;
-    
+
     // Create experience for the memory lookup
     let mut experience = Experience::new(
         format!("Memory lookup: {}", query_preview),
-        format!("Searched memory with query '{}', found {} results", input.query, results.len()),
+        format!(
+            "Searched memory with query '{}', found {} results",
+            input.query,
+            results.len()
+        ),
         ExperienceType::MemoryLookup,
         vec![observation.id],
     );
@@ -475,19 +473,18 @@ pub async fn execute_get_memory(
     database: &Arc<SqliteDatabase>,
     memory_retrieval: &Arc<MemoryRetrieval>,
 ) -> Result<ToolOutput> {
-    let uuid = Uuid::parse_str(&input.id)
-        .map_err(|e| anyhow::anyhow!("Invalid UUID: {}", e))?;
-    
+    let uuid = Uuid::parse_str(&input.id).map_err(|e| anyhow::anyhow!("Invalid UUID: {}", e))?;
+
     // Try to get from Working Memory first, then Permanent Memory
     let working = memory_retrieval.working_memory().retrieve(&uuid).await;
     let permanent = memory_retrieval.permanent_memory().retrieve(&uuid).await;
-    
+
     let memory_item = working.or(permanent);
 
     match memory_item {
         Some(m) => {
             let conn = database.connection()?;
-            
+
             // Create observation for memory retrieval (Per Architecture §07)
             let content_preview = if m.content.len() > 50 {
                 format!("{}...", &m.content[..50])
@@ -496,15 +493,21 @@ pub async fn execute_get_memory(
             };
             let observation = Observation::new(
                 format!("Retrieved memory: {}", content_preview),
-                format!("memory_type={}, id={}, layer={}", m.memory_type, m.id, m.layer),
+                format!(
+                    "memory_type={}, id={}, layer={}",
+                    m.memory_type, m.id, m.layer
+                ),
                 "memory_retrieval".to_string(),
             );
             queries::insert_observation(&conn, &observation)?;
-            
+
             // Create experience for the memory retrieval
             let mut experience = Experience::new(
                 format!("Memory retrieved: {}", content_preview),
-                format!("Retrieved {} memory with id {} from {}", m.memory_type, m.id, m.layer),
+                format!(
+                    "Retrieved {} memory with id {} from {}",
+                    m.memory_type, m.id, m.layer
+                ),
                 ExperienceType::MemoryLookup,
                 vec![observation.id],
             );
@@ -521,7 +524,7 @@ pub async fn execute_get_memory(
             }
             let memory_from_exp = MemoryCard::from_experience(&experience);
             queries::insert_memory(&conn, &memory_from_exp)?;
-            
+
             Ok(ToolOutput::success(serde_json::json!({
                 "found": true,
                 "memory": {
@@ -547,17 +550,16 @@ pub async fn execute_get_memory(
 
 /// Execute list memories tool
 /// Per Architecture §6.3: Uses MemoryRetrieval service
-#[allow(unused)]
 pub async fn execute_list_memories(
     input: ListMemoriesInput,
     _database: &Arc<SqliteDatabase>,
     memory_retrieval: &Arc<MemoryRetrieval>,
 ) -> Result<ToolOutput> {
     let limit = input.limit.unwrap_or(20);
-    
+
     // Get recent memories from both Working and Permanent Memory
     let working_items = memory_retrieval.get_context(limit).await;
-    
+
     // Convert MemoryItem to JSON format
     let result: Vec<serde_json::Value> = working_items
         .into_iter()
@@ -626,18 +628,15 @@ pub async fn execute_store_embedding(
 ) -> Result<ToolOutput> {
     let memory_uuid = Uuid::parse_str(&input.memory_id)
         .map_err(|e| anyhow::anyhow!("Invalid memory UUID: {}", e))?;
-    
+
     let model = input.model.unwrap_or_else(|| "default".to_string());
-    
-    let embedding = crate::database::models::MemoryEmbedding::new(
-        memory_uuid,
-        input.embedding,
-        model,
-    );
-    
+
+    let embedding =
+        crate::database::models::MemoryEmbedding::new(memory_uuid, input.embedding, model);
+
     let conn = database.connection()?;
     queries::insert_embedding(&conn, &embedding)?;
-    
+
     Ok(ToolOutput::success(serde_json::json!({
         "success": true,
         "id": embedding.id.to_string(),
@@ -654,9 +653,9 @@ pub async fn execute_get_embedding(
 ) -> Result<ToolOutput> {
     let memory_uuid = Uuid::parse_str(&input.memory_id)
         .map_err(|e| anyhow::anyhow!("Invalid memory UUID: {}", e))?;
-    
+
     let conn = database.connection()?;
-    
+
     match queries::get_embedding_by_memory_id(&conn, memory_uuid)? {
         Some(embedding) => Ok(ToolOutput::success(serde_json::json!({
             "found": true,
@@ -679,28 +678,28 @@ pub async fn execute_search_similar(
 ) -> Result<ToolOutput> {
     let limit = input.limit.unwrap_or(5);
     let min_similarity = input.min_similarity.unwrap_or(0.5);
-    
+
     let query_embedding = crate::database::models::MemoryEmbedding::new(
         Uuid::new_v4(),
         input.query_embedding,
         "query".to_string(),
     );
-    
+
     let conn = database.connection()?;
     let embeddings = queries::list_embeddings(&conn, 1000)?;
-    
+
     let mut similarities: Vec<(String, f32)> = Vec::new();
-    
+
     for emb in embeddings {
         let similarity = query_embedding.cosine_similarity(&emb);
         if similarity >= min_similarity {
             similarities.push((emb.memory_id.to_string(), similarity));
         }
     }
-    
+
     similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
     similarities.truncate(limit);
-    
+
     Ok(ToolOutput::success(serde_json::json!({
         "results": similarities,
         "count": similarities.len(),
@@ -714,10 +713,10 @@ pub async fn execute_list_embeddings(
     database: &Arc<SqliteDatabase>,
 ) -> Result<ToolOutput> {
     let limit = input.limit.unwrap_or(100);
-    
+
     let conn = database.connection()?;
     let embeddings = queries::list_embeddings(&conn, limit)?;
-    
+
     let result: Vec<serde_json::Value> = embeddings
         .into_iter()
         .map(|e| {
@@ -729,7 +728,7 @@ pub async fn execute_list_embeddings(
             })
         })
         .collect();
-    
+
     Ok(ToolOutput::success(serde_json::json!({
         "embeddings": result,
         "count": result.len()
@@ -743,10 +742,10 @@ pub async fn execute_delete_embedding(
 ) -> Result<ToolOutput> {
     let memory_uuid = Uuid::parse_str(&input.memory_id)
         .map_err(|e| anyhow::anyhow!("Invalid memory UUID: {}", e))?;
-    
+
     let conn = database.connection()?;
     let deleted = queries::delete_embedding_by_memory_id(&conn, memory_uuid)?;
-    
+
     Ok(ToolOutput::success(serde_json::json!({
         "success": deleted,
         "deleted": deleted
@@ -754,12 +753,10 @@ pub async fn execute_delete_embedding(
 }
 
 /// Execute get embedding stats tool
-pub async fn execute_get_embedding_stats(
-    database: &Arc<SqliteDatabase>,
-) -> Result<ToolOutput> {
+pub async fn execute_get_embedding_stats(database: &Arc<SqliteDatabase>) -> Result<ToolOutput> {
     let conn = database.connection()?;
     let count = queries::count_embeddings(&conn)?;
-    
+
     Ok(ToolOutput::success(serde_json::json!({
         "total_embeddings": count
     })))

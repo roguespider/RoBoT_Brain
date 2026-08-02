@@ -1,7 +1,5 @@
-
 // src/tools/ingestor/archive_handler.rs
 // Archive extraction and temp folder management
-
 
 use std::fs;
 use std::path::{Path, PathBuf};
@@ -25,12 +23,11 @@ pub fn create_archive_temp_dir(archive_name: &str) -> PathBuf {
         .duration_since(std::time::UNIX_EPOCH)
         .expect("System time should always be after UNIX_EPOCH on modern systems")
         .as_secs();
-    
+
     // Sanitize archive name for directory name
-    let sanitized = archive_name
-        .replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
+    let sanitized = archive_name.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
     let folder_name = format!("{}_{}", sanitized, timestamp);
-    
+
     let path = temp_base.join(folder_name);
     fs::create_dir_all(&path).ok();
     path
@@ -41,7 +38,7 @@ pub fn delete_empty_folders(dir: &Path) {
     if !dir.exists() {
         return;
     }
-    
+
     // First, recurse into subdirectories
     if let Ok(entries) = fs::read_dir(dir) {
         for entry in entries.filter_map(|e| e.ok()) {
@@ -51,7 +48,7 @@ pub fn delete_empty_folders(dir: &Path) {
             }
         }
     }
-    
+
     // Then check if this directory is empty and delete it
     if let Ok(mut entries) = fs::read_dir(dir) {
         if entries.next().is_none() {
@@ -61,23 +58,22 @@ pub fn delete_empty_folders(dir: &Path) {
 }
 
 /// Process archive file and extract to temp directory
-#[allow(unused)]
 pub fn process_archive(archive_path: &Path, _temp_dir: &Path) -> Result<Vec<PathBuf>> {
     let extension = archive_path
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("")
         .to_lowercase();
-    
+
     let file_name = archive_path
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("archive");
-    
+
     // Create temp dir for this specific archive
     let extract_dir = create_archive_temp_dir(file_name);
     fs::create_dir_all(&extract_dir)?;
-    
+
     match extension.as_str() {
         "zip" => extract_zip(archive_path, &extract_dir)?,
         "tar" => extract_tar(archive_path, &extract_dir)?,
@@ -95,7 +91,7 @@ pub fn process_archive(archive_path: &Path, _temp_dir: &Path) -> Result<Vec<Path
         }
         _ => anyhow::bail!("Unsupported archive format: {}", extension),
     }
-    
+
     // Collect all extracted files
     let files = collect_all_files_recursive(&extract_dir)?;
     Ok(files)
@@ -105,11 +101,11 @@ pub fn process_archive(archive_path: &Path, _temp_dir: &Path) -> Result<Vec<Path
 fn extract_zip(archive_path: &Path, dest: &Path) -> Result<()> {
     let file = fs::File::open(archive_path)?;
     let mut archive = ZipArchive::new(file)?;
-    
+
     for i in 0..archive.len() {
         let mut file = archive.by_index(i)?;
         let outpath = dest.join(file.mangled_name());
-        
+
         if file.name().ends_with('/') {
             fs::create_dir_all(&outpath)?;
         } else {
@@ -146,13 +142,13 @@ fn extract_tar_gz(archive_path: &Path, dest: &Path) -> Result<()> {
 fn extract_gz(archive_path: &Path, dest: &Path) -> Result<()> {
     let file = fs::File::open(archive_path)?;
     let mut decoder = GzDecoder::new(file);
-    
+
     let file_name = archive_path
         .file_stem()
         .and_then(|n| n.to_str())
         .unwrap_or("extracted");
     let out_path = dest.join(file_name);
-    
+
     let mut outfile = fs::File::create(&out_path)?;
     io::copy(&mut decoder, &mut outfile)?;
     Ok(())
@@ -160,17 +156,15 @@ fn extract_gz(archive_path: &Path, dest: &Path) -> Result<()> {
 
 /// Extract BZ2 file (single file)
 fn extract_bz2(archive_path: &Path, dest: &Path) -> Result<()> {
-    
-    
     let file = fs::File::open(archive_path)?;
     let mut decoder = bzip2::read::BzDecoder::new(file);
-    
+
     let file_name = archive_path
         .file_stem()
         .and_then(|n| n.to_str())
         .unwrap_or("extracted");
     let out_path = dest.join(file_name);
-    
+
     let mut outfile = fs::File::create(&out_path)?;
     io::copy(&mut decoder, &mut outfile)?;
     Ok(())
@@ -178,17 +172,15 @@ fn extract_bz2(archive_path: &Path, dest: &Path) -> Result<()> {
 
 /// Extract XZ file (single file)
 fn extract_xz(archive_path: &Path, dest: &Path) -> Result<()> {
-    
-    
     let file = fs::File::open(archive_path)?;
     let mut decoder = xz2::read::XzDecoder::new(file);
-    
+
     let file_name = archive_path
         .file_stem()
         .and_then(|n| n.to_str())
         .unwrap_or("extracted");
     let out_path = dest.join(file_name);
-    
+
     let mut outfile = fs::File::create(&out_path)?;
     io::copy(&mut decoder, &mut outfile)?;
     Ok(())
