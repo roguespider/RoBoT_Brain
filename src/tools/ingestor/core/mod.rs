@@ -10,5 +10,5 @@ pub mod types;
 // Re-exports for types (transitive - used by ingestor/mod.rs)
 pub use types::{
     DeleteIngestedFilesInput, IngestFilesInput, ListImportableInput, ListIngestedFilesInput,
-    TranscribeAudioInput, DEFAULT_INGEST_TIMEOUT_SECS,
+    TranscribeAudioInput,
 };

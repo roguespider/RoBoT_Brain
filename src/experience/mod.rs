@@ -18,8 +18,7 @@ pub mod hypothesis;
 pub mod integration;
 
 pub mod metrics;
-pub mod observer;
-pub mod observers; // Observer implementations for learning subsystems
+pub mod observer; // Observer trait + concrete implementations
 pub mod queue;
 
 pub mod reflection;

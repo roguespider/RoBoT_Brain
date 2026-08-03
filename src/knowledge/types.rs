@@ -505,7 +505,7 @@ impl KnowledgeVersionInfo {
 
     /// Bump version number
     pub fn bump_major(&mut self) {
-        if let Some((major, _minor, _patch)) = KnowledgeVersion::parse(&self.current_version) {
+        if let Some((major, minor, patch)) = KnowledgeVersion::parse(&self.current_version) {
             let new_ver = format!("{}.{}.{}", major + 1, 0, 0);
             self.create_version(&new_ver, "Major version bump", 0.5);
         }

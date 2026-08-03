@@ -1,4 +1,4 @@
-// /src/experience/observers.rs
+// src/experience/observer/impls.rs
 //! Observer implementations for the learning subsystems
 //!
 //! Per Architecture §22 - Background Workers:
@@ -321,7 +321,7 @@ impl ExperienceObserver for MetricsObserver {
         "MetricsObserver"
     }
 
-    fn accepts(&self, _event: &ExperienceEvent) -> bool {
+    fn accepts(&self, event: &ExperienceEvent) -> bool {
         true
     }
 

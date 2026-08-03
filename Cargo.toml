@@ -2,7 +2,7 @@
 name = "robot_brain"
 version = "0.0.1"
 edition = "2021"
-description = "A Rust MCP server for lm studio or zed editor or anywhere you can use an mcp with persistent memory and experience-based learning"
+description = "A Rust MCP server for anywhere you can use an mcp with persistent memory and experience-based learning"
 readme = "README.md"
 license = "AGPL-3.0-or-later"
 keywords = ["mcp", "ai", "memory", "agent"]
@@ -21,14 +21,15 @@ strip = true
 
 [dependencies]
 rmcp = { version = "2", features = ["server", "client", "transport-io", "macros", "transport-child-process"] }
-schemars = "1"
+schemars = "1" # used by rmcp
 tokio = { version = "1", features = ["full"] }
 serde = { version = "1", features = ["derive"] }
+rusqlite = { version = "0.32", features = ["load_extension", "bundled"] }
 serde_json = "1"
 anyhow = "1"
 chrono = { version = "0.4", features = ["serde"] }
 uuid = { version = "1", features = ["v4", "serde"] }
-regex = "1"
+regex = "1" # used by tokenizers
 walkdir = "2"
 zip = "2"
 tar = "0.4"
@@ -36,20 +37,19 @@ flate2 = "1"
 bzip2 = "0.4"
 xz2 = "0.1"
 sha2 = "0.10"
-lazy_static = "1"
-dirs = "5"
-rusqlite = { version = "0.32", features = ["load_extension", "bundled"] }
-zerocopy = { version = "0.7", features = ["derive"] }
-tracing = "0.1"
-tracing-subscriber = "0.3"
-futures = "0.3"
+lazy_static = "1" # used by src/tools/exploration/handlers.rs
+futures = "0.3" # used by rmcp, hf-hub
+ureq = "2" # used by hf-hub
+dirs = "5" # used by hf-hub
+zerocopy = { version = "0.7", features = ["derive"] } # used by rusqlite
+tracing = "0.1" # server logging via tracing-subscriber (replaces deprecated MCP logging)
+tracing-subscriber = { version = "0.3", features = ["env-filter"] } # stderr logging
 
 # Audio transcription - Candle Whisper integration
 candle-nn = "0.8.4"
 candle-transformers = "0.8.4"
 hf-hub = "0.4.0"          # Downloads Whisper models from HuggingFace
-tokenizers = "0.21.0"
-ureq = "2"                 # HTTP client for downloading models
+tokenizers = "0.21.0"     # pulls in regex (transitively)
 
 [target.'cfg(windows)'.dependencies]
 windows-sys = { version = "0.59", features = [

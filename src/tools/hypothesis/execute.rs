@@ -2,26 +2,25 @@
 
 // Tool execution functions for the Hypothesis Engine
 
-
-use std::sync::Arc;
 use anyhow::Result;
+use std::sync::Arc;
 use uuid::Uuid;
 
+use crate::database::models::{Hypothesis, HypothesisStatus, Knowledge};
 use crate::database::sqlite::SqliteDatabase;
 use crate::tools::ToolOutput;
-use crate::database::models::{Hypothesis, HypothesisStatus, Knowledge};
 
 use super::db::{
-    record_observation, create_hypothesis, get_hypothesis_by_id, update_hypothesis,
-    add_evidence, get_evidence_for_hypothesis, create_knowledge, get_knowledge,
+    add_evidence, create_hypothesis, create_knowledge, get_evidence_by_id,
+    get_evidence_for_hypothesis, get_hypothesis_by_id, get_knowledge, list_evidence,
+    record_observation, update_hypothesis,
 };
-use crate::database::queries::{list_observations};
-use crate::database::models::{Observation, Evidence};
+use crate::database::models::{Evidence, Observation};
+use crate::database::queries::list_observations;
 use crate::tools::hypothesis::{
-    RecordObservationInput, CreateHypothesisInput, AddEvidenceInput,
-    GetHypothesisInput, ListHypothesesInput, ListObservationsInput,
-    EvaluateHypothesisInput, GetKnowledgeInput, ExtractKnowledgeInput,
-    
+    AddEvidenceInput, CreateHypothesisInput, EvaluateHypothesisInput, ExtractKnowledgeInput,
+    GetEvidenceInput, GetHypothesisInput, GetKnowledgeInput, ListEvidenceInput,
+    ListHypothesesInput, ListObservationsInput, RecordObservationInput,
 };
 
 // ============================================================================
@@ -32,14 +31,10 @@ pub async fn execute_record_observation(
     input: RecordObservationInput,
     db: &Arc<SqliteDatabase>,
 ) -> Result<ToolOutput> {
-    let observation = Observation::new(
-        input.content,
-        input.context,
-        input.observation_type,
-    );
-    
+    let observation = Observation::new(input.content, input.context, input.observation_type);
+
     record_observation(db, &observation).await?;
-    
+
     Ok(ToolOutput::success(serde_json::json!({
         "status": "observation_recorded",
         "observation": {
@@ -59,9 +54,9 @@ pub async fn execute_create_hypothesis(
 ) -> Result<ToolOutput> {
     let mut hypothesis = Hypothesis::new(input.statement, input.domain);
     hypothesis.source_observations = input.source_observations;
-    
+
     create_hypothesis(db, &hypothesis).await?;
-    
+
     Ok(ToolOutput::success(serde_json::json!({
         "status": "hypothesis_created",
         "hypothesis": {
@@ -82,12 +77,12 @@ pub async fn execute_add_evidence(
 ) -> Result<ToolOutput> {
     let hypothesis_id = Uuid::parse_str(&input.hypothesis_id)
         .map_err(|e| anyhow::anyhow!("Invalid hypothesis ID: {}", e))?;
-    
+
     // Get hypothesis to update counts
     let mut hypothesis = get_hypothesis_by_id(db, &hypothesis_id)
         .await?
         .ok_or_else(|| anyhow::anyhow!("Hypothesis not found"))?;
-    
+
     // Create evidence
     let evidence = Evidence::new(
         hypothesis_id,
@@ -96,9 +91,9 @@ pub async fn execute_add_evidence(
         input.direction.clone(),
         input.strength,
     );
-    
+
     add_evidence(db, &evidence).await?;
-    
+
     // Update hypothesis counts
     if input.direction == "support" {
         hypothesis.supporting_count += 1;
@@ -106,15 +101,15 @@ pub async fn execute_add_evidence(
         hypothesis.contradicting_count += 1;
     }
     hypothesis.updated_at = chrono::Utc::now();
-    
+
     // Recalculate confidence
     let total = hypothesis.supporting_count + hypothesis.contradicting_count;
     if total > 0 {
         hypothesis.confidence = hypothesis.supporting_count as f32 / total as f32;
     }
-    
+
     update_hypothesis(db, &hypothesis).await?;
-    
+
     Ok(ToolOutput::success(serde_json::json!({
         "status": "evidence_added",
         "evidence": {
@@ -139,13 +134,13 @@ pub async fn execute_get_hypothesis(
 ) -> Result<ToolOutput> {
     let hypothesis_id = Uuid::parse_str(&input.hypothesis_id)
         .map_err(|e| anyhow::anyhow!("Invalid hypothesis ID: {}", e))?;
-    
+
     let hypothesis = get_hypothesis_by_id(db, &hypothesis_id)
         .await?
         .ok_or_else(|| anyhow::anyhow!("Hypothesis not found"))?;
-    
+
     let evidence = get_evidence_for_hypothesis(db, &hypothesis_id).await?;
-    
+
     Ok(ToolOutput::success(serde_json::json!({
         "hypothesis": {
             "id": hypothesis.id.to_string(),
@@ -176,14 +171,14 @@ pub async fn execute_list_hypotheses(
 ) -> Result<ToolOutput> {
     let conn = db.connection()?;
     let limit = input.limit.unwrap_or(10) as i64;
-    
+
     let mut results = Vec::new();
-    
+
     // Build query based on filters
     match (&input.domain, &input.status) {
         (Some(domain), Some(status)) => {
             let mut stmt = conn.prepare(
-                "SELECT id, statement, domain, status, confidence, supporting_count, contradicting_count, created_at, updated_at 
+                "SELECT id, statement, domain, status, confidence, supporting_count, contradicting_count, created_at, updated_at
                  FROM hypotheses WHERE domain = ?1 AND status = ?2 ORDER BY updated_at DESC LIMIT ?3"
             )?;
             let iter = stmt.query_map((domain, status, limit), |row| {
@@ -205,7 +200,7 @@ pub async fn execute_list_hypotheses(
         }
         (Some(domain), None) => {
             let mut stmt = conn.prepare(
-                "SELECT id, statement, domain, status, confidence, supporting_count, contradicting_count, created_at, updated_at 
+                "SELECT id, statement, domain, status, confidence, supporting_count, contradicting_count, created_at, updated_at
                  FROM hypotheses WHERE domain = ?1 ORDER BY updated_at DESC LIMIT ?2"
             )?;
             let iter = stmt.query_map((domain, limit), |row| {
@@ -227,7 +222,7 @@ pub async fn execute_list_hypotheses(
         }
         (None, Some(status)) => {
             let mut stmt = conn.prepare(
-                "SELECT id, statement, domain, status, confidence, supporting_count, contradicting_count, created_at, updated_at 
+                "SELECT id, statement, domain, status, confidence, supporting_count, contradicting_count, created_at, updated_at
                  FROM hypotheses WHERE status = ?1 ORDER BY updated_at DESC LIMIT ?2"
             )?;
             let iter = stmt.query_map((status, limit), |row| {
@@ -249,7 +244,7 @@ pub async fn execute_list_hypotheses(
         }
         (None, None) => {
             let mut stmt = conn.prepare(
-                "SELECT id, statement, domain, status, confidence, supporting_count, contradicting_count, created_at, updated_at 
+                "SELECT id, statement, domain, status, confidence, supporting_count, contradicting_count, created_at, updated_at
                  FROM hypotheses ORDER BY updated_at DESC LIMIT ?1"
             )?;
             let iter = stmt.query_map([limit], |row| {
@@ -270,7 +265,7 @@ pub async fn execute_list_hypotheses(
             }
         }
     }
-    
+
     Ok(ToolOutput::success(serde_json::json!({
         "hypotheses": results,
         "count": results.len()
@@ -283,36 +278,40 @@ pub async fn execute_list_observations(
 ) -> Result<ToolOutput> {
     let conn = db.connection()?;
     let limit = input.limit.unwrap_or(10);
-    
+
     // Use queries.rs list_observations which handles the full observation retrieval
     let observations = list_observations(&conn, limit)?;
-    
+
     // Filter by observation_type if specified
     let results: Vec<_> = if let Some(ref obs_type) = input.observation_type {
         observations
             .into_iter()
             .filter(|o| o.observation_type == *obs_type)
-            .map(|o| serde_json::json!({
-                "id": o.id.to_string(),
-                "content": o.content,
-                "context": o.context,
-                "observation_type": o.observation_type,
-                "created_at": o.created_at.to_rfc3339()
-            }))
+            .map(|o| {
+                serde_json::json!({
+                    "id": o.id.to_string(),
+                    "content": o.content,
+                    "context": o.context,
+                    "observation_type": o.observation_type,
+                    "created_at": o.created_at.to_rfc3339()
+                })
+            })
             .collect()
     } else {
         observations
             .into_iter()
-            .map(|o| serde_json::json!({
-                "id": o.id.to_string(),
-                "content": o.content,
-                "context": o.context,
-                "observation_type": o.observation_type,
-                "created_at": o.created_at.to_rfc3339()
-            }))
+            .map(|o| {
+                serde_json::json!({
+                    "id": o.id.to_string(),
+                    "content": o.content,
+                    "context": o.context,
+                    "observation_type": o.observation_type,
+                    "created_at": o.created_at.to_rfc3339()
+                })
+            })
             .collect()
     };
-    
+
     Ok(ToolOutput::success(serde_json::json!({
         "observations": results,
         "count": results.len()
@@ -325,23 +324,26 @@ pub async fn execute_evaluate_hypothesis(
 ) -> Result<ToolOutput> {
     let hypothesis_id = Uuid::parse_str(&input.hypothesis_id)
         .map_err(|e| anyhow::anyhow!("Invalid hypothesis ID: {}", e))?;
-    
+
     let mut hypothesis = get_hypothesis_by_id(db, &hypothesis_id)
         .await?
         .ok_or_else(|| anyhow::anyhow!("Hypothesis not found"))?;
-    
+
     let evidence = get_evidence_for_hypothesis(db, &hypothesis_id).await?;
-    
+
     // Calculate new status based on evidence
     let supporting_count = evidence.iter().filter(|e| e.direction == "support").count() as u32;
-    let contradicting_count = evidence.iter().filter(|e| e.direction == "contradict").count() as u32;
+    let contradicting_count = evidence
+        .iter()
+        .filter(|e| e.direction == "contradict")
+        .count() as u32;
     let total = supporting_count + contradicting_count;
-    
+
     // Update counts
     hypothesis.supporting_count = supporting_count;
     hypothesis.contradicting_count = contradicting_count;
     hypothesis.updated_at = chrono::Utc::now();
-    
+
     // Determine status
     if total >= 3 {
         // Enough evidence to evaluate
@@ -363,9 +365,9 @@ pub async fn execute_evaluate_hypothesis(
             0.5
         };
     }
-    
+
     update_hypothesis(db, &hypothesis).await?;
-    
+
     Ok(ToolOutput::success(serde_json::json!({
         "hypothesis_id": hypothesis_id.to_string(),
         "evaluation": {
@@ -394,17 +396,22 @@ pub async fn execute_get_knowledge(
 ) -> Result<ToolOutput> {
     let limit = input.limit.unwrap_or(10);
     let knowledge = get_knowledge(db, input.domain.as_deref(), limit).await?;
-    
+
     let count = knowledge.len();
-    let knowledge_json: Vec<_> = knowledge.into_iter().map(|k| serde_json::json!({
-        "id": k.id.to_string(),
-        "content": k.content,
-        "domain": k.domain,
-        "confidence": k.confidence,
-        "derivation": k.derivation,
-        "created_at": k.created_at.to_rfc3339()
-    })).collect();
-    
+    let knowledge_json: Vec<_> = knowledge
+        .into_iter()
+        .map(|k| {
+            serde_json::json!({
+                "id": k.id.to_string(),
+                "content": k.content,
+                "domain": k.domain,
+                "confidence": k.confidence,
+                "derivation": k.derivation,
+                "created_at": k.created_at.to_rfc3339()
+            })
+        })
+        .collect();
+
     Ok(ToolOutput::success(serde_json::json!({
         "knowledge": knowledge_json,
         "count": count
@@ -417,11 +424,11 @@ pub async fn execute_extract_knowledge(
 ) -> Result<ToolOutput> {
     let hypothesis_id = Uuid::parse_str(&input.hypothesis_id)
         .map_err(|e| anyhow::anyhow!("Invalid hypothesis ID: {}", e))?;
-    
+
     let hypothesis = get_hypothesis_by_id(db, &hypothesis_id)
         .await?
         .ok_or_else(|| anyhow::anyhow!("Hypothesis not found"))?;
-    
+
     // Only allow extracting from supported hypotheses
     if hypothesis.status != HypothesisStatus::Supported {
         return Ok(ToolOutput::error(format!(
@@ -429,7 +436,7 @@ pub async fn execute_extract_knowledge(
             hypothesis.status
         )));
     }
-    
+
     // Create knowledge
     let mut knowledge = Knowledge::new(
         input.knowledge_content,
@@ -438,15 +445,15 @@ pub async fn execute_extract_knowledge(
     );
     knowledge.source_hypothesis = Some(hypothesis_id);
     knowledge.confidence = hypothesis.confidence;
-    
+
     create_knowledge(db, &knowledge).await?;
-    
+
     // Mark hypothesis as superseded (knowledge extracted)
     let mut updated_hypothesis = hypothesis;
     updated_hypothesis.status = HypothesisStatus::Superseded;
     updated_hypothesis.updated_at = chrono::Utc::now();
     update_hypothesis(db, &updated_hypothesis).await?;
-    
+
     Ok(ToolOutput::success(serde_json::json!({
         "status": "knowledge_extracted",
         "knowledge": {
@@ -459,5 +466,66 @@ pub async fn execute_extract_knowledge(
         },
         "hypothesis_status": "superseded",
         "learning_complete": "This knowledge is now available for future decisions. The hypothesis has been superseded by the extracted knowledge."
+    })))
+}
+
+pub async fn execute_get_evidence(
+    input: GetEvidenceInput,
+    db: &Arc<SqliteDatabase>,
+) -> Result<ToolOutput> {
+    let evidence_id = Uuid::parse_str(&input.evidence_id)
+        .map_err(|e| anyhow::anyhow!("Invalid evidence ID: {}", e))?;
+
+    let evidence = get_evidence_by_id(db, &evidence_id)
+        .await?
+        .ok_or_else(|| anyhow::anyhow!("Evidence not found"))?;
+
+    Ok(ToolOutput::success(serde_json::json!({
+        "evidence": {
+            "id": evidence.id.to_string(),
+            "hypothesis_id": evidence.hypothesis_id.to_string(),
+            "content": evidence.content,
+            "evidence_type": evidence.evidence_type,
+            "direction": evidence.direction,
+            "strength": evidence.strength,
+            "experience_id": evidence.experience_id.map(|u| u.to_string()),
+            "created_at": evidence.created_at.to_rfc3339()
+        }
+    })))
+}
+
+pub async fn execute_list_evidence(
+    input: ListEvidenceInput,
+    db: &Arc<SqliteDatabase>,
+) -> Result<ToolOutput> {
+    let limit = input.limit.unwrap_or(50);
+
+    let evidence_list = list_evidence(
+        db,
+        input.evidence_type.as_deref(),
+        input.direction.as_deref(),
+        limit,
+    )
+    .await?;
+
+    let evidence_json: Vec<serde_json::Value> = evidence_list
+        .iter()
+        .map(|e| {
+            serde_json::json!({
+                "id": e.id.to_string(),
+                "hypothesis_id": e.hypothesis_id.to_string(),
+                "content": e.content,
+                "evidence_type": e.evidence_type,
+                "direction": e.direction,
+                "strength": e.strength,
+                "experience_id": e.experience_id.map(|u| u.to_string()),
+                "created_at": e.created_at.to_rfc3339()
+            })
+        })
+        .collect();
+
+    Ok(ToolOutput::success(serde_json::json!({
+        "evidence": evidence_json,
+        "count": evidence_json.len()
     })))
 }

@@ -241,7 +241,7 @@ pub async fn execute_record_experience(
 
 /// Execute get experience stats tool
 pub async fn execute_get_experience_stats(
-    _input: GetExperienceStatsInput,
+    input: GetExperienceStatsInput,
     database: &Arc<SqliteDatabase>,
 ) -> Result<ToolOutput> {
     let conn = database.connection()?;

@@ -1,8 +1,5 @@
-
-
 // src/tools/hypothesis/mod.rs
 // Hypothesis Engine: Observation -> Hypothesis -> Test -> Evidence -> Knowledge
-
 
 mod db;
 mod execute;
@@ -73,16 +70,30 @@ pub struct EvaluateHypothesisInput {
     pub hypothesis_id: String,
 }
 
-/// Convert supported hypothesis to knowledge
+/// Extract supported hypothesis to knowledge
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct ExtractKnowledgeInput {
     pub hypothesis_id: String,
     pub knowledge_content: String,
 }
 
+/// Get evidence by ID
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct GetEvidenceInput {
+    pub evidence_id: String,
+}
+
+/// List all evidence across hypotheses
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct ListEvidenceInput {
+    pub evidence_type: Option<String>,
+    pub direction: Option<String>,
+    pub limit: Option<usize>,
+}
+
 // ============================================================================
 // TOOL DEFINITIONS
-// ============================================================================
+// =============================================================================
 
 pub mod definitions {
     pub const RECORD_OBSERVATION: &str = "record_observation";
@@ -95,6 +106,8 @@ pub mod definitions {
     pub const EVALUATE_HYPOTHESIS: &str = "evaluate_hypothesis";
     pub const GET_KNOWLEDGE: &str = "get_knowledge";
     pub const EXTRACT_KNOWLEDGE: &str = "extract_knowledge";
+    pub const GET_EVIDENCE: &str = "get_evidence";
+    pub const LIST_EVIDENCE: &str = "list_evidence";
 
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         vec![
@@ -288,14 +301,49 @@ pub mod definitions {
                     "required": ["hypothesis_id", "knowledge_content"]
                 }),
             },
+            crate::bridge::mcp::McpTool {
+                name: GET_EVIDENCE.to_string(),
+                description: "Get a specific evidence record by its ID. Returns full evidence details including associated hypothesis.".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "evidence_id": {
+                            "type": "string",
+                            "description": "ID of the evidence to retrieve"
+                        }
+                    },
+                    "required": ["evidence_id"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: LIST_EVIDENCE.to_string(),
+                description: "List all evidence records across hypotheses with optional filters.".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "evidence_type": {
+                            "type": "string",
+                            "description": "Filter by type: success, failure, correlation, anomaly"
+                        },
+                        "direction": {
+                            "type": "string",
+                            "description": "Filter by direction: support, contradict"
+                        },
+                        "limit": {
+                            "type": "integer",
+                            "description": "Maximum number of results (default: 50)"
+                        }
+                    }
+                }),
+            },
         ]
     }
 }
 
 // Re-export execution functions for use by MCP handlers
 pub use execute::{
-    execute_record_observation, execute_create_hypothesis, execute_add_evidence,
-    execute_get_hypothesis, execute_list_hypotheses, 
-    execute_list_observations, execute_evaluate_hypothesis, execute_get_knowledge, 
-    execute_extract_knowledge,
+    execute_add_evidence, execute_create_hypothesis, execute_evaluate_hypothesis,
+    execute_extract_knowledge, execute_get_evidence, execute_get_hypothesis, execute_get_knowledge,
+    execute_list_evidence, execute_list_hypotheses, execute_list_observations,
+    execute_record_observation,
 };

@@ -20,7 +20,7 @@ use crate::experience::hypothesis::HypothesisEngine;
 use crate::experience::integration::event_subscriber::{start_event_subscriber, EventSubscriber};
 use crate::experience::integration::reflection_pipeline::ReflectionPipeline;
 use crate::experience::metrics::MetricsCollector;
-use crate::experience::observers::{HypothesisObserver, MetricsObserver, ReputationObserver};
+use crate::experience::observer::{HypothesisObserver, MetricsObserver, ReputationObserver};
 use crate::experience::reflection::ReflectionEngine;
 use crate::experience::reputation::decay::ReputationDecay;
 use crate::experience::scheduler::{Scheduler, TaskSchedule, TaskType};

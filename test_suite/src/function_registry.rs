@@ -822,37 +822,8 @@ impl FunctionRegistry {
         ]
     }
 
-    fn agent_tools() -> Vec<TestRequirement> {
+    fn ingestor_tools() -> Vec<TestRequirement> {
         vec![
-            TestRequirement {
-                id: "agent_get_workflow_default".to_string(),
-                function_name: "get_workflow".to_string(),
-                category: "Agent".to_string(),
-                requires_workflow: false,
-                requires_data: None,
-                expected_behavior: "Returns workflow rules when called with 'default' purpose"
-                    .to_string(),
-                validation: vec![ValidationCheck {
-                    check_type: CheckType::HasField,
-                    field: "workflow".to_string(),
-                    expected_value: None,
-                }],
-                priority: 1,
-            },
-            TestRequirement {
-                id: "agent_list_tools".to_string(),
-                function_name: "list_tools".to_string(),
-                category: "Agent".to_string(),
-                requires_workflow: true,
-                requires_data: None,
-                expected_behavior: "Lists files available for import".to_string(),
-                validation: vec![ValidationCheck {
-                    check_type: CheckType::HasField,
-                    field: "files".to_string(),
-                    expected_value: None,
-                }],
-                priority: 1,
-            },
             TestRequirement {
                 id: "ingestor_list_importable_recursive".to_string(),
                 function_name: "list_importable".to_string(),
@@ -866,20 +837,6 @@ impl FunctionRegistry {
                     expected_value: None,
                 }],
                 priority: 2,
-            },
-            TestRequirement {
-                id: "ingestor_ingest_text".to_string(),
-                function_name: "ingest_files".to_string(),
-                category: "Ingestor".to_string(),
-                requires_workflow: true,
-                requires_data: None,
-                expected_behavior: "Ingests a text file".to_string(),
-                validation: vec![ValidationCheck {
-                    check_type: CheckType::IsSuccess,
-                    field: "success".to_string(),
-                    expected_value: None,
-                }],
-                priority: 1,
             },
             TestRequirement {
                 id: "ingestor_ingest_json".to_string(),

@@ -540,7 +540,7 @@ impl LearningCoordinator {
     /// Start exploration for a hypothesis
     pub async fn start_exploration(
         &self,
-        _hypothesis_id: String,
+        hypothesis_id: String,
         title: String,
         purpose: String,
     ) -> Result<String> {
@@ -584,7 +584,7 @@ impl LearningCoordinator {
         let mut store = self.explorations.write().await;
         let mut archived = 0;
 
-        store.retain(|_id, exp| {
+        store.retain(|id, exp| {
             if let Some(completed) = exp.completed_at {
                 if completed < cutoff {
                     archived += 1;
