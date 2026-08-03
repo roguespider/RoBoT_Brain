@@ -70,12 +70,11 @@ impl McpServerHandler {
 #[tool_handler]
 impl rmcp::handler::server::ServerHandler for McpServerHandler {
     fn get_info(&self) -> rmcp::model::ServerInfo {
-        use rmcp::model::ServerCapabilitiesBuilder;
+        use rmcp::model::ServerCapabilities;
 
-        let capabilities = ServerCapabilitiesBuilder::default()
+        let capabilities = ServerCapabilities::builder()
             .enable_experimental()
             .enable_extensions()
-            .enable_logging()
             .enable_completions()
             .enable_prompts()
             .enable_resources()

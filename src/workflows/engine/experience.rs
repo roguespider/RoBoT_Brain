@@ -93,7 +93,14 @@ impl ExperienceRecord {
         let observation = Self::build_observation(action, params);
         let outcome = Self::build_outcome(result);
         let search_query = build_search_query(action, params);
-        let title = format!("Workflow: {}", params.get("title").or(params.get("name")).cloned().unwrap_or_else(|| action.replace('_', " ")));
+        let title = format!(
+            "Workflow: {}",
+            params
+                .get("title")
+                .or(params.get("name"))
+                .cloned()
+                .unwrap_or_else(|| action.replace('_', " "))
+        );
         let outcome_kind = if result.success { "success" } else { "failure" }.to_string();
 
         let reflection_questions = vec![
@@ -116,7 +123,7 @@ impl ExperienceRecord {
     }
 
     /// Build raw observation - observable facts only
-    fn build_observation(action: &str, _params: &HashMap<String, String>) -> String {
+    fn build_observation(action: &str, params: &HashMap<String, String>) -> String {
         match action {
             "create_file" | "write_file" => "File operation: create/write".to_string(),
             "edit_file" => "File operation: edit".to_string(),

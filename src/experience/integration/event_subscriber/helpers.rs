@@ -52,7 +52,7 @@ impl EventSubscriber {
     /// Update knowledge store from reflection insights
     pub(super) async fn update_knowledge_from_reflection(
         &self,
-        _reflection: &crate::experience::reflection::Reflection,
+        reflection: &crate::experience::reflection::Reflection,
     ) -> Result<()> {
         // Extract insights and create knowledge items
         // This bridges Reflection → Knowledge per Architecture §4.04
@@ -62,8 +62,8 @@ impl EventSubscriber {
     /// Update knowledge from validated hypothesis
     pub(super) async fn update_knowledge_from_hypothesis(
         &self,
-        _hypothesis: &crate::experience::hypothesis::core::hypothesis::Hypothesis,
-        _result: &str,
+        hypothesis: &crate::experience::hypothesis::core::hypothesis::Hypothesis,
+        result: &str,
     ) -> Result<()> {
         // If hypothesis is validated, create knowledge from it
         // Per Architecture §2.5: "Hypothesis is a temporary model waiting for evidence"
@@ -74,7 +74,7 @@ impl EventSubscriber {
     pub(super) async fn update_hypothesis_with_evidence(
         &self,
         hypothesis_id: &str,
-        _evidence: &crate::experience::events::payload::EventPayload,
+        evidence: &crate::experience::events::payload::EventPayload,
     ) -> Result<()> {
         // Update hypothesis confidence based on evidence
         tracing::debug!("Updating hypothesis {} with new evidence", hypothesis_id);

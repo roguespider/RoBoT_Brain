@@ -1,5 +1,4 @@
-// robot_mcp/src/experience/observer.rs
-
+// src/experience/observer/trait.rs
 
 use anyhow::Result;
 
@@ -32,7 +31,7 @@ pub trait ExperienceObserver: Send + Sync {
     /// Determines whether this observer is interested in an event.
     ///
     /// By default every observer accepts every event.
-    fn accepts(&self, _event: &ExperienceEvent) -> bool {
+    fn accepts(&self, event: &ExperienceEvent) -> bool {
         true
     }
 

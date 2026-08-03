@@ -5,10 +5,12 @@ use std::collections::HashMap;
 
 use crate::experience::types::OutcomeKind;
 use crate::tools::ToolOutput;
-use crate::workflows::engine::SKIP_MEMORY_READ;
 use crate::workflows::engine::types::WorkflowEngine;
+use crate::workflows::engine::SKIP_MEMORY_READ;
 
-use crate::workflows::engine::experience::{build_experience_description, map_action_to_experience_type};
+use crate::workflows::engine::experience::{
+    build_experience_description, map_action_to_experience_type,
+};
 
 impl WorkflowEngine {
     /// Check if action should skip memory read
@@ -19,8 +21,8 @@ impl WorkflowEngine {
     /// Automatically read relevant memories before executing an action
     pub async fn read_memory_before_action(
         &self,
-        _action: &str,
-        _params: &HashMap<String, String>,
+        action: &str,
+        params: &HashMap<String, String>,
     ) -> Option<ToolOutput> {
         // Workflow engine doesn't have memory_retrieval, so skip memory read
         // This is a limitation - workflow execution won't have context from working memory
@@ -47,7 +49,9 @@ impl WorkflowEngine {
         let coordinator = match &self.coordinator {
             Some(c) => c,
             None => {
-                tracing::trace!("[Experience] No coordinator available, skipping experience recording");
+                tracing::trace!(
+                    "[Experience] No coordinator available, skipping experience recording"
+                );
                 return;
             }
         };
@@ -61,7 +65,11 @@ impl WorkflowEngine {
         let title = build_experience_title(action, params);
         let description = build_experience_description(action, params, result);
 
-        tracing::info!("[Experience] Recording: {} - Outcome: {:?}", title, outcome_kind);
+        tracing::info!(
+            "[Experience] Recording: {} - Outcome: {:?}",
+            title,
+            outcome_kind
+        );
 
         let input = crate::tools::experience::RecordExperienceInput {
             title,

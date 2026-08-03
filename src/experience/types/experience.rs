@@ -151,7 +151,7 @@ impl Experience {
 
     /// Add evidence to this experience
     /// Per Architecture §07: "Confidence is updated through evidence, never manually"
-    pub fn add_evidence(&mut self, _evidence_id: Uuid) {
+    pub fn add_evidence(&mut self, evidence_id: Uuid) {
         self.evidence_count += 1;
     }
 }

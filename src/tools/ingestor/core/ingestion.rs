@@ -146,7 +146,7 @@ pub async fn ingest_archive(
 /// Per Architecture §6.3: Stores in Working Memory cache
 pub async fn ingest_single_file(
     path: &Path,
-    _chunk_size: usize,
+    chunk_size: usize,
     memory_type: MemoryType,
     db: Arc<SqliteDatabase>,
     working_memory: Arc<WorkingMemory>,
@@ -451,8 +451,8 @@ pub async fn ingest_image_file(
 /// Transcribe an audio file and store as memory
 pub async fn ingest_audio_file(
     path: &Path,
-    _chunk_size: usize,
-    _memory_type: MemoryType,
+    chunk_size: usize,
+    memory_type: MemoryType,
     db: Arc<SqliteDatabase>,
     working_memory: Arc<WorkingMemory>,
 ) -> Result<IngestResult> {

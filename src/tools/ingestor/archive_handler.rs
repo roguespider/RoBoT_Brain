@@ -58,7 +58,7 @@ pub fn delete_empty_folders(dir: &Path) {
 }
 
 /// Process archive file and extract to temp directory
-pub fn process_archive(archive_path: &Path, _temp_dir: &Path) -> Result<Vec<PathBuf>> {
+pub fn process_archive(archive_path: &Path, temp_dir: &Path) -> Result<Vec<PathBuf>> {
     let extension = archive_path
         .extension()
         .and_then(|e| e.to_str())

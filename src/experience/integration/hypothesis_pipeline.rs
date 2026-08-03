@@ -230,18 +230,15 @@ impl HypothesisPipeline {
         let mut store = self.hypotheses.write().await;
         let mut archived = 0;
 
-        store.retain(
-            |_id, hypothesis| {
-                if hypothesis.updated_at < cutoff && hypothesis.status != HypothesisStatus::Archived
-                {
-                    hypothesis.status = HypothesisStatus::Archived;
-                    archived += 1;
-                    false // Remove from active store
-                } else {
-                    true
-                }
-            },
-        );
+        store.retain(|id, hypothesis| {
+            if hypothesis.updated_at < cutoff && hypothesis.status != HypothesisStatus::Archived {
+                hypothesis.status = HypothesisStatus::Archived;
+                archived += 1;
+                false // Remove from active store
+            } else {
+                true
+            }
+        });
 
         tracing::info!("Archived {} old hypotheses", archived);
         Ok(archived)

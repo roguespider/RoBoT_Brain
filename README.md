@@ -2238,7 +2238,7 @@ Observation → Hypothesis → Test (Evidence) → Evaluation → Knowledge
 5. **Evaluation** - Calculate status based on evidence ratio
 6. **Knowledge** - Extract validated hypotheses into reusable knowledge
 
-**MCP Tools (9):**
+**MCP Tools (11):**
 | Tool | Description |
 |------|-------------|
 | `record_observation` | Record successes, failures, patterns, anomalies |
@@ -2247,6 +2247,8 @@ Observation → Hypothesis → Test (Evidence) → Evaluation → Knowledge
 | `get_hypothesis` | View hypothesis with all evidence |
 | `list_hypotheses` | List hypotheses (filter by domain/status) |
 | `add_evidence` | Add supporting or contradicting evidence |
+| `get_evidence` | Get a specific evidence record by its ID |
+| `list_evidence` | List all evidence records (filter by type/direction) |
 | `evaluate_hypothesis` | Evaluate based on evidence, update status |
 | `get_knowledge` | Get extracted learned knowledge |
 | `extract_knowledge` | Convert supported hypothesis → reusable knowledge |
