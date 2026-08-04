@@ -17,7 +17,8 @@ pub async fn run_stdio_server(name: &str, version: &str, context: Arc<McpContext
             tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
         )
-        .init();
+        .try_init() // Use try_init to avoid panic if logging.rs already set one
+        .ok(); // Silently ignore if subscriber is already configured
 
     tracing::info!(
         "Starting RMCP server '{}' v{} with stdio transport",

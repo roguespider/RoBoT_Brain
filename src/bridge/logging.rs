@@ -7,10 +7,11 @@ pub fn init_logging() {
         .with_thread_ids(false)
         .with_file(false)
         .with_line_number(false)
-        .with_writer(std::io::sink)  // Discard tracing logs
+        .with_writer(std::io::sink) // Discard tracing logs
         .with_ansi(false)
-        .init();
-    
+        .try_init() // Use try_init to avoid panic if rmcp/handler.rs already set one
+        .ok(); // Silently ignore if subscriber is already configured
+
     // Print startup message to stderr so users know the server started
     eprintln!("RoBoT Brain MCP server starting...");
 }
