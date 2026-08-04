@@ -124,11 +124,20 @@ impl ExperienceRecord {
 
     /// Build raw observation - observable facts only
     fn build_observation(action: &str, params: &HashMap<String, String>) -> String {
+        let target = params
+            .get("path")
+            .or_else(|| params.get("file_path"))
+            .or_else(|| params.get("name"))
+            .or_else(|| params.get("title"))
+            .or_else(|| params.get("command"))
+            .map(|v| format!(" on '{}'", v))
+            .unwrap_or_default();
+
         match action {
-            "create_file" | "write_file" => "File operation: create/write".to_string(),
-            "edit_file" => "File operation: edit".to_string(),
-            "delete_file" => "File operation: delete".to_string(),
-            "run_command" | "execute_command" | "bash" => "Command executed".to_string(),
+            "create_file" | "write_file" => format!("File operation: create/write{}", target),
+            "edit_file" => format!("File operation: edit{}", target),
+            "delete_file" => format!("File operation: delete{}", target),
+            "run_command" | "execute_command" | "bash" => format!("Command executed{}", target),
             "create_reflection" => "Reflection created".to_string(),
             "ingest_files" | "import_files" => "Files ingested".to_string(),
             "record_experience" => "Experience recorded".to_string(),

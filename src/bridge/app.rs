@@ -81,6 +81,9 @@ impl App {
         // Initialize database
         let database = Arc::new(SqliteDatabase::initialize()?);
 
+        // Create shared personality instance (used by both App and planner)
+        let shared_personality = Arc::new(std::sync::Mutex::new(Personality::new()));
+
         // Create core systems
         let bus = Arc::new(ExperienceBus::new());
         let metrics = Arc::new(MetricsCollector::new());
@@ -243,12 +246,22 @@ impl App {
         tracing::info!("Scheduler background loop started");
 
         // Create planning system (Architecture §4.03.5, §10)
-        let planner = Arc::new(Planner::new(metrics.clone()));
+        let mut planner = Planner::new(metrics.clone());
         let policy_engine = Arc::new(PolicyEngine::new());
 
         // Load default policy rules
         policy_engine.load_defaults().await;
         tracing::info!("Policy engine loaded with default rules");
+
+        // Wire personality creativity into planner for decision-making
+        let shared_personality_clone = shared_personality.clone();
+        planner.set_creativity_check(move |complexity: f32| {
+            shared_personality_clone
+                .lock()
+                .unwrap()
+                .should_use_creativity(complexity)
+        });
+        let planner = Arc::new(planner);
 
         // Create workflow engine with database access and coordinator for event integration
         // This ensures workflow experiences flow to WorkerManager and EventSubscriber
@@ -298,7 +311,7 @@ impl App {
             scheduler,
             memory_pipeline,
             mcp_context,
-            personality: Arc::new(Mutex::new(Personality::new())),
+            personality: shared_personality,
             acp_router: Arc::new(AcpRouter::new(Arc::new(AcpRegistry::new()))),
         })
     }
@@ -734,6 +747,16 @@ impl App {
             .lock()
             .unwrap()
             .should_take_risk(potential_gain, potential_loss)
+    }
+
+    /// Decide if a creative approach should be used for planning.
+    /// Uses personality creativity trait combined with problem complexity
+    /// to determine whether to explore unconventional solutions.
+    pub fn should_use_creativity(&self, problem_complexity: f32) -> bool {
+        self.personality
+            .lock()
+            .unwrap()
+            .should_use_creativity(problem_complexity)
     }
 
     /// Get patience-based timeout

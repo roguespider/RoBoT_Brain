@@ -20,6 +20,7 @@ pub async fn run_stdio_server(name: &str, version: &str, context: Arc<McpContext
         .try_init() // Use try_init to avoid panic if logging.rs already set one
         .ok(); // Silently ignore if subscriber is already configured
 
+    eprintln!("[RoBoT] Starting MCP server '{}' v{}", name, version);
     tracing::info!(
         "Starting RMCP server '{}' v{} with stdio transport",
         name,
@@ -30,15 +31,12 @@ pub async fn run_stdio_server(name: &str, version: &str, context: Arc<McpContext
     handler.session_id = handler.new_session();
 
     let (stdin, stdout) = (tokio::io::stdin(), tokio::io::stdout());
-    eprintln!("DEBUG: About to call serve_server");
+
+    eprintln!("[RoBoT] Server ready, listening on stdio...");
+    tracing::info!("Server ready, listening on stdio...");
 
     let running = serve_server(handler, (stdin, stdout)).await?;
-    eprintln!("DEBUG: serve_server returned");
-    eprintln!("DEBUG: Server is now listening for messages...");
-
-    tracing::info!("Server started, waiting for connections...");
-    let quit_reason = running.waiting().await?;
-    tracing::info!("Server stopped: {:?}", quit_reason);
-
+    
+    tracing::info!("Server stopped: {:?}", running.waiting().await);
     Ok(())
 }

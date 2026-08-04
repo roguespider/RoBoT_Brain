@@ -55,10 +55,11 @@ impl SqliteDatabase {
         let conn = Connection::open(&self.db_path)?;
         
         // Enable WAL mode for better concurrency (allows concurrent reads during writes)
+        // Note: Reduced busy_timeout from 30000ms to 5000ms to prevent long hangs when database is locked
         conn.execute_batch(
             "PRAGMA journal_mode=WAL;
              PRAGMA synchronous=NORMAL;
-             PRAGMA busy_timeout=30000;
+             PRAGMA busy_timeout=5000;
              PRAGMA cache_size=-64000;
              PRAGMA temp_store=MEMORY;
              PRAGMA mmap_size=268435456;"
@@ -73,9 +74,10 @@ impl SqliteDatabase {
         let conn = Connection::open(&self.db_path)?;
         
         // Ensure WAL mode is enabled on each connection
+        // Note: Reduced busy_timeout from 30000ms to 5000ms to prevent long hangs
         conn.execute_batch(
             "PRAGMA journal_mode=WAL;
-             PRAGMA busy_timeout=30000;"
+             PRAGMA busy_timeout=5000;"
         )?;
         
         Ok(conn)

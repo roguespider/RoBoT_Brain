@@ -546,6 +546,16 @@ impl LearningCoordinator {
     ) -> Result<String> {
         let exploration_id = Uuid::new_v4().to_string();
 
+        // Link exploration to the hypothesis it's investigating
+        let exploration = Exploration::new(
+            exploration_id.clone(),
+            title,
+            purpose,
+            crate::experience::types::ExperienceContext {
+                related_hypothesis: Some(hypothesis_id.clone()),
+                ..Default::default()
+            },
+
         let exploration = Exploration::new(
             exploration_id.clone(),
             title,
@@ -586,6 +596,7 @@ impl LearningCoordinator {
 
         store.retain(|id, exp| {
             if let Some(completed) = exp.completed_at {
+                tracing::trace!("Archiving exploration {}", id);
                 if completed < cutoff {
                     archived += 1;
                     return false;

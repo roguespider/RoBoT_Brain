@@ -23,12 +23,16 @@ pub struct WorkflowEnforcer {
 
 impl WorkflowEnforcer {
     /// Create a new workflow enforcer
+    /// 
+    /// NOTE: Workflow enforcement is disabled by default for better editor compatibility.
+    /// MCP clients like Zed Editor may not follow the expected workflow pattern (get_workflow first),
+    /// so blocking tools can cause hangs or unexpected behavior.
     pub fn new() -> Self {
         Self {
             sessions: Arc::new(RwLock::new(std::collections::HashMap::new())),
-            enforcement_enabled: true,
+            enforcement_enabled: false, // Disabled for editor compatibility
             session_timeout: Duration::from_secs(3600), // 1 hour default
-            require_memory_search: true,
+            require_memory_search: false, // Disabled with enforcement
             require_patterns_review: false,
         }
     }

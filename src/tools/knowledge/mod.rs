@@ -327,7 +327,25 @@ pub async fn execute_get_knowledge_stats(
     input: GetKnowledgeStatsInput,
     knowledge: &Arc<KnowledgeStore>,
 ) -> ToolOutput {
-    let stats = knowledge.stats().await;
+    let limit = input.limit.unwrap_or(100);
+    let query = input.query.unwrap_or_default();
+
+    let stats = if query.is_empty() {
+        knowledge.stats().await
+    } else {
+        let results = knowledge.search(&query, limit as usize).await;
+        KnowledgeStats {
+            total: results.len(),
+            active: results.iter().filter(|k| k.active).count(),
+            mature: results.iter().filter(|k| k.maturity == KnowledgeMaturity::Mature).count(),
+            needs_review: results.iter().filter(|k| !k.active).count(),
+            average_confidence: results
+                .iter()
+                .map(|k| k.confidence)
+                .sum::<f32>()
+                .div_f32(results.len().max(1) as f32),
+        }
+    };
 
     ToolOutput::success(serde_json::json!({
         "total": stats.total,
