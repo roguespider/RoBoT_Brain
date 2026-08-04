@@ -8,10 +8,8 @@
 //! Per Architecture §5.7 Decision Flow:
 //! Goal → Planning → Memory Retrieval → Knowledge Retrieval → Experience Retrieval → Confidence Evaluation → Action Selection → Execution → Outcome Recording
 
-
-
-use std::sync::Arc;
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -80,6 +78,9 @@ pub struct Planner {
     active_plans: Arc<RwLock<HashMap<String, Plan>>>,
     /// Policy engine for decision making
     policy: Arc<tokio::sync::RwLock<PlannerPolicy>>,
+    /// Optional callback to determine if a creative approach should be used.
+    /// Called with problem_complexity; returns true when creativity is warranted.
+    creativity_check: Option<Arc<dyn Fn(f32) -> bool + Send + Sync>>,
 }
 
 /// Planner policy for decision making
@@ -124,7 +125,25 @@ impl Planner {
             metrics,
             active_plans: Arc::new(RwLock::new(HashMap::new())),
             policy: Arc::new(tokio::sync::RwLock::new(PlannerPolicy::default())),
+            creativity_check: None,
         }
+    }
+
+    /// Set the creativity decision callback.
+    /// This connects the planner to the personality system so that
+    /// creative personality traits can influence replanning behavior.
+    pub fn set_creativity_check(&mut self, check: impl Fn(f32) -> bool + Send + Sync + 'static) {
+        self.creativity_check = Some(Arc::new(check));
+    }
+
+    /// Check if a creative approach should be used for replanning.
+    /// Returns true when the personality system determines creativity is warranted
+    /// given the problem complexity.
+    fn should_use_creativity(&self, problem_complexity: f32) -> bool {
+        self.creativity_check
+            .as_ref()
+            .map(|check| check(problem_complexity))
+            .unwrap_or(false)
     }
 
     /// Update planning policy
@@ -179,14 +198,14 @@ impl Planner {
         experience_ids: Vec<uuid::Uuid>,
     ) -> Result<Plan> {
         let mut plan = self.create_plan(goal).await?;
-        
+
         // Add knowledge and experiences to plan
         plan.knowledge_used = knowledge_ids;
         plan.experiences_used = experience_ids;
-        
+
         // Calculate plan confidence based on supporting evidence
         plan.confidence = self.calculate_plan_confidence(&plan).await;
-        
+
         // Update in store
         let mut plans = self.active_plans.write().await;
         plans.insert(plan.id.clone(), plan.clone());
@@ -205,27 +224,34 @@ impl Planner {
     /// Calculate confidence for a plan based on supporting knowledge and experiences
     async fn calculate_plan_confidence(&self, plan: &Plan) -> f32 {
         let policy = self.policy.read().await;
-        
+
         // Start with base confidence
         let mut confidence = 0.5;
-        
+
         // Factor in knowledge quality
         if !plan.knowledge_used.is_empty() {
-            let knowledge_bonus = policy.knowledge_weight * (plan.knowledge_used.len() as f32 * 0.1).min(0.4);
+            let knowledge_bonus =
+                policy.knowledge_weight * (plan.knowledge_used.len() as f32 * 0.1).min(0.4);
             confidence += knowledge_bonus;
         }
-        
+
         // Factor in experience quality
         if plan.experiences_used.len() >= policy.min_experience_count as usize {
-            let experience_bonus = policy.experience_weight * (plan.experiences_used.len() as f32 * 0.05).min(0.3);
+            let experience_bonus =
+                policy.experience_weight * (plan.experiences_used.len() as f32 * 0.05).min(0.3);
             confidence += experience_bonus;
         }
-        
+
         confidence.clamp(0.0, 1.0)
     }
 
     /// Add a step to a plan
-    pub async fn add_step(&self, plan_id: &str, description: impl Into<String>, action: impl Into<String>) -> Result<PlanStep> {
+    pub async fn add_step(
+        &self,
+        plan_id: &str,
+        description: impl Into<String>,
+        action: impl Into<String>,
+    ) -> Result<PlanStep> {
         let step = PlanStep {
             id: Uuid::new_v4().to_string(),
             description: description.into(),
@@ -280,7 +306,12 @@ impl Planner {
     }
 
     /// Add dependency to a step
-    pub async fn add_dependency(&self, plan_id: &str, step_id: &str, depends_on: &str) -> Result<()> {
+    pub async fn add_dependency(
+        &self,
+        plan_id: &str,
+        step_id: &str,
+        depends_on: &str,
+    ) -> Result<()> {
         let mut plans = self.active_plans.write().await;
         if let Some(plan) = plans.get_mut(plan_id) {
             if let Some(step) = plan.steps.iter_mut().find(|s| s.id == step_id) {
@@ -303,7 +334,12 @@ impl Planner {
     }
 
     /// Complete a step
-    pub async fn complete_step(&self, plan_id: &str, step_id: &str, result: Option<String>) -> Result<()> {
+    pub async fn complete_step(
+        &self,
+        plan_id: &str,
+        step_id: &str,
+        result: Option<String>,
+    ) -> Result<()> {
         let mut plans = self.active_plans.write().await;
         if let Some(plan) = plans.get_mut(plan_id) {
             if let Some(step) = plan.steps.iter_mut().find(|s| s.id == step_id) {
@@ -312,9 +348,10 @@ impl Planner {
             }
 
             // Check if all steps are complete
-            let all_complete = plan.steps.iter().all(|s| 
-                s.status == StepStatus::Completed || s.status == StepStatus::Skipped
-            );
+            let all_complete = plan
+                .steps
+                .iter()
+                .all(|s| s.status == StepStatus::Completed || s.status == StepStatus::Skipped);
             if all_complete && !plan.steps.is_empty() {
                 plan.status = PlanStatus::Completed;
                 plan.completed_at = Some(chrono::Utc::now());
@@ -353,7 +390,8 @@ impl Planner {
     /// List plans by status
     pub async fn list_plans_by_status(&self, status: PlanStatus) -> Vec<Plan> {
         let plans = self.active_plans.read().await;
-        plans.values()
+        plans
+            .values()
             .filter(|p| p.status == status)
             .cloned()
             .collect()
@@ -389,13 +427,16 @@ impl Planner {
     ///
     /// Per Architecture §5.7:
     /// "Action Selection"
-    pub async fn select_best_action(&self, actions: Vec<ActionCandidate>) -> Option<ActionCandidate> {
+    pub async fn select_best_action(
+        &self,
+        actions: Vec<ActionCandidate>,
+    ) -> Option<ActionCandidate> {
         if actions.is_empty() {
             return None;
         }
 
         let policy = self.policy.read().await;
-        
+
         // Score each action
         let mut scored: Vec<(ActionCandidate, f32)> = actions
             .into_iter()
@@ -404,10 +445,10 @@ impl Planner {
                 (action, score)
             })
             .collect();
-        
+
         // Sort by score descending
         scored.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        
+
         // Return highest scoring action
         scored.into_iter().next().map(|(action, _)| action)
     }
@@ -415,53 +456,64 @@ impl Planner {
     /// Score an action candidate based on policy
     fn score_action(&self, action: &ActionCandidate, policy: &PlannerPolicy) -> f32 {
         let mut score = 0.0;
-        
+
         // Factor in supporting knowledge confidence
         if !action.supporting_knowledge.is_empty() {
-            let avg_confidence: f32 = action.supporting_knowledge.iter()
+            let avg_confidence: f32 = action
+                .supporting_knowledge
+                .iter()
                 .map(|k| k.confidence)
-                .sum::<f32>() / action.supporting_knowledge.len() as f32;
-            
+                .sum::<f32>()
+                / action.supporting_knowledge.len() as f32;
+
             if avg_confidence >= policy.min_knowledge_confidence {
                 score += policy.knowledge_weight * avg_confidence;
             }
         }
-        
+
         // Factor in relevant past experiences
         if action.past_experiences.len() >= policy.min_experience_count as usize {
-            let success_rate: f32 = action.past_experiences.iter()
+            let success_rate: f32 = action
+                .past_experiences
+                .iter()
                 .map(|e| if e.was_successful { 1.0 } else { 0.0 })
-                .sum::<f32>() / action.past_experiences.len() as f32;
+                .sum::<f32>()
+                / action.past_experiences.len() as f32;
             score += policy.experience_weight * success_rate;
         }
-        
+
         // Factor in direct confidence
         score += policy.confidence_weight * action.confidence;
-        
+
         score.clamp(0.0, 1.0)
     }
 
     /// Get plan statistics
     pub async fn get_stats(&self) -> PlannerStats {
         let plans = self.active_plans.read().await;
-        
-        let mut by_status: std::collections::HashMap<PlanStatus, usize> = std::collections::HashMap::new();
+
+        let mut by_status: std::collections::HashMap<PlanStatus, usize> =
+            std::collections::HashMap::new();
         let mut total_confidence = 0.0;
         let mut total_knowledge = 0;
         let mut total_experiences = 0;
-        
+
         for plan in plans.values() {
             *by_status.entry(plan.status).or_insert(0) += 1;
             total_confidence += plan.confidence;
             total_knowledge += plan.knowledge_used.len();
             total_experiences += plan.experiences_used.len();
         }
-        
+
         let count = plans.len();
         PlannerStats {
             total_plans: count,
             by_status,
-            avg_confidence: if count > 0 { total_confidence / count as f32 } else { 0.0 },
+            avg_confidence: if count > 0 {
+                total_confidence / count as f32
+            } else {
+                0.0
+            },
             total_knowledge_used: total_knowledge,
             total_experiences_used: total_experiences,
         }
@@ -480,23 +532,41 @@ impl Planner {
     /// - A better approach is discovered
     pub async fn replan(&self, plan_id: &str, reason: ReplanReason) -> Result<Option<Plan>> {
         let plans = self.active_plans.read().await;
-        
+
         let existing_plan = match plans.get(plan_id) {
             Some(plan) => plan.clone(),
             None => return Ok(None),
         };
-        
+
         tracing::info!("Replanning {} because: {:?}", plan_id, reason);
         drop(plans); // Release lock before metrics
         self.metrics.increment("planner.replans").await;
-        
+
+        // Estimate problem complexity from failure rate
+        let failed_steps = existing_plan
+            .steps
+            .iter()
+            .filter(|s| s.status == StepStatus::Failed)
+            .count();
+        let problem_complexity = (failed_steps as f32 * 0.25).min(1.0);
+
+        // Decide whether to use a creative approach for replanning
+        let use_creativity = self.should_use_creativity(problem_complexity);
+        if use_creativity {
+            tracing::info!(
+                "Using creative approach for replanning (complexity: {:.2})",
+                problem_complexity
+            );
+        }
+
         // Determine what to keep from the old plan - use references
-        let completed_step_ids: Vec<String> = existing_plan.steps
+        let completed_step_ids: Vec<String> = existing_plan
+            .steps
             .iter()
             .filter(|s| s.status == StepStatus::Completed)
             .map(|s| s.id.clone())
             .collect();
-        
+
         // Create new plan preserving completed steps
         let mut new_plan = Plan {
             id: Uuid::new_v4().to_string(),
@@ -509,7 +579,7 @@ impl Planner {
             experiences_used: existing_plan.experiences_used.clone(),
             confidence: existing_plan.confidence * 0.9, // Slight confidence penalty for replanning
         };
-        
+
         // Carry forward completed steps as already done
         for step in &existing_plan.steps {
             if step.status == StepStatus::Completed {
@@ -525,37 +595,39 @@ impl Planner {
                 });
             }
         }
-        
+
         // Update old plan status
         let mut plans = self.active_plans.write().await;
         if let Some(old_plan) = plans.get_mut(plan_id) {
             old_plan.status = PlanStatus::Cancelled;
         }
-        
+
         // Store new plan
         plans.insert(new_plan.id.clone(), new_plan.clone());
-        
+
         tracing::info!(
             "Created new plan {} from {} with {} completed steps",
-            new_plan.id, plan_id, completed_step_ids.len()
+            new_plan.id,
+            plan_id,
+            completed_step_ids.len()
         );
-        
+
         Ok(Some(new_plan))
     }
-    
+
     /// Retry failed steps in a plan
     ///
     /// Per Architecture: After a step fails, retry with different approach
     pub async fn retry_failed_steps(&self, plan_id: &str) -> Result<usize> {
         let mut plans = self.active_plans.write().await;
-        
+
         let plan = match plans.get_mut(plan_id) {
             Some(plan) => plan,
             None => return Ok(0),
         };
-        
+
         let mut retried_count = 0;
-        
+
         for step in plan.steps.iter_mut() {
             if step.status == StepStatus::Failed {
                 step.status = StepStatus::Ready;
@@ -563,16 +635,16 @@ impl Planner {
                 retried_count += 1;
             }
         }
-        
+
         if retried_count > 0 {
             plan.status = PlanStatus::InProgress;
             self.metrics.increment("planner.step_retries").await;
             tracing::info!("Reset {} failed steps for plan {}", retried_count, plan_id);
         }
-        
+
         Ok(retried_count)
     }
-    
+
     /// Adapt a plan based on new knowledge or experience
     ///
     /// Per Architecture: Plans should adapt when new information becomes available
@@ -583,16 +655,16 @@ impl Planner {
         new_experiences: Vec<uuid::Uuid>,
     ) -> Result<bool> {
         let mut plans = self.active_plans.write().await;
-        
+
         let plan = match plans.get_mut(plan_id) {
             Some(plan) => plan,
             None => return Ok(false),
         };
-        
+
         // Add new knowledge and experiences
         plan.knowledge_used.extend(new_knowledge);
         plan.experiences_used.extend(new_experiences);
-        
+
         // Recalculate confidence with new information
         let policy = self.policy.read().await;
         let knowledge_bonus = if !plan.knowledge_used.is_empty() {
@@ -600,34 +672,39 @@ impl Planner {
         } else {
             0.0
         };
-        let experience_bonus = if plan.experiences_used.len() >= policy.min_experience_count as usize {
-            policy.experience_weight * (plan.experiences_used.len() as f32 * 0.05).min(0.3)
-        } else {
-            0.0
-        };
-        
+        let experience_bonus =
+            if plan.experiences_used.len() >= policy.min_experience_count as usize {
+                policy.experience_weight * (plan.experiences_used.len() as f32 * 0.05).min(0.3)
+            } else {
+                0.0
+            };
+
         plan.confidence = (0.5 + knowledge_bonus + experience_bonus).clamp(0.0, 1.0);
-        
+
         self.metrics.increment("planner.plan_adaptations").await;
-        tracing::info!("Adapted plan {} with new knowledge and experiences", plan_id);
-        
+        tracing::info!(
+            "Adapted plan {} with new knowledge and experiences",
+            plan_id
+        );
+
         Ok(true)
     }
-    
+
     /// Analyze a failed plan to understand what went wrong
     pub async fn analyze_failure(&self, plan_id: &str) -> Result<PlanFailureAnalysis> {
         let plans = self.active_plans.read().await;
-        
+
         let plan = match plans.get(plan_id) {
             Some(plan) => plan,
             None => return Ok(PlanFailureAnalysis::default()),
         };
-        
-        let failed_steps: Vec<_> = plan.steps
+
+        let failed_steps: Vec<_> = plan
+            .steps
             .iter()
             .filter(|s| s.status == StepStatus::Failed)
             .collect();
-        
+
         let mut analysis = PlanFailureAnalysis {
             plan_id: plan_id.to_string(),
             failed_step_count: failed_steps.len(),
@@ -635,26 +712,29 @@ impl Planner {
             reasons: Vec::new(),
             suggestions: Vec::new(),
         };
-        
+
         // Analyze each failed step
         for step in &failed_steps {
             if let Some(ref result) = step.result {
-                analysis.reasons.push(format!("Step '{}' failed: {}", step.description, result));
+                analysis
+                    .reasons
+                    .push(format!("Step '{}' failed: {}", step.description, result));
             }
-            
+
             // Generate suggestions based on failed step characteristics
             if step.supporting_knowledge.is_empty() {
                 analysis.suggestions.push(
-                    "Consider adding supporting knowledge for step: ".to_string() + &step.description
+                    "Consider adding supporting knowledge for step: ".to_string()
+                        + &step.description,
                 );
             }
             if step.past_experiences.is_empty() {
                 analysis.suggestions.push(
-                    "Look for similar past experiences for step: ".to_string() + &step.description
+                    "Look for similar past experiences for step: ".to_string() + &step.description,
                 );
             }
         }
-        
+
         // General suggestions
         if plan.knowledge_used.is_empty() {
             analysis.suggestions.push(
@@ -663,10 +743,11 @@ impl Planner {
         }
         if plan.confidence < 0.5 {
             analysis.suggestions.push(
-                "Plan confidence is low. Consider gathering more evidence before executing.".to_string()
+                "Plan confidence is low. Consider gathering more evidence before executing."
+                    .to_string(),
             );
         }
-        
+
         Ok(analysis)
     }
 }
@@ -749,6 +830,7 @@ impl Default for Planner {
             metrics: Arc::new(MetricsCollector::new()),
             active_plans: Arc::new(RwLock::new(HashMap::new())),
             policy: Arc::new(tokio::sync::RwLock::new(PlannerPolicy::default())),
+            creativity_check: None,
         }
     }
 }

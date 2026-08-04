@@ -56,6 +56,30 @@ impl EventSubscriber {
     ) -> Result<()> {
         // Extract insights and create knowledge items
         // This bridges Reflection → Knowledge per Architecture §4.04
+        for insight in &reflection.insights {
+            let knowledge_content = format!(
+                "Reflection insight: {} (type: {}, confidence: {})",
+                insight.content, insight.insight_type, insight.confidence
+            );
+
+            if let Some(db) = &self.database {
+                use crate::database::models::MemoryCard;
+                use crate::database::queries;
+
+                let memory = MemoryCard::new(
+                    knowledge_content,
+                    crate::database::models::MemoryType::Knowledge,
+                );
+                if let Err(e) = queries::insert_memory(&db.connection()?, &memory) {
+                    tracing::warn!("Failed to store reflection insight as knowledge: {}", e);
+                }
+            }
+        }
+
+        tracing::info!(
+            "Updated knowledge store from reflection: {} insights processed",
+            reflection.insights.len()
+        );
         Ok(())
     }
 
@@ -67,6 +91,31 @@ impl EventSubscriber {
     ) -> Result<()> {
         // If hypothesis is validated, create knowledge from it
         // Per Architecture §2.5: "Hypothesis is a temporary model waiting for evidence"
+        if hypothesis.is_validated() {
+            let knowledge_content = format!(
+                "Validated hypothesis: {} (statement: {}, confidence: {})",
+                hypothesis.id, hypothesis.statement, hypothesis.confidence
+            );
+
+            if let Some(db) = &self.database {
+                use crate::database::models::MemoryCard;
+                use crate::database::queries;
+
+                let memory = MemoryCard::new(
+                    knowledge_content,
+                    crate::database::models::MemoryType::Knowledge,
+                );
+                if let Err(e) = queries::insert_memory(&db.connection()?, &memory) {
+                    tracing::warn!("Failed to store validated hypothesis as knowledge: {}", e);
+                }
+            }
+        }
+
+        tracing::debug!(
+            "Updated knowledge from hypothesis '{}': {}",
+            hypothesis.id,
+            result
+        );
         Ok(())
     }
 
@@ -77,7 +126,25 @@ impl EventSubscriber {
         evidence: &crate::experience::events::payload::EventPayload,
     ) -> Result<()> {
         // Update hypothesis confidence based on evidence
-        tracing::debug!("Updating hypothesis {} with new evidence", hypothesis_id);
+        let direction = match evidence {
+            crate::experience::events::payload::EventPayload::Evidence {
+                direction, ..
+            } => direction.to_string(),
+            _ => "unknown".to_string(),
+        };
+
+        tracing::debug!(
+            "Updating hypothesis {} with evidence direction: {}",
+            hypothesis_id,
+            direction
+        );
+
+        if direction == "support" {
+            tracing::info!("Evidence supports hypothesis {}", hypothesis_id);
+        } else if direction == "contradict" {
+            tracing::warn!("Evidence contradicts hypothesis {}", hypothesis_id);
+        }
+
         Ok(())
     }
 }

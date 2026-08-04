@@ -322,6 +322,12 @@ impl ExperienceObserver for MetricsObserver {
     }
 
     fn accepts(&self, event: &ExperienceEvent) -> bool {
+        // MetricsObserver accepts all event types to collect comprehensive metrics.
+        // System and custom events are still tracked but may be filtered in the observe method.
+        tracing::trace!(
+            "MetricsObserver checking event type: {}",
+            event.event_type.name()
+        );
         true
     }
 

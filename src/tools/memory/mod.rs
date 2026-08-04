@@ -557,11 +557,23 @@ pub async fn execute_list_memories(
 ) -> Result<ToolOutput> {
     let limit = input.limit.unwrap_or(20);
 
-    // Get recent memories from both Working and Permanent Memory
+    // Get recent memories from both Working Memory cache and database
     let working_items = memory_retrieval.get_context(limit).await;
 
+    // Also query the database for memories not in working memory
+    let conn = database.connection()?;
+    let db_memories = queries::search_memory(&conn, "", limit as usize)?;
+    let db_ids: std::collections::HashSet<_> = db_memories.iter().map(|m| m.id).collect();
+    let working_ids: std::collections::HashSet<_> = working_items.iter().map(|m| m.id).collect();
+
+    // Deduplicate by only including database memories not already in working memory
+    let unique_db_memories: Vec<MemoryCard> = db_memories
+        .into_iter()
+        .filter(|m| !working_ids.contains(&m.id))
+        .collect();
+
     // Convert MemoryItem to JSON format
-    let result: Vec<serde_json::Value> = working_items
+    let mut result: Vec<serde_json::Value> = working_items
         .into_iter()
         .map(|m| {
             serde_json::json!({
@@ -572,15 +584,33 @@ pub async fn execute_list_memories(
                 "confidence": m.confidence,
                 "importance": m.importance,
                 "created_at": m.created_at.to_rfc3339(),
-                "accessed_at": m.accessed_at.to_rfc3339()
+                "accessed_at": m.accessed_at.to_rfc3339(),
+                "source": "working_memory"
             })
         })
         .collect();
 
+    // Add database-only memories
+    for m in unique_db_memories {
+        result.push(serde_json::json!({
+            "id": m.id.to_string(),
+            "content": m.content,
+            "memory_type": m.memory_type.to_string(),
+            "layer": m.layer.to_string(),
+            "confidence": m.confidence,
+            "importance": m.importance,
+            "created_at": m.created_at.to_rfc3339(),
+            "accessed_at": m.last_accessed.unwrap_or(m.created_at).to_rfc3339(),
+            "source": "database"
+        }));
+    }
+
     Ok(ToolOutput::success(serde_json::json!({
         "memories": result,
-        "count": result.len()
-    })))
+        "count": result.len(),
+        "working_count": working_items.len(),
+        "database_count": db_ids.len()
+    }))
 }
 
 // ============================================================================

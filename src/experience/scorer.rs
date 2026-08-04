@@ -168,12 +168,28 @@ impl ExperienceScorer {
     }
 
     fn calculate_novelty(&self, experience: &Experience) -> f32 {
-        // Future:
-        // Compare embeddings against previous experiences.
-        //
-        // This will eventually use memory/vector search.
+        // Base novelty from experience type diversity
+        let type_novelty = match &experience.experience_type {
+            ExperienceType::ToolExecution => 0.3,
+            ExperienceType::Learning => 0.7,
+            ExperienceType::Exploration => 0.8,
+            ExperienceType::Hypothesis => 0.75,
+            ExperienceType::Planning => 0.6,
+            ExperienceType::Reflection => 0.65,
+            _ => 0.5,
+        };
 
-        0.5
+        // Bonus for experiences with lessons learned
+        let lesson_bonus = if experience.lessons.is_empty() {
+            0.0
+        } else {
+            (experience.lessons.len() as f32).min(0.2)
+        };
+
+        // Adjust based on confidence spread from default
+        let confidence_factor = (experience.confidence - 0.5).abs() * 0.1;
+
+        (type_novelty + lesson_bonus + confidence_factor).clamp(0.0, 1.0)
     }
 
     fn calculate_reliability(&self, experience: &Experience) -> f32 {

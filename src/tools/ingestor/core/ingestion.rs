@@ -156,20 +156,54 @@ pub async fn ingest_single_file(
         .and_then(|n| n.to_str())
         .unwrap_or("unknown")
         .to_string();
+    let file_size = fs::metadata(path)?.len();
+    let recommended_chunk_size = if chunk_size == 0 {
+        // Auto-detect chunk size based on file size
+        if file_size > 1_000_000 {
+            8000 // Larger chunks for large files
+        } else if file_size > 10_000 {
+            2000 // Medium chunks for medium files
+        } else {
+            1000 // Default for small files
+        }
+    } else {
+        chunk_size
+    };
 
     // Check if this is an image file - handle separately
     if crate::tools::ingestor::file_collector::is_supported_extension(path, IMAGE_EXTENSIONS) {
-        return ingest_image_file(path, 0, memory_type, db, working_memory).await;
+        return ingest_image_file(
+            path,
+            recommended_chunk_size,
+            memory_type,
+            db,
+            working_memory,
+        )
+        .await;
     }
 
     // Check if this is a JSON file - use smart JSON importer
     if crate::tools::ingestor::file_collector::is_supported_extension(path, JSON_EXTENSIONS) {
-        return ingest_json_file(path, 0, memory_type, db, working_memory).await;
+        return ingest_json_file(
+            path,
+            recommended_chunk_size,
+            memory_type,
+            db,
+            working_memory,
+        )
+        .await;
     }
 
     // Check if this is an audio file - use Whisper transcription
     if crate::tools::ingestor::file_collector::is_supported_extension(path, AUDIO_EXTENSIONS) {
-        return ingest_audio_file(path, 0, memory_type, db, working_memory).await;
+        return ingest_audio_file(
+            path,
+            recommended_chunk_size,
+            memory_type,
+            db,
+            working_memory,
+        )
+        .await;
     }
 
     // Extract text content for other file types

@@ -232,6 +232,7 @@ impl HypothesisPipeline {
 
         store.retain(|id, hypothesis| {
             if hypothesis.updated_at < cutoff && hypothesis.status != HypothesisStatus::Archived {
+                tracing::trace!("Archiving hypothesis {}", id);
                 hypothesis.status = HypothesisStatus::Archived;
                 archived += 1;
                 false // Remove from active store

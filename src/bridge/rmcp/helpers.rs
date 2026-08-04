@@ -12,9 +12,12 @@ pub fn tool_output_to_content(output: ToolOutput) -> ContentBlock {
         serde_json::to_string_pretty(&output.data)
             .unwrap_or_else(|_| r#"{"success": true}"#.to_string())
     } else {
+        let error_msg = output.error.clone().unwrap_or_else(|| "Unknown error".to_string());
+        eprintln!("[RoBoT] Tool error: {}", error_msg);
+        tracing::warn!("Tool execution error: {}", error_msg);
         serde_json::to_string_pretty(&serde_json::json!({
             "success": false,
-            "error": output.error.unwrap_or_else(|| "Unknown error".to_string())
+            "error": error_msg
         }))
         .unwrap_or_else(|_| r#"{"success": false, "error": "Failed to serialize error"}"#.to_string())
     };

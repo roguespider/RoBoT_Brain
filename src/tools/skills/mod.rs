@@ -543,9 +543,15 @@ pub async fn execute_get_skill_stats(
     input: GetSkillStatsInput,
     context: &McpContext,
 ) -> Result<ToolOutput> {
+    let min_mastery = input.min_mastery.unwrap_or(0.0);
+    let category_filter = input.category.clone();
+
     let stats = context.skills.get_discovery_stats().await;
-    let mastered = context.skills.get_mastered_skills(0.8).await;
-    let most_successful = context.skills.get_most_successful(3).await;
+    let mastered = context.skills.get_mastered_skills(min_mastery).await;
+    let most_successful = context
+        .skills
+        .get_most_successful(input.top_n.unwrap_or(5) as usize)
+        .await;
 
     Ok(ToolOutput::success(serde_json::json!({
         "stats": {

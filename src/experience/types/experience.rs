@@ -81,6 +81,9 @@ pub struct Experience {
     /// Supporting evidence count.
     pub evidence_count: usize,
 
+    /// Evidence IDs that contributed to this experience's confidence.
+    pub evidence_ids: Vec<Uuid>,
+
     /// Searchable tags.
     pub tags: Vec<String>,
 
@@ -120,6 +123,7 @@ impl Experience {
             confidence: 0.5,
             lessons: Vec::new(),
             evidence_count: 0,
+            evidence_ids: Vec::new(),
             tags: Vec::new(),
             committed: false,
             archived: false,
@@ -152,6 +156,8 @@ impl Experience {
     /// Add evidence to this experience
     /// Per Architecture §07: "Confidence is updated through evidence, never manually"
     pub fn add_evidence(&mut self, evidence_id: Uuid) {
+        // Track which evidence IDs contributed to this experience's confidence
+        self.evidence_ids.push(evidence_id);
         self.evidence_count += 1;
     }
 }

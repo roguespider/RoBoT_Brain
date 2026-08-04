@@ -32,6 +32,13 @@ pub trait ExperienceObserver: Send + Sync {
     ///
     /// By default every observer accepts every event.
     fn accepts(&self, event: &ExperienceEvent) -> bool {
+        // Default implementation accepts all events.
+        // Subtypes can override to filter specific event types.
+        tracing::trace!(
+            "Observer {} accepting event type: {}",
+            self.name(),
+            event.event_type.name()
+        );
         true
     }
 
