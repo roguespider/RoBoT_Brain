@@ -68,7 +68,7 @@ macro_rules! teeprintln {
         // Print to stdout
         println!("{}", s);
         // Write to file
-        if let Ok(mut tee) = crate::output::TEE.lock() {
+        if let Ok(mut tee) = $crate::output::TEE.lock() {
             if let Some(ref mut writer) = *tee {
                 writer.writeln(&s);
             }

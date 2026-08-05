@@ -27,7 +27,7 @@ impl TestReport {
             crate::teeprintln!("│");
             crate::teeprintln!("│  Issue Type: {}", issue_type);
             crate::teeprintln!("│  Count: {}", issues.len());
-            let base_path = self.source_path.as_ref().map(|p| p.as_path());
+            let base_path = self.source_path.as_deref();
             crate::teeprintln!(
                 "│  ├── Files affected: {}",
                 issues
