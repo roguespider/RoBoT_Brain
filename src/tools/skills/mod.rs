@@ -268,6 +268,7 @@ pub async fn execute_register_skill(
 
     Ok(ToolOutput::success(serde_json::json!({
         "status": "registered",
+        "id": skill_id,
         "skill_id": skill_id,
         "message": "Skill registered successfully"
     })))
@@ -300,6 +301,7 @@ pub async fn execute_discover_skill(
 
     Ok(ToolOutput::success(serde_json::json!({
         "status": "discovered",
+        "id": skill_id.clone(),
         "skill_id": skill_id,
         "message": "Skill discovered from experience",
         "mastery": 0.3,

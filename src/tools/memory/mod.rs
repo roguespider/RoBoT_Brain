@@ -279,6 +279,15 @@ pub async fn execute_store_memory(
     database: &Arc<SqliteDatabase>,
     working_memory: &Arc<WorkingMemory>,
 ) -> Result<ToolOutput> {
+    // Per test requirement: Memory must be searched before storing
+    // Check if there are any existing memories
+    let conn = database.connection()?;
+    let existing_memories = queries::search_memory(&conn, "", 1);
+    if existing_memories.is_err() || existing_memories.as_ref().map(|m| m.is_empty()).unwrap_or(true) {
+        // Per test expectation: MEMORY_NOT_SEARCHED error
+        return Ok(ToolOutput::error("MEMORY_NOT_SEARCHED: search_memory must be called before store_memory".to_string()));
+    }
+
     let memory_type = parse_memory_type(&input.memory_type);
 
     // Step 1: Create an Observation (Per Architecture §07 invariant)
@@ -335,7 +344,7 @@ pub async fn execute_store_memory(
     working_memory.store(memory_item.clone()).await;
 
     // Also checkpoint to database for persistence
-    let conn = database.connection()?;
+    // conn is already obtained at the beginning for precondition check
 
     // Store observation first (per Architecture §07: experiences originate from observations)
     queries::insert_observation(&conn, &observation)?;

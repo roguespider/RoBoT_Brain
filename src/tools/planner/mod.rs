@@ -271,10 +271,15 @@ pub async fn execute_create_plan(
     planner: &Arc<Planner>,
 ) -> ToolOutput {
     match planner.create_plan(&input.goal).await {
-        Ok(plan) => ToolOutput::success(serde_json::json!({
-            "status": "created",
-            "plan": plan_to_json(&plan),
-        })),
+        Ok(plan) => {
+            let plan_json = plan_to_json(&plan);
+            let id = plan_json.get("id").cloned().unwrap_or(serde_json::Value::Null);
+            ToolOutput::success(serde_json::json!({
+                "status": "created",
+                "id": id,
+                "plan": plan_json,
+            }))
+        }
         Err(e) => ToolOutput::error(e),
     }
 }
@@ -287,6 +292,7 @@ pub async fn execute_add_plan_step(
     match planner.add_step(&input.plan_id, &input.description, &input.action).await {
         Ok(step) => ToolOutput::success(serde_json::json!({
             "status": "added",
+            "id": step.id,
             "step": {
                 "id": step.id,
                 "description": step.description,
@@ -305,6 +311,7 @@ pub async fn execute_add_step_dependency(
 ) -> ToolOutput {
     match planner.add_dependency(&input.plan_id, &input.step_id, &input.depends_on).await {
         Ok(()) => ToolOutput::success(serde_json::json!({
+            "success": true,
             "status": "added",
             "message": format!("Step {} now depends on {}", input.step_id, input.depends_on),
         })),
@@ -412,6 +419,7 @@ pub async fn execute_cancel_plan(
 ) -> ToolOutput {
     match planner.cancel_plan(&input.plan_id).await {
         Ok(()) => ToolOutput::success(serde_json::json!({
+            "success": true,
             "status": "cancelled",
             "plan_id": input.plan_id,
         })),
