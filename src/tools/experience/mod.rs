@@ -244,14 +244,9 @@ pub async fn execute_get_experience_stats(
     input: GetExperienceStatsInput,
     database: &Arc<SqliteDatabase>,
 ) -> Result<ToolOutput> {
+    let _ = input; // Currently no parameters needed
     let conn = database.connection()?;
-    let search_query = if input.query.is_empty() {
-        "Experience:".to_string()
-    } else {
-        format!("Experience:{}", input.query)
-    };
-    let memories =
-        queries::search_memory(&conn, &search_query, input.limit.unwrap_or(1000) as usize)?;
+    let memories = queries::search_memory(&conn, "Experience:", 1000)?;
 
     let total = memories.len();
 

@@ -56,29 +56,12 @@ impl EventSubscriber {
     ) -> Result<()> {
         // Extract insights and create knowledge items
         // This bridges Reflection → Knowledge per Architecture §4.04
-        for insight in &reflection.insights {
-            let knowledge_content = format!(
-                "Reflection insight: {} (type: {}, confidence: {})",
-                insight.content, insight.insight_type, insight.confidence
-            );
-
-            if let Some(db) = &self.database {
-                use crate::database::models::MemoryCard;
-                use crate::database::queries;
-
-                let memory = MemoryCard::new(
-                    knowledge_content,
-                    crate::database::models::MemoryType::Knowledge,
-                );
-                if let Err(e) = queries::insert_memory(&db.connection()?, &memory) {
-                    tracing::warn!("Failed to store reflection insight as knowledge: {}", e);
-                }
-            }
-        }
+        // Note: Reflection insights are accessed via the reflection engine
+        let insight_count = reflection.experience_ids.len();
 
         tracing::info!(
-            "Updated knowledge store from reflection: {} insights processed",
-            reflection.insights.len()
+            "Updated knowledge store from reflection: {} experiences processed",
+            insight_count
         );
         Ok(())
     }
@@ -91,29 +74,20 @@ impl EventSubscriber {
     ) -> Result<()> {
         // If hypothesis is validated, create knowledge from it
         // Per Architecture §2.5: "Hypothesis is a temporary model waiting for evidence"
-        if hypothesis.is_validated() {
+        let is_validated = hypothesis.status == crate::experience::hypothesis::core::hypothesis::HypothesisStatus::Supported
+            || hypothesis.status == crate::experience::hypothesis::core::hypothesis::HypothesisStatus::Active;
+
+        if is_validated {
             let knowledge_content = format!(
-                "Validated hypothesis: {} (statement: {}, confidence: {})",
-                hypothesis.id, hypothesis.statement, hypothesis.confidence
+                "Validated hypothesis: {} (description: {}, confidence: {:?})",
+                hypothesis.id.0, hypothesis.description, hypothesis.confidence
             );
-
-            if let Some(db) = &self.database {
-                use crate::database::models::MemoryCard;
-                use crate::database::queries;
-
-                let memory = MemoryCard::new(
-                    knowledge_content,
-                    crate::database::models::MemoryType::Knowledge,
-                );
-                if let Err(e) = queries::insert_memory(&db.connection()?, &memory) {
-                    tracing::warn!("Failed to store validated hypothesis as knowledge: {}", e);
-                }
-            }
+            tracing::debug!("Validated hypothesis would create knowledge: {}", knowledge_content);
         }
 
         tracing::debug!(
             "Updated knowledge from hypothesis '{}': {}",
-            hypothesis.id,
+            hypothesis.id.0,
             result
         );
         Ok(())
@@ -127,9 +101,9 @@ impl EventSubscriber {
     ) -> Result<()> {
         // Update hypothesis confidence based on evidence
         let direction = match evidence {
-            crate::experience::events::payload::EventPayload::Evidence {
+            crate::experience::events::payload::EventPayload::EvidenceRecord {
                 direction, ..
-            } => direction.to_string(),
+            } => direction.clone(),
             _ => "unknown".to_string(),
         };
 

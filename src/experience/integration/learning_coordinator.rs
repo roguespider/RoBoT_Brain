@@ -555,12 +555,6 @@ impl LearningCoordinator {
                 related_hypothesis: Some(hypothesis_id.clone()),
                 ..Default::default()
             },
-
-        let exploration = Exploration::new(
-            exploration_id.clone(),
-            title,
-            purpose,
-            crate::experience::types::ExperienceContext::default(),
         );
 
         let mut store = self.explorations.write().await;

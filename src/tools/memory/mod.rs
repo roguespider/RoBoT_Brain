@@ -559,6 +559,7 @@ pub async fn execute_list_memories(
 
     // Get recent memories from both Working Memory cache and database
     let working_items = memory_retrieval.get_context(limit).await;
+    let working_count = working_items.len();
 
     // Also query the database for memories not in working memory
     let conn = database.connection()?;
@@ -608,9 +609,9 @@ pub async fn execute_list_memories(
     Ok(ToolOutput::success(serde_json::json!({
         "memories": result,
         "count": result.len(),
-        "working_count": working_items.len(),
+        "working_count": working_count,
         "database_count": db_ids.len()
-    }))
+    })))
 }
 
 // ============================================================================
