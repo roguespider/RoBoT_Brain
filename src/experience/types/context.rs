@@ -22,6 +22,9 @@ pub struct ExperienceContext {
     pub search_query: Option<String>,
     pub results_count: Option<usize>,
     pub source: Option<String>,
+    
+    // Hypothesis exploration context
+    pub related_hypothesis: Option<String>,
 }
 
 /// Workflow information.

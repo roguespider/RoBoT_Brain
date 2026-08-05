@@ -1,6 +1,7 @@
 // src/tools/ingestor/core/ingestion.rs
 //! Core file ingestion logic
 
+use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 

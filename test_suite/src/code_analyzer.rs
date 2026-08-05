@@ -347,7 +347,7 @@ impl CodeAnalyzer {
         // Skip string literals containing underscore-prefixed identifiers
         // This handles cases like ["_id", "_type"] in JSON field arrays
         let without_strings = line
-            .split(|c| c == '"' || c == '\'')
+            .split(|c| ['"', '\''].contains(&c))
             .enumerate()
             .filter(|(i, _)| i % 2 == 0)
             .map(|(_, s)| s)
@@ -487,7 +487,7 @@ impl CodeAnalyzer {
         }
 
         // Check for public functions that only return Err() (always-failing functions)
-        let public_fn_re = Regex::new(r"pub\s+(async\s+)?fn\s+(\w+)\s*\").ok();
+        let public_fn_re = Regex::new(r"pub\s+(async\s+)?fn\s+(\w+)\s*\(").ok();
         let return_err_re = Regex::new(r"return\s+Err\(").ok();
         if let (Some(pub_re), Some(err_re)) = (public_fn_re, return_err_re) {
             for (line_num, line) in content.lines().enumerate() {

@@ -5,7 +5,7 @@ use anyhow::Result;
 use crate::experience::{
     events::ExperienceEvent,
     observer::ExperienceObserver,
-    types::{Experience, ExperienceScore, OutcomeKind},
+    types::{Experience, ExperienceScore, ExperienceType, OutcomeKind},
 };
 
 /// Calculates learning signals for experiences.

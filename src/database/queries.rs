@@ -545,7 +545,7 @@ use crate::experience::types::maturity::KnowledgeMaturity;
 /// List recent experiences from the database
 pub fn list_experiences(conn: &Connection, limit: usize) -> Result<Vec<Experience>> {
     let mut stmt = conn.prepare(
-        "SELECT id, title, description, experience_type, context, outcome, score, timestamp, observation_ids, encounter_ids, maturity, confidence, lessons, evidence_count, tags, committed, archived, archived_at, metadata
+        "SELECT id, title, description, experience_type, context, outcome, score, timestamp, observation_ids, encounter_ids, maturity, confidence, lessons, evidence_count, evidence_ids, tags, committed, archived, archived_at, metadata
          FROM experiences
          ORDER BY timestamp DESC
          LIMIT ?1"
@@ -566,11 +566,12 @@ pub fn list_experiences(conn: &Connection, limit: usize) -> Result<Vec<Experienc
         let confidence: f32 = row.get(11)?;
         let lessons_json: String = row.get(12)?;
         let evidence_count: usize = row.get(13)?;
-        let tags_json: String = row.get(14)?;
-        let committed: bool = row.get(15)?;
-        let archived: bool = row.get(16)?;
-        let archived_at_str: Option<String> = row.get(17)?;
-        let metadata_json: String = row.get(18)?;
+        let evidence_ids_json: String = row.get(14)?;
+        let tags_json: String = row.get(15)?;
+        let committed: bool = row.get(16)?;
+        let archived: bool = row.get(17)?;
+        let archived_at_str: Option<String> = row.get(18)?;
+        let metadata_json: String = row.get(19)?;
         
         let context: ExperienceContext = serde_json::from_str(&context_json)
             .unwrap_or_default();
@@ -582,6 +583,7 @@ pub fn list_experiences(conn: &Connection, limit: usize) -> Result<Vec<Experienc
             .unwrap_or_else(|_| Utc::now());
         let observation_ids: Vec<Uuid> = serde_json::from_str(&observation_ids_json).unwrap_or_default();
         let encounter_ids: Vec<Uuid> = serde_json::from_str(&encounter_ids_json).unwrap_or_default();
+        let evidence_ids: Vec<Uuid> = serde_json::from_str(&evidence_ids_json).unwrap_or_default();
         let maturity: KnowledgeMaturity = serde_json::from_str(&maturity_json)
             .unwrap_or(KnowledgeMaturity::Emerging);
         let lessons: Vec<String> = serde_json::from_str(&lessons_json).unwrap_or_default();
@@ -593,6 +595,7 @@ pub fn list_experiences(conn: &Connection, limit: usize) -> Result<Vec<Experienc
             id: Uuid::parse_str(&id_str).unwrap_or_else(|_| Uuid::new_v4()),
             timestamp,
             observation_ids,
+            evidence_ids,
             experience_type: serde_json::from_str(&experience_type_json)
                 .unwrap_or(ExperienceType::ToolExecution),
             title,
