@@ -20,7 +20,6 @@ pub struct CodeIssue {
     pub line_number: usize,
     pub issue_type: IssueType,
     pub description: String,
-    #[allow(dead_code)]
     pub code_snippet: String,
 }
 
@@ -48,9 +47,7 @@ pub enum IssueType {
     UnusedImport,
     PublicNeverCalled,
     AlwaysErr,
-    #[allow(dead_code)]
     PlaceholderReturn,
-    #[allow(dead_code)]
     StubPattern,
 }
 

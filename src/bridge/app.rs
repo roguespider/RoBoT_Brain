@@ -27,6 +27,7 @@ use crate::experience::scheduler::{Scheduler, TaskSchedule, TaskType};
 use crate::experience::scorer::ExperienceScorer;
 use crate::experience::worker_manager::WorkerManager;
 use crate::knowledge::KnowledgeStore;
+use crate::learning::working_memory::store::WorkingMemory as LearningWorkingMemory;
 use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory as MemWorkingMemory};
 use crate::personality::{Personality, PersonalityTraits};
 use crate::planner::{Planner, PolicyEngine};
@@ -73,6 +74,9 @@ pub struct App {
 
     /// ACP router for inter-agent communication.
     acp_router: Arc<AcpRouter>,
+
+    /// Learning working memory for active context tracking (Architecture §4).
+    learning_working_memory: Arc<std::sync::Arc<LearningWorkingMemory>>,
 }
 
 impl App {
@@ -272,6 +276,18 @@ impl App {
         ));
         tracing::info!("Workflow engine initialized with coordinator");
 
+        // Create learning working memory for active context tracking (Architecture §4)
+        let learning_working_memory =
+            Arc::new(std::sync::Arc::new(LearningWorkingMemory::new(1000)));
+        let _ = learning_working_memory
+            .store(
+                "app_initialized",
+                "RoBoT brain initialized",
+                crate::learning::working_memory::MemoryItemType::Metadata,
+                0.5,
+            )
+            .await;
+
         // Create MCP context with all systems
         let mcp_context = Arc::new(McpContext::new(
             database.clone(),
@@ -313,6 +329,7 @@ impl App {
             mcp_context,
             personality: shared_personality,
             acp_router: Arc::new(AcpRouter::new(Arc::new(AcpRegistry::new()))),
+            learning_working_memory,
         })
     }
 

@@ -19,8 +19,12 @@ async fn test_store_and_retrieve() {
     let id = memory.store(item).await;
     let retrieved = memory.retrieve(&id).await;
 
-    assert!(retrieved.is_some());
-    assert_eq!(retrieved.unwrap().content, "Important fact");
+    let found = if let Some(item) = retrieved {
+        item.content == "Important fact"
+    } else {
+        false
+    };
+    assert!(found);
 }
 
 #[tokio::test]

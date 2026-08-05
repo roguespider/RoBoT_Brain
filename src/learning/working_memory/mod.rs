@@ -1,4 +1,3 @@
-
 // src/learning/working_memory.rs
 
 #![allow(dead_code)]
@@ -15,7 +14,7 @@
 //! - Promotion policies for knowledge extraction
 //! - Lineage tracking for memory provenance
 
-mod store;
+pub mod store;
 #[cfg(test)]
 mod tests;
 
@@ -51,12 +50,7 @@ pub struct WorkingMemoryItem {
 }
 
 impl WorkingMemoryItem {
-    pub fn new(
-        key: String,
-        value: String,
-        item_type: MemoryItemType,
-        importance: f32,
-    ) -> Self {
+    pub fn new(key: String, value: String, item_type: MemoryItemType, importance: f32) -> Self {
         let now = Utc::now();
         Self {
             id: Uuid::new_v4().to_string(),
@@ -76,50 +70,62 @@ impl WorkingMemoryItem {
             transition_history: Vec::new(),
         }
     }
-    
+
     pub fn transition(&mut self, transition: StateTransition, reason: Option<String>) -> bool {
         if !self.state.can_transition(&transition) {
             return false;
         }
-        
+
         if let Some(new_state) = self.state.transition_to(&transition) {
             let record = StateTransitionRecord::new(self.state, new_state, transition, reason);
             self.transition_history.push(record);
             self.state = new_state;
             return true;
         }
-        
+
         false
     }
-    
+
     pub fn record_access(&mut self) {
         self.accessed_at = Utc::now();
         self.access_count += 1;
-        
+
         if self.state == MemoryState::Active {
             self.repeated_count += 1;
             if self.repeated_count > 1 {
-                let _ = self.transition(StateTransition::Observe, Some("Repeated access".to_string()));
+                let _ = self.transition(
+                    StateTransition::Observe,
+                    Some("Repeated access".to_string()),
+                );
             }
         } else if self.state == MemoryState::Dormant {
-            let _ = self.transition(StateTransition::Access, Some("Revived by access".to_string()));
+            let _ = self.transition(
+                StateTransition::Access,
+                Some("Revived by access".to_string()),
+            );
         }
     }
-    
+
     pub fn record_confirmation(&mut self) {
         self.confirmation_count += 1;
         if self.state == MemoryState::Repeated {
             let _ = self.transition(StateTransition::Confirm, Some("Confirmed".to_string()));
         }
     }
-    
+
     pub fn record_contradiction(&mut self) {
         self.contradicted = true;
-        if matches!(self.state, MemoryState::Active | MemoryState::Repeated | MemoryState::Confirmed) {
-            let _ = self.transition(StateTransition::Contradict, Some("Contradicted".to_string()));
+        if matches!(
+            self.state,
+            MemoryState::Active | MemoryState::Repeated | MemoryState::Confirmed
+        ) {
+            let _ = self.transition(
+                StateTransition::Contradict,
+                Some("Contradicted".to_string()),
+            );
         }
     }
-    
+
     pub fn is_expired(&self) -> bool {
         if let Some(ttl) = self.ttl_seconds {
             let age = Utc::now() - self.created_at;
@@ -128,7 +134,7 @@ impl WorkingMemoryItem {
             false
         }
     }
-    
+
     pub fn should_promote(&self, policy: &PromotionPolicy) -> bool {
         policy.evaluate(self).should_promote
     }
