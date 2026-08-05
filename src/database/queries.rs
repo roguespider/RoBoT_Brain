@@ -1,10 +1,8 @@
 // src/database/queries.rs
 
-#![allow(dead_code)]
-
 use anyhow::Result;
 use chrono::{DateTime, Utc};
-use rusqlite::{Connection, params};
+use rusqlite::{params, Connection};
 use uuid::Uuid;
 
 use crate::database::models::{MemoryCard, MemoryEmbedding, MemoryType};
@@ -72,18 +70,17 @@ pub(crate) fn delete_memories(conn: &Connection, ids: &[Uuid]) -> Result<usize> 
     if ids.is_empty() {
         return Ok(0);
     }
-    
+
     let placeholders: Vec<String> = ids.iter().map(|_| "?".to_string()).collect();
     let query = format!(
         "DELETE FROM memories WHERE id IN ({})",
         placeholders.join(",")
     );
-    
+
     let params: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
-    let params_refs: Vec<&dyn rusqlite::ToSql> = params.iter()
-        .map(|s| s as &dyn rusqlite::ToSql)
-        .collect();
-    
+    let params_refs: Vec<&dyn rusqlite::ToSql> =
+        params.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
+
     let deleted = conn.execute(&query, params_refs.as_slice())?;
     Ok(deleted)
 }
@@ -92,12 +89,9 @@ pub fn delete_memories_by_string_ids(conn: &Connection, ids: &[String]) -> Resul
     if ids.is_empty() {
         return Ok(0);
     }
-    
-    let uuids: Result<Vec<Uuid>, _> = ids
-        .iter()
-        .map(|s| Uuid::parse_str(s))
-        .collect();
-    
+
+    let uuids: Result<Vec<Uuid>, _> = ids.iter().map(|s| Uuid::parse_str(s)).collect();
+
     match uuids {
         Ok(uuids) => delete_memories(conn, &uuids),
         Err(e) => anyhow::bail!("Invalid UUID: {}", e),
@@ -135,11 +129,16 @@ pub fn get_memory(conn: &Connection, id: Uuid) -> Result<Option<MemoryCard>> {
         let parent_id_str: String = row.get(4)?;
         let last_accessed_str: Option<String> = row.get(10)?;
         Ok(MemoryCard {
-            id: Uuid::parse_str(&uuid_str).map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
+            id: Uuid::parse_str(&uuid_str)
+                .map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
             content: row.get(1)?,
             memory_type: parse_memory_type(&row.get::<_, String>(2)?),
             layer: parse_memory_layer(&row.get::<_, String>(3)?),
-            parent_id: if parent_id_str.is_empty() { None } else { Uuid::parse_str(&parent_id_str).ok() },
+            parent_id: if parent_id_str.is_empty() {
+                None
+            } else {
+                Uuid::parse_str(&parent_id_str).ok()
+            },
             hierarchy_level: parse_hierarchy_level(&row.get::<_, String>(5)?),
             order_index: row.get(6)?,
             path: row.get(7)?,
@@ -197,11 +196,16 @@ pub fn search_memory(conn: &Connection, text: &str, limit: usize) -> Result<Vec<
         let parent_id_str: String = row.get(4)?;
         let last_accessed_str: Option<String> = row.get(10)?;
         Ok(MemoryCard {
-            id: Uuid::parse_str(&uuid_str).map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
+            id: Uuid::parse_str(&uuid_str)
+                .map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
             content: row.get(1)?,
             memory_type: parse_memory_type(&row.get::<_, String>(2)?),
             layer: parse_memory_layer(&row.get::<_, String>(3)?),
-            parent_id: if parent_id_str.is_empty() { None } else { Uuid::parse_str(&parent_id_str).ok() },
+            parent_id: if parent_id_str.is_empty() {
+                None
+            } else {
+                Uuid::parse_str(&parent_id_str).ok()
+            },
             hierarchy_level: parse_hierarchy_level(&row.get::<_, String>(5)?),
             order_index: row.get(6)?,
             path: row.get(7)?,
@@ -223,11 +227,16 @@ fn map_row_to_memory_card(row: &rusqlite::Row) -> rusqlite::Result<MemoryCard> {
     let parent_id_str: String = row.get(4)?;
     let last_accessed_str: Option<String> = row.get(10)?;
     Ok(MemoryCard {
-        id: Uuid::parse_str(&uuid_str).map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
+        id: Uuid::parse_str(&uuid_str)
+            .map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
         content: row.get(1)?,
         memory_type: parse_memory_type(&row.get::<_, String>(2)?),
         layer: parse_memory_layer(&row.get::<_, String>(3)?),
-        parent_id: if parent_id_str.is_empty() { None } else { Uuid::parse_str(&parent_id_str).ok() },
+        parent_id: if parent_id_str.is_empty() {
+            None
+        } else {
+            Uuid::parse_str(&parent_id_str).ok()
+        },
         hierarchy_level: parse_hierarchy_level(&row.get::<_, String>(5)?),
         order_index: row.get(6)?,
         path: row.get(7)?,
@@ -241,9 +250,13 @@ fn map_row_to_memory_card(row: &rusqlite::Row) -> rusqlite::Result<MemoryCard> {
     })
 }
 
-pub fn list_memories(conn: &Connection, memory_type: Option<&str>, limit: usize) -> Result<Vec<MemoryCard>> {
+pub fn list_memories(
+    conn: &Connection,
+    memory_type: Option<&str>,
+    limit: usize,
+) -> Result<Vec<MemoryCard>> {
     let mut rows = Vec::new();
-    
+
     if let Some(mem_type) = memory_type {
         let query = "SELECT id, content, memory_type, COALESCE(layer, 'working') as layer,
             COALESCE(parent_id, '') as parent_id, COALESCE(hierarchy_level, 'document') as hierarchy_level,
@@ -273,13 +286,17 @@ pub fn list_memories(conn: &Connection, memory_type: Option<&str>, limit: usize)
     Ok(rows)
 }
 /// List memories by layer (Working or Permanent)
-pub fn list_memories_by_layer(conn: &Connection, layer: &str, limit: usize) -> Result<Vec<MemoryCard>> {
+pub fn list_memories_by_layer(
+    conn: &Connection,
+    layer: &str,
+    limit: usize,
+) -> Result<Vec<MemoryCard>> {
     let query = "SELECT id, content, memory_type, COALESCE(layer, 'working') as layer,
         COALESCE(parent_id, '') as parent_id, COALESCE(hierarchy_level, 'document') as hierarchy_level,
         COALESCE(order_index, 0) as order_index, COALESCE(path, '') as path, file_source,
         COALESCE(access_count, 0) as access_count, last_accessed, confidence, importance, created_at, updated_at
         FROM memories WHERE layer = ?1 ORDER BY updated_at DESC LIMIT ?2";
-    
+
     let mut rows = Vec::new();
     let mut stmt = conn.prepare(query)?;
     let param = layer.to_string();
@@ -381,14 +398,16 @@ pub fn get_scheduled_task(conn: &Connection, id: &str) -> Result<Option<Schedule
     )?;
 
     let mut rows = stmt.query(params![id])?;
-    
+
     if let Some(row) = rows.next()? {
         Ok(Some(ScheduledTask {
             id: row.get(0)?,
             name: row.get(1)?,
             task_type: serde_json::from_str(&row.get::<_, String>(2)?).unwrap_or(TaskType::Custom),
-            schedule: serde_json::from_str(&row.get::<_, String>(3)?).unwrap_or(TaskSchedule::Manual),
-            status: serde_json::from_str(&row.get::<_, String>(4)?).unwrap_or(TaskStatus::Scheduled),
+            schedule: serde_json::from_str(&row.get::<_, String>(3)?)
+                .unwrap_or(TaskSchedule::Manual),
+            status: serde_json::from_str(&row.get::<_, String>(4)?)
+                .unwrap_or(TaskStatus::Scheduled),
             last_run: row.get::<_, Option<String>>(5)?.as_deref().map(parse_time),
             next_run: row.get::<_, Option<String>>(6)?.as_deref().map(parse_time),
             failure_count: row.get(7)?,
@@ -419,14 +438,16 @@ pub fn list_scheduled_tasks(conn: &Connection) -> Result<Vec<ScheduledTask>> {
 
     let mut tasks = Vec::new();
     let mut rows = stmt.query([])?;
-    
+
     while let Some(row) = rows.next()? {
         tasks.push(ScheduledTask {
             id: row.get(0)?,
             name: row.get(1)?,
             task_type: serde_json::from_str(&row.get::<_, String>(2)?).unwrap_or(TaskType::Custom),
-            schedule: serde_json::from_str(&row.get::<_, String>(3)?).unwrap_or(TaskSchedule::Manual),
-            status: serde_json::from_str(&row.get::<_, String>(4)?).unwrap_or(TaskStatus::Scheduled),
+            schedule: serde_json::from_str(&row.get::<_, String>(3)?)
+                .unwrap_or(TaskSchedule::Manual),
+            status: serde_json::from_str(&row.get::<_, String>(4)?)
+                .unwrap_or(TaskStatus::Scheduled),
             last_run: row.get::<_, Option<String>>(5)?.as_deref().map(parse_time),
             next_run: row.get::<_, Option<String>>(6)?.as_deref().map(parse_time),
             failure_count: row.get(7)?,
@@ -487,7 +508,8 @@ pub fn get_observation(conn: &Connection, id: Uuid) -> Result<Option<Observation
         let related_json: String = row.get(4)?;
         let triggered_str: Option<String> = row.get(5)?;
         Ok(Observation {
-            id: Uuid::parse_str(&id_str).map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
+            id: Uuid::parse_str(&id_str)
+                .map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
             content: row.get(1)?,
             context: row.get(2)?,
             observation_type: row.get(3)?,
@@ -515,7 +537,8 @@ pub fn list_observations(conn: &Connection, limit: usize) -> Result<Vec<Observat
         let related_json: String = row.get(4)?;
         let triggered_str: Option<String> = row.get(5)?;
         Ok(Observation {
-            id: Uuid::parse_str(&id_str).map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
+            id: Uuid::parse_str(&id_str)
+                .map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
             content: row.get(1)?,
             context: row.get(2)?,
             observation_type: row.get(3)?,
@@ -528,7 +551,11 @@ pub fn list_observations(conn: &Connection, limit: usize) -> Result<Vec<Observat
     Ok(rows.collect::<Result<Vec<_>, _>>()?)
 }
 /// Link an observation to an experience
-pub fn link_observation_to_experience(conn: &Connection, observation_id: Uuid, experience_id: Uuid) -> Result<()> {
+pub fn link_observation_to_experience(
+    conn: &Connection,
+    observation_id: Uuid,
+    experience_id: Uuid,
+) -> Result<()> {
     if let Some(mut obs) = get_observation(conn, observation_id)? {
         obs.related_experiences.push(experience_id);
         insert_observation(conn, &obs)?;
@@ -540,8 +567,10 @@ pub fn link_observation_to_experience(conn: &Connection, observation_id: Uuid, e
 // EXPERIENCE OPERATIONS (for scheduler use)
 // ==========================================================
 
-use crate::experience::types::{Experience, ExperienceContext, ExperienceOutcome, ExperienceScore, ExperienceType};
 use crate::experience::types::maturity::KnowledgeMaturity;
+use crate::experience::types::{
+    Experience, ExperienceContext, ExperienceOutcome, ExperienceScore, ExperienceType,
+};
 /// List recent experiences from the database
 pub fn list_experiences(conn: &Connection, limit: usize) -> Result<Vec<Experience>> {
     let mut stmt = conn.prepare(
@@ -550,72 +579,83 @@ pub fn list_experiences(conn: &Connection, limit: usize) -> Result<Vec<Experienc
          ORDER BY timestamp DESC
          LIMIT ?1"
     )?;
-    
-    let experiences = stmt.query_map(params![limit], |row| {
-        let id_str: String = row.get(0)?;
-        let title: String = row.get(1)?;
-        let description: String = row.get(2)?;
-        let experience_type_json: String = row.get(3)?;
-        let context_json: String = row.get(4)?;
-        let outcome_json: String = row.get(5)?;
-        let score_json: String = row.get(6)?;
-        let timestamp_str: String = row.get(7)?;
-        let observation_ids_json: String = row.get(8)?;
-        let encounter_ids_json: String = row.get(9)?;
-        let maturity_json: String = row.get(10)?;
-        let confidence: f32 = row.get(11)?;
-        let lessons_json: String = row.get(12)?;
-        let evidence_count: usize = row.get(13)?;
-        let evidence_ids_json: String = row.get(14)?;
-        let tags_json: String = row.get(15)?;
-        let committed: bool = row.get(16)?;
-        let archived: bool = row.get(17)?;
-        let archived_at_str: Option<String> = row.get(18)?;
-        let metadata_json: String = row.get(19)?;
-        
-        let context: ExperienceContext = serde_json::from_str(&context_json)
-            .unwrap_or_default();
-        let outcome: ExperienceOutcome = serde_json::from_str(&outcome_json)
-            .unwrap_or_else(|_| ExperienceOutcome::failure("Failed to parse outcome"));
-        let score: Option<ExperienceScore> = serde_json::from_str(&score_json).ok();
-        let timestamp = DateTime::parse_from_rfc3339(&timestamp_str)
-            .map(|dt| dt.with_timezone(&Utc))
-            .unwrap_or_else(|_| Utc::now());
-        let observation_ids: Vec<Uuid> = serde_json::from_str(&observation_ids_json).unwrap_or_default();
-        let encounter_ids: Vec<Uuid> = serde_json::from_str(&encounter_ids_json).unwrap_or_default();
-        let evidence_ids: Vec<Uuid> = serde_json::from_str(&evidence_ids_json).unwrap_or_default();
-        let maturity: KnowledgeMaturity = serde_json::from_str(&maturity_json)
-            .unwrap_or(KnowledgeMaturity::Emerging);
-        let lessons: Vec<String> = serde_json::from_str(&lessons_json).unwrap_or_default();
-        let tags: Vec<String> = serde_json::from_str(&tags_json).unwrap_or_default();
-        let metadata: std::collections::HashMap<String, String> = serde_json::from_str(&metadata_json).unwrap_or_default();
-        let archived_at = archived_at_str.and_then(|s| DateTime::parse_from_rfc3339(&s).ok().map(|dt| dt.with_timezone(&Utc)));
-        
-        Ok(Experience {
-            id: Uuid::parse_str(&id_str).unwrap_or_else(|_| Uuid::new_v4()),
-            timestamp,
-            observation_ids,
-            evidence_ids,
-            experience_type: serde_json::from_str(&experience_type_json)
-                .unwrap_or(ExperienceType::ToolExecution),
-            title,
-            description,
-            context,
-            outcome,
-            score,
-            encounter_ids,
-            maturity,
-            confidence,
-            lessons,
-            evidence_count,
-            tags,
-            committed,
-            archived,
-            archived_at,
-            metadata,
-        })
-    })?.filter_map(|r| r.ok()).collect();
-    
+
+    let experiences = stmt
+        .query_map(params![limit], |row| {
+            let id_str: String = row.get(0)?;
+            let title: String = row.get(1)?;
+            let description: String = row.get(2)?;
+            let experience_type_json: String = row.get(3)?;
+            let context_json: String = row.get(4)?;
+            let outcome_json: String = row.get(5)?;
+            let score_json: String = row.get(6)?;
+            let timestamp_str: String = row.get(7)?;
+            let observation_ids_json: String = row.get(8)?;
+            let encounter_ids_json: String = row.get(9)?;
+            let maturity_json: String = row.get(10)?;
+            let confidence: f32 = row.get(11)?;
+            let lessons_json: String = row.get(12)?;
+            let evidence_count: usize = row.get(13)?;
+            let evidence_ids_json: String = row.get(14)?;
+            let tags_json: String = row.get(15)?;
+            let committed: bool = row.get(16)?;
+            let archived: bool = row.get(17)?;
+            let archived_at_str: Option<String> = row.get(18)?;
+            let metadata_json: String = row.get(19)?;
+
+            let context: ExperienceContext =
+                serde_json::from_str(&context_json).unwrap_or_default();
+            let outcome: ExperienceOutcome = serde_json::from_str(&outcome_json)
+                .unwrap_or_else(|_| ExperienceOutcome::failure("Failed to parse outcome"));
+            let score: Option<ExperienceScore> = serde_json::from_str(&score_json).ok();
+            let timestamp = DateTime::parse_from_rfc3339(&timestamp_str)
+                .map(|dt| dt.with_timezone(&Utc))
+                .unwrap_or_else(|_| Utc::now());
+            let observation_ids: Vec<Uuid> =
+                serde_json::from_str(&observation_ids_json).unwrap_or_default();
+            let encounter_ids: Vec<Uuid> =
+                serde_json::from_str(&encounter_ids_json).unwrap_or_default();
+            let evidence_ids: Vec<Uuid> =
+                serde_json::from_str(&evidence_ids_json).unwrap_or_default();
+            let maturity: KnowledgeMaturity =
+                serde_json::from_str(&maturity_json).unwrap_or(KnowledgeMaturity::Emerging);
+            let lessons: Vec<String> = serde_json::from_str(&lessons_json).unwrap_or_default();
+            let tags: Vec<String> = serde_json::from_str(&tags_json).unwrap_or_default();
+            let metadata: std::collections::HashMap<String, String> =
+                serde_json::from_str(&metadata_json).unwrap_or_default();
+            let archived_at = archived_at_str.and_then(|s| {
+                DateTime::parse_from_rfc3339(&s)
+                    .ok()
+                    .map(|dt| dt.with_timezone(&Utc))
+            });
+
+            Ok(Experience {
+                id: Uuid::parse_str(&id_str).unwrap_or_else(|_| Uuid::new_v4()),
+                timestamp,
+                observation_ids,
+                evidence_ids,
+                experience_type: serde_json::from_str(&experience_type_json)
+                    .unwrap_or(ExperienceType::ToolExecution),
+                title,
+                description,
+                context,
+                outcome,
+                score,
+                encounter_ids,
+                maturity,
+                confidence,
+                lessons,
+                evidence_count,
+                tags,
+                committed,
+                archived,
+                archived_at,
+                metadata,
+            })
+        })?
+        .filter_map(|r| r.ok())
+        .collect();
+
     Ok(experiences)
 }
 
@@ -628,32 +668,35 @@ use crate::experience::reputation::reputation::Reputation;
 pub fn list_reputations(conn: &Connection) -> Result<Vec<Reputation>> {
     let mut stmt = conn.prepare(
         "SELECT id, score, observations, successes, failures, updated_at
-         FROM reputations"
+         FROM reputations",
     )?;
-    
-    let reputations = stmt.query_map(params![], |row| {
-        let id: String = row.get(0)?;
-        let score: f64 = row.get(1)?;
-        let observations: u64 = row.get(2)?;
-        let successes: u64 = row.get(3)?;
-        let failures: u64 = row.get(4)?;
-        let updated_at_str: String = row.get(5)?;
-        let updated_at = DateTime::parse_from_rfc3339(&updated_at_str)
-            .map(|dt| dt.with_timezone(&Utc))
-            .unwrap_or_else(|_| Utc::now());
-        
-        Ok(Reputation {
-            id,
-            score,
-            factors: Vec::new(), // Factors not stored in this table structure
-            observations,
-            successes,
-            failures,
-            updated_at,
-            history: Vec::new(),
-        })
-    })?.filter_map(|r| r.ok()).collect();
-    
+
+    let reputations = stmt
+        .query_map(params![], |row| {
+            let id: String = row.get(0)?;
+            let score: f64 = row.get(1)?;
+            let observations: u64 = row.get(2)?;
+            let successes: u64 = row.get(3)?;
+            let failures: u64 = row.get(4)?;
+            let updated_at_str: String = row.get(5)?;
+            let updated_at = DateTime::parse_from_rfc3339(&updated_at_str)
+                .map(|dt| dt.with_timezone(&Utc))
+                .unwrap_or_else(|_| Utc::now());
+
+            Ok(Reputation {
+                id,
+                score,
+                factors: Vec::new(), // Factors not stored in this table structure
+                observations,
+                successes,
+                failures,
+                updated_at,
+                history: Vec::new(),
+            })
+        })?
+        .filter_map(|r| r.ok())
+        .collect();
+
     Ok(reputations)
 }
 /// Insert or update a reputation
@@ -680,7 +723,10 @@ pub fn insert_reputation(conn: &Connection, reputation: &Reputation) -> Result<(
 
 use crate::database::models::MemoryRelationship;
 /// Insert a new memory relationship
-pub fn insert_memory_relationship(conn: &Connection, relationship: &MemoryRelationship) -> Result<()> {
+pub fn insert_memory_relationship(
+    conn: &Connection,
+    relationship: &MemoryRelationship,
+) -> Result<()> {
     conn.execute(
         "INSERT OR REPLACE INTO memory_relationships
          (id, memory_id, related_id, relationship_type)
@@ -731,16 +777,15 @@ pub fn insert_embedding(conn: &Connection, embedding: &MemoryEmbedding) -> Resul
 
 /// Get an embedding by ID
 pub fn get_embedding(conn: &Connection, id: Uuid) -> Result<Option<MemoryEmbedding>> {
-    let mut stmt = conn.prepare(
-        "SELECT id, memory_id, embedding, model FROM memory_embeddings WHERE id = ?1"
-    )?;
+    let mut stmt = conn
+        .prepare("SELECT id, memory_id, embedding, model FROM memory_embeddings WHERE id = ?1")?;
 
     let result = stmt.query_row([id.to_string()], |row| {
         let id_str: String = row.get(0)?;
         let memory_id_str: String = row.get(1)?;
         let bytes: Vec<u8> = row.get(2)?;
         let model: String = row.get(3)?;
-        
+
         Ok(MemoryEmbedding {
             id: Uuid::parse_str(&id_str)
                 .map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
@@ -759,9 +804,12 @@ pub fn get_embedding(conn: &Connection, id: Uuid) -> Result<Option<MemoryEmbeddi
 }
 
 /// Get embedding by memory ID
-pub fn get_embedding_by_memory_id(conn: &Connection, memory_id: Uuid) -> Result<Option<MemoryEmbedding>> {
+pub fn get_embedding_by_memory_id(
+    conn: &Connection,
+    memory_id: Uuid,
+) -> Result<Option<MemoryEmbedding>> {
     let mut stmt = conn.prepare(
-        "SELECT id, memory_id, embedding, model FROM memory_embeddings WHERE memory_id = ?1"
+        "SELECT id, memory_id, embedding, model FROM memory_embeddings WHERE memory_id = ?1",
     )?;
 
     let result = stmt.query_row([memory_id.to_string()], |row| {
@@ -769,7 +817,7 @@ pub fn get_embedding_by_memory_id(conn: &Connection, memory_id: Uuid) -> Result<
         let memory_id_str: String = row.get(1)?;
         let bytes: Vec<u8> = row.get(2)?;
         let model: String = row.get(3)?;
-        
+
         Ok(MemoryEmbedding {
             id: Uuid::parse_str(&id_str)
                 .map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
@@ -789,16 +837,15 @@ pub fn get_embedding_by_memory_id(conn: &Connection, memory_id: Uuid) -> Result<
 
 /// List all embeddings with their memory IDs
 pub fn list_embeddings(conn: &Connection, limit: usize) -> Result<Vec<MemoryEmbedding>> {
-    let mut stmt = conn.prepare(
-        "SELECT id, memory_id, embedding, model FROM memory_embeddings LIMIT ?1"
-    )?;
+    let mut stmt =
+        conn.prepare("SELECT id, memory_id, embedding, model FROM memory_embeddings LIMIT ?1")?;
 
     let rows = stmt.query_map([limit as i64], |row| {
         let id_str: String = row.get(0)?;
         let memory_id_str: String = row.get(1)?;
         let bytes: Vec<u8> = row.get(2)?;
         let model: String = row.get(3)?;
-        
+
         Ok(MemoryEmbedding {
             id: Uuid::parse_str(&id_str)
                 .map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
@@ -832,11 +879,9 @@ pub fn delete_embedding_by_memory_id(conn: &Connection, memory_id: Uuid) -> Resu
 
 /// Get embedding count
 pub fn count_embeddings(conn: &Connection) -> Result<usize> {
-    let count: i64 = conn.query_row(
-        "SELECT COUNT(*) FROM memory_embeddings",
-        [],
-        |row| row.get(0),
-    )?;
+    let count: i64 = conn.query_row("SELECT COUNT(*) FROM memory_embeddings", [], |row| {
+        row.get(0)
+    })?;
     Ok(count as usize)
 }
 
@@ -857,21 +902,9 @@ mod tests {
 
     #[test]
     fn test_memory_embedding_cosine_similarity() {
-        let e1 = MemoryEmbedding::new(
-            Uuid::new_v4(),
-            vec![1.0, 0.0, 0.0],
-            "test".to_string(),
-        );
-        let e2 = MemoryEmbedding::new(
-            Uuid::new_v4(),
-            vec![1.0, 0.0, 0.0],
-            "test".to_string(),
-        );
-        let e3 = MemoryEmbedding::new(
-            Uuid::new_v4(),
-            vec![0.0, 1.0, 0.0],
-            "test".to_string(),
-        );
+        let e1 = MemoryEmbedding::new(Uuid::new_v4(), vec![1.0, 0.0, 0.0], "test".to_string());
+        let e2 = MemoryEmbedding::new(Uuid::new_v4(), vec![1.0, 0.0, 0.0], "test".to_string());
+        let e3 = MemoryEmbedding::new(Uuid::new_v4(), vec![0.0, 1.0, 0.0], "test".to_string());
 
         assert!((e1.cosine_similarity(&e2) - 1.0).abs() < f32::EPSILON);
         assert!((e1.cosine_similarity(&e3) - 0.0).abs() < f32::EPSILON);
@@ -887,4 +920,3 @@ mod tests {
         assert_eq!(e.dimension(), 5);
     }
 }
-

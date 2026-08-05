@@ -1,10 +1,10 @@
 //! Working memory store implementation
 
-mod structs;
 mod crud;
+mod processing;
 mod query;
 mod state;
-mod processing;
+mod structs;
 
 pub use structs::*;
 pub use crud::*;
