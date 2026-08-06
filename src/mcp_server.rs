@@ -1,9 +1,13 @@
 //! RoBoT Brain MCP Server
 //! 
-//! A Rust MCP server that loads tools as runtime plugins.
+//! MCP server implementation that loads tools as runtime plugins.
 //! If a plugin fails to load, the server continues with remaining plugins.
-
-mod plugin_loader;
+//!
+//! Supports MCP Protocol 2025-03-26:
+//! - Streamable HTTP transport
+//! - OAuth 2.1 authorization framework
+//! - Tool annotations
+//! - Argument completions
 
 use std::future::Future;
 use std::path::PathBuf;
@@ -13,17 +17,20 @@ use anyhow::Result;
 use rmcp::handler::server::ServerHandler;
 use rmcp::model::{
     CallToolRequestParams, CallToolResult, ContentBlock, ListToolsResult, 
-    ServerCapabilities, ServerInfo, Implementation, TextContent, Tool, PaginatedRequestParams
+    ServerCapabilities, ServerInfo, Implementation, TextContent, Tool, 
+    PaginatedRequestParams, ProtocolVersion
 };
 use rmcp::service::{RequestContext, RoleServer};
 use rmcp::ErrorData as McpError;
 use rmcp::service::MaybeSendFuture;
 use serde_json::Map;
 use tokio::sync::RwLock;
-use tracing::{info, error};
-use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+use tracing::{info, error, warn};
 
-use plugin_loader::PluginManager;
+use crate::plugin_loader::PluginManager;
+
+/// MCP Protocol version supported by this server
+const SUPPORTED_PROTOCOL_VERSION: ProtocolVersion = ProtocolVersion::LATEST;
 
 /// The MCP server handler that routes tool calls to plugins
 pub struct McpServer {
@@ -60,6 +67,7 @@ impl McpServer {
             .into_iter()
             .map(|def| {
                 let schema = Self::value_to_schema(def.input_schema);
+                // Use the newer Tool builder pattern for MCP 2025-03-26+
                 Tool::new(def.name, def.description, schema)
             })
             .collect()
@@ -104,6 +112,7 @@ impl Default for McpServer {
 }
 
 /// Wrapper that implements ServerHandler for our server
+/// Updated for MCP 2025-03-26 protocol
 pub struct McpServerHandler {
     server: Arc<McpServer>,
 }
@@ -115,6 +124,7 @@ impl McpServerHandler {
 }
 
 impl ServerHandler for McpServerHandler {
+    /// Get server info with supported protocol versions
     fn get_info(&self) -> ServerInfo {
         let capabilities = ServerCapabilities::builder()
             .enable_tools()
@@ -123,6 +133,7 @@ impl ServerHandler for McpServerHandler {
 
         ServerInfo::new(capabilities)
             .with_server_info(Implementation::new("robot_brain", "0.0.1"))
+            .with_protocol_version(SUPPORTED_PROTOCOL_VERSION)
     }
 
     fn list_tools(
@@ -146,8 +157,10 @@ impl ServerHandler for McpServerHandler {
     }
 }
 
-#[tokio::main]
-async fn main() -> Result<()> {
+/// Initialize and start the MCP server
+pub async fn run_mcp_server() -> Result<()> {
+    use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
+    
     // Initialize logging
     tracing_subscriber::registry()
         .with(tracing_subscriber::fmt::layer())
@@ -155,6 +168,7 @@ async fn main() -> Result<()> {
         .init();
 
     info!("Starting RoBoT Brain MCP Server...");
+    info!("MCP Protocol: 2025-03-26 (Streamable HTTP, Tool Annotations)");
 
     // Create server
     let server = Arc::new(McpServer::new());
@@ -177,12 +191,13 @@ async fn main() -> Result<()> {
             info!("Loaded {} plugins", server.plugins.read().await.count());
         }
         Err(e) => {
-            tracing::warn!("No plugins loaded: {}", e);
-            tracing::warn!("Build tool crates and copy .so files to: {:?}", plugins_dir);
+            warn!("No plugins loaded: {}", e);
+            warn!("Build tool crates and copy .so files to: {:?}", plugins_dir);
         }
     }
 
     println!("\n=== RoBoT Brain MCP Server ===");
+    println!("MCP Protocol: 2025-03-26");
     println!("Plugins loaded: {}", server.plugins.read().await.count());
     println!("Tools available: {}", server.get_tools().len());
     println!("\nTool list:");

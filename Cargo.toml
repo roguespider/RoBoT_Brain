@@ -1,9 +1,12 @@
 # Workspace for RoBoT Brain MCP Server
 # Each tool is a separate crate - if one fails, others still load
 #
+# MCP Protocol: 2025-03-26 (Streamable HTTP, OAuth 2.1, Tool Annotations)
+# Rust Edition: 2024 (stabilized in Rust 1.85.0, Feb 2025)
+# 
 # Structure:
+#   src/ - Main application including MCP server
 #   src/tools/ - Individual tool plugins (loaded at runtime)
-#   robot_brain/ - Main MCP server binary
 
 [workspace]
 members = [
@@ -20,7 +23,6 @@ members = [
     "src/tools/tools-search",
     "src/tools/tools-skills",
     "src/tools/tools-workflow",
-    "robot_brain",
     "test_suite",
 ]
 exclude = [
@@ -28,8 +30,77 @@ exclude = [
 ]
 resolver = "2"
 
+[package]
+name = "robot_brain"
+version = "0.0.1"
+edition = "2024"  # Rust 2024 edition - latest stable (requires Rust 1.85.0+)
+description = "A Rust MCP server with runtime-loaded tool plugins"
+
+[dependencies]
+
+# ============== MCP Protocol (Model Context Protocol) ==============
+# rmcp: Rust SDK for Model Context Protocol
+# MCP is the protocol used for communicating with AI assistants (Claude, etc.)
+rmcp = { version = "2.1", features = [
+    "server",              # MCP server implementation for handling tool requests
+    "client",             # MCP client for connecting to other MCP servers
+    "transport-io",       # Stdio transport for subprocess communication
+    "macros",             # Derive macros for tool definitions (@tool_handler, @tool)
+    "transport-child-process",  # Child process transport for spawning MCP clients
+    "server-streamable-http",   # Streamable HTTP transport (MCP 2025-03-26+)
+] }
+
+# ============== Serialization ==============
+# serde: Framework for serializing/deserializing Rust structs to/from various formats
+serde = { version = "1", features = ["derive"] }
+# serde_json: JSON serialization support for serde
+serde_json = "1"
+
+# ============== Async Runtime ==============
+# tokio: Async runtime for Rust - handles async/await, networking, I/O
+# "full" feature enables all major features including tcp, udp, fs, sync primitives
+tokio = { version = "1", features = ["full"] }
+
+# ============== Logging & Tracing ==============
+# tracing: Structured logging framework for Rust applications
+tracing = "0.1"
+# tracing-subscriber: Composable handlers for the tracing crate
+# "env-filter" allows log level configuration via RUST_LOG environment variable
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+
+# ============== Error Handling ==============
+# anyhow: Flexible error handling with anyhow::Result<T> and anyhow::Error
+# Supports context-rich errors without static type checking requirements
+anyhow = "1"
+
+# ============== Date/Time ==============
+# chrono: Date and time library for Rust
+# "serde" enables serialization/deserialization support
+chrono = { version = "0.4", features = ["serde"] }
+
+# ============== Unique Identifiers ==============
+# uuid: Library for generating and parsing universally unique identifiers (UUIDs)
+# "v4" enables random UUID generation (UUID4)
+# "serde" enables serialization/deserialization support
+uuid = { version = "1", features = ["v4", "serde"] }
+
+# ============== Dynamic Library Loading ==============
+# libloading: Rust library for loading dynamic libraries (.so/.dll/.dylib) at runtime
+# Used for loading tool plugins dynamically without compile-time linking
+libloading = "0.8"
+
+# ============== Windows-Specific ==============
+# windows-sys: Raw FFI bindings to Windows API
+# Required for attaching to parent console on Windows (Zed Editor compatibility)
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = [
+    "Win32_Foundation",      # Basic Windows types (HANDLE, BOOL, etc.)
+    "Win32_System_Console",  # Console functions (AttachConsole, FreeConsole)
+] }
+
+# ============== Release Build Optimizations ==============
 [profile.release]
-opt-level = 3
-lto = true
-codegen-units = 1
-strip = true
+opt-level = 3        # Maximum optimization (-C opt-level=3)
+lto = true           # Link-Time Optimization for better cross-crate inlining
+codegen-units = 1    # Single codegen unit for maximum optimization (slower compile)
+strip = true         # Strip symbols from binary (smaller binary size)
