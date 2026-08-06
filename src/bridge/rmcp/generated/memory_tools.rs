@@ -1,13 +1,14 @@
-    // memory_tools.rs - Memory storage and retrieval tools
+// memory_tools.rs - Memory storage and retrieval tools
+// This module loads independently and won't block MCP or other tools if it has issues.
 
+use crate::bridge::rmcp::helpers::{tool_output_to_content, enforcement_error_to_content};
 use crate::bridge::rmcp::types::McpServerHandler;
 use crate::tools;
 use crate::tools::ToolOutput;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::ContentBlock;
-use rmcp::tool_router;
 use rmcp::tool;
-use crate::bridge::rmcp::helpers::{tool_output_to_content, enforcement_error_to_content};
+use rmcp::tool_router;
 
 #[tool_router]
 impl McpServerHandler {

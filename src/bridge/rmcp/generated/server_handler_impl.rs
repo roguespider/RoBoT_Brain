@@ -1,13 +1,14 @@
-// impl_tools.rs - ServerHandler impl with custom server info
-// This file is included by mod.rs
+// server_handler_impl.rs
+// Implements ServerHandler trait for McpServerHandler
+// This is separate from tool implementations to allow tools to load independently.
 
-use rmcp::tool_handler;
-use rmcp::model::ServerCapabilities;
-use rmcp::model::Implementation;
+use crate::bridge::rmcp::types::McpServerHandler;
+use rmcp::handler::server::ServerHandler;
 
-#[tool_handler]
-impl rmcp::handler::server::ServerHandler for McpServerHandler {
+impl ServerHandler for McpServerHandler {
     fn get_info(&self) -> rmcp::model::ServerInfo {
+        use rmcp::model::ServerCapabilities;
+
         let capabilities = ServerCapabilities::builder()
             .enable_experimental()
             .enable_extensions()
@@ -20,6 +21,6 @@ impl rmcp::handler::server::ServerHandler for McpServerHandler {
             .build();
 
         rmcp::model::ServerInfo::new(capabilities)
-            .with_server_info(Implementation::new(&self.name, &self.version))
+            .with_server_info(rmcp::model::Implementation::new(&self.name, &self.version))
     }
 }

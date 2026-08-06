@@ -1,50 +1,48 @@
 // src/bridge/rmcp/generated/mod.rs
 // Tools module - each tool category is a separate, isolated module
 //
-// If one tool category has a compile error, disable it in Cargo.toml features.
-// MCP loads with remaining tools.
+// Each *_tools.rs file is a standalone module that contains its own impl block.
+// If one tool has compile errors, it can be disabled via Cargo.toml features.
+// MCP loads successfully with the remaining tools.
 
-use crate::bridge::rmcp::types::McpServerHandler;
-use crate::bridge::rmcp::helpers::{tool_output_to_content, enforcement_error_to_content};
+mod server_handler_impl;
 
 // Each tool module can be disabled via Cargo.toml features
-// If a tool has compile errors, comment out its feature in Cargo.toml
-
-#[cfg(feature = "tools-agent")]
-pub mod agent_tools;
-
-#[cfg(feature = "tools-experience")]
-pub mod experience_tools;
-
-#[cfg(feature = "tools-exploration")]
-pub mod exploration_tools;
-
-#[cfg(feature = "tools-hypothesis")]
-pub mod hypothesis_tools;
-
-#[cfg(feature = "tools-ingestor")]
-pub mod ingestor_tools;
-
-#[cfg(feature = "tools-knowledge")]
-pub mod knowledge_tools;
+// If a tool has compile errors, disable its feature in Cargo.toml
+// This ensures one tool cannot block MCP from loading or other tools from working
 
 #[cfg(feature = "tools-memory")]
-pub mod memory_tools;
+mod memory_tools;
 
-#[cfg(feature = "tools-planner")]
-pub mod planner_tools;
+#[cfg(feature = "tools-experience")]
+mod experience_tools;
 
 #[cfg(feature = "tools-reflection")]
-pub mod reflection_tools;
+mod reflection_tools;
 
 #[cfg(feature = "tools-search")]
-pub mod search_tools;
+mod search_tools;
 
-#[cfg(feature = "tools-skills")]
-pub mod skills_tools;
+#[cfg(feature = "tools-ingestor")]
+mod ingestor_tools;
+
+#[cfg(feature = "tools-agent")]
+mod agent_tools;
+
+#[cfg(feature = "tools-hypothesis")]
+mod hypothesis_tools;
+
+#[cfg(feature = "tools-knowledge")]
+mod knowledge_tools;
+
+#[cfg(feature = "tools-planner")]
+mod planner_tools;
 
 #[cfg(feature = "tools-workflow")]
-pub mod workflow_tools;
+mod workflow_tools;
 
-// ServerHandler impl - generated file with all tools
-include!("tools_impl.rs");
+#[cfg(feature = "tools-exploration")]
+mod exploration_tools;
+
+#[cfg(feature = "tools-skills")]
+mod skills_tools;
