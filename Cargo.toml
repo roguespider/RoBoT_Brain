@@ -1,9 +1,11 @@
 # Workspace for RoBoT Brain MCP Server
 # Each tool is a separate crate - if one fails, others still load
 #
+# MCP Protocol: 2025-03-26 (Streamable HTTP, OAuth 2.1, Tool Annotations)
+# 
 # Structure:
+#   src/ - Main application including MCP server
 #   src/tools/ - Individual tool plugins (loaded at runtime)
-#   robot_brain/ - Main MCP server binary
 
 [workspace]
 members = [
@@ -20,13 +22,41 @@ members = [
     "src/tools/tools-search",
     "src/tools/tools-skills",
     "src/tools/tools-workflow",
-    "robot_brain",
     "test_suite",
 ]
 exclude = [
     "test_suite/src/tests",
 ]
 resolver = "2"
+
+[package]
+name = "robot_brain"
+version = "0.0.1"
+edition = "2024"
+description = "A Rust MCP server with runtime-loaded tool plugins"
+
+[dependencies]
+# MCP 2025-03-26 protocol support
+rmcp = { version = "2.1", features = [
+    "server", 
+    "client", 
+    "transport-io", 
+    "macros", 
+    "transport-child-process",
+    "server-streamable-http",  # Streamable HTTP transport (replaces HTTP+SSE)
+] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+libloading = "0.8"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Console"] }
 
 [profile.release]
 opt-level = 3

@@ -1,5 +1,6 @@
 // src/bridge/rmcp/handler.rs
 // RMCP stdio server handler
+// Supports MCP Protocol 2025-03-26
 
 use std::sync::Arc;
 
@@ -21,11 +22,13 @@ pub async fn run_stdio_server(name: &str, version: &str, context: Arc<McpContext
         .ok(); // Silently ignore if subscriber is already configured
 
     eprintln!("[RoBoT] Starting MCP server '{}' v{}", name, version);
+    eprintln!("[RoBoT] MCP Protocol: 2025-03-26");
     tracing::info!(
         "Starting RMCP server '{}' v{} with stdio transport",
         name,
         version
     );
+    tracing::info!("MCP Protocol: 2025-03-26 (Streamable HTTP, Tool Annotations)");
 
     let mut handler = McpServerHandler::new(context, name.to_string(), version.to_string());
     handler.session_id = handler.new_session();
