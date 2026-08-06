@@ -5,16 +5,20 @@
 
 mod plugin_loader;
 
+use std::future::Future;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use anyhow::Result;
 use rmcp::handler::server::ServerHandler;
-use rmcp::model::{CallToolRequest, CallToolResult, ContentBlock, ServerCapabilities, ServerInfo, Implementation};
-use rmcp::tool::{Tool, ToolCall};
-use rmcp::tool_handler;
-use rmcp::tool_router;
-use serde_json::Value;
+use rmcp::model::{
+    CallToolRequestParams, CallToolResult, ContentBlock, ListToolsResult, 
+    ServerCapabilities, ServerInfo, Implementation, TextContent, Tool, PaginatedRequestParams
+};
+use rmcp::service::{RequestContext, RoleServer};
+use rmcp::ErrorData as McpError;
+use rmcp::service::MaybeSendFuture;
+use serde_json::Map;
 use tokio::sync::RwLock;
 use tracing::{info, error};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
@@ -34,11 +38,19 @@ impl McpServer {
     }
 
     /// Load plugins from a directory
-    pub async fn load_plugins(&self, plugins_dir: PathBuf) -> Result<()> {
+    pub async fn load_plugins(&self, plugins_dir: PathBuf) -> std::result::Result<(), Box<dyn std::error::Error>> {
         let mut plugins = self.plugins.write().await;
         plugins.load_from_directory(&plugins_dir)?;
         info!("Loaded {} plugins", plugins.count());
         Ok(())
+    }
+
+    /// Convert serde_json::Value to Arc<Map<String, serde_json::Value>>
+    fn value_to_schema(value: serde_json::Value) -> Arc<Map<String, serde_json::Value>> {
+        match value {
+            serde_json::Value::Object(map) => Arc::new(map),
+            _ => Arc::new(Map::new()),
+        }
     }
 
     /// Get all tools from loaded plugins
@@ -47,9 +59,41 @@ impl McpServer {
         plugins.all_tools()
             .into_iter()
             .map(|def| {
-                Tool::new(def.name, def.description, def.input_schema)
+                let schema = Self::value_to_schema(def.input_schema);
+                Tool::new(def.name, def.description, schema)
             })
             .collect()
+    }
+
+    /// Execute a tool call
+    pub async fn execute_tool(&self, params: CallToolRequestParams) -> Result<CallToolResult, McpError> {
+        let tool_name = &params.name;
+        
+        // Try to execute via plugins
+        let plugins = self.plugins.read().await;
+        
+        // Get arguments as serde_json::Value
+        let arguments = match params.arguments {
+            Some(args) => serde_json::Value::Object(args),
+            None => serde_json::Value::Object(serde_json::Map::new()),
+        };
+        
+        match plugins.execute(tool_name, arguments) {
+            Ok(result) => {
+                match serde_json::to_string_pretty(&result) {
+                    Ok(text) => Ok(CallToolResult::success(vec![ContentBlock::Text(TextContent::new(text))])),
+                    Err(serde_err) => {
+                        let err_msg = format!("Failed to serialize result: {}", serde_err);
+                        error!("{}", err_msg);
+                        Ok(CallToolResult::error(vec![ContentBlock::Text(TextContent::new(err_msg))]))
+                    }
+                }
+            }
+            Err(e) => {
+                error!("Tool execution failed: {}", e);
+                Ok(CallToolResult::error(vec![ContentBlock::Text(TextContent::new(format!("Error: {}", e)))]))
+            }
+        }
     }
 }
 
@@ -59,41 +103,18 @@ impl Default for McpServer {
     }
 }
 
-#[tool_router]
-impl ServerHandler for Arc<McpServer> {
-    async fn list_tools(&self) -> Vec<Tool> {
-        self.get_tools()
-    }
+/// Wrapper that implements ServerHandler for our server
+pub struct McpServerHandler {
+    server: Arc<McpServer>,
+}
 
-    async fn call_tool(&self, request: CallToolRequest) -> CallToolResult {
-        let tool_name = &request.params.name;
-        
-        // Try to execute via plugins
-        let plugins = self.plugins.read().await;
-        match plugins.execute(tool_name, request.params.arguments.unwrap_or_default()) {
-            Ok(result) => {
-                CallToolResult {
-                    content: vec![ContentBlock::Text {
-                        text: serde_json::to_string_pretty(&result).unwrap_or_default(),
-                    }],
-                    is_error: Some(false),
-                }
-            }
-            Err(e) => {
-                error!("Tool execution failed: {}", e);
-                CallToolResult {
-                    content: vec![ContentBlock::Text {
-                        text: format!("Error: {}", e),
-                    }],
-                    is_error: Some(true),
-                }
-            }
-        }
+impl McpServerHandler {
+    pub fn new(server: Arc<McpServer>) -> Self {
+        McpServerHandler { server }
     }
 }
 
-#[tool_handler]
-impl rmcp::handler::server::ServerHandler for Arc<McpServer> {
+impl ServerHandler for McpServerHandler {
     fn get_info(&self) -> ServerInfo {
         let capabilities = ServerCapabilities::builder()
             .enable_tools()
@@ -102,6 +123,26 @@ impl rmcp::handler::server::ServerHandler for Arc<McpServer> {
 
         ServerInfo::new(capabilities)
             .with_server_info(Implementation::new("robot_brain", "0.0.1"))
+    }
+
+    fn list_tools(
+        &self,
+        _request: Option<PaginatedRequestParams>,
+        _context: RequestContext<RoleServer>,
+    ) -> impl Future<Output = Result<ListToolsResult, McpError>> + MaybeSendFuture + '_ {
+        let tools = self.server.get_tools();
+        std::future::ready(Ok(ListToolsResult::with_all_items(tools)))
+    }
+
+    fn call_tool(
+        &self,
+        params: CallToolRequestParams,
+        _context: RequestContext<RoleServer>,
+    ) -> impl Future<Output = Result<CallToolResult, McpError>> + MaybeSendFuture + '_ {
+        let server = self.server.clone();
+        async move {
+            server.execute_tool(params).await
+        }
     }
 }
 
@@ -130,16 +171,17 @@ async fn main() -> Result<()> {
     }
 
     // Try to load plugins (will warn if none found)
-    if let Err(e) = server.load_plugins(plugins_dir.clone()).await {
-        tracing::warn!("No plugins loaded: {}", e);
-        tracing::warn!("Build tool crates and copy .so files to: {:?}", plugins_dir);
+    match server.load_plugins(plugins_dir.clone()).await {
+        Ok(()) => {
+            info!("RoBoT Brain MCP Server initialized");
+            info!("Loaded {} plugins", server.plugins.read().await.count());
+        }
+        Err(e) => {
+            tracing::warn!("No plugins loaded: {}", e);
+            tracing::warn!("Build tool crates and copy .so files to: {:?}", plugins_dir);
+        }
     }
 
-    info!("RoBoT Brain MCP Server initialized");
-    info!("Loaded {} plugins", server.plugins.read().await.count());
-
-    // TODO: Start actual MCP server transport
-    // For now, just demonstrate that the plugin system works
     println!("\n=== RoBoT Brain MCP Server ===");
     println!("Plugins loaded: {}", server.plugins.read().await.count());
     println!("Tools available: {}", server.get_tools().len());

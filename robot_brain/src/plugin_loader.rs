@@ -4,7 +4,6 @@
 //! the MCP server continues with the remaining plugins.
 
 use std::collections::HashMap;
-use std::ffi::CStr;
 use std::fs;
 use std::path::Path;
 
@@ -34,9 +33,9 @@ impl PluginManager {
     }
 
     /// Load all plugins from a directory
-    pub fn load_from_directory(&mut self, plugins_dir: &Path) -> Result<(), String> {
+    pub fn load_from_directory(&mut self, plugins_dir: &Path) -> std::result::Result<(), Box<dyn std::error::Error>> {
         if !plugins_dir.exists() {
-            return Err(format!("Plugins directory does not exist: {:?}", plugins_dir));
+            return Err(format!("Plugins directory does not exist: {:?}", plugins_dir).into());
         }
 
         let entries = fs::read_dir(plugins_dir)
@@ -58,16 +57,19 @@ impl PluginManager {
         }
 
         if self.plugins.is_empty() {
-            return Err("No plugins loaded".to_string());
+            return Err("No plugins loaded".into());
         }
 
         Ok(())
     }
 
     /// Load a single plugin from a .so file
-    fn load_plugin(&mut self, path: &Path) -> Result<String, String> {
-        let library = Library::new(path)
-            .map_err(|e| format!("Failed to load library: {}", e))?;
+    fn load_plugin(&mut self, path: &Path) -> std::result::Result<String, Box<dyn std::error::Error>> {
+        // Library::new is unsafe and requires an unsafe block
+        let library = unsafe {
+            Library::new(path)
+                .map_err(|e| format!("Failed to load library: {}", e))?
+        };
 
         unsafe {
             let get_plugin: Symbol<GetPluginFn> = library
@@ -76,9 +78,10 @@ impl PluginManager {
 
             let plugin_ptr = get_plugin();
             if plugin_ptr.is_null() {
-                return Err("get_plugin returned null".to_string());
+                return Err("get_plugin returned null".into());
             }
 
+            // Create a Box to take ownership of the plugin
             let plugin = Box::from_raw(plugin_ptr);
             let name = plugin.name().to_string();
 
@@ -87,10 +90,12 @@ impl PluginManager {
                 tracing::warn!("Plugin {} init failed: {}", name, e);
             }
 
+            // Get tools - this returns owned data so we don't need the plugin after this
             let tools = plugin.tools();
 
-            // Re-create the plugin since init might have consumed it
-            let plugin = Box::from_raw(plugin_ptr);
+            // Drop the plugin Box now - we have all the data we need.
+            // The library is kept alive by being stored in LoadedPlugin.
+            drop(plugin);
 
             self.plugins.insert(name.clone(), LoadedPlugin {
                 name: name.clone(),
@@ -100,11 +105,6 @@ impl PluginManager {
 
             Ok(name)
         }
-    }
-
-    /// Get all loaded plugins
-    pub fn plugins(&self) -> &HashMap<String, LoadedPlugin> {
-        &self.plugins
     }
 
     /// Get all tools from all plugins
@@ -124,14 +124,21 @@ impl PluginManager {
         let plugin_name = parts[0];
         let tool_name = parts[1];
 
+        // Look up the plugin and find the tool
         let plugin = self.plugins.get(plugin_name)
             .ok_or_else(|| format!("Plugin '{}' not found", plugin_name))?;
 
-        // For now, return a placeholder - actual execution would call into the plugin
+        // Find the tool in this plugin
+        let tool = plugin.tools.iter()
+            .find(|t| t.name == tool_name)
+            .ok_or_else(|| format!("Tool '{}' not found in plugin '{}'", tool_name, plugin_name))?;
+
+        // Return placeholder response with actual tool metadata
         Ok(serde_json::json!({
-            "status": "executed",
+            "status": "placeholder",
             "plugin": plugin_name,
             "tool": tool_name,
+            "tool_description": tool.description,
             "input": input
         }))
     }
