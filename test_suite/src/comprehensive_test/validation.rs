@@ -21,7 +21,6 @@ pub fn validate_result(result: &serde_json::Value, check: &ValidationCheck) -> V
     };
 
     ValidationResult {
-        check_type: format!("{:?}", check.check_type),
         field: check.field.clone(),
         passed,
         message: Some(if passed {

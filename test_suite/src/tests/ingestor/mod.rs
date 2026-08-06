@@ -55,7 +55,7 @@ pub async fn run_ingestor_tests(
     // Test 4: Ingest all file types individually
     crate::teeprintln!("\n--- Testing Individual File Types ---");
 
-    let file_types = types::get_all_file_type_tests(env);
+    let file_types = types::get_all_file_type_tests();
 
     for file_test in file_types {
         test_ingest_single_file_type(client, stats, &file_test, env).await;

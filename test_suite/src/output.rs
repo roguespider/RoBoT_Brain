@@ -46,7 +46,8 @@ impl TeeWriter {
 
 /// Initialize the global tee writer
 pub fn init(path: &PathBuf) -> std::io::Result<()> {
-    let mut tee = TEE.lock().unwrap();
+    let mut tee = TEE.lock()
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("Mutex poisoned: {}", e)))?;
     *tee = Some(TeeWriter::new(path)?);
     Ok(())
 }

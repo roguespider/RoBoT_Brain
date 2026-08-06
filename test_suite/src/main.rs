@@ -164,7 +164,9 @@ fn setup_test_environment(server_path: &Path) -> anyhow::Result<TestEnvironment>
     teeprintln!("SETTING UP TEST ENVIRONMENT");
     teeprintln!("{}", "=".repeat(60));
 
-    let test_dir = server_path.parent().unwrap().join("test_suite_env");
+    let test_dir = server_path.parent()
+        .ok_or_else(|| anyhow::anyhow!("Server path has no parent directory"))?
+        .join("test_suite_env");
 
     if test_dir.exists() {
         fs::remove_dir_all(&test_dir)?;
@@ -504,13 +506,15 @@ impl TestMcpClient {
             .kill_on_drop(true)
             .spawn()?;
 
-        let stdin = child.stdin.take().unwrap();
-        let stdout = BufReader::new(child.stdout.take().unwrap());
+        let stdin = child.stdin.take()
+            .ok_or_else(|| anyhow::anyhow!("Failed to take stdin - process may not have been spawned correctly"))?;
+        let stdout = child.stdout.take()
+            .ok_or_else(|| anyhow::anyhow!("Failed to take stdout - process may not have been spawned correctly"))?;
 
         let mut client = Self {
             child,
             stdin,
-            stdout,
+            stdout: BufReader::new(stdout),
             send_id: 1,
         };
 
@@ -672,7 +676,8 @@ impl TestMcpClient {
 async fn main() -> anyhow::Result<()> {
     // Initialize file output - all output will be written to both stdout and file
     let output_file = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test_suite_output.txt");
-    output::init(&output_file).expect("Failed to create output file");
+    output::init(&output_file)
+        .map_err(|e| anyhow::anyhow!("Failed to create output file: {}", e))?;
 
     teeprintln!(
         "

@@ -21,6 +21,10 @@ members = [
     "src/tools/tools-skills",
     "src/tools/tools-workflow",
     "robot_brain",
+    "test_suite",
+]
+exclude = [
+    "test_suite/src/tests",
 ]
 resolver = "2"
 
