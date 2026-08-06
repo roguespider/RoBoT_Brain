@@ -330,14 +330,14 @@ impl InMemoryChannel {
 
 impl AcpChannel for InMemoryChannel {
     fn send(&self, message: AcpMessage) -> Result<()> {
-        let mut messages = self.messages.lock().map_err(|_| anyhow!("Lock poisoned"))?;
+        let mut messages = self.messages.lock().map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         messages.push(message);
         self.waiting.store(true, Ordering::SeqCst);
         Ok(())
     }
 
     fn try_recv(&self) -> Result<Option<AcpMessage>> {
-        let mut messages = self.messages.lock().map_err(|_| anyhow!("Lock poisoned"))?;
+        let mut messages = self.messages.lock().map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         self.waiting.store(false, Ordering::SeqCst);
         Ok(messages.pop())
     }
@@ -447,26 +447,26 @@ impl AcpRegistry {
     /// Register an agent
     pub fn register(&self, agent: Arc<dyn AcpAgent>) -> Result<()> {
         let id = agent.id().clone();
-        let mut agents = self.agents.write().map_err(|_| anyhow!("Lock poisoned"))?;
+        let mut agents = self.agents.write().map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         agents.insert(id, agent);
         Ok(())
     }
 
     /// Unregister an agent
     pub fn unregister(&self, id: &AcpAgentId) -> Result<Option<Arc<dyn AcpAgent>>> {
-        let mut agents = self.agents.write().map_err(|_| anyhow!("Lock poisoned"))?;
+        let mut agents = self.agents.write().map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         Ok(agents.remove(id))
     }
 
     /// Get an agent by ID
     pub fn get(&self, id: &AcpAgentId) -> Result<Option<Arc<dyn AcpAgent>>> {
-        let agents = self.agents.read().map_err(|_| anyhow!("Lock poisoned"))?;
+        let agents = self.agents.read().map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         Ok(agents.get(id).cloned())
     }
 
     /// Get all agents of a specific type
     pub fn get_by_type(&self, agent_type: &str) -> Result<Vec<Arc<dyn AcpAgent>>> {
-        let agents = self.agents.read().map_err(|_| anyhow!("Lock poisoned"))?;
+        let agents = self.agents.read().map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         Ok(agents
             .values()
             .filter(|a| a.id().agent_type == agent_type)
@@ -476,7 +476,7 @@ impl AcpRegistry {
 
     /// List all registered agent IDs
     pub fn list_agents(&self) -> Result<Vec<AcpAgentId>> {
-        let agents = self.agents.read().map_err(|_| anyhow!("Lock poisoned"))?;
+        let agents = self.agents.read().map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         Ok(agents.keys().cloned().collect())
     }
 
@@ -541,7 +541,7 @@ impl AcpRouter {
         let mut handlers = self
             .handlers
             .write()
-            .map_err(|_| anyhow!("Lock poisoned"))?;
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         handlers.insert(type_name, Box::new(handler));
         Ok(())
     }
@@ -749,14 +749,30 @@ mod tests {
             serde_json::json!({"test": true}),
         );
 
-        channel.send(msg.clone()).unwrap();
+        // Use match instead of unwrap
+        match channel.send(msg.clone()) {
+            Ok(()) => {},
+            Err(e) => panic!("send failed: {}", e),
+        }
 
-        let received = channel.try_recv().unwrap();
+        let received = match channel.try_recv() {
+            Ok(r) => r,
+            Err(e) => panic!("try_recv failed: {}", e),
+        };
         assert!(received.is_some());
-        assert_eq!(received.unwrap().payload, msg.payload);
+        // Use if-let instead of unwrap
+        if let Some(received_msg) = received {
+            assert_eq!(received_msg.payload, msg.payload);
+        } else {
+            panic!("Expected Some message");
+        }
 
         // Channel should be empty now
-        assert!(channel.try_recv().unwrap().is_none());
+        let empty = match channel.try_recv() {
+            Ok(r) => r,
+            Err(e) => panic!("try_recv failed: {}", e),
+        };
+        assert!(empty.is_none());
     }
 
     #[test]
@@ -770,17 +786,29 @@ mod tests {
             |msg| Ok(Some(msg.reply(serde_json::json!({"handled": true})))),
         ));
 
-        registry.register(agent.clone()).unwrap();
+        match registry.register(agent.clone()) {
+            Ok(()) => {},
+            Err(e) => panic!("register failed: {}", e),
+        }
 
         assert_eq!(registry.count(), 1);
 
-        let retrieved = registry.get(&AcpAgentId::new("test", "1")).unwrap();
+        let retrieved = match registry.get(&AcpAgentId::new("test", "1")) {
+            Ok(r) => r,
+            Err(e) => panic!("get failed: {}", e),
+        };
         assert!(retrieved.is_some());
 
-        let by_type = registry.get_by_type("test").unwrap();
+        let by_type = match registry.get_by_type("test") {
+            Ok(r) => r,
+            Err(e) => panic!("get_by_type failed: {}", e),
+        };
         assert_eq!(by_type.len(), 1);
 
-        let unreg = registry.unregister(&AcpAgentId::new("test", "1")).unwrap();
+        let unreg = match registry.unregister(&AcpAgentId::new("test", "1")) {
+            Ok(r) => r,
+            Err(e) => panic!("unregister failed: {}", e),
+        };
         assert!(unreg.is_some());
         assert_eq!(registry.count(), 0);
     }
@@ -800,7 +828,10 @@ mod tests {
             },
         ));
 
-        registry.register(agent).unwrap();
+        match registry.register(agent) {
+            Ok(()) => {},
+            Err(e) => panic!("register failed: {}", e),
+        }
 
         let msg = AcpMessage::new(
             AcpAgentId::new("client", "1"),
@@ -811,10 +842,16 @@ mod tests {
 
         let result = router.route(msg);
         assert!(result.is_ok());
-        let response = result.unwrap();
+        let response = match result {
+            Ok(r) => r,
+            Err(e) => panic!("route failed: {}", e),
+        };
         assert!(response.is_some());
 
-        let resp = response.unwrap();
+        let resp = match response {
+            Some(r) => r,
+            None => panic!("Expected Some response"),
+        };
         assert_eq!(resp.message_type, AcpMessageType::Response);
         assert!(resp.payload.get("processed").is_some());
     }
@@ -833,19 +870,26 @@ mod tests {
 
         let result = router.route(msg);
         assert!(result.is_err());
-        assert!(result.unwrap_err().to_string().contains("Unknown receiver"));
+        let err = match result {
+            Ok(_) => panic!("Expected error"),
+            Err(e) => e,
+        };
+        assert!(err.to_string().contains("Unknown receiver"));
     }
 
     #[test]
     fn test_message_builder() {
-        let msg = AcpMessageBuilder::new()
+        let msg = match AcpMessageBuilder::new()
             .from(AcpAgentId::new("sender", "1"))
             .to(AcpAgentId::new("receiver", "1"))
             .message_type(AcpMessageType::Request)
             .payload(serde_json::json!({"action": "test"}))
             .ttl(10)
             .build()
-            .unwrap();
+        {
+            Ok(m) => m,
+            Err(e) => panic!("build failed: {}", e),
+        };
 
         assert_eq!(msg.sender.agent_type, "sender");
         assert_eq!(msg.receiver.agent_type, "receiver");
@@ -881,7 +925,14 @@ mod tests {
             serde_json::json!({"ping": true}),
         );
 
-        let response = agent.handle(msg).unwrap().unwrap();
+        let response = match agent.handle(msg) {
+            Ok(r) => r,
+            Err(e) => panic!("handle failed: {}", e),
+        };
+        let response = match response {
+            Some(r) => r,
+            None => panic!("Expected Some response"),
+        };
         assert_eq!(response.message_type, AcpMessageType::Response);
         assert_eq!(response.payload["echo"]["ping"], true);
     }

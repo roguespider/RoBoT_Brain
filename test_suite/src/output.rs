@@ -4,7 +4,7 @@
 //! outputting to both stdout and the test_suite_output.txt file.
 
 use std::fs::File;
-use std::io::{BufWriter, Write};
+use std::io::{Write, BufWriter};
 use std::path::PathBuf;
 use std::sync::Mutex;
 
@@ -24,14 +24,14 @@ impl TeeWriter {
             file: BufWriter::new(file),
         })
     }
-
+    
     /// Write a string to the file
     pub fn write(&mut self, s: &str) {
         // Write to file
         let _ = self.file.write_all(s.as_bytes());
         let _ = self.file.flush();
     }
-
+    
     /// Write a string with newline to the file
     pub fn writeln(&mut self, s: &str) {
         self.write(s);
@@ -46,9 +46,8 @@ impl TeeWriter {
 
 /// Initialize the global tee writer
 pub fn init(path: &PathBuf) -> std::io::Result<()> {
-    let mut tee = TEE
-        .lock()
-        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e.to_string()))?;
+    let mut tee = TEE.lock()
+        .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, format!("Mutex poisoned: {}", e)))?;
     *tee = Some(TeeWriter::new(path)?);
     Ok(())
 }

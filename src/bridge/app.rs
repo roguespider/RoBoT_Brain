@@ -27,7 +27,6 @@ use crate::experience::scheduler::{Scheduler, TaskSchedule, TaskType};
 use crate::experience::scorer::ExperienceScorer;
 use crate::experience::worker_manager::WorkerManager;
 use crate::knowledge::KnowledgeStore;
-use crate::learning::working_memory::store::WorkingMemory as LearningWorkingMemory;
 use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory as MemWorkingMemory};
 use crate::personality::{Personality, PersonalityTraits};
 use crate::planner::{Planner, PolicyEngine};
@@ -74,9 +73,6 @@ pub struct App {
 
     /// ACP router for inter-agent communication.
     acp_router: Arc<AcpRouter>,
-
-    /// Learning working memory for active context tracking (Architecture §4).
-    learning_working_memory: Arc<std::sync::Arc<LearningWorkingMemory>>,
 }
 
 impl App {
@@ -260,10 +256,13 @@ impl App {
         // Wire personality creativity into planner for decision-making
         let shared_personality_clone = shared_personality.clone();
         planner.set_creativity_check(move |complexity: f32| {
-            shared_personality_clone
-                .lock()
-                .unwrap()
-                .should_use_creativity(complexity)
+            match shared_personality_clone.lock() {
+                Ok(guard) => guard.should_use_creativity(complexity),
+                Err(poisoned) => {
+                    tracing::error!("Personality mutex poisoned in creativity check");
+                    poisoned.into_inner().should_use_creativity(complexity)
+                }
+            }
         });
         let planner = Arc::new(planner);
 
@@ -275,18 +274,6 @@ impl App {
             coordinator.clone(),
         ));
         tracing::info!("Workflow engine initialized with coordinator");
-
-        // Create learning working memory for active context tracking (Architecture §4)
-        let learning_working_memory =
-            Arc::new(std::sync::Arc::new(LearningWorkingMemory::new(1000)));
-        let _ = learning_working_memory
-            .store(
-                "app_initialized",
-                "RoBoT brain initialized",
-                crate::learning::working_memory::MemoryItemType::Metadata,
-                0.5,
-            )
-            .await;
 
         // Create MCP context with all systems
         let mcp_context = Arc::new(McpContext::new(
@@ -329,7 +316,6 @@ impl App {
             mcp_context,
             personality: shared_personality,
             acp_router: Arc::new(AcpRouter::new(Arc::new(AcpRegistry::new()))),
-            learning_working_memory,
         })
     }
 
@@ -462,9 +448,19 @@ impl App {
                         tracing::info!("Executing scheduled hypothesis evaluation");
 
                         // Perform hypothesis maintenance
-                        let mut engine = hypothesis_engine.lock().unwrap();
-                        if let Err(e) = engine.maintenance() {
-                            tracing::error!("Hypothesis evaluation failed: {}", e);
+                        let engine_result = hypothesis_engine.lock();
+                        match engine_result {
+                            Ok(mut engine) => {
+                                if let Err(e) = engine.maintenance() {
+                                    tracing::error!("Hypothesis evaluation failed: {}", e);
+                                }
+                            }
+                            Err(poisoned) => {
+                                tracing::error!("Hypothesis engine mutex poisoned");
+                                if let Err(e) = poisoned.into_inner().maintenance() {
+                                    tracing::error!("Hypothesis evaluation failed on recovered mutex: {}", e);
+                                }
+                            }
                         }
 
                         Ok(())
@@ -713,80 +709,132 @@ impl App {
 
     /// Get current personality traits
     pub fn get_personality_traits(&self) -> PersonalityTraits {
-        self.personality.lock().unwrap().get_traits().clone()
+        match self.personality.lock() {
+            Ok(guard) => guard.get_traits().clone(),
+            Err(poisoned) => {
+                tracing::error!("Personality mutex poisoned, recovering");
+                poisoned.into_inner().get_traits().clone()
+            }
+        }
     }
 
     /// Set personality traits
     pub fn set_personality_traits(&self, traits: PersonalityTraits) {
-        self.personality.lock().unwrap().set_traits(traits);
+        if let Err(poisoned) = self.personality.lock() {
+            tracing::error!("Personality mutex poisoned during set_traits, recovering");
+            poisoned.into_inner().set_traits(traits);
+        } else {
+            // Lock succeeded and will be released when scope ends
+        }
     }
 
     /// Apply a personality preset (balanced, analytical, creative, cautious, bold)
     pub fn apply_personality_preset(&self, preset: &str) -> bool {
-        self.personality.lock().unwrap().apply_preset(preset)
+        match self.personality.lock() {
+            Ok(guard) => guard.apply_preset(preset),
+            Err(poisoned) => {
+                tracing::error!("Personality mutex poisoned during apply_preset, recovering");
+                poisoned.into_inner().apply_preset(preset)
+            }
+        }
     }
 
     /// Get available personality presets
     pub fn list_personality_presets(&self) -> Vec<String> {
-        self.personality.lock().unwrap().list_presets()
+        match self.personality.lock() {
+            Ok(guard) => guard.list_presets(),
+            Err(poisoned) => {
+                tracing::error!("Personality mutex poisoned during list_presets, recovering");
+                poisoned.into_inner().list_presets()
+            }
+        }
     }
 
     /// Get current personality preset name
     pub fn get_personality_preset(&self) -> String {
-        self.personality
-            .lock()
-            .unwrap()
-            .get_current_preset()
-            .to_string()
+        match self.personality.lock() {
+            Ok(guard) => guard.get_current_preset().to_string(),
+            Err(poisoned) => {
+                tracing::error!("Personality mutex poisoned during get_current_preset, recovering");
+                poisoned.into_inner().get_current_preset().to_string()
+            }
+        }
     }
 
     /// Adapt personality based on experience outcome
     pub fn adapt_personality(&self, success: bool, risk_taken: bool) {
-        self.personality
-            .lock()
-            .unwrap()
-            .adapt_from_experience(success, risk_taken);
+        if let Err(poisoned) = self.personality.lock() {
+            tracing::error!("Personality mutex poisoned during adapt, recovering");
+            poisoned.into_inner().adapt_from_experience(success, risk_taken);
+        }
     }
 
     /// Get communication style based on personality verbosity
     pub fn get_communication_style(&self) -> crate::personality::CommunicationStyle {
-        self.personality.lock().unwrap().get_communication_style()
+        match self.personality.lock() {
+            Ok(guard) => guard.get_communication_style(),
+            Err(poisoned) => {
+                tracing::error!("Personality mutex poisoned, returning default communication style");
+                poisoned.into_inner().get_communication_style()
+            }
+        }
     }
 
     /// Decide if system should explore new approaches
     pub fn should_explore(&self, confidence: f32) -> bool {
-        self.personality.lock().unwrap().should_explore(confidence)
+        match self.personality.lock() {
+            Ok(guard) => guard.should_explore(confidence),
+            Err(poisoned) => {
+                tracing::error!("Personality mutex poisoned, defaulting to exploration");
+                poisoned.into_inner().should_explore(confidence)
+            }
+        }
     }
 
     /// Decide if system should take a risk
     pub fn should_take_risk(&self, potential_gain: f32, potential_loss: f32) -> bool {
-        self.personality
-            .lock()
-            .unwrap()
-            .should_take_risk(potential_gain, potential_loss)
+        match self.personality.lock() {
+            Ok(guard) => guard.should_take_risk(potential_gain, potential_loss),
+            Err(poisoned) => {
+                tracing::error!("Personality mutex poisoned, defaulting risk assessment");
+                poisoned.into_inner().should_take_risk(potential_gain, potential_loss)
+            }
+        }
     }
 
     /// Decide if a creative approach should be used for planning.
     /// Uses personality creativity trait combined with problem complexity
     /// to determine whether to explore unconventional solutions.
     pub fn should_use_creativity(&self, problem_complexity: f32) -> bool {
-        self.personality
-            .lock()
-            .unwrap()
-            .should_use_creativity(problem_complexity)
+        match self.personality.lock() {
+            Ok(guard) => guard.should_use_creativity(problem_complexity),
+            Err(poisoned) => {
+                tracing::error!("Personality mutex poisoned, defaulting creativity");
+                poisoned.into_inner().should_use_creativity(problem_complexity)
+            }
+        }
     }
 
     /// Get patience-based timeout
     pub fn get_personality_timeout(&self, base_timeout_secs: u64) -> u64 {
-        self.personality
-            .lock()
-            .unwrap()
-            .get_timeout(base_timeout_secs)
+        match self.personality.lock() {
+            Ok(guard) => guard.get_timeout(base_timeout_secs),
+            Err(poisoned) => {
+                tracing::error!("Personality mutex poisoned, returning base timeout");
+                poisoned.into_inner().get_timeout(base_timeout_secs)
+            }
+        }
     }
 
     /// Get personality success rate
     pub fn get_personality_success_rate(&self) -> f32 {
-        self.personality.lock().unwrap().success_rate()
+        match self.personality.lock() {
+            Ok(guard) => guard.success_rate(),
+            Err(poisoned) => {
+                tracing::error!("Personality mutex poisoned, returning 0.0 success rate");
+                poisoned.into_inner().success_rate()
+            }
+        }
     }
 
     // =========================================================================

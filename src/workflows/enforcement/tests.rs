@@ -73,11 +73,17 @@ async fn test_full_workflow_completion() {
     let session_id = "test-session";
     
     // Step 1: get_workflow
-    enforcer.check_enforcement(session_id, "get_workflow").await.unwrap();
+    match enforcer.check_enforcement(session_id, "get_workflow").await {
+        Ok(()) => {},
+        Err(e) => panic!("check_enforcement failed: {}", e),
+    }
     enforcer.record_tool_execution(session_id, "get_workflow", None).await;
     
     // Step 2: search_memory
-    enforcer.check_enforcement(session_id, "search_memory").await.unwrap();
+    match enforcer.check_enforcement(session_id, "search_memory").await {
+        Ok(()) => {},
+        Err(e) => panic!("check_enforcement failed: {}", e),
+    }
     enforcer.record_tool_execution(session_id, "search_memory", Some("test query".to_string())).await;
     
     // Now other tools should be allowed
@@ -145,9 +151,13 @@ async fn test_get_session_state() {
     
     let state = enforcer.get_session_state(session_id).await;
     assert!(state.is_some());
-    let state = state.unwrap();
-    assert!(state.workflow_retrieved);
-    assert_eq!(state.session_id, session_id);
+    // Use if-let instead of unwrap
+    if let Some(state) = state {
+        assert!(state.workflow_retrieved);
+        assert_eq!(state.session_id, session_id);
+    } else {
+        panic!("Expected Some state");
+    }
 }
 
 #[tokio::test]
@@ -190,7 +200,11 @@ async fn test_update_workflow_purpose() {
     
     let state = enforcer.get_session_state(session_id).await;
     assert!(state.is_some());
-    assert_eq!(state.unwrap().workflow_purpose, Some("file_ingestion".to_string()));
+    if let Some(state) = state {
+        assert_eq!(state.workflow_purpose, Some("file_ingestion".to_string()));
+    } else {
+        panic!("Expected Some state");
+    }
 }
 
 #[tokio::test]

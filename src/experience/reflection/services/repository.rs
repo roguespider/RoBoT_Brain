@@ -34,21 +34,21 @@ impl ReflectionRepository {
         // Store the reflection
         {
             let mut reflections = self.reflections.write()
-                .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+                .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
             reflections.insert(id.clone(), reflection);
         }
 
         // Update type index
         {
             let mut by_type = self.by_type.write()
-                .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+                .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
             by_type.entry(reflection_type).or_insert_with(Vec::new).push(id.clone());
         }
 
         // Update status index
         {
             let mut by_status = self.by_status.write()
-                .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+                .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
             by_status.entry(status).or_insert_with(Vec::new).push(id);
         }
 
@@ -58,14 +58,14 @@ impl ReflectionRepository {
     /// Get a reflection by ID
     pub fn get(&self, id: &str) -> Result<Option<Reflection>> {
         let reflections = self.reflections.read()
-            .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         Ok(reflections.get(id).cloned())
     }
 
     /// List all reflections
     pub fn list_all(&self) -> Result<Vec<Reflection>> {
         let reflections = self.reflections.read()
-            .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         Ok(reflections.values().cloned().collect())
     }
 
@@ -73,12 +73,12 @@ impl ReflectionRepository {
     pub fn list_by_type(&self, reflection_type: ReflectionType) -> Result<Vec<Reflection>> {
         let ids = {
             let by_type = self.by_type.read()
-                .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+                .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
             by_type.get(&reflection_type).cloned().unwrap_or_default()
         };
 
         let reflections = self.reflections.read()
-            .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         
         Ok(ids.iter()
             .filter_map(|id| reflections.get(id).cloned())
@@ -89,12 +89,12 @@ impl ReflectionRepository {
     pub fn list_by_status(&self, status: ReflectionStatus) -> Result<Vec<Reflection>> {
         let ids = {
             let by_status = self.by_status.read()
-                .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+                .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
             by_status.get(&status).cloned().unwrap_or_default()
         };
 
         let reflections = self.reflections.read()
-            .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         
         Ok(ids.iter()
             .filter_map(|id| reflections.get(id).cloned())
@@ -104,7 +104,7 @@ impl ReflectionRepository {
     /// Find reflections by title substring
     pub fn search_by_title(&self, query: &str) -> Result<Vec<Reflection>> {
         let reflections = self.reflections.read()
-            .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         
         let query_lower = query.to_lowercase();
         Ok(reflections.values()
@@ -117,7 +117,7 @@ impl ReflectionRepository {
     pub fn delete(&self, id: &str) -> Result<Option<Reflection>> {
         let removed = {
             let mut reflections = self.reflections.write()
-                .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+                .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
             reflections.remove(id)
         };
 
@@ -147,7 +147,7 @@ impl ReflectionRepository {
         // Check if exists
         {
             let reflections = self.reflections.read()
-                .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+                .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
             if !reflections.contains_key(id) {
                 return Err(anyhow::anyhow!("Reflection not found: {}", id));
             }
@@ -159,14 +159,14 @@ impl ReflectionRepository {
     /// Get count of reflections
     pub fn count(&self) -> Result<usize> {
         let reflections = self.reflections.read()
-            .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         Ok(reflections.len())
     }
 
     /// Get validated reflections (high confidence)
     pub fn list_validated(&self, min_confidence: f32) -> Result<Vec<Reflection>> {
         let reflections = self.reflections.read()
-            .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         
         Ok(reflections.values()
             .filter(|r| r.status == ReflectionStatus::Validated && r.confidence.score >= min_confidence)

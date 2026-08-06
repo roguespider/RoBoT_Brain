@@ -244,7 +244,15 @@ impl SkillRegistry {
         }
         
         skills.push(skill);
-        Ok(skills.last().expect("Skill was just pushed, should exist").id.clone())
+        // Safety: last() always returns Some after push
+        let skill_id = if let Some(last_skill) = skills.last() {
+            last_skill.id.clone()
+        } else {
+            // This branch is unreachable after push, but handle it safely
+            tracing::error!("Unexpected: skills vector empty after push");
+            anyhow::bail!("Internal error: failed to get skill ID after registration");
+        };
+        Ok(skill_id)
     }
 
     /// Unregister a skill by ID
@@ -802,53 +810,117 @@ impl SkillExecutor {
         let _ = self.registry.record_usage(skill_id, result.success).await;
         
         // Update local metrics
-        let mut metrics = self.metrics.lock().unwrap();
-        let metrics_entry = metrics.entry(skill_id.to_string()).or_default();
-        if result.success {
-            metrics_entry.record_success(duration_ms);
-        } else {
-            metrics_entry.record_failure(duration_ms);
+        match self.metrics.lock() {
+            Ok(mut metrics) => {
+                let metrics_entry = metrics.entry(skill_id.to_string()).or_default();
+                if result.success {
+                    metrics_entry.record_success(duration_ms);
+                } else {
+                    metrics_entry.record_failure(duration_ms);
+                }
+            }
+            Err(poisoned) => {
+                tracing::error!("Metrics mutex poisoned during record_execution");
+                let mut metrics = poisoned.into_inner();
+                let metrics_entry = metrics.entry(skill_id.to_string()).or_default();
+                if result.success {
+                    metrics_entry.record_success(duration_ms);
+                } else {
+                    metrics_entry.record_failure(duration_ms);
+                }
+            }
         }
     }
 
     /// Get execution metrics for a skill
     /// Per Architecture §15: "Skill::track_execution_metrics()"
     pub fn get_execution_metrics(&self, skill_id: &str) -> Option<ExecutionMetrics> {
-        self.metrics.lock().unwrap().get(skill_id).cloned()
+        match self.metrics.lock() {
+            Ok(metrics) => metrics.get(skill_id).cloned(),
+            Err(poisoned) => {
+                tracing::error!("Metrics mutex poisoned during get_execution_metrics");
+                poisoned.into_inner().get(skill_id).cloned()
+            }
+        }
     }
 
     /// Get all execution metrics
     pub fn get_all_metrics(&self) -> std::collections::HashMap<String, ExecutionMetrics> {
-        self.metrics.lock().unwrap().clone()
+        match self.metrics.lock() {
+            Ok(metrics) => metrics.clone(),
+            Err(poisoned) => {
+                tracing::error!("Metrics mutex poisoned during get_all_metrics");
+                poisoned.into_inner().clone()
+            }
+        }
     }
 
     /// Get skills sorted by success rate
     pub fn get_skills_by_success_rate(&self) -> Vec<(String, f32)> {
-        let metrics = self.metrics.lock().unwrap();
-        let mut result: Vec<_> = metrics.iter()
-            .map(|(id, m)| (id.clone(), m.success_rate()))
-            .collect();
-        result.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
-        result
+        match self.metrics.lock() {
+            Ok(metrics) => {
+                let mut result: Vec<_> = metrics.iter()
+                    .map(|(id, m)| (id.clone(), m.success_rate()))
+                    .collect();
+                result.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+                result
+            }
+            Err(poisoned) => {
+                tracing::error!("Metrics mutex poisoned during get_skills_by_success_rate");
+                let metrics = poisoned.into_inner();
+                let mut result: Vec<_> = metrics.iter()
+                    .map(|(id, m)| (id.clone(), m.success_rate()))
+                    .collect();
+                result.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+                result
+            }
+        }
     }
 
     /// Get unreliable skills
     pub fn get_unreliable_skills(&self) -> Vec<String> {
-        let metrics = self.metrics.lock().unwrap();
-        metrics.iter()
-            .filter(|(_, m)| m.is_unreliable())
-            .map(|(id, _)| id.clone())
-            .collect()
+        match self.metrics.lock() {
+            Ok(metrics) => {
+                metrics.iter()
+                    .filter(|(_, m)| m.is_unreliable())
+                    .map(|(id, m)| id.clone())
+                    .collect()
+            }
+            Err(poisoned) => {
+                tracing::error!("Metrics mutex poisoned during get_unreliable_skills");
+                let metrics = poisoned.into_inner();
+                metrics.iter()
+                    .filter(|(_, m)| m.is_unreliable())
+                    .map(|(id, m)| id.clone())
+                    .collect()
+            }
+        }
     }
 
     /// Clear metrics for a skill
     pub fn clear_metrics(&self, skill_id: &str) {
-        self.metrics.lock().unwrap().remove(skill_id);
+        match self.metrics.lock() {
+            Ok(mut metrics) => {
+                metrics.remove(skill_id);
+            }
+            Err(poisoned) => {
+                tracing::error!("Metrics mutex poisoned during clear_metrics");
+                poisoned.into_inner().remove(skill_id);
+            }
+        }
     }
 
     /// Clear all metrics
     pub fn clear_all_metrics(&self) {
-        self.metrics.lock().unwrap().clear();
+        match self.metrics.lock() {
+            Ok(mut metrics) => {
+                metrics.clear();
+            }
+            Err(poisoned) => {
+                tracing::error!("Metrics mutex poisoned during clear_all_metrics");
+                poisoned.into_inner().clear();
+            }
+        }
     }
 }
 

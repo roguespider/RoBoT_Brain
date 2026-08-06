@@ -1,9 +1,21 @@
+    // experience_tools.rs - Experience recording and management tools
+
+use crate::bridge::rmcp::types::McpServerHandler;
+use crate::tools;
+use crate::tools::ToolOutput;
+use rmcp::handler::server::wrapper::Parameters;
+use rmcp::model::ContentBlock;
+use rmcp::tool_router;
+use rmcp::tool;
+use crate::bridge::rmcp::helpers::{tool_output_to_content, enforcement_error_to_content};
+
+#[tool_router]
+impl McpServerHandler {
     #[tool(name = "record_experience", description = "Record a new experience")]
     async fn record_experience(
         &self,
         Parameters(input): Parameters<tools::experience::RecordExperienceInput>,
     ) -> ContentBlock {
-        // Check workflow enforcement first
         if let Err(e) = self.check_workflow_enforcement("record_experience").await {
             tracing::warn!("Workflow enforcement blocked record_experience: {}", e.message);
             return enforcement_error_to_content(e);
@@ -13,9 +25,7 @@
             input,
             &self.context.coordinator,
             &self.context.database,
-        )
-        .await
-        {
+        ).await {
             Ok(result) => {
                 self.record_tool_execution("record_experience", None).await;
                 tool_output_to_content(result)
@@ -24,15 +34,11 @@
         }
     }
 
-    #[tool(
-        name = "get_experience_stats",
-        description = "Get experience statistics"
-    )]
+    #[tool(name = "get_experience_stats", description = "Get experience statistics")]
     async fn get_experience_stats(
         &self,
         Parameters(input): Parameters<tools::experience::GetExperienceStatsInput>,
     ) -> ContentBlock {
-        // Check workflow enforcement first
         if let Err(e) = self.check_workflow_enforcement("get_experience_stats").await {
             tracing::warn!("Workflow enforcement blocked get_experience_stats: {}", e.message);
             return enforcement_error_to_content(e);
@@ -52,7 +58,6 @@
         &self,
         Parameters(input): Parameters<tools::experience::ListExperiencesInput>,
     ) -> ContentBlock {
-        // Check workflow enforcement first
         if let Err(e) = self.check_workflow_enforcement("list_experiences").await {
             tracing::warn!("Workflow enforcement blocked list_experiences: {}", e.message);
             return enforcement_error_to_content(e);
@@ -67,15 +72,11 @@
         }
     }
 
-    #[tool(
-        name = "get_experience",
-        description = "Get a specific experience by ID"
-    )]
+    #[tool(name = "get_experience", description = "Get a specific experience by ID")]
     async fn get_experience(
         &self,
         Parameters(input): Parameters<tools::experience::GetExperienceInput>,
     ) -> ContentBlock {
-        // Check workflow enforcement first
         if let Err(e) = self.check_workflow_enforcement("get_experience").await {
             tracing::warn!("Workflow enforcement blocked get_experience: {}", e.message);
             return enforcement_error_to_content(e);
@@ -90,10 +91,7 @@
         }
     }
 
-    #[tool(
-        name = "get_worker_stats",
-        description = "Get background worker statistics for observers"
-    )]
+    #[tool(name = "get_worker_stats", description = "Get background worker statistics")]
     async fn get_worker_stats(
         &self,
         Parameters(input): Parameters<tools::experience::GetWorkerStatsInput>,
@@ -112,13 +110,8 @@
         }
     }
 
-    #[tool(
-        name = "get_worker_count",
-        description = "Get the number of active background workers"
-    )]
-    async fn get_worker_count(
-        &self,
-    ) -> ContentBlock {
+    #[tool(name = "get_worker_count", description = "Get the number of active background workers")]
+    async fn get_worker_count(&self) -> ContentBlock {
         if let Err(e) = self.check_workflow_enforcement("get_worker_count").await {
             tracing::warn!("Workflow enforcement blocked get_worker_count: {}", e.message);
             return enforcement_error_to_content(e);
@@ -132,3 +125,4 @@
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
+}

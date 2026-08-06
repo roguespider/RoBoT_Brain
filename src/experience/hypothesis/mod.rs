@@ -90,18 +90,36 @@ impl HypothesisEngine {
                         _ => HypothesisRelationship::Related,
                     };
                     
-                    let mut graph = self.graph.lock().unwrap();
-                    graph.add_edge(hypothesis_id.clone(), related_id.clone(), relationship);
+                    match self.graph.lock() {
+                        Ok(mut graph) => {
+                            graph.add_edge(hypothesis_id.clone(), related_id.clone(), relationship);
+                        }
+                        Err(poisoned) => {
+                            tracing::error!("Graph mutex poisoned during add_edge");
+                            poisoned.into_inner().add_edge(hypothesis_id.clone(), related_id.clone(), relationship);
+                        }
+                    }
                 }
             }
         }
         
         // 4. Detect cycles and log warnings
         {
-            let graph = self.graph.lock().unwrap();
-            let cycles = graph.detect_cycles();
-            if !cycles.is_empty() {
-                tracing::warn!("Detected {} cycles in hypothesis graph", cycles.len());
+            let graph_result = self.graph.lock();
+            match graph_result {
+                Ok(graph) => {
+                    let cycles = graph.detect_cycles();
+                    if !cycles.is_empty() {
+                        tracing::warn!("Detected {} cycles in hypothesis graph", cycles.len());
+                    }
+                }
+                Err(poisoned) => {
+                    tracing::error!("Graph mutex poisoned during cycle detection");
+                    let cycles = poisoned.into_inner().detect_cycles();
+                    if !cycles.is_empty() {
+                        tracing::warn!("Detected {} cycles in hypothesis graph (from recovered mutex)", cycles.len());
+                    }
+                }
             }
         }
         
@@ -151,9 +169,14 @@ impl HypothesisEngine {
     fn find_or_create_hypothesis(&mut self, insight: &str) -> Result<crate::experience::hypothesis::core::hypothesis::HypothesisId> {
         let hypothesis_id = crate::experience::hypothesis::core::hypothesis::HypothesisId(insight.to_string());
         
-        {
-            let mut graph = self.graph.lock().unwrap();
-            graph.add_node(hypothesis_id.clone());
+        match self.graph.lock() {
+            Ok(mut graph) => {
+                graph.add_node(hypothesis_id.clone());
+            }
+            Err(poisoned) => {
+                tracing::error!("Graph mutex poisoned during find_or_create_hypothesis");
+                poisoned.into_inner().add_node(hypothesis_id.clone());
+            }
         }
         
         Ok(hypothesis_id)
@@ -162,12 +185,25 @@ impl HypothesisEngine {
     /// Find hypotheses related to the given insights
     fn find_related_hypotheses(&self, insights: &[String]) -> Vec<crate::experience::hypothesis::core::hypothesis::HypothesisId> {
         let mut related = Vec::new();
-        let graph = self.graph.lock().unwrap();
         
-        for insight in insights {
-            let hypothesis_id = crate::experience::hypothesis::core::hypothesis::HypothesisId(insight.to_string());
-            let connected = graph.find_connected(&hypothesis_id);
-            related.extend(connected);
+        let graph_result = self.graph.lock();
+        match graph_result {
+            Ok(graph) => {
+                for insight in insights {
+                    let hypothesis_id = crate::experience::hypothesis::core::hypothesis::HypothesisId(insight.to_string());
+                    let connected = graph.find_connected(&hypothesis_id);
+                    related.extend(connected);
+                }
+            }
+            Err(poisoned) => {
+                tracing::error!("Graph mutex poisoned during find_related_hypotheses");
+                let graph = poisoned.into_inner();
+                for insight in insights {
+                    let hypothesis_id = crate::experience::hypothesis::core::hypothesis::HypothesisId(insight.to_string());
+                    let connected = graph.find_connected(&hypothesis_id);
+                    related.extend(connected);
+                }
+            }
         }
         
         related
@@ -180,8 +216,13 @@ impl HypothesisEngine {
     
     /// Get graph statistics
     pub fn get_graph_stats(&self) -> crate::experience::hypothesis::support::graph::GraphStats {
-        let graph = self.graph.lock().unwrap();
-        graph.stats()
+        match self.graph.lock() {
+            Ok(graph) => graph.stats(),
+            Err(poisoned) => {
+                tracing::error!("Graph mutex poisoned during get_graph_stats");
+                poisoned.into_inner().stats()
+            }
+        }
     }
 
     /// Observe an experience (for observer pattern)
@@ -195,11 +236,21 @@ impl HypothesisEngine {
         tracing::info!("Running hypothesis engine maintenance");
         
         {
-            let graph = self.graph.lock().unwrap();
-            let cycles = graph.detect_cycles();
-            
-            for cycle in cycles {
-                tracing::warn!("Found cycle in hypothesis graph: {:?}", cycle);
+            let graph_result = self.graph.lock();
+            match graph_result {
+                Ok(graph) => {
+                    let cycles = graph.detect_cycles();
+                    for cycle in cycles {
+                        tracing::warn!("Found cycle in hypothesis graph: {:?}", cycle);
+                    }
+                }
+                Err(poisoned) => {
+                    tracing::error!("Graph mutex poisoned during maintenance");
+                    let cycles = poisoned.into_inner().detect_cycles();
+                    for cycle in cycles {
+                        tracing::warn!("Found cycle in hypothesis graph: {:?}", cycle);
+                    }
+                }
             }
         }
         

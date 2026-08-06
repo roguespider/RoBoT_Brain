@@ -1,3 +1,16 @@
+    // agent_tools.rs - Agent and MCP server tools
+
+use crate::bridge::rmcp::types::McpServerHandler;
+use crate::tools;
+use crate::tools::ToolOutput;
+use rmcp::handler::server::wrapper::Parameters;
+use rmcp::model::ContentBlock;
+use rmcp::tool_router;
+use rmcp::tool;
+use crate::bridge::rmcp::helpers::tool_output_to_content;
+
+#[tool_router]
+impl McpServerHandler {
     #[tool(
         name = "list_tools",
         description = "List all available MCP tools with optional filter"
@@ -53,3 +66,4 @@
             Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
+}

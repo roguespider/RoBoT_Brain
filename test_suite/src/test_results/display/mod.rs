@@ -11,10 +11,7 @@ pub mod summary;
 pub mod tables;
 pub mod test_display;
 
-#[allow(unused_imports)]
-use super::{truncate, TestReport, TestStatus};
-#[allow(unused_imports)]
-use crate::code_analyzer::{CodeIssue, LintIssue, LintLevel};
+use super::TestReport;
 
 /// Print the full report in table format - orchestrates all display sections
 impl TestReport {

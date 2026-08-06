@@ -1,3 +1,15 @@
+    // exploration_tools.rs - Exploration session tools
+
+use crate::bridge::rmcp::types::McpServerHandler;
+use crate::tools;
+use rmcp::handler::server::wrapper::Parameters;
+use rmcp::model::ContentBlock;
+use rmcp::tool_router;
+use rmcp::tool;
+use crate::bridge::rmcp::helpers::{tool_output_to_content, enforcement_error_to_content};
+
+#[tool_router]
+impl McpServerHandler {
     #[tool(
         name = "start_exploration",
         description = "Start a new exploration session. Explorations allow RoBoT to actively investigate topics and test hypotheses."
@@ -10,7 +22,6 @@
             tracing::warn!("Workflow enforcement blocked start_exploration: {}", e.message);
             return enforcement_error_to_content(e);
         }
-        
         let result = tools::exploration::execute_start_exploration(input);
         if result.success {
             self.record_tool_execution("start_exploration", None).await;
@@ -30,7 +41,6 @@
             tracing::warn!("Workflow enforcement blocked get_exploration_status: {}", e.message);
             return enforcement_error_to_content(e);
         }
-        
         let result = tools::exploration::execute_get_exploration_status(input);
         if result.success {
             self.record_tool_execution("get_exploration_status", None).await;
@@ -40,7 +50,7 @@
 
     #[tool(
         name = "complete_exploration",
-        description = "Mark an exploration as completed with findings. Findings represent discoveries made during the exploration."
+        description = "Mark an exploration as completed with findings."
     )]
     async fn complete_exploration(
         &self,
@@ -50,7 +60,6 @@
             tracing::warn!("Workflow enforcement blocked complete_exploration: {}", e.message);
             return enforcement_error_to_content(e);
         }
-        
         let result = tools::exploration::execute_complete_exploration(input);
         if result.success {
             self.record_tool_execution("complete_exploration", None).await;
@@ -60,7 +69,7 @@
 
     #[tool(
         name = "abandon_exploration",
-        description = "Abandon an exploration without completing it. The exploration record is kept for analysis."
+        description = "Abandon an exploration without completing it."
     )]
     async fn abandon_exploration(
         &self,
@@ -70,7 +79,6 @@
             tracing::warn!("Workflow enforcement blocked abandon_exploration: {}", e.message);
             return enforcement_error_to_content(e);
         }
-        
         let result = tools::exploration::execute_abandon_exploration(input);
         if result.success {
             self.record_tool_execution("abandon_exploration", None).await;
@@ -80,7 +88,7 @@
 
     #[tool(
         name = "record_attempt",
-        description = "Record an attempt made during exploration. Tracks what was tried and what happened."
+        description = "Record an attempt made during exploration."
     )]
     async fn record_attempt(
         &self,
@@ -90,7 +98,6 @@
             tracing::warn!("Workflow enforcement blocked record_attempt: {}", e.message);
             return enforcement_error_to_content(e);
         }
-        
         let result = tools::exploration::execute_record_attempt(input);
         if result.success {
             self.record_tool_execution("record_attempt", None).await;
@@ -100,7 +107,7 @@
 
     #[tool(
         name = "add_exploration_hypothesis",
-        description = "Add a testable hypothesis to an exploration. Hypotheses guide what to investigate."
+        description = "Add a testable hypothesis to an exploration."
     )]
     async fn add_exploration_hypothesis(
         &self,
@@ -110,7 +117,6 @@
             tracing::warn!("Workflow enforcement blocked add_exploration_hypothesis: {}", e.message);
             return enforcement_error_to_content(e);
         }
-        
         let result = tools::exploration::execute_add_hypothesis(input);
         if result.success {
             self.record_tool_execution("add_exploration_hypothesis", None).await;
@@ -120,7 +126,7 @@
 
     #[tool(
         name = "evaluate_exploration_hypothesis",
-        description = "Set the result for a hypothesis based on evidence gathered during exploration."
+        description = "Set the result for a hypothesis based on evidence."
     )]
     async fn evaluate_exploration_hypothesis(
         &self,
@@ -130,7 +136,6 @@
             tracing::warn!("Workflow enforcement blocked evaluate_exploration_hypothesis: {}", e.message);
             return enforcement_error_to_content(e);
         }
-        
         let result = tools::exploration::execute_evaluate_hypothesis(input);
         if result.success {
             self.record_tool_execution("evaluate_exploration_hypothesis", None).await;
@@ -150,7 +155,6 @@
             tracing::warn!("Workflow enforcement blocked promote_finding: {}", e.message);
             return enforcement_error_to_content(e);
         }
-        
         let result = tools::exploration::execute_promote_finding(input);
         if result.success {
             self.record_tool_execution("promote_finding", None).await;
@@ -160,7 +164,7 @@
 
     #[tool(
         name = "pause_exploration",
-        description = "Pause an active exploration. The exploration can be resumed later."
+        description = "Pause an active exploration."
     )]
     async fn pause_exploration(
         &self,
@@ -170,7 +174,6 @@
             tracing::warn!("Workflow enforcement blocked pause_exploration: {}", e.message);
             return enforcement_error_to_content(e);
         }
-        
         let result = tools::exploration::execute_pause_exploration(input);
         if result.success {
             self.record_tool_execution("pause_exploration", None).await;
@@ -190,10 +193,10 @@
             tracing::warn!("Workflow enforcement blocked resume_exploration: {}", e.message);
             return enforcement_error_to_content(e);
         }
-        
         let result = tools::exploration::execute_resume_exploration(input);
         if result.success {
             self.record_tool_execution("resume_exploration", None).await;
         }
         tool_output_to_content(result)
     }
+}

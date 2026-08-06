@@ -67,7 +67,7 @@ impl ExperienceObserver for ReputationObserver {
                 let mut reputations = self
                     .reputations
                     .write()
-                    .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+                    .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
                 let reputation = reputations
                     .entry(entity_id.clone())
                     .or_insert_with(|| Reputation::new(entity_id.clone()));
@@ -92,7 +92,7 @@ impl ExperienceObserver for ReputationObserver {
                 let mut reputations = self
                     .reputations
                     .write()
-                    .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+                    .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
                 let reputation = reputations
                     .entry(entity_id.clone())
                     .or_insert_with(|| Reputation::new(entity_id.clone()));
@@ -147,9 +147,19 @@ impl ExperienceObserver for HypothesisObserver {
     fn observe(&self, event: &ExperienceEvent) -> Result<()> {
         match &event.payload {
             EventPayload::ExperienceRecord { experience, .. } => {
-                let mut engine = self.engine.lock().unwrap();
-                engine.process_experience(experience)?;
-                tracing::debug!("HypothesisObserver processed experience: {}", experience.id);
+                match self.engine.lock() {
+                    Ok(mut engine) => {
+                        engine.process_experience(experience)?;
+                        tracing::debug!("HypothesisObserver processed experience: {}", experience.id);
+                    }
+                    Err(poisoned) => {
+                        tracing::error!("HypothesisEngine mutex poisoned during observe");
+                        let mut engine = poisoned.into_inner();
+                        if let Err(e) = engine.process_experience(experience) {
+                            tracing::error!("Failed to process experience on recovered mutex: {}", e);
+                        }
+                    }
+                }
             }
             EventPayload::EvidenceRecord {
                 hypothesis_id,
