@@ -1,192 +1,202 @@
-// exploration_tools.rs - Exploration and discovery tools
+    // exploration_tools.rs - Exploration session tools
 
-use crate::bridge::rmcp::generated::tool_traits::{
-    ExplorationToolsHandlerTrait, ToolContext,
-};
+use crate::bridge::rmcp::types::McpServerHandler;
 use crate::tools;
-use crate::tools::ToolOutput;
+use rmcp::handler::server::wrapper::Parameters;
+use rmcp::model::ContentBlock;
+use rmcp::tool_router;
+use rmcp::tool;
+use crate::bridge::rmcp::helpers::{tool_output_to_content, enforcement_error_to_content};
 
-/// Handler for exploration tools - implements ExplorationToolsHandlerTrait
-pub struct ExplorationToolsHandler;
-
-impl ExplorationToolsHandler {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl Default for ExplorationToolsHandler {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ExplorationToolsHandlerTrait for ExplorationToolsHandler {
-    async fn execute_start_exploration(
+#[tool_router]
+impl McpServerHandler {
+    #[tool(
+        name = "start_exploration",
+        description = "Start a new exploration session. Explorations allow RoBoT to actively investigate topics and test hypotheses."
+    )]
+    async fn start_exploration(
         &self,
-        context: &ToolContext,
-        input: tools::exploration::StartExplorationInput,
-    ) -> ToolOutput {
-        match tools::exploration::execute_start_exploration(input, &context.context.database)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::exploration::StartExplorationInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("start_exploration").await {
+            tracing::warn!("Workflow enforcement blocked start_exploration: {}", e.message);
+            return enforcement_error_to_content(e);
         }
+        let result = tools::exploration::execute_start_exploration(input);
+        if result.success {
+            self.record_tool_execution("start_exploration", None).await;
+        }
+        tool_output_to_content(result)
     }
 
-    async fn execute_get_exploration(
+    #[tool(
+        name = "get_exploration_status",
+        description = "Get the current status of an exploration including hypotheses, attempts, and findings."
+    )]
+    async fn get_exploration_status(
         &self,
-        context: &ToolContext,
-        input: tools::exploration::GetExplorationInput,
-    ) -> ToolOutput {
-        match tools::exploration::execute_get_exploration(input, &context.context.database)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::exploration::GetExplorationStatusInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("get_exploration_status").await {
+            tracing::warn!("Workflow enforcement blocked get_exploration_status: {}", e.message);
+            return enforcement_error_to_content(e);
         }
+        let result = tools::exploration::execute_get_exploration_status(input);
+        if result.success {
+            self.record_tool_execution("get_exploration_status", None).await;
+        }
+        tool_output_to_content(result)
     }
 
-    async fn execute_list_explorations(
+    #[tool(
+        name = "complete_exploration",
+        description = "Mark an exploration as completed with findings."
+    )]
+    async fn complete_exploration(
         &self,
-        context: &ToolContext,
-        input: tools::exploration::ListExplorationsInput,
-    ) -> ToolOutput {
-        match tools::exploration::execute_list_explorations(input, &context.context.database)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::exploration::CompleteExplorationInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("complete_exploration").await {
+            tracing::warn!("Workflow enforcement blocked complete_exploration: {}", e.message);
+            return enforcement_error_to_content(e);
         }
+        let result = tools::exploration::execute_complete_exploration(input);
+        if result.success {
+            self.record_tool_execution("complete_exploration", None).await;
+        }
+        tool_output_to_content(result)
     }
 
-    async fn execute_pause_exploration(
+    #[tool(
+        name = "abandon_exploration",
+        description = "Abandon an exploration without completing it."
+    )]
+    async fn abandon_exploration(
         &self,
-        context: &ToolContext,
-        input: tools::exploration::PauseExplorationInput,
-    ) -> ToolOutput {
-        match tools::exploration::execute_pause_exploration(input, &context.context.database)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::exploration::GetExplorationStatusInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("abandon_exploration").await {
+            tracing::warn!("Workflow enforcement blocked abandon_exploration: {}", e.message);
+            return enforcement_error_to_content(e);
         }
+        let result = tools::exploration::execute_abandon_exploration(input);
+        if result.success {
+            self.record_tool_execution("abandon_exploration", None).await;
+        }
+        tool_output_to_content(result)
     }
 
-    async fn execute_resume_exploration(
+    #[tool(
+        name = "record_attempt",
+        description = "Record an attempt made during exploration."
+    )]
+    async fn record_attempt(
         &self,
-        context: &ToolContext,
-        input: tools::exploration::ResumeExplorationInput,
-    ) -> ToolOutput {
-        match tools::exploration::execute_resume_exploration(input, &context.context.database)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::exploration::RecordAttemptInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("record_attempt").await {
+            tracing::warn!("Workflow enforcement blocked record_attempt: {}", e.message);
+            return enforcement_error_to_content(e);
         }
+        let result = tools::exploration::execute_record_attempt(input);
+        if result.success {
+            self.record_tool_execution("record_attempt", None).await;
+        }
+        tool_output_to_content(result)
     }
 
-    async fn execute_complete_exploration(
+    #[tool(
+        name = "add_exploration_hypothesis",
+        description = "Add a testable hypothesis to an exploration."
+    )]
+    async fn add_exploration_hypothesis(
         &self,
-        context: &ToolContext,
-        input: tools::exploration::CompleteExplorationInput,
-    ) -> ToolOutput {
-        match tools::exploration::execute_complete_exploration(input, &context.context.database)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::exploration::AddHypothesisInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("add_exploration_hypothesis").await {
+            tracing::warn!("Workflow enforcement blocked add_exploration_hypothesis: {}", e.message);
+            return enforcement_error_to_content(e);
         }
+        let result = tools::exploration::execute_add_hypothesis(input);
+        if result.success {
+            self.record_tool_execution("add_exploration_hypothesis", None).await;
+        }
+        tool_output_to_content(result)
     }
 
-    async fn execute_cancel_exploration(
+    #[tool(
+        name = "evaluate_exploration_hypothesis",
+        description = "Set the result for a hypothesis based on evidence."
+    )]
+    async fn evaluate_exploration_hypothesis(
         &self,
-        context: &ToolContext,
-        input: tools::exploration::CancelExplorationInput,
-    ) -> ToolOutput {
-        match tools::exploration::execute_cancel_exploration(input, &context.context.database)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::exploration::EvaluateHypothesisInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("evaluate_exploration_hypothesis").await {
+            tracing::warn!("Workflow enforcement blocked evaluate_exploration_hypothesis: {}", e.message);
+            return enforcement_error_to_content(e);
         }
+        let result = tools::exploration::execute_evaluate_hypothesis(input);
+        if result.success {
+            self.record_tool_execution("evaluate_exploration_hypothesis", None).await;
+        }
+        tool_output_to_content(result)
     }
 
-    async fn execute_get_exploration_status(
+    #[tool(
+        name = "promote_finding",
+        description = "Promote a finding from an exploration to reusable knowledge."
+    )]
+    async fn promote_finding(
         &self,
-        context: &ToolContext,
-        input: tools::exploration::GetExplorationStatusInput,
-    ) -> ToolOutput {
-        match tools::exploration::execute_get_exploration_status(input, &context.context.database)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::exploration::PromoteFindingInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("promote_finding").await {
+            tracing::warn!("Workflow enforcement blocked promote_finding: {}", e.message);
+            return enforcement_error_to_content(e);
         }
+        let result = tools::exploration::execute_promote_finding(input);
+        if result.success {
+            self.record_tool_execution("promote_finding", None).await;
+        }
+        tool_output_to_content(result)
     }
 
-    async fn execute_record_exploration_finding(
+    #[tool(
+        name = "pause_exploration",
+        description = "Pause an active exploration."
+    )]
+    async fn pause_exploration(
         &self,
-        context: &ToolContext,
-        input: tools::exploration::RecordExplorationFindingInput,
-    ) -> ToolOutput {
-        match tools::exploration::execute_record_exploration_finding(
-            input,
-            &context.context.database,
-        )
-        .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::exploration::GetExplorationStatusInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("pause_exploration").await {
+            tracing::warn!("Workflow enforcement blocked pause_exploration: {}", e.message);
+            return enforcement_error_to_content(e);
         }
+        let result = tools::exploration::execute_pause_exploration(input);
+        if result.success {
+            self.record_tool_execution("pause_exploration", None).await;
+        }
+        tool_output_to_content(result)
     }
 
-    async fn execute_get_exploration_findings(
+    #[tool(
+        name = "resume_exploration",
+        description = "Resume a paused exploration."
+    )]
+    async fn resume_exploration(
         &self,
-        context: &ToolContext,
-        input: tools::exploration::GetExplorationFindingsInput,
-    ) -> ToolOutput {
-        match tools::exploration::execute_get_exploration_findings(
-            input,
-            &context.context.database,
-        )
-        .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::exploration::GetExplorationStatusInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("resume_exploration").await {
+            tracing::warn!("Workflow enforcement blocked resume_exploration: {}", e.message);
+            return enforcement_error_to_content(e);
         }
-    }
-
-    async fn execute_list_exploration_findings(
-        &self,
-        context: &ToolContext,
-        input: tools::exploration::ListExplorationFindingsInput,
-    ) -> ToolOutput {
-        match tools::exploration::execute_list_exploration_findings(
-            input,
-            &context.context.database,
-        )
-        .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        let result = tools::exploration::execute_resume_exploration(input);
+        if result.success {
+            self.record_tool_execution("resume_exploration", None).await;
         }
-    }
-
-    fn list_tools(&self) -> Vec<rmcp::tool::Tool> {
-        vec![
-            tools::exploration::start_exploration_tool(),
-            tools::exploration::get_exploration_tool(),
-            tools::exploration::list_explorations_tool(),
-            tools::exploration::pause_exploration_tool(),
-            tools::exploration::resume_exploration_tool(),
-            tools::exploration::complete_exploration_tool(),
-            tools::exploration::cancel_exploration_tool(),
-            tools::exploration::get_exploration_status_tool(),
-            tools::exploration::record_exploration_finding_tool(),
-            tools::exploration::get_exploration_findings_tool(),
-            tools::exploration::list_exploration_findings_tool(),
-        ]
+        tool_output_to_content(result)
     }
 }

@@ -1,89 +1,69 @@
-// agent_tools.rs - Agent coordination tools
+    // agent_tools.rs - Agent and MCP server tools
 
-use crate::bridge::rmcp::generated::tool_traits::{
-    AgentToolsHandlerTrait, ToolContext,
-};
+use crate::bridge::rmcp::types::McpServerHandler;
 use crate::tools;
 use crate::tools::ToolOutput;
+use rmcp::handler::server::wrapper::Parameters;
+use rmcp::model::ContentBlock;
+use rmcp::tool_router;
+use rmcp::tool;
+use crate::bridge::rmcp::helpers::tool_output_to_content;
 
-/// Handler for agent tools - implements AgentToolsHandlerTrait
-pub struct AgentToolsHandler;
-
-impl AgentToolsHandler {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl Default for AgentToolsHandler {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl AgentToolsHandlerTrait for AgentToolsHandler {
-    async fn execute_call_mcp_tool(
+#[tool_router]
+impl McpServerHandler {
+    #[tool(
+        name = "list_tools",
+        description = "List all available MCP tools with optional filter"
+    )]
+    async fn list_tools(
         &self,
-        context: &ToolContext,
-        input: tools::agent::CallMcpToolInput,
-    ) -> ToolOutput {
-        match tools::agent::execute_call_mcp_tool(input, &context.context.mcp_client).await {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::agent::ListToolsInput>,
+    ) -> ContentBlock {
+        match tools::agent::execute_list_tools(input).await {
+            Ok(result) => tool_output_to_content(result),
+            Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
 
-    async fn execute_connect_mcp_server(
+    #[tool(
+        name = "get_tool",
+        description = "Get detailed information about a specific tool"
+    )]
+    async fn get_tool(
         &self,
-        context: &ToolContext,
-        input: tools::agent::ConnectMcpServerInput,
-    ) -> ToolOutput {
-        match tools::agent::execute_connect_mcp_server(input, &context.context.mcp_client).await {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::agent::GetToolInput>,
+    ) -> ContentBlock {
+        match tools::agent::execute_get_tool(input).await {
+            Ok(result) => tool_output_to_content(result),
+            Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
 
-    async fn execute_get_tool(
+    #[tool(
+        name = "connect_mcp_server",
+        description = "Connect to an external MCP server via child process"
+    )]
+    async fn connect_mcp_server(
         &self,
-        context: &ToolContext,
-        input: tools::agent::GetToolInput,
-    ) -> ToolOutput {
-        match tools::agent::execute_get_tool(input, &context.context.mcp_client).await {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::agent::ConnectMcpServerInput>,
+    ) -> ContentBlock {
+        match tools::agent::execute_connect_mcp_server(input).await {
+            Ok(result) => tool_output_to_content(result),
+            Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
 
-    async fn execute_get_workflow(
+    #[tool(
+        name = "call_tool",
+        description = "Call a tool on a connected MCP server"
+    )]
+    async fn call_tool(
         &self,
-        context: &ToolContext,
-        input: tools::agent::GetWorkflowInput,
-    ) -> ToolOutput {
-        match tools::agent::execute_get_workflow(input).await {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::agent::CallMcpToolInput>,
+    ) -> ContentBlock {
+        match tools::agent::execute_call_mcp_tool(input).await {
+            Ok(result) => tool_output_to_content(result),
+            Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
-    }
-
-    async fn execute_list_tools(
-        &self,
-        context: &ToolContext,
-        input: tools::agent::ListToolsInput,
-    ) -> ToolOutput {
-        match tools::agent::execute_list_tools(input, &context.context.mcp_client).await {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
-        }
-    }
-
-    fn list_tools(&self) -> Vec<rmcp::tool::Tool> {
-        vec![
-            tools::agent::call_mcp_tool_tool(),
-            tools::agent::connect_mcp_server_tool(),
-            tools::agent::get_tool_tool(),
-            tools::agent::get_workflow_tool(),
-            tools::agent::list_tools_tool(),
-        ]
     }
 }

@@ -1,227 +1,128 @@
-// knowledge_tools.rs - Knowledge management tools
+    // knowledge_tools.rs - Knowledge base tools
 
-use crate::bridge::rmcp::generated::tool_traits::{
-    KnowledgeToolsHandlerTrait, ToolContext,
-};
+use crate::bridge::rmcp::types::McpServerHandler;
 use crate::tools;
-use crate::tools::ToolOutput;
+use rmcp::handler::server::wrapper::Parameters;
+use rmcp::model::ContentBlock;
+use rmcp::tool_router;
+use rmcp::tool;
+use crate::bridge::rmcp::helpers::{tool_output_to_content, enforcement_error_to_content};
 
-/// Handler for knowledge tools - implements KnowledgeToolsHandlerTrait
-pub struct KnowledgeToolsHandler;
-
-impl KnowledgeToolsHandler {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl Default for KnowledgeToolsHandler {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl KnowledgeToolsHandlerTrait for KnowledgeToolsHandler {
-    async fn execute_create_knowledge(
+#[tool_router]
+impl McpServerHandler {
+    #[tool(name = "get_knowledge", description = "Get learned knowledge extracted from validated hypotheses.")]
+    async fn get_knowledge(
         &self,
-        context: &ToolContext,
-        input: tools::knowledge::CreateKnowledgeInput,
-    ) -> ToolOutput {
-        match tools::knowledge::execute_create_knowledge(input, &context.context.database)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::hypothesis::GetKnowledgeInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("get_knowledge").await {
+            tracing::warn!("Workflow enforcement blocked get_knowledge: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        match tools::hypothesis::execute_get_knowledge(input, &self.context.database).await {
+            Ok(result) => {
+                self.record_tool_execution("get_knowledge", None).await;
+                tool_output_to_content(result)
+            }
+            Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
 
-    async fn execute_get_knowledge(
+    #[tool(name = "extract_knowledge", description = "Extract knowledge from a validated hypothesis.")]
+    async fn extract_knowledge(
         &self,
-        context: &ToolContext,
-        input: tools::knowledge::GetKnowledgeInput,
-    ) -> ToolOutput {
-        match tools::knowledge::execute_get_knowledge(input, &context.context.database).await {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::hypothesis::ExtractKnowledgeInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("extract_knowledge").await {
+            tracing::warn!("Workflow enforcement blocked extract_knowledge: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        match tools::hypothesis::execute_extract_knowledge(input, &self.context.database).await {
+            Ok(result) => {
+                self.record_tool_execution("extract_knowledge", None).await;
+                tool_output_to_content(result)
+            }
+            Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
 
-    async fn execute_list_knowledge(
+    #[tool(name = "add_knowledge", description = "Add new validated knowledge to the knowledge base")]
+    async fn add_knowledge(
         &self,
-        context: &ToolContext,
-        input: tools::knowledge::ListKnowledgeInput,
-    ) -> ToolOutput {
-        match tools::knowledge::execute_list_knowledge(input, &context.context.database).await {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::knowledge::AddKnowledgeInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("add_knowledge").await {
+            tracing::warn!("Workflow enforcement blocked add_knowledge: {}", e.message);
+            return enforcement_error_to_content(e);
         }
+        let result = tools::knowledge::execute_add_knowledge(input, &self.context.knowledge).await;
+        if result.success {
+            self.record_tool_execution("add_knowledge", None).await;
+        }
+        tool_output_to_content(result)
     }
 
-    async fn execute_search_knowledge(
+    #[tool(name = "query_knowledge", description = "Query the knowledge base for relevant knowledge")]
+    async fn query_knowledge(
         &self,
-        context: &ToolContext,
-        input: tools::knowledge::SearchKnowledgeInput,
-    ) -> ToolOutput {
-        match tools::knowledge::execute_search_knowledge(input, &context.context.database)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::knowledge::QueryKnowledgeInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("query_knowledge").await {
+            tracing::warn!("Workflow enforcement blocked query_knowledge: {}", e.message);
+            return enforcement_error_to_content(e);
         }
+        let result = tools::knowledge::execute_query_knowledge(input, &self.context.knowledge).await;
+        if result.success {
+            self.record_tool_execution("query_knowledge", None).await;
+        }
+        tool_output_to_content(result)
     }
 
-    async fn execute_update_knowledge(
+    #[tool(name = "record_knowledge_application", description = "Record the result of applying knowledge")]
+    async fn record_knowledge_application(
         &self,
-        context: &ToolContext,
-        input: tools::knowledge::UpdateKnowledgeInput,
-    ) -> ToolOutput {
-        match tools::knowledge::execute_update_knowledge(input, &context.context.database)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::knowledge::RecordKnowledgeApplicationInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("record_knowledge_application").await {
+            tracing::warn!("Workflow enforcement blocked record_knowledge_application: {}", e.message);
+            return enforcement_error_to_content(e);
         }
+        let result = tools::knowledge::execute_record_knowledge_application(input, &self.context.knowledge).await;
+        if result.success {
+            self.record_tool_execution("record_knowledge_application", None).await;
+        }
+        tool_output_to_content(result)
     }
 
-    async fn execute_delete_knowledge(
+    #[tool(name = "get_knowledge_stats", description = "Get statistics about the knowledge base")]
+    async fn get_knowledge_stats(
         &self,
-        context: &ToolContext,
-        input: tools::knowledge::DeleteKnowledgeInput,
-    ) -> ToolOutput {
-        match tools::knowledge::execute_delete_knowledge(input, &context.context.database)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::knowledge::GetKnowledgeStatsInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("get_knowledge_stats").await {
+            tracing::warn!("Workflow enforcement blocked get_knowledge_stats: {}", e.message);
+            return enforcement_error_to_content(e);
         }
+        let result = tools::knowledge::execute_get_knowledge_stats(input, &self.context.knowledge).await;
+        if result.success {
+            self.record_tool_execution("get_knowledge_stats", None).await;
+        }
+        tool_output_to_content(result)
     }
 
-    async fn execute_get_knowledge_stats(
+    #[tool(name = "get_mature_knowledge", description = "Get all mature (high-confidence) knowledge")]
+    async fn get_mature_knowledge(
         &self,
-        context: &ToolContext,
-        input: tools::knowledge::GetKnowledgeStatsInput,
-    ) -> ToolOutput {
-        match tools::knowledge::execute_get_knowledge_stats(input, &context.context.database)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::knowledge::GetMatureKnowledgeInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("get_mature_knowledge").await {
+            tracing::warn!("Workflow enforcement blocked get_mature_knowledge: {}", e.message);
+            return enforcement_error_to_content(e);
         }
-    }
-
-    async fn execute_create_knowledge_base(
-        &self,
-        context: &ToolContext,
-        input: tools::knowledge::CreateKnowledgeBaseInput,
-    ) -> ToolOutput {
-        match tools::knowledge::execute_create_knowledge_base(input, &context.context.database)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        let result = tools::knowledge::execute_get_mature_knowledge(input, &self.context.knowledge).await;
+        if result.success {
+            self.record_tool_execution("get_mature_knowledge", None).await;
         }
-    }
-
-    async fn execute_get_knowledge_base(
-        &self,
-        context: &ToolContext,
-        input: tools::knowledge::GetKnowledgeBaseInput,
-    ) -> ToolOutput {
-        match tools::knowledge::execute_get_knowledge_base(input, &context.context.database)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
-        }
-    }
-
-    async fn execute_list_knowledge_bases(
-        &self,
-        context: &ToolContext,
-        input: tools::knowledge::ListKnowledgeBasesInput,
-    ) -> ToolOutput {
-        match tools::knowledge::execute_list_knowledge_bases(input, &context.context.database)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
-        }
-    }
-
-    async fn execute_delete_knowledge_base(
-        &self,
-        context: &ToolContext,
-        input: tools::knowledge::DeleteKnowledgeBaseInput,
-    ) -> ToolOutput {
-        match tools::knowledge::execute_delete_knowledge_base(input, &context.context.database)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
-        }
-    }
-
-    async fn execute_add_source(
-        &self,
-        context: &ToolContext,
-        input: tools::knowledge::AddSourceInput,
-    ) -> ToolOutput {
-        match tools::knowledge::execute_add_source(input, &context.context.database).await {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
-        }
-    }
-
-    async fn execute_get_source(
-        &self,
-        context: &ToolContext,
-        input: tools::knowledge::GetSourceInput,
-    ) -> ToolOutput {
-        match tools::knowledge::execute_get_source(input, &context.context.database).await {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
-        }
-    }
-
-    async fn execute_list_sources(
-        &self,
-        context: &ToolContext,
-        input: tools::knowledge::ListSourcesInput,
-    ) -> ToolOutput {
-        match tools::knowledge::execute_list_sources(input, &context.context.database).await {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
-        }
-    }
-
-    async fn execute_delete_source(
-        &self,
-        context: &ToolContext,
-        input: tools::knowledge::DeleteSourceInput,
-    ) -> ToolOutput {
-        match tools::knowledge::execute_delete_source(input, &context.context.database).await {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
-        }
-    }
-
-    fn list_tools(&self) -> Vec<rmcp::tool::Tool> {
-        vec![
-            tools::knowledge::create_knowledge_tool(),
-            tools::knowledge::get_knowledge_tool(),
-            tools::knowledge::list_knowledge_tool(),
-            tools::knowledge::search_knowledge_tool(),
-            tools::knowledge::update_knowledge_tool(),
-            tools::knowledge::delete_knowledge_tool(),
-            tools::knowledge::get_knowledge_stats_tool(),
-            tools::knowledge::create_knowledge_base_tool(),
-            tools::knowledge::get_knowledge_base_tool(),
-            tools::knowledge::list_knowledge_bases_tool(),
-            tools::knowledge::delete_knowledge_base_tool(),
-            tools::knowledge::add_source_tool(),
-            tools::knowledge::get_source_tool(),
-            tools::knowledge::list_sources_tool(),
-            tools::knowledge::delete_source_tool(),
-        ]
+        tool_output_to_content(result)
     }
 }

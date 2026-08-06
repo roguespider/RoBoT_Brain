@@ -1,98 +1,85 @@
-// reflection_tools.rs - Reflection and pattern analysis tools
+    // reflection_tools.rs - Reflection and pattern analysis tools
 
-use crate::bridge::rmcp::generated::tool_traits::{
-    ReflectionToolsHandlerTrait, ToolContext,
-};
+use crate::bridge::rmcp::types::McpServerHandler;
 use crate::tools;
 use crate::tools::ToolOutput;
+use rmcp::handler::server::wrapper::Parameters;
+use rmcp::model::ContentBlock;
+use rmcp::tool_router;
+use rmcp::tool;
+use crate::bridge::rmcp::helpers::{tool_output_to_content, enforcement_error_to_content};
 
-/// Handler for reflection tools - implements ReflectionToolsHandlerTrait
-pub struct ReflectionToolsHandler;
-
-impl ReflectionToolsHandler {
-    pub fn new() -> Self {
-        Self
-    }
-}
-
-impl Default for ReflectionToolsHandler {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl ReflectionToolsHandlerTrait for ReflectionToolsHandler {
-    async fn execute_reflect_on_action(
+#[tool_router]
+impl McpServerHandler {
+    #[tool(name = "get_insights", description = "Get actionable insights from reflections")]
+    async fn get_insights(
         &self,
-        context: &ToolContext,
-        input: tools::reflection::ReflectOnActionInput,
-    ) -> ToolOutput {
-        match tools::reflection::execute_reflect_on_action(input, &context.context.reflection)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::reflection::GetInsightsInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("get_insights").await {
+            tracing::warn!("Workflow enforcement blocked get_insights: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        match tools::reflection::execute_get_insights(input, &self.context.reflection).await {
+            Ok(result) => {
+                self.record_tool_execution("get_insights", None).await;
+                tool_output_to_content(result)
+            }
+            Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
 
-    async fn execute_get_reflection_insights(
+    #[tool(name = "create_reflection", description = "Create a new reflection")]
+    async fn create_reflection(
         &self,
-        context: &ToolContext,
-        input: tools::reflection::GetReflectionInsightsInput,
-    ) -> ToolOutput {
-        match tools::reflection::execute_get_reflection_insights(input, &context.context.reflection)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::reflection::CreateReflectionInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("create_reflection").await {
+            tracing::warn!("Workflow enforcement blocked create_reflection: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        match tools::reflection::execute_create_reflection(input, &self.context.reflection).await {
+            Ok(result) => {
+                self.record_tool_execution("create_reflection", None).await;
+                tool_output_to_content(result)
+            }
+            Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
 
-    async fn execute_list_reflections(
+    #[tool(name = "analyze_patterns", description = "Analyze experiences to detect patterns")]
+    async fn analyze_patterns(
         &self,
-        context: &ToolContext,
-        input: tools::reflection::ListReflectionsInput,
-    ) -> ToolOutput {
-        match tools::reflection::execute_list_reflections(input, &context.context.reflection)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::reflection::AnalyzePatternsInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("analyze_patterns").await {
+            tracing::warn!("Workflow enforcement blocked analyze_patterns: {}", e.message);
+            return enforcement_error_to_content(e);
+        }
+        match tools::reflection::execute_analyze_patterns(input, &self.context.reflection).await {
+            Ok(result) => {
+                self.record_tool_execution("analyze_patterns", None).await;
+                tool_output_to_content(result)
+            }
+            Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
     }
 
-    async fn execute_get_reflection(
+    #[tool(name = "get_patterns", description = "Get detected patterns")]
+    async fn get_patterns(
         &self,
-        context: &ToolContext,
-        input: tools::reflection::GetReflectionInput,
-    ) -> ToolOutput {
-        match tools::reflection::execute_get_reflection(input, &context.context.reflection).await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        Parameters(input): Parameters<tools::reflection::GetPatternsInput>,
+    ) -> ContentBlock {
+        if let Err(e) = self.check_workflow_enforcement("get_patterns").await {
+            tracing::warn!("Workflow enforcement blocked get_patterns: {}", e.message);
+            return enforcement_error_to_content(e);
         }
-    }
-
-    async fn execute_generate_insights(
-        &self,
-        context: &ToolContext,
-        input: tools::reflection::GenerateInsightsInput,
-    ) -> ToolOutput {
-        match tools::reflection::execute_generate_insights(input, &context.context.reflection)
-            .await
-        {
-            Ok(result) => result,
-            Err(e) => ToolOutput::error(e),
+        match tools::reflection::execute_get_patterns(input, &self.context.reflection).await {
+            Ok(result) => {
+                self.record_tool_execution("get_patterns", None).await;
+                tool_output_to_content(result)
+            }
+            Err(e) => tool_output_to_content(ToolOutput::error(e)),
         }
-    }
-
-    fn list_tools(&self) -> Vec<rmcp::tool::Tool> {
-        vec![
-            tools::reflection::reflect_on_action_tool(),
-            tools::reflection::get_reflection_insights_tool(),
-            tools::reflection::list_reflections_tool(),
-            tools::reflection::get_reflection_tool(),
-            tools::reflection::generate_insights_tool(),
-        ]
     }
 }
