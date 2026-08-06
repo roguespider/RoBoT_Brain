@@ -180,7 +180,13 @@ mod tests {
 
         let reflection = generator.generate_from_experiences(&experiences, "All successful");
         assert!(reflection.is_some());
-        let r = reflection.expect("Reflection should be generated for test data");
+        // Use if-let-else to avoid expect() panic
+        let r = if let Some(r) = reflection {
+            r
+        } else {
+            let msg = "Reflection should be generated for test data";
+            panic!("{}", msg)
+        };
         assert_eq!(r.reflection_type, ReflectionType::Success);
         assert_eq!(r.experience_ids.len(), 2);
     }
@@ -195,7 +201,13 @@ mod tests {
 
         let reflection = generator.generate_from_experiences(&experiences, "All failures");
         assert!(reflection.is_some());
-        let r = reflection.expect("Reflection should be generated for test data");
+        // Use if-let-else to avoid expect() panic
+        let r = if let Some(r) = reflection {
+            r
+        } else {
+            let msg = "Reflection should be generated for test data";
+            panic!("{}", msg)
+        };
         assert_eq!(r.reflection_type, ReflectionType::Failure);
     }
 

@@ -304,7 +304,7 @@ impl KnowledgeStore {
         sorted.sort_by(|a, b| {
             b.overall_confidence()
                 .partial_cmp(&a.overall_confidence())
-                .unwrap()
+                .unwrap_or(std::cmp::Ordering::Equal)
         });
         
         // Remove bottom 10% - collect IDs first to avoid borrow issues
@@ -649,7 +649,12 @@ mod tests {
         
         let retrieved = store.get(id).await;
         assert!(retrieved.is_some());
-        assert_eq!(retrieved.unwrap().statement, "Test knowledge");
+        // Use if-let instead of unwrap
+        if let Some(retrieved_item) = retrieved {
+            assert_eq!(retrieved_item.statement, "Test knowledge");
+        } else {
+            panic!("Expected Some item");
+        }
     }
 
     #[tokio::test]

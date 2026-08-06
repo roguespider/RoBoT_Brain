@@ -63,9 +63,15 @@ impl JobQueue {
             .map(|(id, _)| id.clone());
 
         if let Some(id) = job_id {
-            let job = self.jobs.get(&id)
-                .expect("Job ID from iterator should always exist")
-                .clone();
+            // Safety: job_id came from iterating over self.jobs, so get must succeed
+            let job = match self.jobs.get(&id) {
+                Some(j) => j.clone(),
+                None => {
+                    // Unreachable - id came from iterator over self.jobs
+                    tracing::error!("Unexpected: job ID not found in jobs map");
+                    return None;
+                }
+            };
             // Mark as running immediately to prevent race conditions
             self.mark_running(&id);
             Some(job)

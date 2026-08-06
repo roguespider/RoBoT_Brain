@@ -44,21 +44,21 @@ impl InMemoryExplorationRepository {
     /// Get the count of explorations
     pub fn count(&self) -> Result<usize> {
         let explorations = self.explorations.read()
-            .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         Ok(explorations.len())
     }
 
     /// List all explorations
     pub fn list_all(&self) -> Result<Vec<Exploration>> {
         let explorations = self.explorations.read()
-            .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         Ok(explorations.values().cloned().collect())
     }
 
     /// List explorations by status
     pub fn list_by_status(&self, status: ExplorationStatus) -> Result<Vec<Exploration>> {
         let explorations = self.explorations.read()
-            .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         Ok(explorations.values()
             .filter(|e| e.status == status)
             .cloned()
@@ -68,14 +68,14 @@ impl InMemoryExplorationRepository {
     /// Delete an exploration by ID
     pub fn delete(&self, id: &str) -> Result<Option<Exploration>> {
         let mut explorations = self.explorations.write()
-            .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         Ok(explorations.remove(id))
     }
 
     /// Search explorations by title
     pub fn search_by_title(&self, query: &str) -> Result<Vec<Exploration>> {
         let explorations = self.explorations.read()
-            .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         let query_lower = query.to_lowercase();
         Ok(explorations.values()
             .filter(|e| e.title.to_lowercase().contains(&query_lower))
@@ -87,20 +87,20 @@ impl InMemoryExplorationRepository {
 impl ExplorationRepository for InMemoryExplorationRepository {
     fn create(&self, exploration: &Exploration) -> Result<()> {
         let mut explorations = self.explorations.write()
-            .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         explorations.insert(exploration.id.clone(), exploration.clone());
         Ok(())
     }
 
     fn get(&self, id: &str) -> Result<Option<Exploration>> {
         let explorations = self.explorations.read()
-            .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         Ok(explorations.get(id).cloned())
     }
 
     fn update(&self, exploration: &Exploration) -> Result<()> {
         let mut explorations = self.explorations.write()
-            .map_err(|_| anyhow::anyhow!("Lock poisoned"))?;
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         if !explorations.contains_key(&exploration.id) {
             return Err(anyhow::anyhow!("Exploration not found: {}", exploration.id));
         }

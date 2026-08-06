@@ -11,7 +11,11 @@
 //! use robot_brain::personality::{Personality, CommunicationStyle};
 //!
 //! let mut personality = Personality::new();
-//! personality.apply_preset("analytical").unwrap();
+//! // Apply preset with proper error handling
+//! let applied = personality.apply_preset("analytical");
+//! if !applied {
+//!     eprintln!("Warning: preset 'analytical' not found");
+//! }
 //!
 //! // Use personality traits for decisions
 //! if personality.should_explore(0.5) {

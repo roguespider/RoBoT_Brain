@@ -132,7 +132,12 @@ pub fn rank_items(items: Vec<KnowledgeItem>, query: &KnowledgeQuery) -> Vec<Know
         (score, item)
     }).collect();
     
-    ranked.sort_by(|(a, _), (b, _)| b.partial_cmp(a).unwrap());
+    ranked.sort_by(|(a, rank_a_item), (b, rank_b_item)| {
+        b.partial_cmp(a).unwrap_or_else(|| {
+            // Handle NaN case by comparing items directly
+            rank_b_item.id.cmp(&rank_a_item.id)
+        })
+    });
     ranked.into_iter().map(|(_, item)| item).collect()
 }
 
