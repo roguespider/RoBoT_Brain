@@ -1,9 +1,12 @@
 // src/bridge/rmcp/generated/mod.rs
 // Tools module - each tool category is a separate, isolated module
 //
-// Each *_tools.rs file is a standalone module that contains its own impl block.
-// If one tool has compile errors, it can be disabled via Cargo.toml features.
-// MCP loads successfully with the remaining tools.
+// Architecture:
+// - server_handler_impl.rs provides ServerHandler trait impl for McpServerHandler
+// - Each *_tools.rs has its own impl McpServerHandler with #[tool_router] and #[tool] macros
+// - Tools are registered via the #[tool] attribute and handled by #[tool_router]
+// - If a tool has compile errors, disable via Cargo.toml feature
+// - MCP loads first (via ServerHandler impl), tools load independently
 
 mod server_handler_impl;
 
