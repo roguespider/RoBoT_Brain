@@ -1,0 +1,27 @@
+[package]
+name = "robot_brain"
+version = "0.0.1"
+edition = "2021"
+description = "A Rust MCP server with runtime-loaded tool plugins"
+
+[dependencies]
+tools-core = { path = "../src/tools/tools-core" }
+rmcp = { version = "2", features = ["server", "client", "transport-io", "macros", "transport-child-process"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+tokio = { version = "1", features = ["full"] }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+anyhow = "1"
+chrono = { version = "0.4", features = ["serde"] }
+uuid = { version = "1", features = ["v4", "serde"] }
+libloading = "0.8"
+
+[build-dependencies]
+
+[[bin]]
+name = "robot_brain"
+path = "src/main.rs"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.59", features = ["Win32_Foundation", "Win32_System_Console"] }
