@@ -12,7 +12,7 @@ use crate::database::sqlite::SqliteDatabase;
 use crate::experience::coordinator::ExperienceCoordinator;
 use crate::experience::types::{Experience, ExperienceOutcome, ExperienceType, OutcomeKind};
 use crate::experience::worker_manager::WorkerManager;
-use crate::tools::ToolOutput;
+use crate::bridge::tools::ToolOutput;
 
 /// Tool: Record an experience
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]

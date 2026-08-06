@@ -5,7 +5,7 @@
 use std::sync::Arc;
 use crate::bridge::rmcp::types::McpServerHandler;
 use crate::bridge::rmcp::helpers::{tool_output_to_content, enforcement_error_to_content};
-use crate::tools::{self, ToolOutput};
+use crate::bridge::tools::{self, ToolOutput};
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::ContentBlock;
 use rmcp::tool_handler;

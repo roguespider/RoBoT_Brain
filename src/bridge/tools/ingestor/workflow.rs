@@ -7,8 +7,8 @@ use std::path::{Path, PathBuf};
 
 use anyhow::Result;
 
-use crate::tools::ToolOutput;
-use crate::tools::ingestor::file_collector::{collect_importable_files, collect_importable_files_with_recursive, get_import_folder, normalize_path};
+use crate::bridge::tools::ToolOutput;
+use crate::bridge::tools::ingestor::file_collector::{collect_importable_files, collect_importable_files_with_recursive, get_import_folder, normalize_path};
 
 use super::ListImportableInput;
 use super::ListIngestedFilesInput;
@@ -260,8 +260,8 @@ pub async fn execute_delete_ingested_files(
     }
     
     // Step 1: Check if files were recently ingested
-    let (all_verified, unverified_files) = crate::tools::ingestor::can_delete_files(&input.files).await;
-    let can_verify = crate::tools::ingestor::can_verify_deletion().await;
+    let (all_verified, unverified_files) = crate::bridge::tools::ingestor::can_delete_files(&input.files).await;
+    let can_verify = crate::bridge::tools::ingestor::can_verify_deletion().await;
     
     // Step 2: Verify confirmation is EXACTLY "yes" or "confirm"
     let confirmation = input.confirmation.trim().to_lowercase();
@@ -347,7 +347,7 @@ pub async fn execute_delete_ingested_files(
     let failed_count = failed.len();
     
     if success > 0 {
-        crate::tools::ingestor::clear_ingest_tracker().await;
+        crate::bridge::tools::ingestor::clear_ingest_tracker().await;
     }
     
     // Step 6: Check for empty folders after deletion

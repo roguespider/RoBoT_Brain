@@ -14,7 +14,7 @@ use crate::database::sqlite::SqliteDatabase;
 use crate::experience::types::{Experience, ExperienceContext, ExperienceOutcome, ExperienceType};
 use crate::memory::types::{MemoryItem, MemoryLayer};
 use crate::memory::{MemoryRetrieval, WorkingMemory};
-use crate::tools::ToolOutput;
+use crate::bridge::tools::ToolOutput;
 
 /// Tool: Store a new memory
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]

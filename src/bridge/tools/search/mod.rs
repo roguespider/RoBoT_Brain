@@ -11,7 +11,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::database::queries;
 use crate::database::sqlite::SqliteDatabase;
-use crate::tools::ToolOutput;
+use crate::bridge::tools::ToolOutput;
 
 /// Tool: Full-text search across all data
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]

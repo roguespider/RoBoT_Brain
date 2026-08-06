@@ -10,11 +10,11 @@ use tokio::time;
 
 use crate::database::sqlite::SqliteDatabase;
 use crate::memory::WorkingMemory;
-use crate::tools::ToolOutput;
-use crate::tools::ingestor::file_collector::{
+use crate::bridge::tools::ToolOutput;
+use crate::bridge::tools::ingestor::file_collector::{
     collect_importable_files, collect_importable_files_with_recursive, get_import_folder,
 };
-use crate::tools::ingestor::workflow::find_empty_folders_after_deletion;
+use crate::bridge::tools::ingestor::workflow::find_empty_folders_after_deletion;
 
 use super::helpers::{file_info_size, format_size};
 use super::ingestion::{ingest_archive, ingest_single_file};
@@ -465,7 +465,7 @@ pub async fn execute_transcribe_audio(
     db: Arc<SqliteDatabase>,
     working_memory: Arc<WorkingMemory>,
 ) -> Result<ToolOutput> {
-    use crate::tools::ingestor::audio_transcriber::{is_audio_file, store_transcription_as_memory, transcribe_audio};
+    use crate::bridge::tools::ingestor::audio_transcriber::{is_audio_file, store_transcription_as_memory, transcribe_audio};
     
     let path = Path::new(&input.path);
 

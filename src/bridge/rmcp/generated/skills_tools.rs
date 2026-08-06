@@ -1,8 +1,8 @@
     // skills_tools.rs - Skill registry and management tools
 
 use crate::bridge::rmcp::types::McpServerHandler;
-use crate::tools;
-use crate::tools::ToolOutput;
+use crate::bridge::tools;
+use crate::bridge::tools::ToolOutput;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::ContentBlock;
 use rmcp::tool_router;

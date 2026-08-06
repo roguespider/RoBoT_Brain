@@ -12,16 +12,16 @@ use crate::database::sqlite::SqliteDatabase;
 use crate::memory::pipeline::MemoryPipeline;
 use crate::memory::types::MemoryItem;
 use crate::memory::WorkingMemory;
-use crate::tools::ingestor::archive_handler::{
+use crate::bridge::tools::ingestor::archive_handler::{
     create_archive_temp_dir, delete_empty_folders, process_archive,
 };
-use crate::tools::ingestor::file_collector::{
+use crate::bridge::tools::ingestor::file_collector::{
     collect_all_files_recursive, AUDIO_EXTENSIONS, IMAGE_EXTENSIONS, JSON_EXTENSIONS,
     TEXT_EXTENSIONS,
 };
-use crate::tools::ingestor::json_importer::{import_json_file, ExtractedJsonData};
-use crate::tools::ingestor::semantic_chunker::{get_file_type, parse_document};
-use crate::tools::ingestor::text_extractor::{
+use crate::bridge::tools::ingestor::json_importer::{import_json_file, ExtractedJsonData};
+use crate::bridge::tools::ingestor::semantic_chunker::{get_file_type, parse_document};
+use crate::bridge::tools::ingestor::text_extractor::{
     extract_image_metadata, extract_text, validate_text_quality,
 };
 
@@ -171,7 +171,7 @@ pub async fn ingest_single_file(
     };
 
     // Check if this is an image file - handle separately
-    if crate::tools::ingestor::file_collector::is_supported_extension(path, IMAGE_EXTENSIONS) {
+    if crate::bridge::tools::ingestor::file_collector::is_supported_extension(path, IMAGE_EXTENSIONS) {
         return ingest_image_file(
             path,
             recommended_chunk_size,
@@ -183,7 +183,7 @@ pub async fn ingest_single_file(
     }
 
     // Check if this is a JSON file - use smart JSON importer
-    if crate::tools::ingestor::file_collector::is_supported_extension(path, JSON_EXTENSIONS) {
+    if crate::bridge::tools::ingestor::file_collector::is_supported_extension(path, JSON_EXTENSIONS) {
         return ingest_json_file(
             path,
             recommended_chunk_size,
@@ -195,7 +195,7 @@ pub async fn ingest_single_file(
     }
 
     // Check if this is an audio file - use Whisper transcription
-    if crate::tools::ingestor::file_collector::is_supported_extension(path, AUDIO_EXTENSIONS) {
+    if crate::bridge::tools::ingestor::file_collector::is_supported_extension(path, AUDIO_EXTENSIONS) {
         return ingest_audio_file(
             path,
             recommended_chunk_size,
@@ -491,7 +491,7 @@ pub async fn ingest_audio_file(
     db: Arc<SqliteDatabase>,
     working_memory: Arc<WorkingMemory>,
 ) -> Result<IngestResult> {
-    use crate::tools::ingestor::audio_transcriber::{store_transcription_as_memory, transcribe_audio};
+    use crate::bridge::tools::ingestor::audio_transcriber::{store_transcription_as_memory, transcribe_audio};
     
     let filename = path
         .file_name()

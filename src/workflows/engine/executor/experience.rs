@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 
 use crate::experience::types::OutcomeKind;
-use crate::tools::ToolOutput;
+use crate::bridge::tools::ToolOutput;
 use crate::workflows::engine::types::WorkflowEngine;
 use crate::workflows::engine::SKIP_MEMORY_READ;
 
@@ -97,7 +97,7 @@ impl WorkflowEngine {
             outcome_kind
         );
 
-        let input = crate::tools::experience::RecordExperienceInput {
+        let input = crate::bridge::tools::experience::RecordExperienceInput {
             title,
             description,
             experience_type: map_action_to_experience_type(action),
@@ -106,7 +106,7 @@ impl WorkflowEngine {
         };
 
         // Use the shared coordinator - events will flow to WorkerManager and EventSubscriber
-        match crate::tools::experience::execute_record_experience(input, coordinator, db).await {
+        match crate::bridge::tools::experience::execute_record_experience(input, coordinator, db).await {
             Ok(_) => {
                 tracing::debug!(
                     "[Experience] Recorded for future reflection/curation: action='{}'",

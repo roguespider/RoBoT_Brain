@@ -5,7 +5,7 @@ use std::collections::HashSet;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
-use crate::tools::ingestor::file_collector::normalize_path;
+use crate::bridge::tools::ingestor::file_collector::normalize_path;
 
 // Global ingest tracker
 static INGEST_TRACKER: std::sync::OnceLock<tokio::sync::Mutex<IngestTracker>> = std::sync::OnceLock::new();

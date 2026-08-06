@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use crate::tools::ToolOutput;
+use crate::bridge::tools::ToolOutput;
 use crate::workflows::engine::types::ExperienceRecord;
 
 /// Build search query from action and parameters

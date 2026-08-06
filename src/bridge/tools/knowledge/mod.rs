@@ -10,7 +10,7 @@ use crate::knowledge::{
     types::{KnowledgeConfidence, KnowledgeSource, KnowledgeStatus, KnowledgeType},
     KnowledgeItem, KnowledgeQuery, KnowledgeResult, KnowledgeStore,
 };
-use crate::tools::ToolOutput;
+use crate::bridge::tools::ToolOutput;
 
 /// Tool: Add new knowledge
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]

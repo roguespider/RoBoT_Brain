@@ -9,7 +9,7 @@ use flate2::read::GzDecoder;
 use tar::Archive;
 use zip::ZipArchive;
 
-use crate::tools::ingestor::file_collector::collect_all_files_recursive;
+use crate::bridge::tools::ingestor::file_collector::collect_all_files_recursive;
 
 /// Get the base temp directory for archive extraction
 pub fn get_archive_temp_dir() -> PathBuf {

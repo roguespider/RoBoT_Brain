@@ -3,7 +3,6 @@
 mod database;
 mod experience;
 mod bridge;
-mod tools;
 mod planner;
 mod skills;
 mod workflows;
@@ -12,8 +11,6 @@ mod knowledge;
 mod memory;
 mod cli;
 mod personality;
-mod plugin_loader;
-mod mcp_server;
 
 use bridge::app::App;
 use bridge::logging::init_logging;
@@ -36,9 +33,6 @@ async fn main() -> anyhow::Result<()> {
         match args[1].as_str() {
             "server" => {
                 App::new().await?.run().await?;
-            }
-            "mcp-server" => {
-                mcp_server::run_mcp_server().await?;
             }
             _ => {
                 // Run CLI commands

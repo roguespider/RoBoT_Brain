@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use crate::bridge::mcp::McpClient;
-use crate::tools::{get_tools_async, ToolOutput};
+use crate::bridge::tools::{get_tools_async, ToolOutput};
 
 use super::inputs::{CallMcpToolInput, ConnectMcpServerInput, GetToolInput};
 

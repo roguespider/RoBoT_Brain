@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
 
-use crate::tools::ToolOutput;
+use crate::bridge::tools::ToolOutput;
 use crate::workflows::engine::{Workflow, WorkflowEngine, WorkflowStatus};
 
 /// Tool: Create a new workflow

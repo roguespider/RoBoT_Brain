@@ -31,7 +31,7 @@ use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory as MemWorkin
 use crate::personality::{Personality, PersonalityTraits};
 use crate::planner::{Planner, PolicyEngine};
 use crate::skills::registry::SkillRegistry;
-use crate::tools;
+use crate::bridge::tools;
 use crate::workflows::engine::WorkflowEngine;
 
 /// Root application container.
@@ -299,7 +299,7 @@ impl App {
         tools::register_tools(&mcp_context);
 
         // Create MCP client for external connections and initialize globally
-        crate::tools::agent::init_mcp_client(Arc::new(McpClient::new()));
+        crate::bridge::tools::agent::init_mcp_client(Arc::new(McpClient::new()));
 
         tracing::info!("RoBoT initialized successfully");
 

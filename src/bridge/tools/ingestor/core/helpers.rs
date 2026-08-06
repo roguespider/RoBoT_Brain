@@ -3,7 +3,7 @@
 
 use std::path::{Path, PathBuf};
 
-use crate::tools::ingestor::file_collector::{
+use crate::bridge::tools::ingestor::file_collector::{
     is_supported_extension, normalize_path, ARCHIVE_EXTENSIONS,
 };
 

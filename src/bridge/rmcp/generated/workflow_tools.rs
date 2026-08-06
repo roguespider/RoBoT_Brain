@@ -1,7 +1,7 @@
     // workflow_tools.rs - Workflow management tools
 
 use crate::bridge::rmcp::types::McpServerHandler;
-use crate::tools;
+use crate::bridge::tools;
 use rmcp::handler::server::wrapper::Parameters;
 use rmcp::model::ContentBlock;
 use rmcp::tool_router;

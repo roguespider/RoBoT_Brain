@@ -2,7 +2,7 @@
 // src/tools/agent/workflows.rs
 // Workflow and list tools execution
 
-use crate::tools::{get_tools_async, ToolOutput};
+use crate::bridge::tools::{get_tools_async, ToolOutput};
 
 use super::inputs::{GetWorkflowInput, ListToolsInput};
 

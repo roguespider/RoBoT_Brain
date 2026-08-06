@@ -1,28 +1,14 @@
 # Workspace for RoBoT Brain MCP Server
-# Each tool is a separate crate - if one fails, others still load
 #
 # MCP Protocol: 2025-03-26 (Streamable HTTP, OAuth 2.1, Tool Annotations)
 # Rust Edition: 2024 (stabilized in Rust 1.85.0, Feb 2025)
 # 
 # Structure:
 #   src/ - Main application including MCP server
-#   src/tools/ - Individual tool plugins (loaded at runtime)
+#   src/bridge/ - Bridge layer including tools
 
 [workspace]
 members = [
-    "src/tools/tools-core",
-    "src/tools/tools-agent",
-    "src/tools/tools-experience",
-    "src/tools/tools-exploration",
-    "src/tools/tools-hypothesis",
-    "src/tools/tools-ingestor",
-    "src/tools/tools-knowledge",
-    "src/tools/tools-memory",
-    "src/tools/tools-planner",
-    "src/tools/tools-reflection",
-    "src/tools/tools-search",
-    "src/tools/tools-skills",
-    "src/tools/tools-workflow",
     "test_suite",
 ]
 exclude = [
@@ -108,10 +94,6 @@ uuid = { version = "1", features = ["v4", "serde"] }
 # libloading: Rust library for loading dynamic libraries (.so/.dll/.dylib) at runtime
 # Used for loading tool plugins dynamically without compile-time linking
 libloading = "0.8"
-
-# ============== Local Workspace Crates ==============
-# tools-core: Core traits and types for RoBoT Brain tools
-tools-core = { path = "src/tools/tools-core" }
 
 # ============== Database ==============
 # rusqlite: SQLite database driver for Rust

@@ -4,7 +4,7 @@
 
 use crate::bridge::mcp::McpContext;
 use crate::skills::registry::{ExecutionContext, Skill, SkillCategory, SkillMetadata, SkillSource};
-use crate::tools::ToolOutput;
+use crate::bridge::tools::ToolOutput;
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};

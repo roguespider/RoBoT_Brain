@@ -3,7 +3,7 @@
 
 use rmcp::model::{ContentBlock, TextContent};
 
-use crate::tools::ToolOutput;
+use crate::bridge::tools::ToolOutput;
 use crate::workflows::enforcement::WorkflowEnforcementError;
 
 /// Convert ToolOutput to MCP-compliant ContentBlock

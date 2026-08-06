@@ -12,7 +12,7 @@ use crate::experience::exploration::{
     HypothesisResult,
 };
 use crate::experience::types::ExperienceContext;
-use crate::tools::ToolOutput;
+use crate::bridge::tools::ToolOutput;
 
 use super::{
     StartExplorationInput, GetExplorationStatusInput, CompleteExplorationInput,

@@ -3,7 +3,7 @@
 
 use std::collections::HashMap;
 
-use crate::tools::ToolOutput;
+use crate::bridge::tools::ToolOutput;
 
 /// Replace variables in parameters with their values
 pub fn replace_variables(

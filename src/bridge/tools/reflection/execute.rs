@@ -6,7 +6,7 @@ use std::sync::Arc;
 use anyhow::Result;
 
 use crate::experience::reflection::ReflectionEngine;
-use crate::tools::ToolOutput;
+use crate::bridge::tools::ToolOutput;
 
 use super::types::{AnalyzePatternsInput, CreateReflectionInput, GetInsightsInput, GetPatternsInput};
 

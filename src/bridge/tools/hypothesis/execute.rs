@@ -8,7 +8,7 @@ use uuid::Uuid;
 
 use crate::database::models::{Hypothesis, HypothesisStatus, Knowledge};
 use crate::database::sqlite::SqliteDatabase;
-use crate::tools::ToolOutput;
+use crate::bridge::tools::ToolOutput;
 
 use super::db::{
     add_evidence, create_hypothesis, create_knowledge, get_evidence_by_id,
@@ -17,7 +17,7 @@ use super::db::{
 };
 use crate::database::models::{Evidence, Observation};
 use crate::database::queries::list_observations;
-use crate::tools::hypothesis::{
+use crate::bridge::tools::hypothesis::{
     AddEvidenceInput, CreateHypothesisInput, EvaluateHypothesisInput, ExtractKnowledgeInput,
     GetEvidenceInput, GetHypothesisInput, GetKnowledgeInput, ListEvidenceInput,
     ListHypothesesInput, ListObservationsInput, RecordObservationInput,
