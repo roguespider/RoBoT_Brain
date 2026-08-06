@@ -79,6 +79,7 @@ pub enum IssueType {
     UnusedImport,
     PublicNeverCalled,
     AlwaysErr,
+    PlaceholderReturn,
 }
 
 impl std::fmt::Display for IssueType {
@@ -94,6 +95,7 @@ impl std::fmt::Display for IssueType {
             IssueType::UnusedImport => write!(f, "Unused Import"),
             IssueType::PublicNeverCalled => write!(f, "Public Never Called"),
             IssueType::AlwaysErr => write!(f, "Always Returns Err"),
+            IssueType::PlaceholderReturn => write!(f, "Placeholder Return"),
         }
     }
 }
@@ -441,21 +443,89 @@ impl CodeAnalyzer {
     fn analyze_stub_functions(&self, content: &str, file_path: &Path) -> Vec<CodeIssue> {
         let mut issues = Vec::new();
 
-        // Pattern: Function that only returns Ok() or Err() immediately
-        let _stub_return_regex =
-            Regex::new(r"pub\s+async\s+fn\s+(\w+).*?\{[^}]*(Ok\(|Err\().*\}[^}]*$").ok();
+        // Compile regex patterns for stub detection
+        let stub_return_regex = Regex::new(r"pub\s+async\s+fn\s+(\w+).*?\{[^}]*(Ok\(|Err\().*\}[^}]*$");
+        let placeholder_regex = Regex::new(r"(Vec::new\(\)|HashMap::new\(\)|None|Default::default\(\)|\[\].*to_vec\(\))");
+        let stub_fn_regex = Regex::new(r"pub\s+(async\s+)?fn\s+(\w+).*?\{(\s*(//[^\n]*\n)?\s*)*(Ok\(|Err\(|return)");
 
-        // Pattern: Function that just returns default/unimplemented values
-        let _placeholder_regex = Regex::new(
-            r"(Vec::new\(\)|HashMap::new\(\)|None|Default::default\(\)|\[\].*to_vec\(\))",
-        )
-        .ok();
+        // Check for functions that only return Ok() or Err() immediately
+        if let Ok(stub_re) = &stub_return_regex {
+            for (line_num, line) in content.lines().enumerate() {
+                let line_number = line_num + 1;
+                if stub_re.is_match(line) {
+                    // Check if this is a minimal stub function
+                    let context_start = line_num.saturating_sub(2);
+                    let context_lines: Vec<&str> =
+                        content.lines().skip(context_start).take(5).collect();
+                    let context = context_lines.join("\n");
+                    // If the function is very short, it's likely a stub
+                    if context.matches('{').count() <= 2 && context.matches('\n').count() <= 3 {
+                        issues.push(CodeIssue {
+                            file_path: file_path.to_path_buf(),
+                            line_number,
+                            issue_type: IssueType::EarlyReturnStub,
+                            description: "Function body only contains Ok/Err return".to_string(),
+                        });
+                    }
+                }
+            }
+        }
 
-        // Check for functions that are just stubs returning empty/default values
-        let _stub_fn_regex = Regex::new(
-            r"pub\s+(async\s+)?fn\s+(\w+).*?\{(\s*(//[^\n]*\n)?\s*)*(Ok\(|Err\(|return)",
-        )
-        .ok();
+        // Check for functions returning default/placeholder values
+        if let Ok(placeholder_re) = &placeholder_regex {
+            for (line_num, line) in content.lines().enumerate() {
+                let line_number = line_num + 1;
+                if placeholder_re.is_match(line) {
+                    let context_start = line_num.saturating_sub(2);
+                    let context_lines: Vec<&str> =
+                        content.lines().skip(context_start).take(5).collect();
+                    let context = context_lines.join("\n");
+                    // If line contains placeholder AND is part of a short function
+                    if context.matches('{').count() <= 2 {
+                        issues.push(CodeIssue {
+                            file_path: file_path.to_path_buf(),
+                            line_number,
+                            issue_type: IssueType::PlaceholderReturn,
+                            description: "Returns default/placeholder value".to_string(),
+                        });
+                    }
+                }
+            }
+        }
+
+        // Check for functions that are just stubs (using the stub_fn_regex)
+        if let Ok(stub_fn_re) = &stub_fn_regex {
+            for (line_num, line) in content.lines().enumerate() {
+                let line_number = line_num + 1;
+                if stub_fn_re.is_match(line) {
+                    // Get context to check if this is a complete stub
+                    let context_start = line_num.saturating_sub(1);
+                    let context_lines: Vec<&str> =
+                        content.lines().skip(context_start).take(8).collect();
+                    let context = context_lines.join("\n");
+                    // Check if it's a very short function (stub)
+                    let brace_count = context.matches('{').count();
+                    let return_count = context.matches("return").count()
+                        + context.matches("Ok(").count()
+                        + context.matches("Err(").count();
+                    if brace_count <= 2 && return_count >= 1 {
+                        // Only add if not already flagged
+                        let already_flagged = issues.iter().any(|i: &CodeIssue| {
+                            i.line_number == line_number
+                                && matches!(i.issue_type, IssueType::EarlyReturnStub)
+                        });
+                        if !already_flagged {
+                            issues.push(CodeIssue {
+                                file_path: file_path.to_path_buf(),
+                                line_number,
+                                issue_type: IssueType::EarlyReturnStub,
+                                description: "Function is a stub with immediate return".to_string(),
+                            });
+                        }
+                    }
+                }
+            }
+        }
 
         for (line_num, line) in content.lines().enumerate() {
             let line_number = line_num + 1;
@@ -611,6 +681,7 @@ impl CodeAnalyzer {
                 IssueType::UnusedImport => summary.unused_imports += 1,
                 IssueType::PublicNeverCalled => summary.public_never_called += 1,
                 IssueType::AlwaysErr => summary.always_err += 1,
+                IssueType::PlaceholderReturn => summary.placeholder_returns += 1,
             }
 
             // Count by file
@@ -637,6 +708,7 @@ pub struct AnalysisSummary {
     pub unused_imports: usize,
     pub public_never_called: usize,
     pub always_err: usize,
+    pub placeholder_returns: usize,
     pub issues_by_file: std::collections::HashMap<String, usize>,
 }
 
@@ -679,6 +751,11 @@ impl AnalysisSummary {
             self.public_never_called
         );
         crate::teeprintln!("  {:<35} {:>10}", "Always returns Err", self.always_err);
+        crate::teeprintln!(
+            "  {:<35} {:>10}",
+            "Placeholder returns",
+            self.placeholder_returns
+        );
         crate::teeprintln!("  {}", "─".repeat(48));
         crate::teeprintln!("  {:<35} {:>10}", "TOTAL ISSUES", self.total_issues);
         crate::teeprintln!("");
