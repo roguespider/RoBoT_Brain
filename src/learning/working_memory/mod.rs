@@ -1,8 +1,6 @@
 
 // src/learning/working_memory.rs
 
-#![allow(dead_code)]
-
 //! Learning system's Working Memory with state machine for active context
 //!
 //! This is a DIFFERENT concept from `src/memory/working.rs`:
@@ -24,7 +22,6 @@ pub mod promotion;
 
 pub use memory_state::{MemoryState, StateTransition, StateTransitionRecord};
 pub use promotion::PromotionPolicy;
-pub use store::WorkingMemory;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

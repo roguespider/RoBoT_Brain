@@ -209,20 +209,10 @@ impl LineageTracker {
     
     /// Create lineage for a new memory
     pub fn create_lineage(&mut self, memory_id: Uuid) -> &mut MemoryLineage {
-        let lineage = MemoryLineage::new(memory_id);
-        self.lineages.insert(memory_id, lineage);
-        // Safety: get_mut after insert always succeeds
-        match self.lineages.get_mut(&memory_id) {
-            Some(lineage) => lineage,
-            None => {
-                // This branch is unreachable - insert succeeded, so get_mut must succeed
-                // But we handle it to satisfy the no-expect rule
-                tracing::error!("Unexpected: failed to get lineage after insert");
-                // Create a new lineage as fallback (this should never execute)
-                let lineage = self.lineages.entry(memory_id).or_insert_with(|| MemoryLineage::new(memory_id));
-                lineage
-            }
-        }
+        // Use entry API to get mutable reference in one borrow
+        self.lineages
+            .entry(memory_id)
+            .or_insert_with(|| MemoryLineage::new(memory_id))
     }
     
     /// Get lineage for a memory

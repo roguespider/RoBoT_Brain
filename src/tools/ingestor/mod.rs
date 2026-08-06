@@ -5,6 +5,7 @@
 
 
 pub mod archive_handler;
+#[cfg(feature = "audio")]
 pub mod audio_transcriber;
 pub mod core;
 pub mod definitions;
@@ -26,6 +27,7 @@ pub use workflow::{
 };
 
 // Re-export execute_transcribe_audio (ingest_file is aliased below)
+#[cfg(feature = "audio")]
 pub use core::execute::execute_transcribe_audio;
 
 // Alias ingest_file to execute_ingest_files for backward compatibility

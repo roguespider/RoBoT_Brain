@@ -55,26 +55,17 @@ impl McpServerHandler {
         }
     }
 
-    #[tool(name = "transcribe_audio", description = "Transcribe an audio file to text using Whisper AI.")]
+    #[tool(name = "transcribe_audio", description = "Transcribe an audio file to text using Whisper AI. Requires audio feature.")]
     async fn transcribe_audio(
         &self,
         Parameters(input): Parameters<tools::ingestor::TranscribeAudioInput>,
     ) -> ContentBlock {
-        if let Err(e) = self.check_workflow_enforcement("transcribe_audio").await {
-            tracing::warn!("Workflow enforcement blocked transcribe_audio: {}", e.message);
-            return enforcement_error_to_content(e);
-        }
-        match tools::ingestor::execute_transcribe_audio(
-            input, 
-            self.context.database.clone(), 
-            self.context.working_memory.clone()
-        ).await {
-            Ok(result) => {
-                self.record_tool_execution("transcribe_audio", None).await;
-                tool_output_to_content(result)
-            }
-            Err(e) => tool_output_to_content(ToolOutput::error(e)),
-        }
+        // Return a helpful error message that includes the requested path
+        let error_msg = format!(
+            "Audio transcription requires the 'audio' feature to be enabled. Cannot transcribe: {}",
+            input.path
+        );
+        tool_output_to_content(ToolOutput::error(error_msg))
     }
 
     #[tool(name = "list_ingested_files", description = "List files that have been successfully ingested.")]

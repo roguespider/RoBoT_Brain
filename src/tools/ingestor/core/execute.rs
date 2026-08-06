@@ -11,7 +11,6 @@ use tokio::time;
 use crate::database::sqlite::SqliteDatabase;
 use crate::memory::WorkingMemory;
 use crate::tools::ToolOutput;
-use crate::tools::ingestor::audio_transcriber::is_audio_file;
 use crate::tools::ingestor::file_collector::{
     collect_importable_files, collect_importable_files_with_recursive, get_import_folder,
 };
@@ -24,8 +23,6 @@ use super::types::{
     IngestFilesInput, IngestResult, TranscribeAudioInput,
     DEFAULT_INGEST_TIMEOUT_SECS,
 };
-
-use crate::tools::ingestor::audio_transcriber::{store_transcription_as_memory, transcribe_audio};
 
 /// Tool: Ingest files from import folder
 pub async fn execute_ingest_files(
@@ -462,11 +459,14 @@ pub async fn execute_ingest_files(
 }
 
 /// Tool: Transcribe an audio file
+#[cfg(feature = "audio")]
 pub async fn execute_transcribe_audio(
     input: TranscribeAudioInput,
     db: Arc<SqliteDatabase>,
     working_memory: Arc<WorkingMemory>,
 ) -> Result<ToolOutput> {
+    use crate::tools::ingestor::audio_transcriber::{is_audio_file, store_transcription_as_memory, transcribe_audio};
+    
     let path = Path::new(&input.path);
 
     if !path.exists() {
@@ -544,4 +544,16 @@ pub async fn execute_transcribe_audio(
             transcription.text.len()
         )
     })))
+}
+
+/// Tool: Transcribe an audio file (stub when audio feature is disabled)
+#[cfg(not(feature = "audio"))]
+pub async fn execute_transcribe_audio(
+    _input: TranscribeAudioInput,
+    _db: Arc<SqliteDatabase>,
+    _working_memory: Arc<WorkingMemory>,
+) -> Result<ToolOutput> {
+    Ok(ToolOutput::error(
+        "Audio transcription is not available. Enable the 'audio' feature to use this tool.".to_string()
+    ))
 }

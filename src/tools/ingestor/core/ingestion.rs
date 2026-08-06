@@ -15,7 +15,6 @@ use crate::memory::WorkingMemory;
 use crate::tools::ingestor::archive_handler::{
     create_archive_temp_dir, delete_empty_folders, process_archive,
 };
-use crate::tools::ingestor::audio_transcriber::{store_transcription_as_memory, transcribe_audio};
 use crate::tools::ingestor::file_collector::{
     collect_all_files_recursive, AUDIO_EXTENSIONS, IMAGE_EXTENSIONS, JSON_EXTENSIONS,
     TEXT_EXTENSIONS,
@@ -484,6 +483,7 @@ pub async fn ingest_image_file(
 }
 
 /// Transcribe an audio file and store as memory
+#[cfg(feature = "audio")]
 pub async fn ingest_audio_file(
     path: &Path,
     chunk_size: usize,
@@ -491,6 +491,8 @@ pub async fn ingest_audio_file(
     db: Arc<SqliteDatabase>,
     working_memory: Arc<WorkingMemory>,
 ) -> Result<IngestResult> {
+    use crate::tools::ingestor::audio_transcriber::{store_transcription_as_memory, transcribe_audio};
+    
     let filename = path
         .file_name()
         .and_then(|n| n.to_str())
@@ -553,6 +555,35 @@ pub async fn ingest_audio_file(
         chunk_size_used: 0,
         memory_ids,
         error: None,
+        remaining_count: 0,
+    })
+}
+
+/// Transcribe an audio file (stub when audio feature is disabled)
+#[cfg(not(feature = "audio"))]
+pub async fn ingest_audio_file(
+    path: &Path,
+    _chunk_size: usize,
+    _memory_type: MemoryType,
+    _db: Arc<SqliteDatabase>,
+    _working_memory: Arc<WorkingMemory>,
+) -> Result<IngestResult> {
+    let filename = path
+        .file_name()
+        .and_then(|n| n.to_str())
+        .unwrap_or("unknown")
+        .to_string();
+
+    let file_path_str = path.to_string_lossy().to_string();
+    
+    Ok(IngestResult {
+        filename,
+        file_path: file_path_str,
+        success: false,
+        chunks_created: 0,
+        chunk_size_used: 0,
+        memory_ids: vec![],
+        error: Some("Audio transcription is not available. Enable the 'audio' feature to use this feature.".to_string()),
         remaining_count: 0,
     })
 }

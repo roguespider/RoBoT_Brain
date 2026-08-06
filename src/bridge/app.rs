@@ -731,7 +731,7 @@ impl App {
     /// Apply a personality preset (balanced, analytical, creative, cautious, bold)
     pub fn apply_personality_preset(&self, preset: &str) -> bool {
         match self.personality.lock() {
-            Ok(guard) => guard.apply_preset(preset),
+            Ok(mut guard) => guard.apply_preset(preset),
             Err(poisoned) => {
                 tracing::error!("Personality mutex poisoned during apply_preset, recovering");
                 poisoned.into_inner().apply_preset(preset)

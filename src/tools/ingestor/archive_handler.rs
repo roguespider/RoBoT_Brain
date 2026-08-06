@@ -70,8 +70,8 @@ pub fn process_archive(archive_path: &Path, temp_dir: &Path) -> Result<Vec<PathB
         .and_then(|n| n.to_str())
         .unwrap_or("archive");
 
-    // Create temp dir for this specific archive
-    let extract_dir = create_archive_temp_dir(file_name);
+    // Create extract directory within the provided temp directory
+    let extract_dir = temp_dir.join(format!("extract_{}", file_name));
     fs::create_dir_all(&extract_dir)?;
 
     match extension.as_str() {

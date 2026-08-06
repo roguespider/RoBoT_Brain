@@ -36,7 +36,27 @@ version = "0.0.1"
 edition = "2024"  # Rust 2024 edition - latest stable (requires Rust 1.85.0+)
 description = "A Rust MCP server with runtime-loaded tool plugins"
 
+[features]
+default = []
+audio = ["dep:candle-transformers", "dep:hf-hub", "dep:tokenizers"]
+tools-agent = []
+tools-experience = []
+tools-exploration = []
+tools-hypothesis = []
+tools-ingestor = []
+tools-knowledge = []
+tools-memory = []
+tools-planner = []
+tools-reflection = []
+tools-search = []
+tools-skills = []
+tools-workflow = []
+
 [dependencies]
+# Audio transcription (optional - requires ML dependencies)
+candle-transformers = { version = "0.5", optional = true }
+hf-hub = { version = "0.3", optional = true }
+tokenizers = { version = "0.21", optional = true }
 
 # ============== MCP Protocol (Model Context Protocol) ==============
 # rmcp: Rust SDK for Model Context Protocol
@@ -47,7 +67,7 @@ rmcp = { version = "2.1", features = [
     "transport-io",       # Stdio transport for subprocess communication
     "macros",             # Derive macros for tool definitions (@tool_handler, @tool)
     "transport-child-process",  # Child process transport for spawning MCP clients
-    "server-streamable-http",   # Streamable HTTP transport (MCP 2025-03-26+)
+    "transport-streamable-http-server",   # Streamable HTTP transport (MCP 2025-03-26+)
 ] }
 
 # ============== Serialization ==============
@@ -88,6 +108,34 @@ uuid = { version = "1", features = ["v4", "serde"] }
 # libloading: Rust library for loading dynamic libraries (.so/.dll/.dylib) at runtime
 # Used for loading tool plugins dynamically without compile-time linking
 libloading = "0.8"
+
+# ============== Local Workspace Crates ==============
+# tools-core: Core traits and types for RoBoT Brain tools
+tools-core = { path = "src/tools/tools-core" }
+
+# ============== Database ==============
+# rusqlite: SQLite database driver for Rust
+rusqlite = { version = "0.31", features = ["bundled"] }
+
+# ============== Archive/Compression ==============
+# flate2: DEFLATE compression/decompression
+flate2 = "1"
+# tar: tar archive handling
+tar = "0.4"
+# zip: ZIP archive handling
+zip = "2"
+# bzip2: bzip2 compression/decompression
+bzip2 = "0.5"
+# xz2: xz/lzma compression/decompression
+xz2 = "0.1"
+
+# ============== Schema Generation ==============
+# schemars: JSON Schema generation from Rust types
+schemars = "1.0"
+
+# ============== Utilities ==============
+# lazy_static: Macro for lazy static initialization
+lazy_static = "1.5"
 
 # ============== Windows-Specific ==============
 # windows-sys: Raw FFI bindings to Windows API

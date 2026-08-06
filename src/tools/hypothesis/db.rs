@@ -250,14 +250,14 @@ pub async fn list_evidence(
     let conn = db.connection()?;
 
     let query = match (evidence_type, direction) {
-        (Some(et), Some(d)) => {
-            format!("SELECT id, hypothesis_id, content, evidence_type, direction, strength, experience_id, created_at FROM evidence WHERE evidence_type = ?1 AND direction = ?2 ORDER BY created_at DESC LIMIT ?3")
+        (Some(_), Some(_)) => {
+            "SELECT id, hypothesis_id, content, evidence_type, direction, strength, experience_id, created_at FROM evidence WHERE evidence_type = ?1 AND direction = ?2 ORDER BY created_at DESC LIMIT ?3".to_string()
         }
-        (Some(et), None) => {
-            format!("SELECT id, hypothesis_id, content, evidence_type, direction, strength, experience_id, created_at FROM evidence WHERE evidence_type = ?1 ORDER BY created_at DESC LIMIT ?2")
+        (Some(_), None) => {
+            "SELECT id, hypothesis_id, content, evidence_type, direction, strength, experience_id, created_at FROM evidence WHERE evidence_type = ?1 ORDER BY created_at DESC LIMIT ?2".to_string()
         }
-        (None, Some(d)) => {
-            format!("SELECT id, hypothesis_id, content, evidence_type, direction, strength, experience_id, created_at FROM evidence WHERE direction = ?1 ORDER BY created_at DESC LIMIT ?2")
+        (None, Some(_)) => {
+            "SELECT id, hypothesis_id, content, evidence_type, direction, strength, experience_id, created_at FROM evidence WHERE direction = ?1 ORDER BY created_at DESC LIMIT ?2".to_string()
         }
         (None, None) => {
             "SELECT id, hypothesis_id, content, evidence_type, direction, strength, experience_id, created_at FROM evidence ORDER BY created_at DESC LIMIT ?1".to_string()

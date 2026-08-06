@@ -46,5 +46,5 @@ pub mod skills_tools;
 #[cfg(feature = "tools-workflow")]
 pub mod workflow_tools;
 
-// ServerHandler impl - separate file for clarity
-include!("impl_tools.rs");
+// ServerHandler impl - generated file with all tools
+include!("tools_impl.rs");
