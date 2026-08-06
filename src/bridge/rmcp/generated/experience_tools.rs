@@ -1,128 +1,117 @@
 // experience_tools.rs - Experience recording and management tools
 
-use crate::bridge::rmcp::types::McpServerHandler;
+use crate::bridge::rmcp::generated::tool_traits::{
+    ExperienceToolsHandlerTrait, ToolContext,
+};
 use crate::tools;
 use crate::tools::ToolOutput;
-use rmcp::handler::server::wrapper::Parameters;
-use rmcp::model::ContentBlock;
-use rmcp::tool_router;
-use rmcp::tool;
-use crate::bridge::rmcp::helpers::{tool_output_to_content, enforcement_error_to_content};
 
-#[tool_router]
-impl McpServerHandler {
-#[tool(name = "record_experience", description = "Record a new experience")]
-async fn record_experience(
-    &self,
-    Parameters(input): Parameters<tools::experience::RecordExperienceInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("record_experience").await {
-        tracing::warn!("Workflow enforcement blocked record_experience: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-    
-    match tools::experience::execute_record_experience(
-        input,
-        &self.context.coordinator,
-        &self.context.database,
-    ).await {
-        Ok(result) => {
-            self.record_tool_execution("record_experience", None).await;
-            tool_output_to_content(result)
-        }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
+/// Handler for experience tools - implements ExperienceToolsHandlerTrait
+pub struct ExperienceToolsHandler;
+
+impl ExperienceToolsHandler {
+    pub fn new() -> Self {
+        Self
     }
 }
 
-#[tool(name = "get_experience_stats", description = "Get experience statistics")]
-async fn get_experience_stats(
-    &self,
-    Parameters(input): Parameters<tools::experience::GetExperienceStatsInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("get_experience_stats").await {
-        tracing::warn!("Workflow enforcement blocked get_experience_stats: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-    
-    match tools::experience::execute_get_experience_stats(input, &self.context.database).await {
-        Ok(result) => {
-            self.record_tool_execution("get_experience_stats", None).await;
-            tool_output_to_content(result)
-        }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
+impl Default for ExperienceToolsHandler {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
-#[tool(name = "list_experiences", description = "List recent experiences")]
-async fn list_experiences(
-    &self,
-    Parameters(input): Parameters<tools::experience::ListExperiencesInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("list_experiences").await {
-        tracing::warn!("Workflow enforcement blocked list_experiences: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-    
-    match tools::experience::execute_list_experiences(input, &self.context.database).await {
-        Ok(result) => {
-            self.record_tool_execution("list_experiences", None).await;
-            tool_output_to_content(result)
+impl ExperienceToolsHandlerTrait for ExperienceToolsHandler {
+    async fn execute_record_experience(
+        &self,
+        context: &ToolContext,
+        input: tools::experience::RecordExperienceInput,
+    ) -> ToolOutput {
+        match tools::experience::execute_record_experience(
+            input,
+            &context.context.coordinator,
+            &context.context.database,
+        )
+        .await
+        {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
         }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
-}
 
-#[tool(name = "get_experience", description = "Get a specific experience by ID")]
-async fn get_experience(
-    &self,
-    Parameters(input): Parameters<tools::experience::GetExperienceInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("get_experience").await {
-        tracing::warn!("Workflow enforcement blocked get_experience: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-    
-    match tools::experience::execute_get_experience(input, &self.context.database).await {
-        Ok(result) => {
-            self.record_tool_execution("get_experience", None).await;
-            tool_output_to_content(result)
+    async fn execute_get_experience_stats(
+        &self,
+        context: &ToolContext,
+        input: tools::experience::GetExperienceStatsInput,
+    ) -> ToolOutput {
+        match tools::experience::execute_get_experience_stats(input, &context.context.database)
+            .await
+        {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
         }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
-    }
-}
-
-#[tool(name = "get_worker_stats", description = "Get background worker statistics")]
-async fn get_worker_stats(
-    &self,
-    Parameters(input): Parameters<tools::experience::GetWorkerStatsInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("get_worker_stats").await {
-        tracing::warn!("Workflow enforcement blocked get_worker_stats: {}", e.message);
-        return enforcement_error_to_content(e);
     }
 
-    match tools::experience::execute_get_worker_stats(input, &self.context.worker_manager).await {
-        Ok(result) => {
-            self.record_tool_execution("get_worker_stats", None).await;
-            tool_output_to_content(result)
+    async fn execute_list_experiences(
+        &self,
+        context: &ToolContext,
+        input: tools::experience::ListExperiencesInput,
+    ) -> ToolOutput {
+        match tools::experience::execute_list_experiences(input, &context.context.database)
+            .await
+        {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
         }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
-    }
-}
-
-#[tool(name = "get_worker_count", description = "Get the number of active background workers")]
-async fn get_worker_count(&self) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("get_worker_count").await {
-        tracing::warn!("Workflow enforcement blocked get_worker_count: {}", e.message);
-        return enforcement_error_to_content(e);
     }
 
-    match tools::experience::execute_get_worker_count(&self.context.worker_manager).await {
-        Ok(result) => {
-            self.record_tool_execution("get_worker_count", None).await;
-            tool_output_to_content(result)
+    async fn execute_get_experience(
+        &self,
+        context: &ToolContext,
+        input: tools::experience::GetExperienceInput,
+    ) -> ToolOutput {
+        match tools::experience::execute_get_experience(input, &context.context.database)
+            .await
+        {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
         }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
-}
+
+    async fn execute_search_experiences(
+        &self,
+        context: &ToolContext,
+        input: tools::experience::SearchExperiencesInput,
+    ) -> ToolOutput {
+        match tools::experience::execute_search_experiences(input, &context.context.database)
+            .await
+        {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
+        }
+    }
+
+    async fn execute_delete_experience(
+        &self,
+        context: &ToolContext,
+        input: tools::experience::DeleteExperienceInput,
+    ) -> ToolOutput {
+        match tools::experience::execute_delete_experience(input, &context.context.database)
+            .await
+        {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
+        }
+    }
+
+    fn list_tools(&self) -> Vec<rmcp::tool::Tool> {
+        vec![
+            tools::experience::record_experience_tool(),
+            tools::experience::get_experience_stats_tool(),
+            tools::experience::list_experiences_tool(),
+            tools::experience::get_experience_tool(),
+            tools::experience::search_experiences_tool(),
+            tools::experience::delete_experience_tool(),
+        ]
+    }
 }

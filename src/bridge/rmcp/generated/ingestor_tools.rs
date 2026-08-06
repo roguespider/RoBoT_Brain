@@ -1,109 +1,93 @@
-    // ingestor_tools.rs - File ingestion and import tools
+// ingestor_tools.rs - File ingestion and processing tools
 
-use std::sync::Arc;
-use crate::bridge::rmcp::types::McpServerHandler;
+use crate::bridge::rmcp::generated::tool_traits::{
+    IngestorToolsHandlerTrait, ToolContext,
+};
 use crate::tools;
 use crate::tools::ToolOutput;
-use rmcp::handler::server::wrapper::Parameters;
-use rmcp::model::ContentBlock;
-use rmcp::tool_router;
-use rmcp::tool;
-use crate::bridge::rmcp::helpers::{tool_output_to_content, enforcement_error_to_content};
 
-#[tool_router]
-impl McpServerHandler {
-#[tool(
-    name = "ingest_files",
-    description = "Ingest files from files_to_import folder into memory."
-)]
-async fn ingest_files(
-    &self,
-    Parameters(input): Parameters<tools::ingestor::IngestFilesInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("ingest_files").await {
-        tracing::warn!("Workflow enforcement blocked ingest_files: {}", e.message);
-        return enforcement_error_to_content(e);
+/// Handler for ingestor tools - implements IngestorToolsHandlerTrait
+pub struct IngestorToolsHandler;
+
+impl IngestorToolsHandler {
+    pub fn new() -> Self {
+        Self
     }
-    match tools::ingestor::ingest_file(
-        input, 
-        Arc::clone(&self.context.database),
-        Arc::clone(&self.context.working_memory),
-    ).await {
-        Ok(result) => {
-            self.record_tool_execution("ingest_files", None).await;
-            tool_output_to_content(result)
+}
+
+impl Default for IngestorToolsHandler {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl IngestorToolsHandlerTrait for IngestorToolsHandler {
+    async fn execute_ingest_files(
+        &self,
+        context: &ToolContext,
+        input: tools::ingestor::IngestFilesInput,
+    ) -> ToolOutput {
+        match tools::ingestor::execute_ingest_files(input, &context.context.database).await {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
         }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
-}
 
-#[tool(name = "list_importable", description = "List files available for import.")]
-async fn list_importable(
-    &self,
-    Parameters(input): Parameters<tools::ingestor::ListImportableInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("list_importable").await {
-        tracing::warn!("Workflow enforcement blocked list_importable: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-    match tools::ingestor::execute_list_importable(input).await {
-        Ok(result) => {
-            self.record_tool_execution("list_importable", None).await;
-            tool_output_to_content(result)
+    async fn execute_list_importable(
+        &self,
+        context: &ToolContext,
+        input: tools::ingestor::ListImportableInput,
+    ) -> ToolOutput {
+        match tools::ingestor::execute_list_importable(input).await {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
         }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
-}
 
-#[tool(name = "transcribe_audio", description = "Transcribe an audio file to text using Whisper AI. Requires audio feature.")]
-async fn transcribe_audio(
-    &self,
-    Parameters(input): Parameters<tools::ingestor::TranscribeAudioInput>,
-) -> ContentBlock {
-    // Return a helpful error message that includes the requested path
-    let error_msg = format!(
-        "Audio transcription requires the 'audio' feature to be enabled. Cannot transcribe: {}",
-        input.path
-    );
-    tool_output_to_content(ToolOutput::error(error_msg))
-}
-
-#[tool(name = "list_ingested_files", description = "List files that have been successfully ingested.")]
-async fn list_ingested_files(
-    &self,
-    Parameters(input): Parameters<tools::ingestor::ListIngestedFilesInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("list_ingested_files").await {
-        tracing::warn!("Workflow enforcement blocked list_ingested_files: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-    match tools::ingestor::execute_list_ingested_files(input).await {
-        Ok(result) => {
-            self.record_tool_execution("list_ingested_files", None).await;
-            tool_output_to_content(result)
+    async fn execute_list_ingested_files(
+        &self,
+        context: &ToolContext,
+        input: tools::ingestor::ListIngestedFilesInput,
+    ) -> ToolOutput {
+        match tools::ingestor::execute_list_ingested_files(input, &context.context.database)
+            .await
+        {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
         }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
-}
 
-#[tool(
-    name = "delete_ingested_files",
-    description = "Delete original files after successful ingestion. Requires confirmation='yes'."
-)]
-async fn delete_ingested_files(
-    &self,
-    Parameters(input): Parameters<tools::ingestor::DeleteIngestedFilesInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("delete_ingested_files").await {
-        tracing::warn!("Workflow enforcement blocked delete_ingested_files: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-    match tools::ingestor::execute_delete_ingested_files(input).await {
-        Ok(result) => {
-            self.record_tool_execution("delete_ingested_files", None).await;
-            tool_output_to_content(result)
+    async fn execute_delete_ingested_files(
+        &self,
+        context: &ToolContext,
+        input: tools::ingestor::DeleteIngestedFilesInput,
+    ) -> ToolOutput {
+        match tools::ingestor::execute_delete_ingested_files(input, &context.context.database)
+            .await
+        {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
         }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
-}
+
+    async fn execute_transcribe_audio(
+        &self,
+        context: &ToolContext,
+        input: tools::ingestor::TranscribeAudioInput,
+    ) -> ToolOutput {
+        match tools::ingestor::execute_transcribe_audio(input).await {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
+        }
+    }
+
+    fn list_tools(&self) -> Vec<rmcp::tool::Tool> {
+        vec![
+            tools::ingestor::ingest_files_tool(),
+            tools::ingestor::list_importable_tool(),
+            tools::ingestor::list_ingested_files_tool(),
+            tools::ingestor::delete_ingested_files_tool(),
+            tools::ingestor::transcribe_audio_tool(),
+        ]
+    }
 }

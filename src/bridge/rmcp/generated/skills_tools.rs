@@ -1,211 +1,161 @@
-// skills_tools.rs - Skill registry and management tools
+// skills_tools.rs - Skill management tools
 
-use crate::bridge::rmcp::types::McpServerHandler;
+use crate::bridge::rmcp::generated::tool_traits::{
+    SkillsToolsHandlerTrait, ToolContext,
+};
 use crate::tools;
 use crate::tools::ToolOutput;
-use rmcp::handler::server::wrapper::Parameters;
-use rmcp::model::ContentBlock;
-use rmcp::tool_router;
-use rmcp::tool;
-use crate::bridge::rmcp::helpers::{tool_output_to_content, enforcement_error_to_content};
 
-#[tool_router]
-impl McpServerHandler {
-#[tool(name = "register_skill", description = "Register a new skill in the skill registry.")]
-async fn register_skill(
-    &self,
-    Parameters(input): Parameters<tools::skills::RegisterSkillInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("register_skill").await {
-        tracing::warn!("Workflow enforcement blocked register_skill: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-    match tools::skills::execute_register_skill(input, &self.context).await {
-        Ok(result) => {
-            self.record_tool_execution("register_skill", None).await;
-            tool_output_to_content(result)
-        }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
+/// Handler for skills tools - implements SkillsToolsHandlerTrait
+pub struct SkillsToolsHandler;
+
+impl SkillsToolsHandler {
+    pub fn new() -> Self {
+        Self
     }
 }
 
-#[tool(name = "discover_skill", description = "Create a skill discovered from an experience.")]
-async fn discover_skill(
-    &self,
-    Parameters(input): Parameters<tools::skills::DiscoverSkillInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("discover_skill").await {
-        tracing::warn!("Workflow enforcement blocked discover_skill: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-    match tools::skills::execute_discover_skill(input, &self.context).await {
-        Ok(result) => {
-            self.record_tool_execution("discover_skill", None).await;
-            tool_output_to_content(result)
-        }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
+impl Default for SkillsToolsHandler {
+    fn default() -> Self {
+        Self::new()
     }
 }
 
-#[tool(name = "get_skill", description = "Get details of a specific skill including mastery level.")]
-async fn get_skill(
-    &self,
-    Parameters(input): Parameters<tools::skills::GetSkillInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("get_skill").await {
-        tracing::warn!("Workflow enforcement blocked get_skill: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-    match tools::skills::execute_get_skill(input, &self.context).await {
-        Ok(result) => {
-            self.record_tool_execution("get_skill", None).await;
-            tool_output_to_content(result)
+impl SkillsToolsHandlerTrait for SkillsToolsHandler {
+    async fn execute_install_skill(
+        &self,
+        context: &ToolContext,
+        input: tools::skills::InstallSkillInput,
+    ) -> ToolOutput {
+        match tools::skills::execute_install_skill(input, &context.context.database).await {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
         }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
-}
 
-#[tool(name = "list_skills", description = "List all registered skills, optionally filtered.")]
-async fn list_skills(
-    &self,
-    Parameters(input): Parameters<tools::skills::ListSkillsInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("list_skills").await {
-        tracing::warn!("Workflow enforcement blocked list_skills: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-    match tools::skills::execute_list_skills(input, &self.context).await {
-        Ok(result) => {
-            self.record_tool_execution("list_skills", None).await;
-            tool_output_to_content(result)
+    async fn execute_uninstall_skill(
+        &self,
+        context: &ToolContext,
+        input: tools::skills::UninstallSkillInput,
+    ) -> ToolOutput {
+        match tools::skills::execute_uninstall_skill(input, &context.context.database).await {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
         }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
-}
 
-#[tool(name = "update_skill_mastery", description = "Update skill mastery based on execution outcome.")]
-async fn update_skill_mastery(
-    &self,
-    Parameters(input): Parameters<tools::skills::UpdateSkillMasteryInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("update_skill_mastery").await {
-        tracing::warn!("Workflow enforcement blocked update_skill_mastery: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-    match tools::skills::execute_update_skill_mastery(input, &self.context).await {
-        Ok(result) => {
-            self.record_tool_execution("update_skill_mastery", None).await;
-            tool_output_to_content(result)
+    async fn execute_list_skills(
+        &self,
+        context: &ToolContext,
+        input: tools::skills::ListSkillsInput,
+    ) -> ToolOutput {
+        match tools::skills::execute_list_skills(input, &context.context.database).await {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
         }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
-}
 
-#[tool(name = "get_skill_recommendations", description = "Get skill recommendations based on readiness.")]
-async fn get_skill_recommendations(
-    &self,
-    Parameters(input): Parameters<tools::skills::GetSkillRecommendationsInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("get_skill_recommendations").await {
-        tracing::warn!("Workflow enforcement blocked get_skill_recommendations: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-    match tools::skills::execute_get_skill_recommendations(input, &self.context).await {
-        Ok(result) => {
-            self.record_tool_execution("get_skill_recommendations", None).await;
-            tool_output_to_content(result)
+    async fn execute_get_skill(
+        &self,
+        context: &ToolContext,
+        input: tools::skills::GetSkillInput,
+    ) -> ToolOutput {
+        match tools::skills::execute_get_skill(input, &context.context.database).await {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
         }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
-}
 
-#[tool(name = "execute_skill", description = "Execute a skill with provided task and parameters.")]
-async fn execute_skill(
-    &self,
-    Parameters(input): Parameters<tools::skills::ExecuteSkillInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("execute_skill").await {
-        tracing::warn!("Workflow enforcement blocked execute_skill: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-    match tools::skills::execute_execute_skill(input, &self.context).await {
-        Ok(result) => {
-            self.record_tool_execution("execute_skill", None).await;
-            tool_output_to_content(result)
+    async fn execute_update_skill(
+        &self,
+        context: &ToolContext,
+        input: tools::skills::UpdateSkillInput,
+    ) -> ToolOutput {
+        match tools::skills::execute_update_skill(input, &context.context.database).await {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
         }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
-}
 
-#[tool(name = "get_skill_stats", description = "Get comprehensive statistics about the skill registry.")]
-async fn get_skill_stats(
-    &self,
-    Parameters(input): Parameters<tools::skills::GetSkillStatsInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("get_skill_stats").await {
-        tracing::warn!("Workflow enforcement blocked get_skill_stats: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-    match tools::skills::execute_get_skill_stats(input, &self.context).await {
-        Ok(result) => {
-            self.record_tool_execution("get_skill_stats", None).await;
-            tool_output_to_content(result)
+    async fn execute_enable_skill(
+        &self,
+        context: &ToolContext,
+        input: tools::skills::EnableSkillInput,
+    ) -> ToolOutput {
+        match tools::skills::execute_enable_skill(input, &context.context.database).await {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
         }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
-}
 
-#[tool(name = "apply_skill_decay", description = "Apply mastery decay to unused skills.")]
-async fn apply_skill_decay(
-    &self,
-    Parameters(input): Parameters<tools::skills::ApplySkillDecayInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("apply_skill_decay").await {
-        tracing::warn!("Workflow enforcement blocked apply_skill_decay: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-    match tools::skills::execute_apply_skill_decay(input, &self.context).await {
-        Ok(result) => {
-            self.record_tool_execution("apply_skill_decay", None).await;
-            tool_output_to_content(result)
+    async fn execute_disable_skill(
+        &self,
+        context: &ToolContext,
+        input: tools::skills::DisableSkillInput,
+    ) -> ToolOutput {
+        match tools::skills::execute_disable_skill(input, &context.context.database).await {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
         }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
-}
 
-#[tool(name = "enable_disable_skill", description = "Enable or disable a skill.")]
-async fn enable_disable_skill(
-    &self,
-    Parameters(input): Parameters<tools::skills::EnableDisableSkillInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("enable_disable_skill").await {
-        tracing::warn!("Workflow enforcement blocked enable_disable_skill: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-    match tools::skills::execute_enable_disable_skill(input, &self.context).await {
-        Ok(result) => {
-            self.record_tool_execution("enable_disable_skill", None).await;
-            tool_output_to_content(result)
+    async fn execute_get_skill_metrics(
+        &self,
+        context: &ToolContext,
+        input: tools::skills::GetSkillMetricsInput,
+    ) -> ToolOutput {
+        match tools::skills::execute_get_skill_metrics(input, &context.context.database).await {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
         }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
-}
 
-#[tool(name = "search_skills", description = "Search skills by query, category, or minimum mastery level.")]
-async fn search_skills(
-    &self,
-    Parameters(input): Parameters<tools::skills::SearchSkillsInput>,
-) -> ContentBlock {
-    if let Err(e) = self.check_workflow_enforcement("search_skills").await {
-        tracing::warn!("Workflow enforcement blocked search_skills: {}", e.message);
-        return enforcement_error_to_content(e);
-    }
-    match tools::skills::execute_search_skills(input, &self.context).await {
-        Ok(result) => {
-            self.record_tool_execution("search_skills", None).await;
-            tool_output_to_content(result)
+    async fn execute_get_skill_status(
+        &self,
+        context: &ToolContext,
+        input: tools::skills::GetSkillStatusInput,
+    ) -> ToolOutput {
+        match tools::skills::execute_get_skill_status(input, &context.context.database).await {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
         }
-        Err(e) => tool_output_to_content(ToolOutput::error(e)),
     }
-}
+
+    async fn execute_activate_skill(
+        &self,
+        context: &ToolContext,
+        input: tools::skills::ActivateSkillInput,
+    ) -> ToolOutput {
+        match tools::skills::execute_activate_skill(input, &context.context.database).await {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
+        }
+    }
+
+    async fn execute_deactivate_skill(
+        &self,
+        context: &ToolContext,
+        input: tools::skills::DeactivateSkillInput,
+    ) -> ToolOutput {
+        match tools::skills::execute_deactivate_skill(input, &context.context.database).await {
+            Ok(result) => result,
+            Err(e) => ToolOutput::error(e),
+        }
+    }
+
+    fn list_tools(&self) -> Vec<rmcp::tool::Tool> {
+        vec![
+            tools::skills::install_skill_tool(),
+            tools::skills::uninstall_skill_tool(),
+            tools::skills::list_skills_tool(),
+            tools::skills::get_skill_tool(),
+            tools::skills::update_skill_tool(),
+            tools::skills::enable_skill_tool(),
+            tools::skills::disable_skill_tool(),
+            tools::skills::get_skill_metrics_tool(),
+            tools::skills::get_skill_status_tool(),
+            tools::skills::activate_skill_tool(),
+            tools::skills::deactivate_skill_tool(),
+        ]
+    }
 }
