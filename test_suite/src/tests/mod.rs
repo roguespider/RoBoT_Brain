@@ -1,4 +1,6 @@
 
+
+
 //! Test modules
 //!
 //! Split from the monolithic tests.rs file for better maintainability.
@@ -15,6 +17,7 @@ pub mod ingestor;
 pub mod agent;
 pub mod error_handling;
 pub mod mcp_workflow;
+pub mod cli_tools;
 
 pub use memory::run_memory_tests;
 pub use experience::run_experience_tests;
@@ -28,3 +31,4 @@ pub use ingestor::run_ingestor_tests;
 pub use agent::run_agent_tests;
 pub use error_handling::run_error_handling_tests;
 pub use mcp_workflow::run_mcp_workflow_tests;
+pub use cli_tools::run_cli_tool_tests;

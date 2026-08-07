@@ -53,6 +53,34 @@ pub fn print_mcp_workflow_results(results: &super::results::McpWorkflowTestResul
     crate::teeprintln!("MCP WORKFLOW INTEGRATION TEST RESULTS");
     crate::teeprintln!("{}", "=".repeat(80));
 
+    // MCP Protocol Status
+    crate::teeprintln!("\n🔌 MCP Protocol Status:");
+    crate::teeprintln!(
+        "  - Protocol implementation: {}",
+        if results.mcp_protocol_valid { "✓ Valid" } else { "✗ Issues detected" }
+    );
+
+    if !results.mcp_protocol_valid {
+        crate::teeprintln!("\n┌{:─<78}┐", "");
+        crate::teeprintln!("│ {:^76} │", "⚠️  MCP SERVER IMPLEMENTATION REQUIRED");
+        crate::teeprintln!("├{:─<78}┤", "");
+        crate::teeprintln!("│ {:^76} │", "The MCP server must implement these ServerHandler trait methods:");
+        crate::teeprintln!("│ {:^76} │", "");
+        crate::teeprintln!("│ {:^76} │", "1. async fn list_tools(...) -> Result<ListToolsResult, McpError>");
+        crate::teeprintln!("│ {:^76} │", "   → Should collect and return all 87 registered tools");
+        crate::teeprintln!("│ {:^76} │", "");
+        crate::teeprintln!("│ {:^76} │", "2. async fn call_tool(...) -> Result<CallToolResult, McpError>");
+        crate::teeprintln!("│ {:^76} │", "   → Should route tool calls to ToolHandlerCollection");
+        crate::teeprintln!("│ {:^76} │", "");
+        crate::teeprintln!("│ {:^76} │", "3. fn get_tool(&self, name: &str) -> Option<Tool>");
+        crate::teeprintln!("│ {:^76} │", "   → Should return Tool definition for a specific tool");
+        crate::teeprintln!("├{:─<78}┤", "");
+        crate::teeprintln!("│ {:^76} │", "File to modify: src/bridge/rmcp/mod.rs");
+        crate::teeprintln!("│ {:^76} │", "");
+        crate::teeprintln!("│ {:^76} │", "Current behavior: Server returns empty list and method_not_found");
+        crate::teeprintln!("└{:─<78}┘", "");
+    }
+
     // Discovery Results
     crate::teeprintln!("\n📋 Workflow Discovery:");
     crate::teeprintln!(
@@ -235,35 +263,33 @@ pub fn print_mcp_workflow_results(results: &super::results::McpWorkflowTestResul
 
     // Overall Assessment
     let total_checks = 20;
-    let passed_checks = [
-        results.workflow_discovery.get_workflow_available,
-        results.workflow_discovery.default_workflow_retrieved,
-        results.workflow_discovery.workflow_rules_understood,
-        results.workflow_execution.create_workflow_succeeds,
-        results.workflow_execution.add_step_succeeds,
-        results.workflow_execution.start_workflow_succeeds,
-        results.workflow_execution.pause_resume_works,
-        results.workflow_tools.workflow_tool_definitions_valid,
-        results
-            .agent_workflow_integration
-            .agent_discovers_workflow_first,
-        results
-            .agent_workflow_integration
-            .agent_uses_correct_workflow_for_purpose,
-        results
-            .agent_workflow_integration
-            .agent_chains_workflow_steps,
-        results
-            .agent_workflow_integration
-            .agent_respects_workflow_dependencies,
-        results.end_to_end_scenarios.file_ingestion_workflow,
-        results.end_to_end_scenarios.memory_search_workflow,
-        results.end_to_end_scenarios.experience_recording_workflow,
-        results.end_to_end_scenarios.multi_step_workflow,
-    ]
-    .iter()
-    .filter(|&&x| x)
-    .count();
+    let mut passed_checks = 0;
+    
+    // Count workflow discovery
+    if results.workflow_discovery.get_workflow_available { passed_checks += 1; }
+    if results.workflow_discovery.default_workflow_retrieved { passed_checks += 1; }
+    if results.workflow_discovery.workflow_rules_understood { passed_checks += 1; }
+    
+    // Count execution
+    if results.workflow_execution.create_workflow_succeeds { passed_checks += 1; }
+    if results.workflow_execution.add_step_succeeds { passed_checks += 1; }
+    if results.workflow_execution.start_workflow_succeeds { passed_checks += 1; }
+    if results.workflow_execution.pause_resume_works { passed_checks += 1; }
+    
+    // Count tools
+    if results.workflow_tools.workflow_tool_definitions_valid { passed_checks += 1; }
+    
+    // Count agent integration
+    if results.agent_workflow_integration.agent_discovers_workflow_first { passed_checks += 1; }
+    if results.agent_workflow_integration.agent_uses_correct_workflow_for_purpose { passed_checks += 1; }
+    if results.agent_workflow_integration.agent_chains_workflow_steps { passed_checks += 1; }
+    if results.agent_workflow_integration.agent_respects_workflow_dependencies { passed_checks += 1; }
+    
+    // Count e2e scenarios
+    if results.end_to_end_scenarios.file_ingestion_workflow { passed_checks += 1; }
+    if results.end_to_end_scenarios.memory_search_workflow { passed_checks += 1; }
+    if results.end_to_end_scenarios.experience_recording_workflow { passed_checks += 1; }
+    if results.end_to_end_scenarios.multi_step_workflow { passed_checks += 1; }
 
     crate::teeprintln!("\n{}", "-".repeat(80));
     crate::teeprintln!(
@@ -273,12 +299,46 @@ pub fn print_mcp_workflow_results(results: &super::results::McpWorkflowTestResul
         (passed_checks as f64 / total_checks as f64) * 100.0
     );
 
-    if passed_checks >= total_checks - 2 {
-        crate::teeprintln!("\n🎉 AGENT WILL USE MCP WORKFLOWS CORRECTLY!");
+    // Determine overall status
+    let status = if !results.mcp_protocol_valid {
+        "🔧 MCP PROTOCOL ISSUE - Server must implement call_tool() and list_tools()"
+    } else if passed_checks >= total_checks - 2 {
+        "🎉 MCP WORKFLOW INTEGRATION COMPLETE"
     } else if passed_checks >= total_checks / 2 {
-        crate::teeprintln!("\n⚠️  PARTIAL MCP WORKFLOW SUPPORT - Some issues need attention");
+        "⚠️  PARTIAL MCP WORKFLOW SUPPORT"
     } else {
-        crate::teeprintln!("\n❌ MCP WORKFLOW INTEGRATION NEEDS SIGNIFICANT IMPROVEMENT");
+        "❌ MCP WORKFLOW INTEGRATION NEEDS IMPROVEMENT"
+    };
+
+    crate::teeprintln!("\n{}", status);
+    
+    if !results.mcp_protocol_valid {
+        crate::teeprintln!("\n┌{:─<78}┐", "");
+        crate::teeprintln!("│ {:^76} │", "🔧 REQUIRED FIX: Implement ServerHandler Trait Methods");
+        crate::teeprintln!("├{:─<78}┤", "");
+        crate::teeprintln!("│ {:^76} │", "File: src/bridge/rmcp/mod.rs");
+        crate::teeprintln!("│ {:^76} │", "");
+        crate::teeprintln!("│ {:^76} │", "impl ServerHandler for McpServerHandler {");
+        crate::teeprintln!("│ {:^76} │", "    // Add these methods:");
+        crate::teeprintln!("│ {:^76} │", "");
+        crate::teeprintln!("│ {:^76} │", "    async fn list_tools(&self, ...) -> Result<ListToolsResult, McpError> {");
+        crate::teeprintln!("│ {:^76} │", "        // Collect tools from self.handlers");
+        crate::teeprintln!("│ {:^76} │", "        // Return ListToolsResult { tools: [...] }");
+        crate::teeprintln!("│ {:^76} │", "    }");
+        crate::teeprintln!("│ {:^76} │", "");
+        crate::teeprintln!("│ {:^76} │", "    async fn call_tool(&self, ...) -> Result<CallToolResult, McpError> {");
+        crate::teeprintln!("│ {:^76} │", "        // Route request.name to appropriate handler");
+        crate::teeprintln!("│ {:^76} │", "        // Return CallToolResult { content: [...], isError: false }");
+        crate::teeprintln!("│ {:^76} │", "    }");
+        crate::teeprintln!("│ {:^76} │", "");
+        crate::teeprintln!("│ {:^76} │", "    fn get_tool(&self, name: &str) -> Option<Tool> {");
+        crate::teeprintln!("│ {:^76} │", "        // Return tool definition by name");
+        crate::teeprintln!("│ {:^76} │", "    }");
+        crate::teeprintln!("│ {:^76} │", "}");
+        crate::teeprintln!("└{:─<78}┘", "");
+        
+        crate::teeprintln!("\n📚 See rmcp crate documentation for ListToolsResult and CallToolResult types.");
+        crate::teeprintln!("   The test_suite will pass once these methods return proper values.");
     }
 
     crate::teeprintln!("{}", "=".repeat(80));
