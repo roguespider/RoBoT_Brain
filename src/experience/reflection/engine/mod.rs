@@ -1,7 +1,11 @@
-// /src/experience/reflection/engine.rs
-// The main Reflection Engine that orchestrates all reflection services
+// /src/experience/reflection/engine/mod.rs
+//! The main Reflection Engine that orchestrates all reflection services
 
+pub mod config;
+pub mod reports;
 
+pub use config::ReflectionEngineConfig;
+pub use reports::{AnalysisReport, EngineStats, ValidationReport};
 
 use chrono::Utc;
 use std::collections::HashMap;
@@ -18,33 +22,6 @@ use super::services::generator::ReflectionGenerator;
 use super::services::repository::ReflectionRepository;
 use super::services::validator::ReflectionValidator;
 use super::{Reflection, ReflectionStatus, ReflectionType};
-
-/// Configuration for the reflection engine
-#[derive(Debug, Clone)]
-pub struct ReflectionEngineConfig {
-    /// Minimum experiences before auto-generating reflection
-    pub min_experiences_for_auto_reflection: usize,
-
-    /// Minimum confidence for valid reflection
-    pub min_confidence: f32,
-
-    /// Auto-validate reflections above this confidence
-    pub auto_validate_threshold: f32,
-
-    /// Maximum reflections to keep in memory
-    pub max_cached_reflections: usize,
-}
-
-impl Default for ReflectionEngineConfig {
-    fn default() -> Self {
-        Self {
-            min_experiences_for_auto_reflection: 3,
-            min_confidence: 0.5,
-            auto_validate_threshold: 0.8,
-            max_cached_reflections: 1000,
-        }
-    }
-}
 
 /// Main reflection engine that orchestrates all reflection services
 pub struct ReflectionEngine {
@@ -331,33 +308,4 @@ impl Default for ReflectionEngine {
     fn default() -> Self {
         Self::new()
     }
-}
-
-/// Report from analyzing experiences
-#[derive(Debug, Clone)]
-pub struct AnalysisReport {
-    pub patterns: Vec<String>,
-    pub themes: Vec<String>,
-    pub recommendations: Vec<String>,
-    pub confidence: f32,
-}
-
-/// Report from validating a reflection
-#[derive(Debug, Clone)]
-pub struct ValidationReport {
-    pub is_valid: bool,
-    pub score: f32,
-    pub issues: Vec<String>,
-    pub quality_score: f32,
-    pub suggestions: Vec<String>,
-}
-
-/// Statistics about the reflection engine
-#[derive(Debug)]
-pub struct EngineStats {
-    pub total_reflections: usize,
-    pub total_insights: usize,
-    pub trusted_insights: usize,
-    pub total_patterns: usize,
-    pub mature_patterns: usize,
 }
