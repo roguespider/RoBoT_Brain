@@ -27,14 +27,55 @@ cargo check -p test_suite
 
 ## Code Style Conventions
 
-When modifying or extending this codebase:
+When modifying or extending this codebase, you **MUST** adhere to these strict constraints. Violations are critical errors that must be actively repaired.
 
-- **No panics**: Never use `.unwrap()`, `.expect()`, or panic macros
-- **Error handling**: Use `?` operator, `match`, or `if let` for Result handling
-- **No stubs**: Never use `todo!()`, `unimplemented!()`, `unreachable!()`
-- **No silencing**: Never add `#[allow(*)]` attributes
-- **No ignored variables**: Never use `_variable_name` for unused values
-- **Name conflicts**: If renaming types, use descriptive new names (e.g., `LearningPattern` instead of `Pattern`)
+### Strict Rust Coding Standards
+
+1. **NO Panics or Crashes**
+   - Strictly forbidden: `.unwrap()`, `.expect()`, `panic!()`, `assert!()`, `unreachable!()`
+   - Use idiomatic Rust error handling: `?` operator, `match`, `if let`, `.unwrap_or_else()`, `.unwrap_or()`
+   - Every `Result` and `Option` must be handled explicitly
+
+2. **NO Placeholders or Stubs**
+   - Strictly forbidden: `todo!()`, `unimplemented!()`, `unreachable!()`
+   - All code blocks must be 100% complete and production-ready
+   - No empty function bodies or skeleton implementations
+
+3. **NO Code Deletion**
+   - Never delete problematic code blocks or mark them as dead code to bypass fixes
+   - If code is unused, follow the Dead Code Resolution Protocol below
+
+4. **NO Compiler-Silencing Attributes**
+   - Strictly forbidden: `#[allow(dead_code)]`, `#[allow(unused_variables)]`, `#[allow(unused_imports)]`, `#[allow(unused_must_use)]`, or any other `#[allow(*)]` flags
+   - Fix the underlying issue instead of hiding warnings
+
+5. **NO Ignored Variables**
+   - Strictly forbidden: `let _x = ...`, `|_| ...`, `let _ = ...`
+   - Every variable and result must be meaningfully utilized
+   - If a value is truly unused, restructure the code to avoid binding it
+
+6. **Name Conflicts**
+   - If renaming types, use descriptive new names (e.g., `LearningPattern` instead of `Pattern`)
+
+### Dead Code Resolution Protocol
+
+When encountering unused, unreachable, or seemingly dead code:
+
+1. **Cross-reference architecture**: Check `RoBoT_Brain/robot_architecture/` directory for documentation
+2. **If documentation describes the feature**: The code is an incomplete stub
+   - You MUST fully implement and complete the missing logic
+   - Production-ready status is required
+3. **If documentation confirms deprecated/absent**: The code can be safely deleted
+   - Clean up all associated imports and references
+   - Verify no breaking dependencies
+
+### Enforcement
+
+The test suite enforces these rules:
+- Any `todo!()`, `unimplemented!()`, `unreachable!()` = **Test Failure**
+- Any `#[allow(*)]` attribute = **Test Failure**
+- Any `.unwrap()` or `.expect()` on non-test code = **Test Failure**
+- Any `_variable` pattern for ignored values = **Test Failure**
 
 ## Large File Refactoring Pattern
 
