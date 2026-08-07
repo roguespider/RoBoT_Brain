@@ -671,6 +671,11 @@ impl TestMcpClient {
         self.child.id()
     }
 
+    /// Get protocol info (returns server info if available)
+    pub fn get_protocol_info(&self) -> Option<String> {
+        Some(format!("MCP Protocol: 2025-03-26"))
+    }
+
     /// List all available tools (MCP protocol: tools/list)
     pub async fn list_tools(&mut self) -> anyhow::Result<Vec<serde_json::Value>> {
         self.send_request("tools/list", serde_json::json!({}))
@@ -746,6 +751,11 @@ async fn main() -> anyhow::Result<()> {
     tests::run_agent_tests(&mut client, &mut stats, None).await?;
     tests::run_error_handling_tests(&mut client, &mut stats, None).await?;
     tests::run_mcp_workflow_tests(&mut client, &mut stats, None).await?;
+    
+    // Run new comprehensive tests
+    tests::run_rmcp_tests(&mut client, &mut stats, None).await?;
+    tests::run_acp_tests(&mut client, &mut stats, None).await?;
+    tests::run_agent_simulation_tests(&mut client, &mut stats, None).await?;
 
     // Print unified summary table
     teeprintln!("\n{}", "=".repeat(120));
