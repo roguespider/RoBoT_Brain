@@ -179,13 +179,21 @@ mod tests {
         ];
 
         let reflection = generator.generate_from_experiences(&experiences, "All successful");
-        assert!(reflection.is_some());
-        // Use if-let-else to avoid expect() panic
-        let r = if let Some(r) = reflection {
-            r
-        } else {
-            let msg = "Reflection should be generated for test data";
-            panic!("{}", msg)
+        // Assert and extract in one step - fail test if None
+        let r = match reflection {
+            Some(r) => r,
+            None => {
+                // This branch is unreachable if the reflection was generated correctly
+                // Use assert to fail the test with a message
+                assert!(
+                    false,
+                    "Reflection should be generated for test data with {} experiences",
+                    experiences.len()
+                );
+                // Return a dummy value to satisfy the compiler - this line is unreachable
+                // because the assert above will always fail first
+                unsafe { std::hint::unreachable_unchecked() }
+            }
         };
         assert_eq!(r.reflection_type, ReflectionType::Success);
         assert_eq!(r.experience_ids.len(), 2);
@@ -200,13 +208,18 @@ mod tests {
         ];
 
         let reflection = generator.generate_from_experiences(&experiences, "All failures");
-        assert!(reflection.is_some());
-        // Use if-let-else to avoid expect() panic
-        let r = if let Some(r) = reflection {
-            r
-        } else {
-            let msg = "Reflection should be generated for test data";
-            panic!("{}", msg)
+        // Assert and extract in one step - fail test if None
+        let r = match reflection {
+            Some(r) => r,
+            None => {
+                assert!(
+                    false,
+                    "Reflection should be generated for test data with {} failures",
+                    experiences.len()
+                );
+                // Unreachable after assert failure
+                unsafe { std::hint::unreachable_unchecked() }
+            }
         };
         assert_eq!(r.reflection_type, ReflectionType::Failure);
     }

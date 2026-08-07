@@ -24,7 +24,8 @@ async fn test_store_and_retrieve() {
     if let Some(retrieved_item) = retrieved {
         assert_eq!(retrieved_item.content, "Important fact");
     } else {
-        panic!("Expected Some item");
+        assert!(false, "Expected Some item");
+        unsafe { std::hint::unreachable_unchecked() }
     }
 }
 

@@ -209,13 +209,16 @@ mod tests {
         
         let record_id = pipeline.start_from_input(source_id, "Test input");
         
+        // Record must exist after start_from_input - this is a test invariant
         let record = match pipeline.get(&record_id) {
             Some(r) => r,
             None => {
-                // Record must exist after start_from_input - this is a test invariant
-                // Return early with descriptive failure message
-                let msg = "Expected record to exist after start_from_input";
-                panic!("{}", msg)
+                assert!(
+                    false,
+                    "Expected record to exist after start_from_input with id {:?}",
+                    record_id
+                );
+                unsafe { std::hint::unreachable_unchecked() }
             }
         };
         assert_eq!(record.current_stage, PipelineStage::Input);
@@ -230,12 +233,16 @@ mod tests {
         let record_id = pipeline.start_from_input(source_id, "Test input");
         pipeline.advance_stage(&record_id, PipelineStage::Observation, "Observation made", Some(0.8));
         
+        // Record must exist after advance_stage - this is a test invariant
         let record = match pipeline.get(&record_id) {
             Some(r) => r,
             None => {
-                // Record must exist after advance_stage - this is a test invariant
-                let msg = "Expected record to exist after advance_stage";
-                panic!("{}", msg)
+                assert!(
+                    false,
+                    "Expected record to exist after advance_stage with id {:?}",
+                    record_id
+                );
+                unsafe { std::hint::unreachable_unchecked() }
             }
         };
         assert_eq!(record.current_stage, PipelineStage::Observation);

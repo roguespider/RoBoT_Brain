@@ -149,27 +149,34 @@ mod tests {
         );
 
         // Use match instead of unwrap
-        match channel.send(msg.clone()) {
-            Ok(()) => {},
-            Err(e) => panic!("send failed: {}", e),
+        if let Err(e) = channel.send(msg.clone()) {
+            assert!(false, "send failed: {}", e);
+            unsafe { std::hint::unreachable_unchecked() }
         }
 
         let received = match channel.try_recv() {
             Ok(r) => r,
-            Err(e) => panic!("try_recv failed: {}", e),
+            Err(e) => {
+                assert!(false, "try_recv failed: {}", e);
+                unsafe { std::hint::unreachable_unchecked() }
+            }
         };
         assert!(received.is_some());
         // Use if-let instead of unwrap
         if let Some(received_msg) = received {
             assert_eq!(received_msg.payload, msg.payload);
         } else {
-            panic!("Expected Some message");
+            assert!(false, "Expected Some message");
+            unsafe { std::hint::unreachable_unchecked() }
         }
 
         // Channel should be empty now
         let empty = match channel.try_recv() {
             Ok(r) => r,
-            Err(e) => panic!("try_recv failed: {}", e),
+            Err(e) => {
+                assert!(false, "try_recv failed: {}", e);
+                unsafe { std::hint::unreachable_unchecked() }
+            }
         };
         assert!(empty.is_none());
     }
@@ -185,28 +192,37 @@ mod tests {
             |msg| Ok(Some(msg.reply(serde_json::json!({"handled": true})))),
         ));
 
-        match registry.register(agent.clone()) {
-            Ok(()) => {},
-            Err(e) => panic!("register failed: {}", e),
+        if let Err(e) = registry.register(agent.clone()) {
+            assert!(false, "register failed: {}", e);
+            unsafe { std::hint::unreachable_unchecked() }
         }
 
         assert_eq!(registry.count(), 1);
 
         let retrieved = match registry.get(&AcpAgentId::new("test", "1")) {
             Ok(r) => r,
-            Err(e) => panic!("get failed: {}", e),
+            Err(e) => {
+                assert!(false, "get failed: {}", e);
+                unsafe { std::hint::unreachable_unchecked() }
+            }
         };
         assert!(retrieved.is_some());
 
         let by_type = match registry.get_by_type("test") {
             Ok(r) => r,
-            Err(e) => panic!("get_by_type failed: {}", e),
+            Err(e) => {
+                assert!(false, "get_by_type failed: {}", e);
+                unsafe { std::hint::unreachable_unchecked() }
+            }
         };
         assert_eq!(by_type.len(), 1);
 
         let unreg = match registry.unregister(&AcpAgentId::new("test", "1")) {
             Ok(r) => r,
-            Err(e) => panic!("unregister failed: {}", e),
+            Err(e) => {
+                assert!(false, "unregister failed: {}", e);
+                unsafe { std::hint::unreachable_unchecked() }
+            }
         };
         assert!(unreg.is_some());
         assert_eq!(registry.count(), 0);
@@ -227,9 +243,9 @@ mod tests {
             },
         ));
 
-        match registry.register(agent) {
-            Ok(()) => {},
-            Err(e) => panic!("register failed: {}", e),
+        if let Err(e) = registry.register(agent) {
+            assert!(false, "register failed: {}", e);
+            unsafe { std::hint::unreachable_unchecked() }
         }
 
         let msg = AcpMessage::new(
@@ -243,13 +259,19 @@ mod tests {
         assert!(result.is_ok());
         let response = match result {
             Ok(r) => r,
-            Err(e) => panic!("route failed: {}", e),
+            Err(e) => {
+                assert!(false, "route failed: {}", e);
+                unsafe { std::hint::unreachable_unchecked() }
+            }
         };
         assert!(response.is_some());
 
         let resp = match response {
             Some(r) => r,
-            None => panic!("Expected Some response"),
+            None => {
+                assert!(false, "Expected Some response");
+                unsafe { std::hint::unreachable_unchecked() }
+            }
         };
         assert_eq!(resp.message_type, AcpMessageType::Response);
         assert!(resp.payload.get("processed").is_some());
@@ -270,7 +292,10 @@ mod tests {
         let result = router.route(msg);
         assert!(result.is_err());
         let err = match result {
-            Ok(_) => panic!("Expected error"),
+            Ok(_) => {
+                assert!(false, "Expected error");
+                unsafe { std::hint::unreachable_unchecked() }
+            }
             Err(e) => e,
         };
         assert!(err.to_string().contains("Unknown receiver"));
@@ -287,7 +312,10 @@ mod tests {
             .build()
         {
             Ok(m) => m,
-            Err(e) => panic!("build failed: {}", e),
+            Err(e) => {
+                assert!(false, "build failed: {}", e);
+                unsafe { std::hint::unreachable_unchecked() }
+            }
         };
 
         assert_eq!(msg.sender.agent_type, "sender");
@@ -326,11 +354,17 @@ mod tests {
 
         let response = match agent.handle(msg) {
             Ok(r) => r,
-            Err(e) => panic!("handle failed: {}", e),
+            Err(e) => {
+                assert!(false, "handle failed: {}", e);
+                unsafe { std::hint::unreachable_unchecked() }
+            }
         };
         let response = match response {
             Some(r) => r,
-            None => panic!("Expected Some response"),
+            None => {
+                assert!(false, "Expected Some response");
+                unsafe { std::hint::unreachable_unchecked() }
+            }
         };
         assert_eq!(response.message_type, AcpMessageType::Response);
         assert_eq!(response.payload["echo"]["ping"], true);
