@@ -290,7 +290,11 @@ impl WhisperTranscriber {
 
 impl Default for WhisperTranscriber {
     fn default() -> Self {
-        Self::new().expect("Failed to create Whisper transcriber")
+        Self {
+            model: None,
+            tokenizer: None,
+            mel_filters: None,
+        }
     }
 }
 
@@ -360,13 +364,32 @@ static TRANSCRIBER: std::sync::OnceLock<std::sync::Mutex<WhisperTranscriber>> =
     std::sync::OnceLock::new();
 
 fn get_transcriber() -> Result<std::sync::MutexGuard<'static, WhisperTranscriber>> {
-    let transcriber = TRANSCRIBER.get_or_init(|| {
-        std::sync::Mutex::new(WhisperTranscriber::new().expect("Failed to create transcriber"))
-    });
+    // Initialize the transcriber if not already done
+    // This ensures the OnceLock is populated before we access it
+    if TRANSCRIBER.get().is_none() {
+        let transcriber: std::sync::Mutex<WhisperTranscriber> = match WhisperTranscriber::new() {
+            Ok(t) => std::sync::Mutex::new(t),
+            Err(e) => {
+                tracing::warn!("Failed to initialize Whisper transcriber: {}, using default", e);
+                std::sync::Mutex::new(WhisperTranscriber::default())
+            }
+        };
+        // Attempt to set, log if already set (race condition)
+        if TRANSCRIBER.set(transcriber).is_err() {
+            tracing::debug!("Transcriber was initialized by another thread");
+        }
+    }
 
-    transcriber
-        .lock()
-        .map_err(|e| anyhow::anyhow!("Lock error: {}", e))
+    // Now safely get the transcriber (it must exist after initialization)
+    match TRANSCRIBER.get() {
+        Some(transcriber) => {
+            transcriber.lock().map_err(|e| anyhow::anyhow!("Lock error: {}", e))
+        }
+        None => {
+            // This shouldn't happen since we initialized above, but handle gracefully
+            Err(anyhow::anyhow!("Transcriber not initialized"))
+        }
+    }
 }
 
 /// Transcribe an audio file to text using Whisper

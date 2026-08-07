@@ -21,8 +21,7 @@ pub fn create_archive_temp_dir(archive_name: &str) -> PathBuf {
     let temp_base = get_archive_temp_dir();
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .expect("System time should always be after UNIX_EPOCH on modern systems")
-        .as_secs();
+        .map_or_else(|_| std::time::UNIX_EPOCH.elapsed().unwrap_or_default().as_secs(), |d| d.as_secs());
 
     // Sanitize archive name for directory name
     let sanitized = archive_name.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
