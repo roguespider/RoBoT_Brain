@@ -45,6 +45,35 @@ impl HandlerInitError {
     }
 }
 
+/// Error when executing a tool via MCP
+#[derive(Debug, Clone)]
+pub enum HandlerError {
+    /// Tool was not found
+    ToolNotFound(String),
+    /// Handler for category not found
+    HandlerNotFound(String),
+    /// Tool execution failed
+    ExecutionFailed(String),
+    /// Invalid parameters
+    InvalidParams(String),
+    /// Internal handler error
+    Internal(String),
+}
+
+impl std::fmt::Display for HandlerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            HandlerError::ToolNotFound(name) => write!(f, "Tool not found: {}", name),
+            HandlerError::HandlerNotFound(cat) => write!(f, "Handler not found for category: {}", cat),
+            HandlerError::ExecutionFailed(msg) => write!(f, "Execution failed: {}", msg),
+            HandlerError::InvalidParams(msg) => write!(f, "Invalid parameters: {}", msg),
+            HandlerError::Internal(msg) => write!(f, "Internal error: {}", msg),
+        }
+    }
+}
+
+impl std::error::Error for HandlerError {}
+
 /// Trait for tool handlers - each handler manages a category of tools
 /// 
 /// This trait allows McpServerHandler to aggregate all tool handlers
@@ -58,12 +87,45 @@ pub trait ToolHandler: Send + Sync {
     
     /// Check if this handler is healthy (can process requests)
     fn is_healthy(&self) -> bool;
+    
+    /// Get all tools this handler manages as MCP Tool definitions
+    /// 
+    /// Default implementation returns an empty vector.
+    /// Override this method to provide actual tool definitions.
+    fn get_tools(&self) -> Vec<rmcp::model::Tool> {
+        Vec::new()
+    }
+    
+    /// Execute a tool by name with arguments
+    /// 
+    /// Default implementation returns ToolNotFound error.
+    /// Override this method to handle actual tool execution.
+    fn execute_tool(&self, name: &str, _args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
+        async move {
+            Err(HandlerError::ToolNotFound(name.to_string()))
+        }
+    }
 }
 
 /// Marker trait for handlers that need workflow enforcement
 pub trait WorkflowEnforced {
     fn check_enforcement(&self, tool_name: &str) -> impl std::future::Future<Output = Result<(), String>> + Send;
     fn record_execution(&self, tool_name: &str, query: Option<String>) -> impl std::future::Future<Output = ()> + Send;
+}
+
+/// Convert serde_json::Value to Arc<serde_json::Map<String, serde_json::Value>>
+/// for use in Tool::new()
+pub fn json_to_schema(schema: serde_json::Value) -> std::sync::Arc<serde_json::Map<String, serde_json::Value>> {
+    match schema {
+        serde_json::Value::Object(map) => std::sync::Arc::new(map),
+        other => {
+            let mut map = serde_json::Map::new();
+            if let serde_json::Value::String(s) = other {
+                map.insert("type".to_string(), serde_json::Value::String(s));
+            }
+            std::sync::Arc::new(map)
+        }
+    }
 }
 
 pub use agent_handler::AgentToolsHandler;
@@ -305,5 +367,158 @@ impl ToolHandlerCollection {
             || self.search.as_ref().map_or(false, |h| h.is_healthy())
             || self.skills.as_ref().map_or(false, |h| h.is_healthy())
             || self.workflow.as_ref().map_or(false, |h| h.is_healthy())
+    }
+
+    /// Get all tools from all handlers as MCP Tool definitions
+    pub fn get_all_tools(&self) -> Vec<rmcp::model::Tool> {
+        let mut tools = Vec::new();
+        if let Some(ref h) = self.agent { tools.extend(h.get_tools()); }
+        if let Some(ref h) = self.experience { tools.extend(h.get_tools()); }
+        if let Some(ref h) = self.exploration { tools.extend(h.get_tools()); }
+        if let Some(ref h) = self.hypothesis { tools.extend(h.get_tools()); }
+        if let Some(ref h) = self.ingestor { tools.extend(h.get_tools()); }
+        if let Some(ref h) = self.knowledge { tools.extend(h.get_tools()); }
+        if let Some(ref h) = self.memory { tools.extend(h.get_tools()); }
+        if let Some(ref h) = self.planner { tools.extend(h.get_tools()); }
+        if let Some(ref h) = self.reflection { tools.extend(h.get_tools()); }
+        if let Some(ref h) = self.search { tools.extend(h.get_tools()); }
+        if let Some(ref h) = self.skills { tools.extend(h.get_tools()); }
+        if let Some(ref h) = self.workflow { tools.extend(h.get_tools()); }
+        tools
+    }
+
+    /// Get a single tool by name from any handler
+    pub fn get_tool(&self, name: &str) -> Option<rmcp::model::Tool> {
+        if let Some(ref h) = self.agent { 
+            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
+                return Some(tool);
+            }
+        }
+        if let Some(ref h) = self.experience { 
+            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
+                return Some(tool);
+            }
+        }
+        if let Some(ref h) = self.exploration { 
+            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
+                return Some(tool);
+            }
+        }
+        if let Some(ref h) = self.hypothesis { 
+            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
+                return Some(tool);
+            }
+        }
+        if let Some(ref h) = self.ingestor { 
+            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
+                return Some(tool);
+            }
+        }
+        if let Some(ref h) = self.knowledge { 
+            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
+                return Some(tool);
+            }
+        }
+        if let Some(ref h) = self.memory { 
+            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
+                return Some(tool);
+            }
+        }
+        if let Some(ref h) = self.planner { 
+            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
+                return Some(tool);
+            }
+        }
+        if let Some(ref h) = self.reflection { 
+            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
+                return Some(tool);
+            }
+        }
+        if let Some(ref h) = self.search { 
+            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
+                return Some(tool);
+            }
+        }
+        if let Some(ref h) = self.skills { 
+            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
+                return Some(tool);
+            }
+        }
+        if let Some(ref h) = self.workflow { 
+            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
+                return Some(tool);
+            }
+        }
+        None
+    }
+
+    /// Call a tool by name with arguments
+    pub async fn call_tool(
+        &self,
+        name: &str,
+        args: serde_json::Value,
+    ) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
+        // Try each handler in order
+        if let Some(ref h) = self.agent {
+            if h.tool_names().contains(&name.to_string()) {
+                return h.execute_tool(name, args).await;
+            }
+        }
+        if let Some(ref h) = self.experience {
+            if h.tool_names().contains(&name.to_string()) {
+                return h.execute_tool(name, args).await;
+            }
+        }
+        if let Some(ref h) = self.exploration {
+            if h.tool_names().contains(&name.to_string()) {
+                return h.execute_tool(name, args).await;
+            }
+        }
+        if let Some(ref h) = self.hypothesis {
+            if h.tool_names().contains(&name.to_string()) {
+                return h.execute_tool(name, args).await;
+            }
+        }
+        if let Some(ref h) = self.ingestor {
+            if h.tool_names().contains(&name.to_string()) {
+                return h.execute_tool(name, args).await;
+            }
+        }
+        if let Some(ref h) = self.knowledge {
+            if h.tool_names().contains(&name.to_string()) {
+                return h.execute_tool(name, args).await;
+            }
+        }
+        if let Some(ref h) = self.memory {
+            if h.tool_names().contains(&name.to_string()) {
+                return h.execute_tool(name, args).await;
+            }
+        }
+        if let Some(ref h) = self.planner {
+            if h.tool_names().contains(&name.to_string()) {
+                return h.execute_tool(name, args).await;
+            }
+        }
+        if let Some(ref h) = self.reflection {
+            if h.tool_names().contains(&name.to_string()) {
+                return h.execute_tool(name, args).await;
+            }
+        }
+        if let Some(ref h) = self.search {
+            if h.tool_names().contains(&name.to_string()) {
+                return h.execute_tool(name, args).await;
+            }
+        }
+        if let Some(ref h) = self.skills {
+            if h.tool_names().contains(&name.to_string()) {
+                return h.execute_tool(name, args).await;
+            }
+        }
+        if let Some(ref h) = self.workflow {
+            if h.tool_names().contains(&name.to_string()) {
+                return h.execute_tool(name, args).await;
+            }
+        }
+        Err(HandlerError::ToolNotFound(name.to_string()))
     }
 }

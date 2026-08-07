@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::memory;
-use crate::bridge::mcp::handlers::{HandlerInitError, HandlerInitResult, ToolHandler};
+use crate::bridge::mcp::handlers::{HandlerError, HandlerInitError, HandlerInitResult, ToolHandler, json_to_schema};
 use crate::workflows::enforcement::WorkflowEnforcer;
 
 /// Handler for memory-related tools
@@ -151,5 +151,88 @@ impl ToolHandler for MemoryToolsHandler {
 
     fn is_healthy(&self) -> bool {
         self.context.database.connection().is_ok()
+    }
+    
+    fn get_tools(&self) -> Vec<rmcp::model::Tool> {
+        vec![
+            rmcp::model::Tool::new(
+                "store_memory",
+                "Store a new memory in the agent's memory system",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "content": { "type": "string", "description": "The memory content to store" },
+                        "importance": { "type": "number", "description": "Importance score (0-10)" },
+                        "category": { "type": "string", "description": "Category for the memory" }
+                    },
+                    "required": ["content"]
+                })),
+            ).with_title("Store Memory"),
+            rmcp::model::Tool::new(
+                "search_memory",
+                "Search memories by content query",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "query": { "type": "string", "description": "Search query" },
+                        "limit": { "type": "number", "description": "Maximum results to return" }
+                    },
+                    "required": ["query"]
+                })),
+            ).with_title("Search Memory"),
+            rmcp::model::Tool::new(
+                "get_memory",
+                "Retrieve a specific memory by ID",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "id": { "type": "string", "description": "Memory ID" }
+                    },
+                    "required": ["id"]
+                })),
+            ).with_title("Get Memory"),
+            rmcp::model::Tool::new(
+                "list_memories",
+                "List all memories with optional filtering",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "limit": { "type": "number", "description": "Maximum results" }
+                    }
+                })),
+            ).with_title("List Memories"),
+        ]
+    }
+    
+    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
+        async move {
+            match name {
+                "store_memory" => {
+                    let input: memory::StoreMemoryInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_store_memory(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "search_memory" => {
+                    let input: memory::SearchMemoryInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_search_memory(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "get_memory" => {
+                    let input: memory::GetMemoryInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_get_memory(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "list_memories" => {
+                    let input: memory::ListMemoriesInput = serde_json::from_value(args)
+                        .unwrap_or_default();
+                    self.execute_list_memories(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                _ => Err(HandlerError::ToolNotFound(name.to_string()))
+            }
+        }
     }
 }

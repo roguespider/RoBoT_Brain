@@ -40,7 +40,7 @@ pub struct GetMemoryInput {
 }
 
 /// Tool: List recent memories
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct ListMemoriesInput {
     pub memory_type: Option<String>,
     pub limit: Option<usize>,
