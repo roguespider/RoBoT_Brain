@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::agent::{inputs::*, mcp_tools::*, workflows::*};
-use crate::bridge::tools::handlers::{HandlerInitError, HandlerInitResult, ToolHandler};
+use crate::bridge::mcp::handlers::{HandlerInitError, HandlerInitResult, ToolHandler};
 use crate::workflows::enforcement::WorkflowEnforcer;
 
 /// Handler for agent and MCP-related tools

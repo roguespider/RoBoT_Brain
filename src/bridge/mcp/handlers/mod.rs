@@ -1,16 +1,15 @@
-// src/bridge/tools/handlers/mod.rs
-// Tool handlers module - each tool category has its own handler
+// src/bridge/mcp/handlers/mod.rs
+// MCP tool handlers - HOW tools respond to MCP protocol
 //
 // Architecture:
-// - Each *_tools.rs module has a corresponding *_handler.rs
+// - This module contains ONLY MCP protocol handlers
 // - Each handler implements ToolHandler trait for its local type
 // - McpServerHandler aggregates all handlers via the ToolHandler trait
 // - Graceful degradation: if a handler fails to init, log warning but continue
 //
-// Load order:
-// 1. MCP core loads first (ServerHandler impl in rmcp/mod.rs)
-// 2. Each tool handler loads independently
-// 3. No single tool can cause MCP or any other tool to fail
+// Separation of concerns:
+// - tools/ contains WHAT tools exist (definitions, schemas)
+// - mcp/handlers/ contains HOW tools respond to MCP (execution logic)
 
 use std::sync::Arc;
 

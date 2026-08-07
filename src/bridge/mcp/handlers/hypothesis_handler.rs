@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::hypothesis;
-use crate::bridge::tools::handlers::{HandlerInitError, HandlerInitResult, ToolHandler};
+use crate::bridge::mcp::handlers::{HandlerInitError, HandlerInitResult, ToolHandler};
 use crate::workflows::enforcement::WorkflowEnforcer;
 
 /// Handler for hypothesis-related tools

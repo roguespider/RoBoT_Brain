@@ -53,9 +53,6 @@ pub mod search;
 pub mod skills;
 pub mod workflow;
 
-// Tool handlers module - each tool category has its own handler
-pub mod handlers;
-
 /// Global tool registry (lazily initialized, using Mutex since only written once at startup)
 static TOOL_REGISTRY: std::sync::OnceLock<Arc<Mutex<ToolRegistry>>> = std::sync::OnceLock::new();
 

@@ -11,7 +11,7 @@ use anyhow::Result;
 
 use crate::bridge::mcp::McpContext;
 use crate::workflows::enforcement::{WorkflowEnforcer, WorkflowEnforcementError};
-use crate::bridge::tools::handlers::{ToolHandlerCollection, HandlerInitError};
+use crate::bridge::mcp::handlers::{ToolHandlerCollection, HandlerInitError};
 
 /// MCP Server handler using the rmcp derive macros
 /// 
