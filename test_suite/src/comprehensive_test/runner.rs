@@ -36,8 +36,7 @@ pub async fn run_single_test(
             // Create a mock result for validation that indicates error
             // The validation can check for expected error conditions
             serde_json::json!({
-                "success": false,
-                "error": tool_result.as_ref().err().map(|e| e.to_string())
+                "success": false
             })
         }
     };

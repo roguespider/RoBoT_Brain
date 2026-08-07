@@ -627,8 +627,25 @@ impl TestMcpClient {
             return Err(anyhow::anyhow!("Tool error: {:?}", error));
         }
 
-        // Check if result contains success: false (tool execution error)
+        // Check for isError field in the result (MCP error response format)
         if let Some(result) = json.get("result") {
+            if result
+                .get("isError")
+                .and_then(|e| e.as_bool())
+                .unwrap_or(false)
+            {
+                // Extract error message from content
+                let error_msg = result
+                    .get("content")
+                    .and_then(|c| c.as_array())
+                    .and_then(|arr| arr.first())
+                    .and_then(|item| item.get("text"))
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("Unknown error");
+                return Err(anyhow::anyhow!("Tool returned error: {}", error_msg));
+            }
+
+            // Also check if result contains success: false (tool execution error in content)
             if let Some(content) = result
                 .get("content")
                 .and_then(|c| c.as_array())

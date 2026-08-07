@@ -130,7 +130,7 @@ pub fn is_json_value_empty(value: &serde_json::Value) -> bool {
 }
 
 /// Check if success field has expected value
-pub fn is_success(result: &serde_json::Value, _field: &str, expected: Option<&str>) -> bool {
+pub fn is_success(result: &serde_json::Value, field: &str, expected: Option<&str>) -> bool {
     // Check for error field (indicates MCP error occurred)
     let has_error_field = result.get("error").is_some();
     
@@ -146,8 +146,11 @@ pub fn is_success(result: &serde_json::Value, _field: &str, expected: Option<&st
         return false;
     }
 
-    // Also check for success field in the JSON content (ToolOutput format)
-    let content_success = result.get("success").and_then(|s| s.as_bool());
+    // Get the success value from the specified field
+    let success_value = result.get(field);
+
+    // Try to parse as bool
+    let content_success = success_value.and_then(|s| s.as_bool());
 
     // If isError is true, treat as failure regardless of content
     // If isError is not present, check content's success field
