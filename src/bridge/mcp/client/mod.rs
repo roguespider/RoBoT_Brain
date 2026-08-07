@@ -1,5 +1,4 @@
-// src/bridge/mcp/client.rs
-
+// src/bridge/mcp/client/mod.rs
 //! MCP Client for connecting to external MCP servers
 //!
 //! This module provides the client-side implementation for connecting to
@@ -16,77 +15,25 @@
 //! let result = client.call_tool("my_tool", Some(json!({"arg": "value"}))).await?;
 //! ```
 
+pub mod connection;
+pub mod error;
+pub mod handler;
+
+pub use error::ToolError;
+
 use std::sync::Arc;
 
 use anyhow::Result;
 use rmcp::{
     model::{CallToolRequestParams, ClientCapabilities, ClientInfo, Implementation, Tool},
-    service::{Peer, RoleClient, RunningService},
+    service::{RoleClient, RunningService},
     ClientHandler,
 };
 use tokio::process::Command;
 use tokio::sync::RwLock;
 
-/// A connected MCP server
-struct ConnectedServer {
-    name: String,
-    /// The running service - kept alive to maintain the connection
-    running: RunningService<RoleClient, SimpleClientHandler>,
-    /// Cached tools from this server
-    tools: Vec<Tool>,
-}
-
-impl ConnectedServer {
-    /// Get peer for making requests
-    fn peer(&self) -> Peer<RoleClient> {
-        self.running.peer().clone()
-    }
-}
-
-/// Tool invocation error
-#[derive(Debug, Clone)]
-pub struct ToolError {
-    pub message: String,
-    pub server: String,
-    pub tool: String,
-}
-
-impl ToolError {
-    /// Create a new tool error
-    pub fn new(server: &str, tool: &str, message: &str) -> Self {
-        Self {
-            message: message.to_string(),
-            server: server.to_string(),
-            tool: tool.to_string(),
-        }
-    }
-
-    /// Create an error for tool not found
-    pub fn not_found(tool: &str) -> Self {
-        Self {
-            message: format!("Tool '{}' not found on any connected server", tool),
-            server: "unknown".to_string(),
-            tool: tool.to_string(),
-        }
-    }
-
-    /// Create an error for connection failure
-    pub fn connection_failed(server: &str, error: &str) -> Self {
-        Self {
-            message: format!("Failed to connect to server '{}': {}", server, error),
-            server: server.to_string(),
-            tool: String::new(),
-        }
-    }
-}
-
-impl std::fmt::Display for ToolError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "[{}] {}: {}", self.server, self.tool, self.message)
-    }
-}
-
-impl std::error::Error for ToolError {}
+use connection::ConnectedServer;
+use handler::SimpleClientHandler;
 
 /// MCP Client for connecting to external MCP servers
 pub struct McpClient {
@@ -129,12 +76,10 @@ impl McpClient {
         let transport = TokioChildProcess::new(cmd)?;
 
         // Create client handler
-        let client = SimpleClientHandler {
-            info: ClientInfo::new(
-                ClientCapabilities::default(),
-                Implementation::new("robot_brain", env!("CARGO_PKG_VERSION")),
-            ),
-        };
+        let client = SimpleClientHandler::new(ClientInfo::new(
+            ClientCapabilities::default(),
+            Implementation::new("robot_brain", env!("CARGO_PKG_VERSION")),
+        ));
 
         // Start the client and get the running service
         let running = rmcp::serve_client(client, transport).await?;
@@ -157,11 +102,7 @@ impl McpClient {
         let tools_count = tools.len();
 
         // Store the server connection
-        let server = ConnectedServer {
-            name: name.to_string(),
-            running,
-            tools,
-        };
+        let server = ConnectedServer::new(name.to_string(), running, tools);
 
         self.servers.write().await.push(server);
 
@@ -176,7 +117,7 @@ impl McpClient {
     /// Disconnect from a server by name
     pub async fn disconnect(&self, name: &str) -> Result<bool> {
         let mut servers = self.servers.write().await;
-        if let Some(pos) = servers.iter().position(|s| s.name == name) {
+        if let Some(pos) = servers.iter().position(|s| s.name() == name) {
             servers.remove(pos);
             tracing::info!("Disconnected from MCP server '{}'", name);
             Ok(true)
@@ -196,7 +137,7 @@ impl McpClient {
 
     /// List all servers
     pub async fn list_servers(&self) -> Vec<String> {
-        self.servers.read().await.iter().map(|s| s.name.clone()).collect()
+        self.servers.read().await.iter().map(|s| s.name().to_string()).collect()
     }
 
     /// List tools from all connected servers
@@ -204,7 +145,7 @@ impl McpClient {
         let servers = self.servers.read().await;
         let mut tools = Vec::new();
         for server in servers.iter() {
-            tools.extend(server.tools.clone());
+            tools.extend(server.tools().to_vec());
         }
         tools
     }
@@ -213,7 +154,7 @@ impl McpClient {
     pub async fn get_tool(&self, name: &str) -> Option<Tool> {
         let servers = self.servers.read().await;
         for server in servers.iter() {
-            if let Some(tool) = server.tools.iter().find(|t| t.name == name) {
+            if let Some(tool) = server.tools().iter().find(|t| t.name == name) {
                 return Some(tool.clone());
             }
         }
@@ -224,8 +165,8 @@ impl McpClient {
     pub async fn get_tool_server(&self, tool_name: &str) -> Option<String> {
         let servers = self.servers.read().await;
         for server in servers.iter() {
-            if server.tools.iter().any(|t| t.name == tool_name) {
-                return Some(server.name.clone());
+            if server.tools().iter().any(|t| t.name == tool_name) {
+                return Some(server.name().to_string());
             }
         }
         None
@@ -234,12 +175,13 @@ impl McpClient {
     /// Refresh tools from a specific server
     pub async fn refresh_tools(&self, server_name: &str) -> Result<Vec<Tool>> {
         let mut servers = self.servers.write().await;
-        if let Some(server) = servers.iter_mut().find(|s| s.name == server_name) {
-            let peer = server.running.peer().clone();
+        if let Some(server) = servers.iter_mut().find(|s| s.name() == server_name) {
+            let peer = server.peer();
             let tools = peer.list_all_tools().await?;
-            server.tools = tools.clone();
-            tracing::info!("Refreshed {} tools from server '{}'", tools.len(), server_name);
-            Ok(tools)
+            let tools_clone = tools.clone();
+            server.update_tools(tools);
+            tracing::info!("Refreshed {} tools from server '{}'", tools_clone.len(), server_name);
+            Ok(tools_clone)
         } else {
             Err(anyhow::anyhow!("Server '{}' not found", server_name))
         }
@@ -256,9 +198,9 @@ impl McpClient {
             let servers = self.servers.read().await;
             let found = servers
                 .iter()
-                .find(|s| s.tools.iter().any(|t| t.name == tool_name))
+                .find(|s| s.tools().iter().any(|t| t.name == tool_name))
                 .ok_or_else(|| ToolError::not_found(tool_name))?;
-            (found.name.clone(), found.running.peer().clone())
+            (found.name().to_string(), found.peer())
         };
 
         // Call the tool via the server's peer
@@ -292,17 +234,6 @@ impl McpClient {
 impl Default for McpClient {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-/// A simple MCP client handler
-struct SimpleClientHandler {
-    info: ClientInfo,
-}
-
-impl ClientHandler for SimpleClientHandler {
-    fn get_info(&self) -> ClientInfo {
-        self.info.clone()
     }
 }
 
