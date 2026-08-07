@@ -670,6 +670,34 @@ impl TestMcpClient {
     pub fn pid(&self) -> Option<u32> {
         self.child.id()
     }
+
+    /// List all available tools (MCP protocol: tools/list)
+    pub async fn list_tools(&mut self) -> anyhow::Result<Vec<serde_json::Value>> {
+        self.send_request("tools/list", serde_json::json!({}))
+            .await?;
+
+        let response = self
+            .read_response_line(10)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("No response from server"))?;
+
+        let json: serde_json::Value = serde_json::from_str(&response)?;
+
+        if let Some(error) = json.get("error") {
+            return Err(anyhow::anyhow!("Tool error: {:?}", error));
+        }
+
+        let result = json.get("result")
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("No result in response"))?;
+
+        let tools = result.get("tools")
+            .and_then(|t| t.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        Ok(tools)
+    }
 }
 
 #[tokio::main]

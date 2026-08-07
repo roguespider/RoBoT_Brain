@@ -2585,6 +2585,7 @@ dependencies = [
  "serde_json",
  "tar",
  "tokio",
+ "tracing",
  "zip 2.4.2",
 ]
 
