@@ -8,8 +8,6 @@
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
 
-use crate::bridge::mcp::McpContext;
-
 /// Standard output type for MCP tool executions
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct ToolOutput {
@@ -78,35 +76,8 @@ impl ToolRegistry {
     }
 }
 
-/// Register all MCP tools with the given context
-pub fn register_tools(context: &Arc<McpContext>) {
-    // Access context fields to ensure they're properly initialized
-    // These are used by various tools
-    let _bus = &context.bus;          // Event bus for pub/sub
-    let _evolution = &context.evolution;     // Evolution engine
-    let _scheduler = &context.scheduler;     // Background scheduler
-    let _metrics = &context.metrics;       // Metrics collector
-    let _policy = &context.policy;        // Policy engine
-    let _working_memory = &context.working_memory; // Working memory
-    let _permanent_memory = &context.permanent_memory; // Permanent memory
-    let _memory_retrieval = &context.memory_retrieval; // Memory retrieval
-    let _server_info = &context.server_info;   // Server info
-    let _capabilities = &context.capabilities;  // Server capabilities
-    let _skills = &context.skills; // Skills registry
-    
-    // Use the context fields to avoid compiler warnings
-    let _ = (_bus as &dyn std::any::Any,
-             _evolution as &dyn std::any::Any,
-             _scheduler as &dyn std::any::Any,
-             _metrics as &dyn std::any::Any,
-             _policy as &dyn std::any::Any,
-             _working_memory as &dyn std::any::Any,
-             _permanent_memory as &dyn std::any::Any,
-             _memory_retrieval as &dyn std::any::Any,
-             _server_info as &dyn std::any::Any,
-             _capabilities as &dyn std::any::Any,
-             _skills as &dyn std::any::Any);
-
+/// Register all MCP tools
+pub fn register_tools() {
     // Get or create the registry
     let registry = TOOL_REGISTRY.get_or_init(|| Arc::new(Mutex::new(ToolRegistry::new())));
 

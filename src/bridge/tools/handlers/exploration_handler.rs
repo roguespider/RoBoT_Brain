@@ -2,7 +2,7 @@
 // Exploration tools handler - handles exploration tools
 
 use crate::bridge::tools::exploration;
-use crate::bridge::tools::handlers::{HandlerInitError, HandlerInitResult, ToolHandler};
+use crate::bridge::tools::handlers::{HandlerInitResult, ToolHandler};
 use crate::workflows::enforcement::WorkflowEnforcer;
 use std::sync::Arc;
 use crate::bridge::mcp::McpContext;

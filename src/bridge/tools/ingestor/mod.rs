@@ -15,11 +15,12 @@ pub mod semantic_chunker;
 pub mod text_extractor;
 pub mod workflow;
 
-// Re-export types from core
+// Re-export types from core (TranscribeAudioInput only when audio feature is enabled)
 pub use core::{
     IngestFilesInput, ListImportableInput, ListIngestedFilesInput, DeleteIngestedFilesInput,
-    TranscribeAudioInput,
 };
+#[cfg(feature = "audio")]
+pub use core::TranscribeAudioInput;
 
 // Re-export workflow functions (these take single input argument)
 pub use workflow::{

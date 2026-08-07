@@ -269,7 +269,7 @@ impl WhisperTranscriber {
                 .enumerate()
                 .max_by(|(_, u), (_, v)| u.partial_cmp(v).unwrap_or(std::cmp::Ordering::Equal))
                 .map(|(i, _)| i as u32)
-                .unwrap();
+                .unwrap_or(0);
 
             tokens.push(next_token);
 

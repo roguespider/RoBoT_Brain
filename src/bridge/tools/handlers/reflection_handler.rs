@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::reflection;
-use crate::bridge::tools::handlers::{HandlerInitError, HandlerInitResult, ToolHandler};
+use crate::bridge::tools::handlers::{HandlerInitResult, ToolHandler};
 use crate::workflows::enforcement::WorkflowEnforcer;
 
 /// Handler for reflection-related tools

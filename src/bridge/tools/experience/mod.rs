@@ -241,10 +241,9 @@ pub async fn execute_record_experience(
 
 /// Execute get experience stats tool
 pub async fn execute_get_experience_stats(
-    input: GetExperienceStatsInput,
+    _input: GetExperienceStatsInput,
     database: &Arc<SqliteDatabase>,
 ) -> Result<ToolOutput> {
-    let _ = input; // Currently no parameters needed
     let conn = database.connection()?;
     let memories = queries::search_memory(&conn, "Experience:", 1000)?;
 

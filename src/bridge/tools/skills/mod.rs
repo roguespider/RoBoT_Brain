@@ -530,7 +530,8 @@ pub async fn execute_execute_skill(
         .await
         .map_err(|e| anyhow::anyhow!("{}", e))?;
 
-    let updated_skill = context.skills.get(&input.skill_id).await.unwrap();
+    let updated_skill = context.skills.get(&input.skill_id).await
+        .ok_or_else(|| anyhow::anyhow!("Skill {} not found after execution", input.skill_id))?;
 
     Ok(ToolOutput::success(serde_json::json!({
         "result": result,
@@ -542,11 +543,9 @@ pub async fn execute_execute_skill(
 
 /// Execute get_skill_stats tool
 pub async fn execute_get_skill_stats(
-    input: GetSkillStatsInput,
+    _input: GetSkillStatsInput,
     context: &McpContext,
 ) -> Result<ToolOutput> {
-    let _ = input; // Currently no parameters needed
-
     let stats = context.skills.get_discovery_stats().await;
     let mastered = context.skills.get_mastered_skills(0.0).await;
     let most_successful = context

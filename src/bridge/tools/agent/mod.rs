@@ -8,11 +8,5 @@ pub mod inputs;
 pub mod mcp_tools;
 pub mod workflows;
 
-// Re-export for backwards compatibility
-pub use inputs::{
-    CallMcpToolInput, ConnectMcpServerInput, GetToolInput, GetWorkflowInput, ListToolsInput,
-};
-pub use mcp_tools::{
-    execute_call_mcp_tool, execute_connect_mcp_server, execute_get_tool, init_mcp_client,
-};
-pub use workflows::{execute_get_workflow, execute_list_tools};
+// Re-export only what's actually needed externally
+pub use mcp_tools::init_mcp_client;

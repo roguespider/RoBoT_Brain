@@ -324,10 +324,9 @@ pub async fn execute_record_knowledge_application(
 
 /// Execute get knowledge stats tool
 pub async fn execute_get_knowledge_stats(
-    input: GetKnowledgeStatsInput,
+    _input: GetKnowledgeStatsInput,
     knowledge: &Arc<KnowledgeStore>,
 ) -> ToolOutput {
-    let _ = input; // Currently no parameters needed
     let stats = knowledge.stats().await;
 
     ToolOutput::success(serde_json::json!({

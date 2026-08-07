@@ -282,7 +282,9 @@ fn split_sentences(text: &str) -> Vec<String> {
                 Some(' ') | Some('\n') | Some('\t') => {
                     // Likely end of sentence - skip whitespace
                     while let Some(&' ') = chars.peek() {
-                        current.push(chars.next().unwrap());
+                        if let Some(ch) = chars.next() {
+                            current.push(ch);
+                        }
                     }
                     sentences.push(current.trim().to_string());
                     current = String::new();

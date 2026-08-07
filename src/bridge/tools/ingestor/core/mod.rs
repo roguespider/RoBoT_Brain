@@ -7,8 +7,9 @@ pub mod ingestion;
 pub mod tracker;
 pub mod types;
 
-// Re-exports for types (transitive - used by ingestor/mod.rs)
+// Re-exports for types (TranscribeAudioInput only when audio feature is enabled)
 pub use types::{
     DeleteIngestedFilesInput, IngestFilesInput, ListImportableInput, ListIngestedFilesInput,
-    TranscribeAudioInput,
 };
+#[cfg(feature = "audio")]
+pub use types::TranscribeAudioInput;

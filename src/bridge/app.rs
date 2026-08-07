@@ -296,7 +296,7 @@ impl App {
         ));
 
         // Register MCP tools
-        tools::register_tools(&mcp_context);
+        tools::register_tools();
 
         // Create MCP client for external connections and initialize globally
         crate::bridge::tools::agent::init_mcp_client(Arc::new(McpClient::new()));

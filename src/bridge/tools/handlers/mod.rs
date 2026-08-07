@@ -8,9 +8,11 @@
 // - Graceful degradation: if a handler fails to init, log warning but continue
 //
 // Load order:
-// 1. MCP core loads first (server_handler_impl.rs)
+// 1. MCP core loads first (ServerHandler impl in rmcp/mod.rs)
 // 2. Each tool handler loads independently
 // 3. No single tool can cause MCP or any other tool to fail
+
+use std::sync::Arc;
 
 pub mod agent_handler;
 pub mod experience_handler;
@@ -24,10 +26,6 @@ pub mod reflection_handler;
 pub mod search_handler;
 pub mod skills_handler;
 pub mod workflow_handler;
-
-use rmcp::handler::server::ServerHandler;
-use rmcp::model::ServerInfo;
-use std::sync::Arc;
 
 /// Result of attempting to initialize a tool handler
 pub type HandlerInitResult<T> = Result<T, HandlerInitError>;

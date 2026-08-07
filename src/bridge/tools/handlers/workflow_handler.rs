@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::workflow;
-use crate::bridge::tools::handlers::{HandlerInitError, HandlerInitResult, ToolHandler};
+use crate::bridge::tools::handlers::{HandlerInitResult, ToolHandler};
 
 /// Handler for workflow-related tools
 #[derive(Clone)]
