@@ -13,13 +13,11 @@ use crate::bridge::rmcp::types::McpServerHandler;
 /// Create a new RMCP server with stdio transport
 pub async fn run_stdio_server(name: &str, version: &str, context: Arc<McpContext>) -> Result<()> {
     // Initialize stderr logging via tracing-subscriber (replaces deprecated MCP logging)
-    tracing_subscriber::fmt()
-        .with_env_filter(
-            tracing_subscriber::EnvFilter::try_from_default_env()
-                .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info")),
-        )
-        .try_init() // Use try_init to avoid panic if logging.rs already set one
-        .ok(); // Silently ignore if subscriber is already configured
+    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
+    let subscriber = tracing_subscriber::fmt()
+        .with_env_filter(env_filter);
+    let _ = subscriber.try_init(); // Use try_init to avoid panic if logging.rs already set one
 
     eprintln!("[RoBoT] Starting MCP server '{}' v{}", name, version);
     eprintln!("[RoBoT] MCP Protocol: 2025-03-26");
@@ -32,6 +30,22 @@ pub async fn run_stdio_server(name: &str, version: &str, context: Arc<McpContext
 
     let mut handler = McpServerHandler::new(context, name.to_string(), version.to_string());
     handler.session_id = handler.new_session();
+
+    // Initialize all tool handlers with graceful degradation
+    handler.initialize_handlers();
+
+    let total_tools = handler.total_tools();
+    let healthy = handler.is_healthy();
+    
+    eprintln!("[RoBoT] Tool handlers initialized: {} tools available, healthy: {}", total_tools, healthy);
+    tracing::info!("Tool handlers initialized: {} tools available, healthy: {}", total_tools, healthy);
+
+    // Log any handler initialization errors
+    if !handler.handler_errors.is_empty() {
+        for err in &handler.handler_errors {
+            tracing::warn!("Handler init error [{}]: {}", err.category, err.message);
+        }
+    }
 
     let (stdin, stdout) = (tokio::io::stdin(), tokio::io::stdout());
 

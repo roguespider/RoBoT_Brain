@@ -6,6 +6,7 @@ pub mod logging;
 pub mod mcp;
 pub mod rmcp;
 pub mod acp;
+pub mod tools;
 
 #[cfg(target_os = "windows")]
 pub mod windows_console;

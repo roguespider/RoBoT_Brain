@@ -505,15 +505,15 @@ impl KnowledgeVersionInfo {
 
     /// Bump version number
     pub fn bump_major(&mut self) {
-        if let Some((major, minor, patch)) = KnowledgeVersion::parse(&self.current_version) {
-            let new_ver = format!("{}.{}.{}", major + 1, 0, 0);
+        if let Some((major, _, _)) = KnowledgeVersion::parse(&self.current_version) {
+            let new_ver = format!("{}.0.0", major + 1);
             self.create_version(&new_ver, "Major version bump", 0.5);
         }
     }
 
     pub fn bump_minor(&mut self) {
-        if let Some((major, minor, _patch)) = KnowledgeVersion::parse(&self.current_version) {
-            let new_ver = format!("{}.{}.{}", major, minor + 1, 0);
+        if let Some((major, minor, _)) = KnowledgeVersion::parse(&self.current_version) {
+            let new_ver = format!("{}.{}.0", major, minor + 1);
             self.create_version(&new_ver, "Minor version bump", 0.5);
         }
     }

@@ -60,6 +60,7 @@ pub struct TestReport {
     pub lint_warnings: usize,
     pub lint_issues: Vec<LintIssue>,
     pub source_path: Option<PathBuf>,
+    pub mcp_protocol_ok: bool,
 }
 
 impl TestReport {
@@ -81,6 +82,11 @@ impl TestReport {
     /// Set source path for relative path display
     pub fn set_source_path(&mut self, path: PathBuf) {
         self.source_path = Some(path);
+    }
+    
+    /// Set MCP protocol status
+    pub fn set_mcp_protocol_ok(&mut self, ok: bool) {
+        self.mcp_protocol_ok = ok;
     }
 
     /// Set lint issues (compiler errors and warnings)

@@ -10,6 +10,7 @@ pub struct McpWorkflowTestResults {
     pub workflow_tools: WorkflowToolsResults,
     pub agent_workflow_integration: AgentWorkflowIntegrationResults,
     pub end_to_end_scenarios: EndToEndScenarioResults,
+    pub mcp_protocol_valid: bool,
 }
 
 pub struct WorkflowDiscoveryResults {

@@ -6,6 +6,7 @@
 
 pub mod client;
 pub mod context;
+pub mod handlers;  // HOW tools respond to MCP protocol
 pub mod types;
 
 // Re-export commonly used types

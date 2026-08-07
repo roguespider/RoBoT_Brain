@@ -29,6 +29,22 @@ pub async fn run_comprehensive_tests(
     crate::teeprintln!("#  Testing every function 100% end-to-end without stubs or #[allow(*)]");
     crate::teeprintln!("{}", "#".repeat(100));
 
+    // Step 0: Test MCP Protocol basics first
+    crate::teeprintln!("\n📊 PHASE 0: MCP PROTOCOL VALIDATION");
+    crate::teeprintln!("{}", "─".repeat(100));
+    
+    let mcp_ok = test_mcp_basics(client, stats).await;
+    report.set_mcp_protocol_ok(mcp_ok);
+    
+    if !mcp_ok {
+        crate::teeprintln!("\n⚠️  MCP Protocol Issue Detected!");
+        crate::teeprintln!("    The MCP server must implement ServerHandler trait methods:");
+        crate::teeprintln!("    - list_tools() - Returns ListToolsResult with available tools");
+        crate::teeprintln!("    - call_tool() - Executes tools and returns CallToolResult");
+        crate::teeprintln!("    - get_tool() - Returns Tool definition for a given name");
+        crate::teeprintln!("\n    Tests will continue but most will fail until MCP protocol is fixed.");
+    }
+
     // Step 1: Analyze source code for issues
     crate::teeprintln!("\n📊 PHASE 1: SOURCE CODE ANALYSIS");
     crate::teeprintln!("{}", "─".repeat(100));
@@ -303,20 +319,20 @@ async fn run_single_test(
                 validation_results,
             }
         }
-        Err(e) => {
-            // Check if the validation expects an error
-            let expects_error = requirement.validation.iter().any(|v| {
-                v.check_type == CheckType::IsSuccess && v.expected_value.as_deref() == Some("false")
-            });
+        Err(_e) => {
+            // MCP error occurred - ALL validations should fail
+            // (even if they expect success=false, we want to know MCP is broken)
+            let all_passed = validation_results.iter().all(|v| v.passed);
 
             TestResult {
                 requirement: requirement.clone(),
-                status: if expects_error {
+                status: if all_passed {
+                    // This shouldn't happen if validation properly checks for errors
                     TestStatus::Pass
                 } else {
                     TestStatus::Error
                 },
-                error_message: Some(e.to_string()),
+                error_message: Some("MCP protocol error - tools/call method not found".to_string()),
                 duration_ms: start.elapsed().as_millis() as u64,
                 validation_results,
             }
@@ -335,4 +351,45 @@ pub fn get_categories(requirements: &[TestRequirement]) -> Vec<String> {
 /// Get category count
 pub fn get_category_count(requirements: &[TestRequirement]) -> usize {
     get_categories(requirements).len()
+}
+
+/// Test basic MCP protocol functionality
+async fn test_mcp_basics(client: &mut TestMcpClient, stats: &mut TestStats) -> bool {
+    let mut all_ok = true;
+    
+    // Test tools/list
+    crate::teeprintln!("  Testing tools/list...");
+    match client.list_tools().await {
+        Ok(tools) => {
+            crate::teeprintln!("    ✓ tools/list - SUCCESS ({} tools)", tools.len());
+            stats.passed += 1;
+        }
+        Err(e) => {
+            crate::teeprintln!("    ✗ tools/list - FAILED: {}", e);
+            stats.failed += 1;
+            all_ok = false;
+        }
+    }
+    
+    // Test tools/call (this will likely fail)
+    crate::teeprintln!("  Testing tools/call...");
+    match client.call_tool("get_workflow", serde_json::json!({"purpose": "test"})).await {
+        Ok(_) => {
+            crate::teeprintln!("    ✓ tools/call - SUCCESS");
+            stats.passed += 1;
+        }
+        Err(e) => {
+            let error_str = e.to_string();
+            if error_str.contains("method_not_found") || error_str.contains("-32601") {
+                crate::teeprintln!("    ✗ tools/call - NOT IMPLEMENTED");
+                crate::teeprintln!("    ℹ  Server returns method_not_found for tools/call");
+            } else {
+                crate::teeprintln!("    ✗ tools/call - ERROR: {}", e);
+            }
+            stats.failed += 1;
+            all_ok = false;
+        }
+    }
+    
+    all_ok
 }

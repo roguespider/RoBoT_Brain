@@ -24,7 +24,7 @@ impl WorkflowEngine {
             return Ok(());
         };
 
-        let mut step_results: HashMap<String, crate::tools::ToolOutput> = HashMap::new();
+        let mut step_results: HashMap<String, crate::bridge::tools::ToolOutput> = HashMap::new();
 
         for step in &steps {
             tracing::info!(

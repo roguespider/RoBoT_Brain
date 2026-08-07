@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 
 use crate::experience::types::OutcomeKind;
-use crate::tools::ToolOutput;
+use crate::bridge::tools::ToolOutput;
 use crate::workflows::engine::types::WorkflowEngine;
 use crate::workflows::engine::SKIP_MEMORY_READ;
 
@@ -24,8 +24,34 @@ impl WorkflowEngine {
         action: &str,
         params: &HashMap<String, String>,
     ) -> Option<ToolOutput> {
-        // Workflow engine doesn't have memory_retrieval, so skip memory read
-        // This is a limitation - workflow execution won't have context from working memory
+        // Check if coordinator is available for memory retrieval
+        if self.coordinator.is_none() {
+            tracing::trace!(
+                "[Memory] No coordinator available for action '{}', skipping memory read",
+                action
+            );
+            return None;
+        }
+
+        // Extract any memory ID from params that might indicate what to read
+        let memory_hint = params.get("memory_id").or_else(|| params.get("memory_context"));
+        
+        if let Some(hint) = memory_hint {
+            tracing::debug!(
+                "[Memory] Would read memory hint '{}' before action '{}'",
+                hint,
+                action
+            );
+            // Memory retrieval integration pending - coordinator not fully connected to memory system
+        }
+
+        // Log the action context for debugging
+        tracing::trace!(
+            "[Memory] Checking memory context for action '{}' with {} parameters",
+            action,
+            params.len()
+        );
+
         None
     }
 
@@ -71,7 +97,7 @@ impl WorkflowEngine {
             outcome_kind
         );
 
-        let input = crate::tools::experience::RecordExperienceInput {
+        let input = crate::bridge::tools::experience::RecordExperienceInput {
             title,
             description,
             experience_type: map_action_to_experience_type(action),
@@ -80,7 +106,7 @@ impl WorkflowEngine {
         };
 
         // Use the shared coordinator - events will flow to WorkerManager and EventSubscriber
-        match crate::tools::experience::execute_record_experience(input, coordinator, db).await {
+        match crate::bridge::tools::experience::execute_record_experience(input, coordinator, db).await {
             Ok(_) => {
                 tracing::debug!(
                     "[Experience] Recorded for future reflection/curation: action='{}'",

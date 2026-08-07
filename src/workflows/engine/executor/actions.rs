@@ -7,7 +7,7 @@ use anyhow::Result;
 use serde_json::json;
 
 use crate::experience::types::OutcomeKind;
-use crate::tools::{self, ToolOutput};
+use crate::bridge::tools::{self, ToolOutput};
 use crate::workflows::engine::types::WorkflowEngine;
 
 impl WorkflowEngine {

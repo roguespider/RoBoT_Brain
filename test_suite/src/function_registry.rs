@@ -240,11 +240,10 @@ impl FunctionRegistry {
                 category: "Memory".to_string(),
                 requires_workflow: true,
                 requires_data: None,
-                expected_behavior: "Stores a basic memory item (requires search_memory first)".to_string(),
+                expected_behavior: "Stores a basic memory item".to_string(),
                 validation: vec![
-                    // This test requires search_memory to be called first (precondition)
-                    // The tool returns MEMORY_NOT_SEARCHED error
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: Some("false".to_string()) },
+                    // Tool should return success=true when memory is stored
+                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: Some("true".to_string()) },
                 ],
                 priority: 1,
             },
@@ -254,10 +253,10 @@ impl FunctionRegistry {
                 category: "Memory".to_string(),
                 requires_workflow: true,
                 requires_data: None,
-                expected_behavior: "Stores memory with confidence and importance scores (requires search_memory first)".to_string(),
+                expected_behavior: "Stores memory with confidence and importance scores".to_string(),
                 validation: vec![
-                    // This test requires search_memory to be called first (precondition)
-                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: Some("false".to_string()) },
+                    // Tool should return success=true when memory is stored
+                    ValidationCheck { check_type: CheckType::IsSuccess, field: "success".to_string(), expected_value: Some("true".to_string()) },
                 ],
                 priority: 1,
             },

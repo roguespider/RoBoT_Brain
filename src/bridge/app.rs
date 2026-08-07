@@ -31,7 +31,7 @@ use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory as MemWorkin
 use crate::personality::{Personality, PersonalityTraits};
 use crate::planner::{Planner, PolicyEngine};
 use crate::skills::registry::SkillRegistry;
-use crate::tools;
+use crate::bridge::tools;
 use crate::workflows::engine::WorkflowEngine;
 
 /// Root application container.
@@ -296,10 +296,10 @@ impl App {
         ));
 
         // Register MCP tools
-        tools::register_tools(&mcp_context);
+        tools::register_tools();
 
         // Create MCP client for external connections and initialize globally
-        crate::tools::agent::init_mcp_client(Arc::new(McpClient::new()));
+        crate::bridge::tools::agent::init_mcp_client(Arc::new(McpClient::new()));
 
         tracing::info!("RoBoT initialized successfully");
 
@@ -731,7 +731,7 @@ impl App {
     /// Apply a personality preset (balanced, analytical, creative, cautious, bold)
     pub fn apply_personality_preset(&self, preset: &str) -> bool {
         match self.personality.lock() {
-            Ok(guard) => guard.apply_preset(preset),
+            Ok(mut guard) => guard.apply_preset(preset),
             Err(poisoned) => {
                 tracing::error!("Personality mutex poisoned during apply_preset, recovering");
                 poisoned.into_inner().apply_preset(preset)

@@ -33,6 +33,11 @@ pub fn validate_result(result: &serde_json::Value, check: &ValidationCheck) -> V
 
 /// Check if result has a field (supports dot notation for nested fields)
 pub fn has_field(result: &serde_json::Value, field: &str) -> bool {
+    // If there's an error, the test should fail
+    if result.get("error").is_some() || result.get("isError").and_then(|e| e.as_bool()).unwrap_or(false) {
+        return false;
+    }
+
     // Support dot notation for nested fields (e.g., "skill.name")
     if field.contains('.') {
         return has_nested_field(result, field);
@@ -94,6 +99,11 @@ pub fn has_nested_field(result: &serde_json::Value, path: &str) -> bool {
 
 /// Check if field is non-empty
 pub fn is_non_empty(result: &serde_json::Value, field: &str) -> bool {
+    // If there's an error, the test should fail
+    if result.get("error").is_some() || result.get("isError").and_then(|e| e.as_bool()).unwrap_or(false) {
+        return false;
+    }
+
     if let Some(value) = result.get(field) {
         return !value.is_null() && !is_json_value_empty(value);
     }
@@ -121,11 +131,20 @@ pub fn is_json_value_empty(value: &serde_json::Value) -> bool {
 
 /// Check if success field has expected value
 pub fn is_success(result: &serde_json::Value, _field: &str, expected: Option<&str>) -> bool {
+    // Check for error field (indicates MCP error occurred)
+    let has_error_field = result.get("error").is_some();
+    
     // Check for isError field (MCP response format)
     let is_error = result
         .get("isError")
         .and_then(|e| e.as_bool())
         .unwrap_or(false);
+
+    // If there's an MCP error, ALWAYS fail the test
+    // (even if validation expects failure - we want to know the MCP protocol is broken)
+    if has_error_field || is_error {
+        return false;
+    }
 
     // Also check for success field in the JSON content (ToolOutput format)
     let content_success = result.get("success").and_then(|s| s.as_bool());
@@ -142,6 +161,7 @@ pub fn is_success(result: &serde_json::Value, _field: &str, expected: Option<&st
         (Some(s), Some("false")) => !s,
         (Some(s), Some("true")) | (Some(s), None) => s,
         (None, Some("false")) => true, // If not present, treat as expected failure
+        (None, Some("true")) => false, // Missing success field with "true" expected = fail
         _ => false,
     }
 }

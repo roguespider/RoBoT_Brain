@@ -883,7 +883,7 @@ impl SkillExecutor {
             Ok(metrics) => {
                 metrics.iter()
                     .filter(|(_, m)| m.is_unreliable())
-                    .map(|(id, m)| id.clone())
+                    .map(|(id, _)| id.clone())
                     .collect()
             }
             Err(poisoned) => {
@@ -891,7 +891,7 @@ impl SkillExecutor {
                 let metrics = poisoned.into_inner();
                 metrics.iter()
                     .filter(|(_, m)| m.is_unreliable())
-                    .map(|(id, m)| id.clone())
+                    .map(|(id, _)| id.clone())
                     .collect()
             }
         }
