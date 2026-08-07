@@ -1,0 +1,88 @@
+//! Type definitions for code analysis
+
+use std::path::{Path, PathBuf};
+
+/// Represents a code issue found during analysis
+#[derive(Debug, Clone)]
+pub struct CodeIssue {
+    pub file_path: PathBuf,
+    pub line_number: usize,
+    pub issue_type: IssueType,
+    pub description: String,
+}
+
+impl CodeIssue {
+    /// Get the relative path from the source directory (e.g., "tools/memory/mod.rs")
+    pub fn relative_path(&self, base_path: &Path) -> String {
+        if let Ok(stripped) = self.file_path.strip_prefix(base_path) {
+            stripped.to_string_lossy().to_string()
+        } else {
+            self.file_path.to_string_lossy().to_string()
+        }
+    }
+}
+
+/// Types of issues that can be detected
+#[derive(Debug, Clone, PartialEq)]
+pub enum IssueType {
+    AllowAnnotation,
+    DeadCodeAllow,
+    Unimplemented,
+    Todo,
+    Panic,
+    EarlyReturnStub,
+    UnderscorePrefix,
+    UnusedImport,
+    PublicNeverCalled,
+    AlwaysErr,
+    PlaceholderReturn,
+}
+
+impl std::fmt::Display for IssueType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            IssueType::AllowAnnotation => write!(f, "#[allow(*)]"),
+            IssueType::DeadCodeAllow => write!(f, "#[allow(dead_code)]"),
+            IssueType::Unimplemented => write!(f, "unimplemented!()"),
+            IssueType::Todo => write!(f, "todo!()"),
+            IssueType::Panic => write!(f, "panic!()"),
+            IssueType::EarlyReturnStub => write!(f, "Early Return Stub"),
+            IssueType::UnderscorePrefix => write!(f, "_prefix"),
+            IssueType::UnusedImport => write!(f, "Unused Import"),
+            IssueType::PublicNeverCalled => write!(f, "Public Never Called"),
+            IssueType::AlwaysErr => write!(f, "Always Returns Err"),
+            IssueType::PlaceholderReturn => write!(f, "Placeholder Return"),
+        }
+    }
+}
+
+/// Issue found by linter (clippy/cargo check)
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LintIssue {
+    pub file_path: String,
+    pub line_number: usize,
+    pub column: usize,
+    pub level: LintLevel,
+    pub code: String,
+    pub message: String,
+}
+
+/// Severity level of a lint issue
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub enum LintLevel {
+    Error,
+    Warning,
+    Help,
+    Note,
+}
+
+impl std::fmt::Display for LintLevel {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            LintLevel::Error => write!(f, "error"),
+            LintLevel::Warning => write!(f, "warning"),
+            LintLevel::Help => write!(f, "help"),
+            LintLevel::Note => write!(f, "note"),
+        }
+    }
+}
