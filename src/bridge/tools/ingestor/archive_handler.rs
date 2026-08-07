@@ -52,7 +52,9 @@ pub fn delete_empty_folders(dir: &Path) {
     // Then check if this directory is empty and delete it
     if let Ok(mut entries) = fs::read_dir(dir) {
         if entries.next().is_none() {
-            let _ = fs::remove_dir(dir);
+            if let Err(e) = fs::remove_dir(dir) {
+                tracing::debug!("Failed to remove empty directory {}: {}", dir.display(), e);
+            }
         }
     }
 }

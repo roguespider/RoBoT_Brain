@@ -145,7 +145,7 @@ pub fn execute_resume_exploration(input: GetExplorationStatusInput) -> ToolOutpu
             match store.get_mut(&exploration_id) {
                 Some(exp) => {
                     if exp.status != ExplorationStatus::Paused {
-                        let _ = exp.pause();
+                        exp.pause();
                     }
                     exp.start();
                     ToolOutput::success(serde_json::json!({
@@ -169,7 +169,7 @@ pub fn execute_resume_exploration(input: GetExplorationStatusInput) -> ToolOutpu
                     "auto".to_string(),
                     context,
                 );
-                let _ = exp.pause();
+                exp.pause();
                 store.insert(input.exploration_id.clone(), exp);
                 input.exploration_id.clone()
             };
@@ -177,7 +177,7 @@ pub fn execute_resume_exploration(input: GetExplorationStatusInput) -> ToolOutpu
             match store.get_mut(&exploration_id) {
                 Some(exp) => {
                     if exp.status != ExplorationStatus::Paused {
-                        let _ = exp.pause();
+                        exp.pause();
                     }
                     exp.start();
                     ToolOutput::success(serde_json::json!({

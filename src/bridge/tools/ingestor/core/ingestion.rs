@@ -95,7 +95,9 @@ pub async fn ingest_archive(
     if text_files.is_empty() {
         // Clean up the temp directory
         for file_path in all_files {
-            let _ = std::fs::remove_file(&file_path);
+            if let Err(e) = std::fs::remove_file(&file_path) {
+                tracing::debug!("Failed to remove temp file {}: {}", file_path.display(), e);
+            }
         }
         delete_empty_folders(&temp_dir);
 
@@ -124,7 +126,9 @@ pub async fn ingest_archive(
 
     // Delete ALL remaining files in temp directory (including transcribed audio files)
     for file_path in &remaining_files {
-        let _ = std::fs::remove_file(file_path);
+        if let Err(e) = std::fs::remove_file(file_path) {
+            tracing::debug!("Failed to remove temp file {}: {}", file_path.display(), e);
+        }
     }
 
     // Clean up empty subfolders
@@ -329,6 +333,7 @@ pub async fn ingest_json_file(
                 content: raw_content,
                 json_path: "root".to_string(),
                 sibling_context: String::new(),
+                source_field: String::new(),
             }]
         } else {
             return Ok(IngestResult {

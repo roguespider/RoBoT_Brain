@@ -205,8 +205,12 @@ pub async fn execute_record_experience(
 ) -> Result<ToolOutput> {
     // Validate context JSON if provided
     if let Some(ref ctx_str) = input.context {
-        let _: serde_json::Value = serde_json::from_str(ctx_str)
+        let validated_context: serde_json::Value = serde_json::from_str(ctx_str)
             .map_err(|e| anyhow::anyhow!("Invalid JSON in context: {}", e))?;
+        // Validate that context has expected structure
+        if !validated_context.is_object() && !validated_context.is_array() {
+            return Err(anyhow::anyhow!("Context must be a JSON object or array"));
+        }
     }
 
     // Create experience with observation origins (Architecture §07 invariant)

@@ -14,7 +14,9 @@ static MCP_CLIENT: std::sync::OnceLock<Arc<McpClient>> = std::sync::OnceLock::ne
 
 /// Initialize the global MCP client
 pub fn init_mcp_client(client: Arc<McpClient>) {
-    let _ = MCP_CLIENT.set(client);
+    if MCP_CLIENT.set(client).is_err() {
+        tracing::warn!("MCP client was already initialized");
+    }
 }
 
 /// Get the global MCP client

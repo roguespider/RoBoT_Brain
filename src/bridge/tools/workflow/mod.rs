@@ -312,8 +312,10 @@ pub async fn execute_add_workflow_step(
         Ok(None) => {
             // Auto-create workflow for test compatibility
             let description = format!("Auto-created for step: {}", name);
-            let _workflow = engine.create_workflow(&input.workflow_id, description).await;
-            if let Some(step) = engine.add_step(&input.workflow_id, name, action).await.ok().flatten() {
+            // Create workflow and use the returned workflow id
+            let created_workflow = engine.create_workflow(&input.workflow_id, description).await;
+            let workflow_id = created_workflow.id.clone();
+            if let Some(step) = engine.add_step(&workflow_id, name, action).await.ok().flatten() {
                 ToolOutput::success(serde_json::json!({
                     "success": true,
                     "step": {
