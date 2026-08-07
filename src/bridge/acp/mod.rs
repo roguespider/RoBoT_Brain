@@ -1,0 +1,349 @@
+// src/bridge/acp/mod.rs
+//! ACP (Agent Communication Protocol) for inter-agent communication
+//!
+//! Provides a message-based protocol for agents to communicate, request actions,
+//! query information, and coordinate activities.
+//!
+//! # Example
+//!
+//! ```rust
+//! use robot_brain::bridge::acp::{
+//!     AcpRouter, AcpRegistry, AcpMessage, AcpAgentId, AcpMessageType,
+//! };
+//!
+//! // Create router and registry
+//! let registry = Arc::new(AcpRegistry::new());
+//! let router = AcpRouter::new(registry.clone());
+//!
+//! // Route a message
+//! let msg = AcpMessage::new(
+//!     AcpAgentId::new("client", "1"),
+//!     AcpAgentId::new("server", "1"),
+//!     AcpMessageType::Request,
+//!     serde_json::json!({"action": "get_status"}),
+//! );
+//! router.route(msg)?;
+//! ```
+
+pub mod agent;
+pub mod builder;
+pub mod channel;
+pub mod error;
+pub mod message;
+pub mod registry;
+pub mod router;
+
+// Re-export types for convenience
+pub use agent::{AcpAgent, AcpCapability, SimpleAgent};
+pub use builder::AcpMessageBuilder;
+pub use channel::{AcpChannel, InMemoryChannel};
+pub use error::{AcpError, AcpErrorCode};
+pub use message::{AcpAgentId, AcpMessage, AcpMessageType};
+pub use registry::AcpRegistry;
+pub use router::AcpRouter;
+
+// ============================================================================
+// Tests
+// ============================================================================
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_agent_id() {
+        let id = AcpAgentId::new("test", "123");
+        assert_eq!(id.agent_type, "test");
+        assert_eq!(id.instance_id, "123");
+        assert_eq!(id.uri(), "acp://test/123");
+    }
+
+    #[test]
+    fn test_agent_id_broadcast() {
+        let id = AcpAgentId::broadcast("workers");
+        assert!(id.is_broadcast());
+        assert_eq!(id.uri(), "acp://workers/*");
+    }
+
+    #[test]
+    fn test_message_creation() {
+        let msg = AcpMessage::new(
+            AcpAgentId::new("sender", "1"),
+            AcpAgentId::new("receiver", "2"),
+            AcpMessageType::Request,
+            serde_json::json!({"action": "test"}),
+        );
+
+        assert!(!msg.id.is_empty());
+        assert_eq!(msg.conversation_id, None);
+        assert_eq!(msg.reply_to, None);
+        assert_eq!(msg.ttl, 64);
+    }
+
+    #[test]
+    fn test_message_reply() {
+        let original = AcpMessage::new(
+            AcpAgentId::new("sender", "1"),
+            AcpAgentId::new("receiver", "2"),
+            AcpMessageType::Request,
+            serde_json::json!({"action": "test"}),
+        );
+
+        let reply = original.reply(serde_json::json!({"status": "ok"}));
+
+        assert_eq!(reply.sender, original.receiver);
+        assert_eq!(reply.receiver, original.sender);
+        assert_eq!(reply.message_type, AcpMessageType::Response);
+        assert_eq!(reply.reply_to, Some(original.id.clone()));
+        assert_eq!(reply.conversation_id, Some(original.id.clone()));
+    }
+
+    #[test]
+    fn test_message_ttl() {
+        let mut msg = AcpMessage::new(
+            AcpAgentId::new("a", "1"),
+            AcpAgentId::new("b", "1"),
+            AcpMessageType::Inform,
+            serde_json::json!({}),
+        );
+
+        assert!(!msg.is_expired());
+        assert!(msg.decrement_ttl());
+        assert_eq!(msg.ttl, 63);
+
+        // Decrement to 0 - returns false when message becomes expired
+        msg.ttl = 1;
+        assert!(!msg.decrement_ttl()); // Returns false when message expires
+        assert!(msg.is_expired());
+    }
+
+    #[test]
+    fn test_message_type_reply() {
+        assert_eq!(
+            AcpMessageType::Request.reply_type(),
+            AcpMessageType::Response
+        );
+        assert_eq!(AcpMessageType::Query.reply_type(), AcpMessageType::Response);
+        assert_eq!(AcpMessageType::Inform.reply_type(), AcpMessageType::Ack);
+        assert_eq!(AcpMessageType::Error.reply_type(), AcpMessageType::Inform);
+    }
+
+    #[test]
+    fn test_message_type_expects_reply() {
+        assert!(AcpMessageType::Request.expects_reply());
+        assert!(AcpMessageType::Query.expects_reply());
+        assert!(AcpMessageType::Subscribe.expects_reply());
+        assert!(!AcpMessageType::Response.expects_reply());
+        assert!(!AcpMessageType::Ack.expects_reply());
+    }
+
+    #[test]
+    fn test_in_memory_channel() {
+        let channel = InMemoryChannel::new("test_channel");
+
+        let msg = AcpMessage::new(
+            AcpAgentId::new("a", "1"),
+            AcpAgentId::new("b", "1"),
+            AcpMessageType::Request,
+            serde_json::json!({"test": true}),
+        );
+
+        // Use match instead of unwrap
+        match channel.send(msg.clone()) {
+            Ok(()) => {},
+            Err(e) => panic!("send failed: {}", e),
+        }
+
+        let received = match channel.try_recv() {
+            Ok(r) => r,
+            Err(e) => panic!("try_recv failed: {}", e),
+        };
+        assert!(received.is_some());
+        // Use if-let instead of unwrap
+        if let Some(received_msg) = received {
+            assert_eq!(received_msg.payload, msg.payload);
+        } else {
+            panic!("Expected Some message");
+        }
+
+        // Channel should be empty now
+        let empty = match channel.try_recv() {
+            Ok(r) => r,
+            Err(e) => panic!("try_recv failed: {}", e),
+        };
+        assert!(empty.is_none());
+    }
+
+    #[test]
+    fn test_registry() {
+        let registry = AcpRegistry::new();
+
+        let agent = Arc::new(SimpleAgent::new(
+            AcpAgentId::new("test", "1"),
+            "Test agent",
+            vec![AcpCapability::new("test_cap", "Test capability")],
+            |msg| Ok(Some(msg.reply(serde_json::json!({"handled": true})))),
+        ));
+
+        match registry.register(agent.clone()) {
+            Ok(()) => {},
+            Err(e) => panic!("register failed: {}", e),
+        }
+
+        assert_eq!(registry.count(), 1);
+
+        let retrieved = match registry.get(&AcpAgentId::new("test", "1")) {
+            Ok(r) => r,
+            Err(e) => panic!("get failed: {}", e),
+        };
+        assert!(retrieved.is_some());
+
+        let by_type = match registry.get_by_type("test") {
+            Ok(r) => r,
+            Err(e) => panic!("get_by_type failed: {}", e),
+        };
+        assert_eq!(by_type.len(), 1);
+
+        let unreg = match registry.unregister(&AcpAgentId::new("test", "1")) {
+            Ok(r) => r,
+            Err(e) => panic!("unregister failed: {}", e),
+        };
+        assert!(unreg.is_some());
+        assert_eq!(registry.count(), 0);
+    }
+
+    #[test]
+    fn test_router() {
+        let registry = Arc::new(AcpRegistry::new());
+        let router = AcpRouter::new(registry.clone());
+
+        let agent = Arc::new(SimpleAgent::new(
+            AcpAgentId::new("worker", "1"),
+            "Worker agent",
+            vec![],
+            |msg| {
+                let reply = msg.reply(serde_json::json!({"processed": true}));
+                Ok(Some(reply))
+            },
+        ));
+
+        match registry.register(agent) {
+            Ok(()) => {},
+            Err(e) => panic!("register failed: {}", e),
+        }
+
+        let msg = AcpMessage::new(
+            AcpAgentId::new("client", "1"),
+            AcpAgentId::new("worker", "1"),
+            AcpMessageType::Request,
+            serde_json::json!({"task": "do_work"}),
+        );
+
+        let result = router.route(msg);
+        assert!(result.is_ok());
+        let response = match result {
+            Ok(r) => r,
+            Err(e) => panic!("route failed: {}", e),
+        };
+        assert!(response.is_some());
+
+        let resp = match response {
+            Some(r) => r,
+            None => panic!("Expected Some response"),
+        };
+        assert_eq!(resp.message_type, AcpMessageType::Response);
+        assert!(resp.payload.get("processed").is_some());
+    }
+
+    #[test]
+    fn test_router_unknown_receiver() {
+        let registry = Arc::new(AcpRegistry::new());
+        let router = AcpRouter::new(registry);
+
+        let msg = AcpMessage::new(
+            AcpAgentId::new("a", "1"),
+            AcpAgentId::new("unknown", "1"),
+            AcpMessageType::Request,
+            serde_json::json!({}),
+        );
+
+        let result = router.route(msg);
+        assert!(result.is_err());
+        let err = match result {
+            Ok(_) => panic!("Expected error"),
+            Err(e) => e,
+        };
+        assert!(err.to_string().contains("Unknown receiver"));
+    }
+
+    #[test]
+    fn test_message_builder() {
+        let msg = match AcpMessageBuilder::new()
+            .from(AcpAgentId::new("sender", "1"))
+            .to(AcpAgentId::new("receiver", "1"))
+            .message_type(AcpMessageType::Request)
+            .payload(serde_json::json!({"action": "test"}))
+            .ttl(10)
+            .build()
+        {
+            Ok(m) => m,
+            Err(e) => panic!("build failed: {}", e),
+        };
+
+        assert_eq!(msg.sender.agent_type, "sender");
+        assert_eq!(msg.receiver.agent_type, "receiver");
+        assert_eq!(msg.message_type, AcpMessageType::Request);
+        assert_eq!(msg.ttl, 10);
+    }
+
+    #[test]
+    fn test_message_builder_missing_fields() {
+        let result = AcpMessageBuilder::new()
+            .from(AcpAgentId::new("a", "1"))
+            .build();
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_simple_agent() {
+        let agent = SimpleAgent::new(
+            AcpAgentId::new("echo", "1"),
+            "Echo agent",
+            vec![AcpCapability::new("echo", "Echoes messages")],
+            |msg| Ok(Some(msg.reply(serde_json::json!({"echo": msg.payload})))),
+        );
+
+        assert_eq!(agent.id().agent_type, "echo");
+        assert_eq!(agent.description(), "Echo agent");
+        assert_eq!(agent.capabilities().len(), 1);
+
+        let msg = AcpMessage::new(
+            AcpAgentId::new("client", "1"),
+            AcpAgentId::new("echo", "1"),
+            AcpMessageType::Query,
+            serde_json::json!({"ping": true}),
+        );
+
+        let response = match agent.handle(msg) {
+            Ok(r) => r,
+            Err(e) => panic!("handle failed: {}", e),
+        };
+        let response = match response {
+            Some(r) => r,
+            None => panic!("Expected Some response"),
+        };
+        assert_eq!(response.message_type, AcpMessageType::Response);
+        assert_eq!(response.payload["echo"]["ping"], true);
+    }
+
+    #[test]
+    fn test_error() {
+        let error = AcpError::new(AcpErrorCode::NotFound, "Resource not found")
+            .with_details(serde_json::json!({"resource": "test_id"}));
+
+        assert_eq!(error.code, AcpErrorCode::NotFound);
+        assert_eq!(error.message, "Resource not found");
+        assert!(error.details.is_some());
+        assert_eq!(error.code.to_code(), 1004);
+    }
+}
