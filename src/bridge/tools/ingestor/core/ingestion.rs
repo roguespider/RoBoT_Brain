@@ -568,10 +568,10 @@ pub async fn ingest_audio_file(
 #[cfg(not(feature = "audio"))]
 pub async fn ingest_audio_file(
     path: &Path,
-    _chunk_size: usize,
-    _memory_type: MemoryType,
-    _db: Arc<SqliteDatabase>,
-    _working_memory: Arc<WorkingMemory>,
+    _: usize,
+    _: MemoryType,
+    _: Arc<SqliteDatabase>,
+    _: Arc<WorkingMemory>,
 ) -> Result<IngestResult> {
     let filename = path
         .file_name()

@@ -46,8 +46,8 @@ impl ServerHandler for types::McpServerHandler {
 
     async fn list_tools(
         &self,
-        _request: Option<PaginatedRequestParams>,
-        _context: RequestContext<rmcp::RoleServer>,
+        _: Option<PaginatedRequestParams>,
+        _: RequestContext<rmcp::RoleServer>,
     ) -> Result<ListToolsResult, ErrorData> {
         let tools = self.handlers.get_all_tools();
         Ok(ListToolsResult {
@@ -60,7 +60,7 @@ impl ServerHandler for types::McpServerHandler {
     async fn call_tool(
         &self,
         request: CallToolRequestParams,
-        _context: RequestContext<rmcp::RoleServer>,
+        _: RequestContext<rmcp::RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
         let tool_name: &str = &request.name;
         let arguments = request.arguments.map(|args| serde_json::Value::Object(args))

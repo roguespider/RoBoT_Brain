@@ -29,7 +29,7 @@ impl<'a> KnowledgeMethods<'a> {
             experience.id,
         );
 
-        let _added_id = self.knowledge_store.add(knowledge).await;
+        let _ = self.knowledge_store.add(knowledge).await;
 
         // Publish KnowledgeUpdated event
         let event = ExperienceEvent::knowledge_updated(Uuid::new_v4());

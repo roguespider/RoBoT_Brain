@@ -100,7 +100,7 @@ pub trait ToolHandler: Send + Sync {
     /// 
     /// Default implementation returns ToolNotFound error.
     /// Override this method to handle actual tool execution.
-    fn execute_tool(&self, name: &str, _args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
+    fn execute_tool(&self, name: &str, _: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
         async move {
             Err(HandlerError::ToolNotFound(name.to_string()))
         }

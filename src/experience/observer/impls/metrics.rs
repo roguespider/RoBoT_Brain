@@ -75,7 +75,6 @@ impl MetricsObserver {
             }
 
             EventPayload::HypothesisValidation {
-                hypothesis_id,
                 result,
                 ..
             } => {
@@ -90,11 +89,9 @@ impl MetricsObserver {
                     }
                     _ => {}
                 }
-                let _hypothesis_id = hypothesis_id;
             }
 
             EventPayload::EvidenceRecord {
-                hypothesis_id,
                 direction,
                 strength,
                 ..
@@ -106,7 +103,6 @@ impl MetricsObserver {
                     "contradict" => collector.increment_sync("evidence.contradicting"),
                     _ => collector.increment_sync("evidence.neutral"),
                 }
-                let _hypothesis_id = hypothesis_id;
             }
 
             EventPayload::KnowledgeRecord { .. } => {
@@ -121,24 +117,21 @@ impl MetricsObserver {
                 collector.increment_sync("explorations.completed");
             }
 
-            EventPayload::ExplorationCompleted { exploration_id, .. } => {
+            EventPayload::ExplorationCompleted { .. } => {
                 collector.increment_sync("explorations.completed");
-                let _exploration_id = exploration_id;
             }
 
             EventPayload::ScoreCalculated { score } => {
                 collector.record_sync("experience.score.calculated", *score as f64);
             }
 
-            EventPayload::ObserverStarted { observer } => {
+            EventPayload::ObserverStarted { .. } => {
                 collector.increment_sync("observers.started");
                 collector.record_sync("observer_started", Utc::now().timestamp() as f64);
-                let _observer = observer;
             }
 
-            EventPayload::ObserverFailed { observer, .. } => {
+            EventPayload::ObserverFailed { .. } => {
                 collector.increment_sync("observers.failed");
-                let _observer = observer;
             }
 
             EventPayload::ProcessingFailed { stage, .. } => {

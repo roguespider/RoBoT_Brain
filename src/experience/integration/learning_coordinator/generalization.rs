@@ -60,7 +60,7 @@ impl<'a> GeneralizationMethods<'a> {
                     pattern.confidence,
                     Uuid::new_v4(),
                 );
-                let _added_id = self.knowledge_store.add(generalized_knowledge).await;
+                let _ = self.knowledge_store.add(generalized_knowledge).await;
                 result.generalized_knowledge_count += 1;
             }
         }
