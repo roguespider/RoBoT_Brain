@@ -65,3 +65,6 @@ Files over 320 lines that could benefit from modular structure:
 - `src/bridge/app/` (944 total → state.rs, initialization.rs, scheduler.rs, personality.rs, acp.rs, mod.rs)
 - `test_suite/src/code_analyzer/` (1050 lines → types.rs, patterns.rs, analyzer.rs, lint.rs, mod.rs)
 - `src/bridge/acp/` (950 lines → message.rs, error.rs, channel.rs, agent.rs, registry.rs, router.rs, builder.rs, mod.rs)
+- `test_suite/src/tests/rmcp/` (NEW: 650 lines → mod.rs, protocol.rs, tools.rs, sessions.rs)
+- `test_suite/src/tests/acp/` (NEW: 750 lines → mod.rs, registry.rs, router.rs, agents.rs, messages.rs)
+- `test_suite/src/tests/agent_simulation/` (NEW: 440 lines → mod.rs, workflows.rs, memory_agent.rs, decision_making.rs)
