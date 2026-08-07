@@ -61,5 +61,6 @@ Files over 320 lines that could benefit from modular structure:
 ### Already Refactored
 - `src/experience/integration/learning_coordinator/` (1519 total → config.rs, results.rs, entry.rs, exploration.rs, hypothesis.rs, knowledge.rs, reinforcement.rs, reputation.rs, generalization.rs, mod.rs [274 lines])
 - `src/skills/registry/` (983 total → types.rs, skill.rs, registry.rs, context.rs, result.rs, metrics.rs, executor.rs, mod.rs)
+- `src/database/queries/` (934 total → helpers.rs, memory.rs, scheduled_tasks.rs, observations.rs, experiences.rs, embeddings.rs, relationships.rs, tests.rs, mod.rs)
 - `test_suite/src/code_analyzer/` (1050 lines → types.rs, patterns.rs, analyzer.rs, lint.rs, mod.rs)
 - `src/bridge/acp/` (950 lines → message.rs, error.rs, channel.rs, agent.rs, registry.rs, router.rs, builder.rs, mod.rs)
