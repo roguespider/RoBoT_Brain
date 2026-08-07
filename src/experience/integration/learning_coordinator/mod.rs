@@ -1,4 +1,4 @@
-// src/experience/integration/learning_coordinator.rs
+// src/experience/integration/learning_coordinator/mod.rs
 //! Learning Coordinator - Orchestrates the complete learning pipeline
 //!
 //! Per Architecture §9 - Learning Engine:
@@ -6,6 +6,15 @@
 //!
 //! This coordinator ensures the continuous feedback loop:
 //! Experience → Reflection → Hypothesis → Validation → Knowledge Update → Behavior Improvement
+
+pub mod config;
+pub mod results;
+
+pub use config::LearningCoordinatorConfig;
+pub use results::{
+    GeneralizationResult, LearningCoordinatorStats, LearningPattern, MaintenanceStats,
+    PatternKind, ReinforcementResult, TransferResult, ValidationResult, LearningResult,
+};
 
 use anyhow::Result;
 use chrono::{Duration, Utc};
@@ -24,42 +33,6 @@ use crate::experience::reputation::reputation::Reputation;
 use crate::experience::types::Experience;
 use crate::knowledge::{KnowledgeItem, KnowledgeStore};
 use crate::skills::registry::SkillRegistry;
-
-/// Configuration for the learning coordinator
-#[derive(Debug, Clone)]
-pub struct LearningCoordinatorConfig {
-    /// Whether to auto-reflect on experiences
-    pub auto_reflect: bool,
-    /// Minimum score to trigger reflection
-    pub reflection_threshold: f32,
-    /// Whether to auto-generate hypotheses
-    pub auto_hypothesize: bool,
-    /// Whether to auto-explore hypotheses
-    pub auto_explore: bool,
-    /// Minimum confidence for hypothesis validation
-    pub hypothesis_validation_threshold: f32,
-    /// Whether to promote high-confidence hypotheses to knowledge
-    pub auto_promote_to_knowledge: bool,
-    /// Batch size for reflection processing
-    pub reflection_batch_size: usize,
-    /// How often to run maintenance (in seconds)
-    pub maintenance_interval_secs: u64,
-}
-
-impl Default for LearningCoordinatorConfig {
-    fn default() -> Self {
-        Self {
-            auto_reflect: true,
-            reflection_threshold: 0.6,
-            auto_hypothesize: true,
-            auto_explore: false,
-            hypothesis_validation_threshold: 0.75,
-            auto_promote_to_knowledge: true,
-            reflection_batch_size: 5,
-            maintenance_interval_secs: 300, // 5 minutes
-        }
-    }
-}
 
 /// Learning Coordinator - Main orchestrator for the learning pipeline
 ///
@@ -314,7 +287,7 @@ impl LearningCoordinator {
         let consolidated = self.consolidate_knowledge().await?;
         stats.knowledge_consolidated = consolidated;
 
-        // 4. Update reputation decay
+        // 4: Update reputation decay
         self.decay_reputations().await?;
 
         tracing::info!("Maintenance complete: {:?}", stats);
@@ -369,7 +342,10 @@ impl LearningCoordinator {
             experience.id,
             Uuid::parse_str(&reflection.id).unwrap_or_default(),
         );
-        let _ = self.bus.publish(event);
+        let publish_result = self.bus.publish(event);
+        if let Err(e) = publish_result {
+            tracing::warn!("Failed to publish reflection event: {}", e);
+        }
 
         Ok(reflection)
     }
@@ -400,7 +376,10 @@ impl LearningCoordinator {
 
         // Publish HypothesisGenerated event
         let event = ExperienceEvent::hypothesis_generated(experience.id, Uuid::new_v4());
-        let _ = self.bus.publish(event);
+        let publish_result = self.bus.publish(event);
+        if let Err(e) = publish_result {
+            tracing::warn!("Failed to publish hypothesis event: {}", e);
+        }
 
         Ok(hypothesis_ids)
     }
@@ -498,11 +477,14 @@ impl LearningCoordinator {
             experience.id,
         );
 
-        let _ = self.knowledge_store.add(knowledge).await;
+        let _added_id = self.knowledge_store.add(knowledge).await;
 
         // Publish KnowledgeUpdated event
         let event = ExperienceEvent::knowledge_updated(Uuid::new_v4());
-        let _ = self.bus.publish(event);
+        let publish_result = self.bus.publish(event);
+        if let Err(e) = publish_result {
+            tracing::warn!("Failed to publish knowledge event: {}", e);
+        }
 
         Ok(())
     }
@@ -562,7 +544,10 @@ impl LearningCoordinator {
 
         // Publish ExplorationStarted event
         let event = ExperienceEvent::exploration_started(Uuid::new_v4());
-        let _ = self.bus.publish(event);
+        let publish_result = self.bus.publish(event);
+        if let Err(e) = publish_result {
+            tracing::warn!("Failed to publish exploration event: {}", e);
+        }
 
         Ok(exploration_id)
     }
@@ -577,7 +562,10 @@ impl LearningCoordinator {
 
         // Publish ExplorationCompleted event
         let event = ExperienceEvent::exploration_completed(Uuid::new_v4(), Uuid::new_v4());
-        let _ = self.bus.publish(event);
+        let publish_result = self.bus.publish(event);
+        if let Err(e) = publish_result {
+            tracing::warn!("Failed to publish exploration completed event: {}", e);
+        }
 
         Ok(())
     }
@@ -645,7 +633,10 @@ impl LearningCoordinator {
 
         // Publish ReputationUpdated event
         let event = ExperienceEvent::reputation_updated(Uuid::new_v4(), source_str, impact as f32);
-        let _ = self.bus.publish(event);
+        let publish_result = self.bus.publish(event);
+        if let Err(e) = publish_result {
+            tracing::warn!("Failed to publish reputation event: {}", e);
+        }
 
         Ok(())
     }
@@ -808,9 +799,11 @@ impl LearningCoordinator {
             // Try to find and update the skill
             if let Some(skill) = registry.get_by_name(&skill_name).await {
                 let success = reward > 0.0;
-                registry.record_usage(&skill.id, success).await?;
-                updates += 1;
-                tracing::debug!("Updated skill {} with success={}", skill_name, success);
+                let record_result = registry.record_usage(&skill.id, success).await;
+                if record_result.is_ok() {
+                    updates += 1;
+                    tracing::debug!("Updated skill {} with success={}", skill_name, success);
+                }
             }
         }
 
@@ -867,11 +860,11 @@ impl LearningCoordinator {
         let mut patterns = Vec::new();
 
         for id in &experience_ids {
-            let pattern = Pattern {
+            let pattern = LearningPattern {
                 description: format!("Pattern from experience {}", id),
                 confidence: 0.5, // Default confidence for new patterns
                 source_experience_count: 1,
-                pattern_type: PatternType::Sequential,
+                pattern_type: PatternKind::Sequential,
             };
             patterns.push(pattern);
         }
@@ -887,7 +880,7 @@ impl LearningCoordinator {
                     pattern.confidence,
                     Uuid::new_v4(),
                 );
-                let _ = self.knowledge_store.add(generalized_knowledge).await;
+                let _added_id = self.knowledge_store.add(generalized_knowledge).await;
                 result.generalized_knowledge_count += 1;
             }
         }
@@ -898,7 +891,7 @@ impl LearningCoordinator {
     }
 
     /// Extract common patterns from experiences
-    async fn extract_common_patterns(&self, experiences: &[Experience]) -> Vec<Pattern> {
+    async fn extract_common_patterns(&self, experiences: &[Experience]) -> Vec<LearningPattern> {
         let mut patterns = Vec::new();
 
         if experiences.len() < 2 {
@@ -935,7 +928,7 @@ impl LearningCoordinator {
 
                 let confidence = success_count as f32 / exps.len() as f32;
 
-                patterns.push(Pattern {
+                patterns.push(LearningPattern {
                     description: format!(
                         "In '{}' context, {} out of {} attempts succeeded",
                         context,
@@ -944,7 +937,7 @@ impl LearningCoordinator {
                     ),
                     confidence,
                     source_experience_count: exps.len(),
-                    pattern_type: PatternType::Contextual,
+                    pattern_type: PatternKind::Contextual,
                 });
             }
         }
@@ -1003,7 +996,10 @@ impl LearningCoordinator {
             target_domain.to_string(),
             result.transferred_count as u32,
         );
-        let _ = self.bus.publish(event);
+        let publish_result = self.bus.publish(event);
+        if let Err(e) = publish_result {
+            tracing::warn!("Failed to publish transfer event: {}", e);
+        }
 
         self.metrics.increment("learning.transfers").await;
 
@@ -1099,96 +1095,4 @@ impl LearningCoordinator {
             active_explorations: explorations.values().filter(|e| e.is_active()).count(),
         }
     }
-}
-
-// ========================================================================
-// Result Types
-// ========================================================================
-
-/// Result of processing an experience through the learning pipeline
-#[derive(Debug, Default)]
-pub struct LearningResult {
-    pub experience_id: uuid::Uuid,
-    pub score: f32,
-    pub reflection_id: Option<String>,
-    pub hypothesis_ids: Vec<String>,
-    pub knowledge_id: Option<uuid::Uuid>,
-}
-
-/// Result of validating a hypothesis
-#[derive(Debug, Default)]
-pub struct ValidationResult {
-    pub hypothesis_id: String,
-    pub is_valid: bool,
-    pub confidence: f32,
-    pub promoted_to_knowledge: bool,
-}
-
-/// Statistics from maintenance run
-#[derive(Debug, Default)]
-pub struct MaintenanceStats {
-    pub hypotheses_decayed: usize,
-    pub explorations_archived: usize,
-    pub knowledge_consolidated: usize,
-}
-
-/// Statistics about the learning coordinator
-#[derive(Debug)]
-pub struct LearningCoordinatorStats {
-    pub total_reflections: usize,
-    pub total_insights: usize,
-    pub trusted_insights: usize,
-    pub total_patterns: usize,
-    pub active_reputations: usize,
-    pub active_explorations: usize,
-}
-
-// ========================================================================
-// Learning Result Types
-// ========================================================================
-
-/// Result of reinforcement learning
-#[derive(Debug, Default)]
-pub struct ReinforcementResult {
-    pub experience_id: uuid::Uuid,
-    pub reward: f64,
-    pub knowledge_updates: usize,
-    pub skill_updates: usize,
-    pub action_value_delta: f64,
-}
-
-/// Pattern extracted from generalization
-#[derive(Debug, Clone)]
-pub struct Pattern {
-    pub description: String,
-    pub confidence: f32,
-    pub source_experience_count: usize,
-    pub pattern_type: PatternType,
-}
-
-/// Type of pattern
-#[derive(Debug, Clone)]
-pub enum PatternType {
-    Contextual,
-    Temporal,
-    Causal,
-    Sequential,
-}
-
-/// Result of generalization
-#[derive(Debug, Default)]
-pub struct GeneralizationResult {
-    pub patterns: Vec<Pattern>,
-    pub generalized_knowledge_count: usize,
-}
-
-/// Result of transfer learning
-#[derive(Debug)]
-pub struct TransferResult {
-    pub source_domain: String,
-    pub target_domain: String,
-    pub transferred_count: usize,
-    pub adapted_count: usize,
-    pub failed_count: usize,
-    pub new_knowledge_ids: Vec<uuid::Uuid>,
 }
