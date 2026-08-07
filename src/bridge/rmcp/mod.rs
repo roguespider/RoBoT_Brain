@@ -69,11 +69,20 @@ impl ServerHandler for types::McpServerHandler {
         // Try to execute via handler first
         match self.handlers.call_tool(tool_name, arguments).await {
             Ok(result) => {
-                // Return the tool's data directly so validation can find expected fields
-                let json_str = serde_json::to_string(&result.data)
-                    .unwrap_or_else(|_| result.data.to_string());
-                let content = vec![ContentBlock::text(json_str)];
-                Ok(CallToolResult::success(content))
+                // Check if the tool considers itself successful
+                if result.success {
+                    // Return the tool's data directly so validation can find expected fields
+                    let json_str = serde_json::to_string(&result.data)
+                        .unwrap_or_else(|_| result.data.to_string());
+                    let content = vec![ContentBlock::text(json_str)];
+                    Ok(CallToolResult::success(content))
+                } else {
+                    // Tool returned success=false, treat as error response
+                    let json_str = serde_json::to_string(&result.data)
+                        .unwrap_or_else(|_| result.data.to_string());
+                    let content = vec![ContentBlock::text(json_str)];
+                    Ok(CallToolResult::error(content))
+                }
             }
             Err(err) => {
                 // Return tool-level error (not protocol error)
