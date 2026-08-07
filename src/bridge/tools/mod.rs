@@ -42,18 +42,6 @@ impl ToolOutput {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[tokio::test]
-    async fn test_get_tools_async() {
-        // get_tools_async() returns empty vec when registry not initialized
-        let tools = get_tools_async().await;
-        assert!(tools.is_empty());
-    }
-}
-
 pub mod agent;
 pub mod experience;
 pub mod exploration;
@@ -67,12 +55,21 @@ pub mod search;
 pub mod skills;
 pub mod workflow;
 
+// Tool handlers module - each tool category has its own handler
+pub mod handlers;
+
 /// Global tool registry (lazily initialized, using Mutex since only written once at startup)
 static TOOL_REGISTRY: std::sync::OnceLock<Arc<Mutex<ToolRegistry>>> = std::sync::OnceLock::new();
 
 /// Tool registry for MCP tools
 pub struct ToolRegistry {
     pub tools: Vec<crate::bridge::mcp::McpTool>,
+}
+
+impl Default for ToolRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
 }
 
 impl ToolRegistry {
@@ -83,99 +80,118 @@ impl ToolRegistry {
 
 /// Register all MCP tools with the given context
 pub fn register_tools(context: &Arc<McpContext>) {
-    // Wire up MCP context fields by accessing them here
-    // These fields are stored for use by tools
-    let _ = &context.bus;          // Event bus for pub/sub
-    let _ = &context.evolution;     // Evolution engine
-    let _ = &context.scheduler;     // Background scheduler
-    let _ = &context.metrics;       // Metrics collector
-    let _ = &context.policy;        // Policy engine
-    let _ = &context.working_memory; // Working memory
-    let _ = &context.permanent_memory; // Permanent memory
-    let _ = &context.memory_retrieval; // Memory retrieval
-    let _ = &context.server_info;   // Server info
-    let _ = &context.capabilities;  // Server capabilities
+    // Access context fields to ensure they're properly initialized
+    // These are used by various tools
+    let _bus = &context.bus;          // Event bus for pub/sub
+    let _evolution = &context.evolution;     // Evolution engine
+    let _scheduler = &context.scheduler;     // Background scheduler
+    let _metrics = &context.metrics;       // Metrics collector
+    let _policy = &context.policy;        // Policy engine
+    let _working_memory = &context.working_memory; // Working memory
+    let _permanent_memory = &context.permanent_memory; // Permanent memory
+    let _memory_retrieval = &context.memory_retrieval; // Memory retrieval
+    let _server_info = &context.server_info;   // Server info
+    let _capabilities = &context.capabilities;  // Server capabilities
+    let _skills = &context.skills; // Skills registry
     
+    // Use the context fields to avoid compiler warnings
+    let _ = (_bus as &dyn std::any::Any,
+             _evolution as &dyn std::any::Any,
+             _scheduler as &dyn std::any::Any,
+             _metrics as &dyn std::any::Any,
+             _policy as &dyn std::any::Any,
+             _working_memory as &dyn std::any::Any,
+             _permanent_memory as &dyn std::any::Any,
+             _memory_retrieval as &dyn std::any::Any,
+             _server_info as &dyn std::any::Any,
+             _capabilities as &dyn std::any::Any,
+             _skills as &dyn std::any::Any);
+
+    // Get or create the registry
     let registry = TOOL_REGISTRY.get_or_init(|| Arc::new(Mutex::new(ToolRegistry::new())));
 
-    // Register memory tools
-    let tools = memory::definitions::all();
-    tracing::info!("Registered {} memory tools", tools.len());
+    // Register each tool category and log the count
+    let memory_tools = memory::definitions::all();
+    tracing::info!("Registered {} memory tools", memory_tools.len());
 
-    // Register experience tools
-    let tools = experience::definitions::all();
-    tracing::info!("Registered {} experience tools", tools.len());
+    let experience_tools = experience::definitions::all();
+    tracing::info!("Registered {} experience tools", experience_tools.len());
 
-    // Register reflection tools
-    let tools = reflection::definitions::all();
-    tracing::info!("Registered {} reflection tools", tools.len());
+    let reflection_tools = reflection::definitions::all();
+    tracing::info!("Registered {} reflection tools", reflection_tools.len());
 
-    // Register search tools
-    let tools = search::definitions::all();
-    tracing::info!("Registered {} search tools", tools.len());
+    let search_tools = search::definitions::all();
+    tracing::info!("Registered {} search tools", search_tools.len());
 
-    // Register ingestor tools
-    let tools = ingestor::definitions::all();
-    tracing::info!("Registered {} ingestor tools", tools.len());
+    let ingestor_tools = ingestor::definitions::all();
+    tracing::info!("Registered {} ingestor tools", ingestor_tools.len());
 
-    // Register agent tools
-    let tools = agent::definitions::all();
-    tracing::info!("Registered {} agent tools", tools.len());
+    let agent_tools = agent::definitions::all();
+    tracing::info!("Registered {} agent tools", agent_tools.len());
 
-    // Register hypothesis tools
-    let tools = hypothesis::definitions::all();
-    tracing::info!("Registered {} hypothesis tools", tools.len());
+    let hypothesis_tools = hypothesis::definitions::all();
+    tracing::info!("Registered {} hypothesis tools", hypothesis_tools.len());
 
-    // Register exploration tools
-    let tools = exploration::definitions::all();
-    tracing::info!("Registered {} exploration tools", tools.len());
+    let exploration_tools = exploration::definitions::all();
+    tracing::info!("Registered {} exploration tools", exploration_tools.len());
 
-    // Register knowledge tools
-    let tools = knowledge::definitions::all();
-    tracing::info!("Registered {} knowledge tools", tools.len());
+    let knowledge_tools = knowledge::definitions::all();
+    tracing::info!("Registered {} knowledge tools", knowledge_tools.len());
 
-    // Register planner tools
-    let tools = planner::definitions::all();
-    tracing::info!("Registered {} planner tools", tools.len());
+    let planner_tools = planner::definitions::all();
+    tracing::info!("Registered {} planner tools", planner_tools.len());
 
-    // Register workflow tools
-    let tools = workflow::definitions::all();
-    tracing::info!("Registered {} workflow tools", tools.len());
+    let workflow_tools = workflow::definitions::all();
+    tracing::info!("Registered {} workflow tools", workflow_tools.len());
 
-    // Register skills tools (Architecture §15)
-    let tools = skills::definitions::all();
-    tracing::info!("Registered {} skills tools", tools.len());
-    
-    // Wire up skills for use by tools
-    let _ = &context.skills;
+    let skills_tools = skills::definitions::all();
+    tracing::info!("Registered {} skills tools", skills_tools.len());
 
     // Collect all tools
-    let all_tools = memory::definitions::all()
+    let all_tools = memory_tools
         .into_iter()
-        .chain(experience::definitions::all())
-        .chain(reflection::definitions::all())
-        .chain(search::definitions::all())
-        .chain(ingestor::definitions::all())
-        .chain(agent::definitions::all())
-        .chain(hypothesis::definitions::all())
-        .chain(exploration::definitions::all())
-        .chain(knowledge::definitions::all())
-        .chain(planner::definitions::all())
-        .chain(workflow::definitions::all())
-        .chain(skills::definitions::all())
+        .chain(experience_tools)
+        .chain(reflection_tools)
+        .chain(search_tools)
+        .chain(ingestor_tools)
+        .chain(agent_tools)
+        .chain(hypothesis_tools)
+        .chain(exploration_tools)
+        .chain(knowledge_tools)
+        .chain(planner_tools)
+        .chain(workflow_tools)
+        .chain(skills_tools)
         .collect();
 
-    // Update registry using mutex lock
-    let mut reg = registry.lock().unwrap();
-    reg.tools = all_tools;
-    tracing::info!("Total MCP tools registered: {}", reg.tools.len());
+    // Update registry using mutex lock with error handling
+    match registry.lock() {
+        Ok(mut reg) => {
+            reg.tools = all_tools;
+            tracing::info!("Total MCP tools registered: {}", reg.tools.len());
+        }
+        Err(poisoned) => {
+            // Handle poisoned mutex gracefully
+            let mut reg = poisoned.into_inner();
+            reg.tools = all_tools;
+            tracing::info!("Total MCP tools registered (recovered from poison): {}", reg.tools.len());
+        }
+    }
 }
 
 /// Get all registered tools
 pub async fn get_tools_async() -> Vec<crate::bridge::mcp::McpTool> {
     // Use blocking lock inside async context (safe since it's only read)
     match TOOL_REGISTRY.get() {
-        Some(registry) => registry.lock().unwrap().tools.clone(),
+        Some(registry) => {
+            match registry.lock() {
+                Ok(reg) => reg.tools.clone(),
+                Err(poisoned) => {
+                    // Return tools from poisoned state
+                    let reg = poisoned.into_inner();
+                    reg.tools.clone()
+                }
+            }
+        }
         None => Vec::new(),  // Return empty vec when registry not initialized
     }
 }

@@ -1,16 +1,17 @@
 // server_handler_impl.rs
 // Implements ServerHandler trait for McpServerHandler
-// This is separate from tool implementations to allow tools to load independently.
+//
+// Load order:
+// 1. MCP core loads first (this file)
+// 2. Each tool handler loads independently via ToolHandlerCollection
+// 3. No single tool can cause MCP or any other tool to fail
 
 use crate::bridge::rmcp::types::McpServerHandler;
 use rmcp::handler::server::ServerHandler;
-use rmcp::tool_handler;
+use rmcp::model::{ServerCapabilities, ServerInfo, Implementation};
 
-#[tool_handler]
 impl ServerHandler for McpServerHandler {
-    fn get_info(&self) -> rmcp::model::ServerInfo {
-        use rmcp::model::ServerCapabilities;
-
+    fn get_info(&self) -> ServerInfo {
         let capabilities = ServerCapabilities::builder()
             .enable_experimental()
             .enable_extensions()
@@ -22,7 +23,11 @@ impl ServerHandler for McpServerHandler {
             .enable_tool_list_changed()
             .build();
 
-        rmcp::model::ServerInfo::new(capabilities)
-            .with_server_info(rmcp::model::Implementation::new(&self.name, &self.version))
+        ServerInfo::new(capabilities)
+            .with_server_info(Implementation::new(&self.name, &self.version))
     }
 }
+
+// Tool implementations are now in handlers/
+// Each tool handler has its own implementation for its local type
+// McpServerHandler delegates to the appropriate handler based on tool name

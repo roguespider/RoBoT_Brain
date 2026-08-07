@@ -1,11 +1,11 @@
 // src/bridge/rmcp/generated/mod.rs
-// Tools module - each tool category is a separate, isolated module
+// Tools module - MCP core handler implementation
 //
 // Architecture:
 // - server_handler_impl.rs: ServerHandler trait impl for MCP core (loads first)
-// - tools_impl.rs: All tool implementations with #[tool_router] and #[tool] macros
-// - If one tool has compile errors, disable its feature in Cargo.toml
-// - MCP loads first (server_handler_impl.rs), tools load independently
+// - Tool implementations have been moved to src/bridge/tools/handlers/
+// - Each tool category has its own handler with isolated initialization
+// - Graceful degradation: if a handler fails to init, log warning but continue
+// - MCP loads first, then each tool handler loads independently
 
 mod server_handler_impl;
-include!("tools_impl.rs");
