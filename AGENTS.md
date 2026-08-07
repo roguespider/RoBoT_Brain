@@ -57,3 +57,7 @@ Files over 320 lines that could benefit from modular structure:
 - `src/bridge/tools/memory/mod.rs` (803 lines)
 - `src/bridge/tools/exploration/handlers.rs` (791 lines)
 - `src/personality/mod.rs` (614 lines)
+
+### Already Refactored
+- `src/experience/integration/learning_coordinator/` (1194 lines → config.rs, results.rs, mod.rs)
+- `test_suite/src/code_analyzer/` (1050 lines → types.rs, patterns.rs, analyzer.rs, lint.rs, mod.rs)
