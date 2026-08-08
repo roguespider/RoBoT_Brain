@@ -381,6 +381,10 @@ impl App {
             "Personality self-check complete: traits re-set and adaptation exercised"
         );
 
+        // Learning subsystem self-check (Architecture §9 - Learning Pipeline)
+        let learning_summary = crate::learning::self_check::run_self_check().await;
+        tracing::info!("{}", learning_summary);
+
         // Start background scheduler worker
         let scheduler = self.mcp_context.scheduler.clone();
         tokio::spawn(async move {
