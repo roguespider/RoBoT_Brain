@@ -389,6 +389,10 @@ impl App {
         let metrics_summary = crate::experience::metrics::run_metrics_self_check().await;
         tracing::info!("{}", metrics_summary);
 
+        // Evolution subsystem self-check
+        let evolution_summary = crate::experience::evolution::self_check::run_evolution_self_check().await;
+        tracing::info!("{}", evolution_summary);
+
         // Start background scheduler worker
         let scheduler = self.mcp_context.scheduler.clone();
         tokio::spawn(async move {
