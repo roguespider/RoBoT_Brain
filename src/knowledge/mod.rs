@@ -17,6 +17,7 @@
 pub mod types;
 pub mod store;
 pub mod query;
+pub mod self_check;
 
 pub use types::KnowledgeItem;
 pub use store::KnowledgeStore;
