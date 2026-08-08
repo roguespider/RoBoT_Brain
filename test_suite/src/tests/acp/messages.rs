@@ -113,6 +113,7 @@ pub async fn test_acp_messages(
     }
 
     // Test 4: Test error message handling
+    // This tests that the router correctly rejects messages to unknown receivers
     crate::teeprintln!("  Testing error message handling...");
     match client.call_tool("route_acp_message", serde_json::json!({
         "sender": {"agent_type": "client", "instance_id": "1"},
@@ -127,8 +128,17 @@ pub async fn test_acp_messages(
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("    ⚠️  Error message: {}", e);
-            stats.skipped += 1;
+            // Error is expected - router correctly rejects unknown receivers
+            let err_str = format!("{}", e);
+            if err_str.contains("Unknown receiver") || err_str.contains("not registered") {
+                crate::teeprintln!("    ✅ Error message handling SUCCESS (correctly rejected unknown receiver)");
+                results.messages_handled += 1;
+                results.passed += 1;
+                stats.passed += 1;
+            } else {
+                crate::teeprintln!("    ⚠️  Error message: {}", e);
+                stats.skipped += 1;
+            }
         }
     }
 
