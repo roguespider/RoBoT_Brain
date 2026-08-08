@@ -271,6 +271,10 @@ impl CodeAnalyzer {
     /// Architecture requirement (30-Testing-and-Validation-Architecture.md §30.6):
     /// "no unused abstractions". This cross-references each imported symbol against
     /// the rest of the file content.
+    ///
+    /// NOTE: `pub use` re-exports are NOT checked — they are public API exports
+    /// consumed by other modules, not local imports. Only private `use` statements
+    /// are checked for local usage.
     fn analyze_unused_imports(&self, content: &str, file_path: &Path) -> Vec<CodeIssue> {
         let mut issues = Vec::new();
         let lines: Vec<&str> = content.lines().collect();
@@ -278,8 +282,13 @@ impl CodeAnalyzer {
         for (line_num, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
 
-            // Only process use statements (skip use statements inside macros/strings)
-            if !trimmed.starts_with("use ") && !trimmed.starts_with("pub use ") {
+            // Skip pub use re-exports — they are public API, consumed externally
+            if trimmed.starts_with("pub use ") {
+                continue;
+            }
+
+            // Only process private use statements
+            if !trimmed.starts_with("use ") {
                 continue;
             }
 
