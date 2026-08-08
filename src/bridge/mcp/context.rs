@@ -4,6 +4,7 @@
 
 use std::sync::Arc;
 
+use crate::bridge::acp::{AcpRegistry, AcpRouter};
 use crate::database::sqlite::SqliteDatabase;
 use crate::experience::bus::ExperienceBus;
 use crate::experience::coordinator::ExperienceCoordinator;
@@ -70,6 +71,12 @@ pub struct McpContext {
     /// Skill registry - manages reusable capabilities (per Architecture §15)
     pub skills: Arc<SkillRegistry>,
 
+    /// ACP router for inter-agent communication
+    pub acp_router: Arc<AcpRouter>,
+
+    /// ACP registry for agent registration
+    pub acp_registry: Arc<AcpRegistry>,
+
     /// Server info
     pub server_info: McpServerInfo,
 
@@ -95,6 +102,8 @@ impl McpContext {
         memory_retrieval: Arc<MemoryRetrieval>,
         workflow_engine: Arc<WorkflowEngine>,
         skills: Arc<SkillRegistry>,
+        acp_router: Arc<AcpRouter>,
+        acp_registry: Arc<AcpRegistry>,
     ) -> Self {
         Self {
             database,
@@ -113,6 +122,8 @@ impl McpContext {
             memory_retrieval,
             workflow_engine,
             skills,
+            acp_router,
+            acp_registry,
             server_info: McpServerInfo {
                 name: env!("CARGO_PKG_NAME").to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),

@@ -275,6 +275,11 @@ pub async fn execute_get_experience_stats(
     });
 
     Ok(ToolOutput::success(serde_json::json!({
+        "stats": {
+            "total": total,
+            "by_type": by_type,
+            "by_outcome": by_outcome
+        },
         "total": total,
         "by_type": by_type,
         "by_outcome": by_outcome
@@ -321,6 +326,7 @@ pub async fn execute_get_experience(
 
     match memory {
         Some(m) => Ok(ToolOutput::success(serde_json::json!({
+            "id": m.id.to_string(),
             "found": true,
             "experience": {
                 "id": m.id.to_string(),
@@ -332,6 +338,7 @@ pub async fn execute_get_experience(
             }
         }))),
         None => Ok(ToolOutput::success(serde_json::json!({
+            "id": null,
             "found": false,
             "experience": serde_json::Value::Null
         }))),

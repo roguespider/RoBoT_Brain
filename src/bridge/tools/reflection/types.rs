@@ -13,16 +13,16 @@ pub struct GetInsightsInput {
 /// Tool: Create a reflection
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct CreateReflectionInput {
-    pub title: String,
-    pub description: String,
-    pub reflection_type: String,
-    pub experience_ids: Vec<String>,
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub reflection_type: Option<String>,
+    pub experience_ids: Option<Vec<String>>,
 }
 
 /// Tool: Analyze patterns
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct AnalyzePatternsInput {
-    pub experience_ids: Vec<String>,
+    pub experience_ids: Option<Vec<String>>,
 }
 
 /// Tool: Get pattern summary

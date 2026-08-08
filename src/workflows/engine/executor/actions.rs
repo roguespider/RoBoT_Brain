@@ -76,16 +76,12 @@ impl WorkflowEngine {
             // Reflection actions
             "create_reflection" => {
                 let input = tools::reflection::CreateReflectionInput {
-                    title: get_param("title"),
-                    description: get_param("description"),
-                    reflection_type: params
-                        .get("reflection_type")
-                        .cloned()
-                        .unwrap_or_else(|| "general".to_string()),
+                    title: params.get("title").cloned(),
+                    description: params.get("description").cloned(),
+                    reflection_type: params.get("reflection_type").cloned(),
                     experience_ids: params
                         .get("experience_ids")
-                        .map(|s| s.split(',').map(String::from).collect())
-                        .unwrap_or_default(),
+                        .map(|s| s.split(',').map(String::from).collect()),
                 };
 
                 let reflection = Arc::new(crate::experience::reflection::ReflectionEngine::new());

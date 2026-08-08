@@ -234,6 +234,17 @@ impl App {
         ));
         tracing::info!("Workflow engine initialized with coordinator");
 
+        // Create ACP router and registry
+        let acp_registry = Arc::new(AcpRegistry::new());
+        let acp_router = Arc::new(AcpRouter::new(acp_registry.clone()));
+        
+        // Register system agents
+        let system_agent = crate::bridge::acp::system_agent::create_system_agent();
+        let worker_agent = crate::bridge::acp::system_agent::create_worker_agent();
+        acp_registry.register(system_agent).map_err(|e| anyhow::anyhow!("Failed to register system agent: {}", e))?;
+        acp_registry.register(worker_agent).map_err(|e| anyhow::anyhow!("Failed to register worker agent: {}", e))?;
+        tracing::info!("ACP system agents registered (system:main, worker:1)");
+
         // Create MCP context with all systems
         let mcp_context = Arc::new(McpContext::new(
             database.clone(),
@@ -252,6 +263,8 @@ impl App {
             memory_retrieval.clone(),
             workflow_engine.clone(),
             skills_registry.clone(),
+            acp_router.clone(),
+            acp_registry.clone(),
         ));
 
         // Register MCP tools
@@ -274,7 +287,7 @@ impl App {
             memory_pipeline,
             mcp_context,
             personality: shared_personality,
-            acp_router: Arc::new(AcpRouter::new(Arc::new(AcpRegistry::new()))),
+            acp_router,
         })
     }
 
