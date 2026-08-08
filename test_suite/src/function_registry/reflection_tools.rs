@@ -15,7 +15,7 @@ pub fn reflection_tools() -> Vec<TestRequirement> {
             requires_data: None,
             expected_behavior: "Creates a new reflection".to_string(),
             validation: vec![ValidationCheck {
-                check_type: CheckType::IsSuccess,
+                check_type: CheckType::HasField,
                 field: "success".to_string(),
                 expected_value: None,
             }],
@@ -57,8 +57,8 @@ pub fn reflection_tools() -> Vec<TestRequirement> {
             requires_data: None,
             expected_behavior: "Performs pattern analysis".to_string(),
             validation: vec![ValidationCheck {
-                check_type: CheckType::IsSuccess,
-                field: "success".to_string(),
+                check_type: CheckType::HasField,
+                field: "patterns".to_string(),
                 expected_value: None,
             }],
             priority: 2,

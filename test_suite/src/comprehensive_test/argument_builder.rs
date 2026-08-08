@@ -105,11 +105,15 @@ pub fn build_test_arguments(
         // Reflection tools
         "reflection_create" => serde_json::json!({
             "title": "Test Reflection",
-            "reflection_type": "analysis"
+            "description": "Testing the reflection creation functionality",
+            "reflection_type": "Success",
+            "experience_ids": []
         }),
         "reflection_get_patterns" => serde_json::json!({}),
         "reflection_get_insights" => serde_json::json!({}),
-        "reflection_analyze" => serde_json::json!({}),
+        "reflection_analyze" => serde_json::json!({
+            "experience_ids": []
+        }),
 
         // Search tools
         "search_global" => serde_json::json!({
