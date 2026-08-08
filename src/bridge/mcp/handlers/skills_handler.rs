@@ -169,13 +169,13 @@ impl ToolHandler for SkillsToolsHandler {
             ).with_title("Discover Skill"),
             rmcp::model::Tool::new(
                 "get_skill",
-                "Get skill details by name or ID",
+                "Get skill details by ID",
                 json_to_schema(serde_json::json!({
                     "type": "object",
                     "properties": {
-                        "name": { "type": "string", "description": "Skill name or ID" }
+                        "skill_id": { "type": "string", "description": "Skill ID" }
                     },
-                    "required": ["name"]
+                    "required": ["skill_id"]
                 })),
             ).with_title("Get Skill"),
             rmcp::model::Tool::new(
