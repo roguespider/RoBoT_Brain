@@ -35,7 +35,7 @@ pub fn experience_tools() -> Vec<TestRequirement> {
             expected_behavior: "Retrieves a specific experience by ID".to_string(),
             validation: vec![ValidationCheck {
                 check_type: CheckType::HasField,
-                field: "id".to_string(),
+                field: "experience".to_string(),
                 expected_value: None,
             }],
             priority: 1,
@@ -63,7 +63,7 @@ pub fn experience_tools() -> Vec<TestRequirement> {
             expected_behavior: "Returns experience statistics".to_string(),
             validation: vec![ValidationCheck {
                 check_type: CheckType::HasField,
-                field: "stats".to_string(),
+                field: "total".to_string(),
                 expected_value: None,
             }],
             priority: 2,

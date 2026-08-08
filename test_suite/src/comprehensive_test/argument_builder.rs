@@ -84,12 +84,13 @@ pub fn build_test_arguments(
 
         // Experience tools
         "experience_record" => serde_json::json!({
-            "action": "Test Action",
-            "outcome": "Success",
-            "tool_name": "test_tool"
+            "title": "Test Experience",
+            "description": "Testing the experience recording functionality",
+            "experience_type": "tool_execution",
+            "outcome": "Success"
         }),
         "experience_get" => serde_json::json!({
-            "id": "00000000-0000-0000-0000-000000000000"
+            "id": "00000000-0000-0000-0000-000000000001"
         }),
         "experience_list" => serde_json::json!({}),
         "experience_stats" => serde_json::json!({}),
