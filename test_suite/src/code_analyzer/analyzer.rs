@@ -302,8 +302,19 @@ impl CodeAnalyzer {
             // For each imported name, check if it appears elsewhere in the file
             // (excluding the import line itself and comments)
             for name in &import_names {
-                if *name == "*" || *name == "self" || *name == "crate" {
-                    // Glob imports and self/crate references are always considered used
+                // Skip glob imports (use foo::*), self, and crate references
+                // These can't be verified statically without knowing module exports
+                if name.ends_with('*') || *name == "self" || *name == "crate" {
+                    continue;
+                }
+
+                // For names containing "::" (e.g., path-style imports in groups),
+                // extract the last segment as the local name
+                let check_name = name.rsplit("::").next().unwrap_or(name);
+
+                // Skip known trait imports — they're used via method syntax (.context(),
+                // .read_to_string(), etc.) not by name. Check for their method patterns.
+                if is_trait_used_via_methods(check_name, &lines, line_num) {
                     continue;
                 }
 
@@ -318,7 +329,7 @@ impl CodeAnalyzer {
                             return false;
                         }
                         // Check if the name appears as a word boundary match
-                        contains_word(l, name)
+                        contains_word(l, check_name)
                     });
 
                 if !is_used {
@@ -328,7 +339,7 @@ impl CodeAnalyzer {
                         issue_type: IssueType::UnusedImport,
                         description: format!(
                             "Import '{}' is never used in this file",
-                            name
+                            check_name
                         ),
                     });
                 }
@@ -859,4 +870,62 @@ fn contains_word(line: &str, name: &str) -> bool {
         }
     }
     false
+}
+
+/// Check if an imported name is a known trait that's used via method syntax.
+///
+/// Trait imports (like `anyhow::Context`, `std::io::Read`) don't appear by name
+/// in the file — they provide methods called via dot syntax (`.context()`,
+/// `.read_to_string()`). This function maps known trait names to their method
+/// patterns and checks if any appear in the file (excluding the import line).
+fn is_trait_used_via_methods(name: &str, lines: &[&str], import_line: usize) -> bool {
+    // Map trait names to method patterns they provide
+    let methods: &[&str] = match name {
+        // anyhow::Context
+        "Context" => &[".context(", ".with_context(", ".context_err("],
+        // std::io::Read
+        "Read" => &[".read(", ".read_to_string(", ".read_to_end(", ".read_exact(", ".read_line(", ".bytes(", ".chars(", ".take("],
+        // std::io::Write
+        "Write" => &[".write(", ".write_all(", ".write_fmt(", ".write_str(", ".flush(", ".writeln("],
+        // std::io::Seek
+        "Seek" => &[".seek(", ".stream_position(", ".rewind("],
+        // std::io::BufRead
+        "BufRead" => &[".fill_buf(", ".consume(", ".read_line(", ".lines(", ".read_until("],
+        // std::convert::TryFrom / TryInto
+        "TryFrom" | "TryInto" => &[".try_into(", ".try_from("],
+        // std::iter::FromIterator
+        "FromIterator" => &[".from_iter(", "FromIterator::"],
+        // std::iter::Extend
+        "Extend" => &[".extend("],
+        // chrono::Datelike
+        "Datelike" => &[".year(", ".month(", ".day(", ".weekday(", ".iso_week(", ".num_days_from_", ".ordinal(", ".with_"],
+        // chrono::Timelike
+        "Timelike" => &[".hour(", ".minute(", ".second(", ".nanosecond(", ".with_hour(", ".with_minute("],
+        // tokio::io::AsyncReadExt
+        "AsyncReadExt" => &[".read(", ".read_buf(", ".read_exact(", ".read_to_end(", ".readable("],
+        // tokio::io::AsyncWriteExt
+        "AsyncWriteExt" => &[".write(", ".write_all(", ".write_buf(", ".flush(", ".writable("],
+        // tokio::io::AsyncSeekExt
+        "AsyncSeekExt" => &[".seek(", ".stream_position("],
+        // tokio::io::AsyncBufReadExt
+        "AsyncBufReadExt" => &[".read_line(", ".read_until(", ".fill_buf(", ".consume("],
+        // candle_core::IndexOp (tensor indexing via .i())
+        "IndexOp" => &[".i(", ".n(", ".r#", ".squeeze("],
+        // serde::Deserialize (used in derive macros — checked separately)
+        // These are handled by the contains_word check since they appear in #[derive(...)]
+        _ => return false,
+    };
+
+    // Check if any method pattern appears in the file (excluding the import line)
+    lines
+        .iter()
+        .enumerate()
+        .filter(|(idx, _)| *idx != import_line)
+        .any(|(_, line)| {
+            let trimmed = line.trim();
+            if trimmed.starts_with("//") {
+                return false;
+            }
+            methods.iter().any(|m| line.contains(m))
+        })
 }
