@@ -2,6 +2,7 @@
 // Memory tools handler - handles memory operations and vector embeddings
 
 use std::sync::Arc;
+use uuid::Uuid;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::memory;
 use crate::bridge::mcp::handlers::{HandlerError, HandlerInitError, HandlerInitResult, ToolHandler, json_to_schema};
@@ -127,6 +128,41 @@ impl MemoryToolsHandler {
     pub async fn execute_get_embedding_stats(&self) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         memory::execute_get_embedding_stats(&self.context.database).await
     }
+
+    /// Archive a memory by ID
+    pub async fn execute_archive_memory(
+        &self,
+        input: memory::ArchiveMemoryInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        let memory_id: Uuid = input.memory_id.parse()
+            .map_err(|e| anyhow::anyhow!("Invalid memory UUID: {}", e))?;
+        let archived = self.context.permanent_memory.archive(&memory_id).await;
+        if archived {
+            self.context
+                .memory_event_bus
+                .emit_archived(memory_id, "manual_archive");
+        }
+        memory::execute_archive_memory(input, archived).await
+    }
+
+    /// Link two memories with a relationship
+    pub async fn execute_link_memories(
+        &self,
+        input: memory::LinkMemoriesInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        let from_id: Uuid = input.from_id.parse()
+            .map_err(|e| anyhow::anyhow!("Invalid from_id UUID: {}", e))?;
+        let to_id: Uuid = input.to_id.parse()
+            .map_err(|e| anyhow::anyhow!("Invalid to_id UUID: {}", e))?;
+        self.context
+            .permanent_memory
+            .add_relationship(&from_id, &to_id)
+            .await;
+        self.context
+            .memory_event_bus
+            .emit_relationship_added(from_id, to_id, "related");
+        memory::execute_link_memories(input).await
+    }
 }
 
 impl ToolHandler for MemoryToolsHandler {
@@ -146,6 +182,8 @@ impl ToolHandler for MemoryToolsHandler {
             "list_embeddings".to_string(),
             "delete_embedding".to_string(),
             "get_embedding_stats".to_string(),
+            "archive_memory".to_string(),
+            "link_memories".to_string(),
         ]
     }
 
@@ -201,6 +239,29 @@ impl ToolHandler for MemoryToolsHandler {
                     }
                 })),
             ).with_title("List Memories"),
+            rmcp::model::Tool::new(
+                "archive_memory",
+                "Archive a memory by ID",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "memory_id": { "type": "string", "description": "UUID of the memory to archive" }
+                    },
+                    "required": ["memory_id"]
+                })),
+            ).with_title("Archive Memory"),
+            rmcp::model::Tool::new(
+                "link_memories",
+                "Create a relationship between two memories",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "from_id": { "type": "string", "description": "Source memory UUID" },
+                        "to_id": { "type": "string", "description": "Target memory UUID" }
+                    },
+                    "required": ["from_id", "to_id"]
+                })),
+            ).with_title("Link Memories"),
         ]
     }
     
@@ -263,6 +324,18 @@ impl ToolHandler for MemoryToolsHandler {
                 }
                 "get_embedding_stats" => {
                     self.execute_get_embedding_stats().await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "archive_memory" => {
+                    let input: memory::ArchiveMemoryInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_archive_memory(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "link_memories" => {
+                    let input: memory::LinkMemoriesInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_link_memories(input).await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 _ => Err(HandlerError::ToolNotFound(name.to_string()))

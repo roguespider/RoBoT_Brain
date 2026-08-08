@@ -246,6 +246,7 @@ impl App {
         tracing::info!("ACP system agents registered (system:main, worker:1)");
 
         // Create MCP context with all systems
+        let memory_event_bus = Arc::new(crate::memory::events::MemoryEventBus::new());
         let mcp_context = Arc::new(McpContext::new(
             database.clone(),
             bus.clone(),
@@ -265,6 +266,7 @@ impl App {
             skills_registry.clone(),
             acp_router.clone(),
             acp_registry.clone(),
+            memory_event_bus.clone(),
         ));
 
         // Register MCP tools

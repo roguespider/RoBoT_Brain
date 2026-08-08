@@ -46,6 +46,19 @@ pub struct ListMemoriesInput {
     pub limit: Option<usize>,
 }
 
+/// Tool: Archive a memory
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct ArchiveMemoryInput {
+    pub memory_id: String,
+}
+
+/// Tool: Link two memories with a relationship
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct LinkMemoriesInput {
+    pub from_id: String,
+    pub to_id: String,
+}
+
 /// Memory tool definitions
 pub mod definitions {
     pub const STORE_MEMORY: &str = "store_memory";
@@ -792,5 +805,27 @@ pub async fn execute_get_embedding_stats(database: &Arc<SqliteDatabase>) -> Resu
 
     Ok(ToolOutput::success(serde_json::json!({
         "total_embeddings": count
+    })))
+}
+
+/// Execute archive memory tool
+pub async fn execute_archive_memory(
+    input: ArchiveMemoryInput,
+    archived: bool,
+) -> Result<ToolOutput> {
+    Ok(ToolOutput::success(serde_json::json!({
+        "success": archived,
+        "memory_id": input.memory_id,
+        "archived": archived,
+    })))
+}
+
+/// Execute link memories tool
+pub async fn execute_link_memories(input: LinkMemoriesInput) -> Result<ToolOutput> {
+    Ok(ToolOutput::success(serde_json::json!({
+        "success": true,
+        "from_id": input.from_id,
+        "to_id": input.to_id,
+        "relationship": "related",
     })))
 }
