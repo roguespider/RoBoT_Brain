@@ -136,11 +136,11 @@ pub struct WhisperTranscriber {
 }
 
 impl WhisperTranscriber {
-    /// Create a new Whisper transcriber
+    /// Create a new Whisper transcriber (assumes model is already cached)
     pub fn new() -> Result<Self> {
         let device = Device::Cpu;
 
-        // Download the Whisper model from HuggingFace
+        // Use HuggingFace cache - model should already be downloaded
         let api = Api::new()?;
         let repo = api.repo(hf_hub::Repo::with_revision(
             "openai/whisper-base".to_string(),
@@ -148,9 +148,9 @@ impl WhisperTranscriber {
             "main".to_string(),
         ));
 
-        tracing::info!("Downloading Whisper model files...");
+        tracing::info!("Loading Whisper model...");
 
-        // Get model files
+        // Get model files from cache
         let config_path = repo.get("config.json")?;
         let model_path = repo.get("model.safetensors")?;
         let tokenizer_path = repo.get("tokenizer.json")?;
@@ -381,18 +381,45 @@ fn load_mel_filters() -> Result<Vec<f32>> {
 static TRANSCRIBER: std::sync::OnceLock<std::sync::Mutex<WhisperTranscriber>> =
     std::sync::OnceLock::new();
 
+/// Check if model is cached and ready for use (non-blocking)
+fn is_model_cached() -> bool {
+    // Check standard HuggingFace cache locations
+    let possible_paths = [
+        std::env::var("HF_HUB_CACHE").ok(),
+        Some(format!("{}/.cache/huggingface/hub", std::env::var("HOME").unwrap_or_default())),
+    ];
+    
+    for cache_dir in possible_paths.into_iter().flatten() {
+        let model_path = std::path::Path::new(&cache_dir).join("models--openai--whisper-base");
+        if model_path.join("models/model.safetensors").exists() 
+            && model_path.join("config.json").exists() {
+            return true;
+        }
+    }
+    false
+}
+
 fn get_transcriber() -> Result<std::sync::MutexGuard<'static, WhisperTranscriber>> {
     // Initialize the transcriber if not already done
-    // This ensures the OnceLock is populated before we access it
     if TRANSCRIBER.get().is_none() {
-        let transcriber: std::sync::Mutex<WhisperTranscriber> = match WhisperTranscriber::new() {
-            Ok(t) => std::sync::Mutex::new(t),
-            Err(e) => {
-                tracing::warn!("Failed to initialize Whisper transcriber: {}, using default", e);
-                std::sync::Mutex::new(WhisperTranscriber::default())
+        let transcriber = if is_model_cached() {
+            // Model is cached, try to load it
+            match WhisperTranscriber::new() {
+                Ok(t) => {
+                    tracing::info!("Whisper model loaded successfully");
+                    std::sync::Mutex::new(t)
+                }
+                Err(e) => {
+                    tracing::warn!("Failed to load cached Whisper model: {}, using audio analysis only", e);
+                    std::sync::Mutex::new(WhisperTranscriber::default())
+                }
             }
+        } else {
+            // Model not cached, skip download (would block on network)
+            tracing::info!("Whisper model not cached - audio analysis mode only (set HF_HUB_CACHE or download model manually for full transcription)");
+            std::sync::Mutex::new(WhisperTranscriber::default())
         };
-        // Attempt to set, log if already set (race condition)
+
         if TRANSCRIBER.set(transcriber).is_err() {
             tracing::debug!("Transcriber was initialized by another thread");
         }
@@ -421,30 +448,67 @@ pub fn transcribe_audio(path: &Path) -> Result<TranscriptionResult> {
         duration_seconds
     );
 
-    // Get transcriber (loads model on first call)
-    let mut transcriber = get_transcriber()?;
-
-    // Run Whisper transcription
-    let result = transcriber.transcribe(&samples)?;
-
     // Generate audio analysis for context
     let analysis = AudioAnalysis::from_samples(&samples, 16000, duration_seconds);
     let analysis_text = generate_audio_analysis_text(&analysis, path);
 
-    Ok(TranscriptionResult {
-        text: format!(
-            "{}\n\n[Transcribed using Candle Whisper - {:.1}s audio]",
-            if result.text.is_empty() {
-                analysis_text
+    // Try to get transcriber and run Whisper transcription
+    // If model isn't loaded, gracefully fall back to audio analysis
+    let transcription_result = match get_transcriber() {
+        Ok(mut transcriber) => {
+            // Check if model is actually loaded before trying to transcribe
+            if transcriber.model.is_some() {
+                match transcriber.transcribe(&samples) {
+                    Ok(result) => {
+                        // Successfully transcribed - use the result
+                        Some(result)
+                    }
+                    Err(e) => {
+                        tracing::warn!("Whisper transcription failed: {}, using audio analysis", e);
+                        None
+                    }
+                }
             } else {
-                result.text
-            },
-            duration_seconds
-        ),
-        language: result.language,
-        duration_seconds: result.duration_seconds,
-        segments: result.segments,
-    })
+                tracing::info!("Whisper model not loaded, using audio analysis");
+                None
+            }
+        }
+        Err(e) => {
+            tracing::warn!("Failed to get Whisper transcriber: {}, using audio analysis", e);
+            None
+        }
+    };
+
+    // Return result - either transcription or audio analysis
+    match transcription_result {
+        Some(result) => Ok(TranscriptionResult {
+            text: format!(
+                "{}\n\n[Transcribed using Candle Whisper - {:.1}s audio]",
+                if result.text.is_empty() {
+                    analysis_text
+                } else {
+                    result.text
+                },
+                duration_seconds
+            ),
+            language: result.language,
+            duration_seconds: result.duration_seconds,
+            segments: result.segments,
+        }),
+        None => {
+            // Whisper model not available - return audio analysis instead
+            Ok(TranscriptionResult {
+                text: format!(
+                    "{}\n\n[Audio analysis only - Whisper model not available - {:.1}s audio]",
+                    analysis_text,
+                    duration_seconds
+                ),
+                language: None,
+                duration_seconds,
+                segments: vec![],
+            })
+        }
+    }
 }
 
 /// Generate text from audio analysis

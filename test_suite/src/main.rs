@@ -154,6 +154,42 @@ async fn build_server() -> anyhow::Result<PathBuf> {
     })
 }
 
+/// Create a minimal valid WAV file for testing transcription
+fn create_minimal_wav() -> Vec<u8> {
+    let sample_rate: u32 = 8000;
+    let num_channels: u16 = 1;
+    let bits_per_sample: u16 = 16;
+    let duration_secs: u32 = 1;
+    let num_samples = sample_rate * duration_secs;
+    let data_size = num_samples * u32::from(bits_per_sample / 8);
+
+    let mut wav = Vec::new();
+
+    // RIFF header
+    wav.extend_from_slice(b"RIFF");
+    wav.extend_from_slice(&(36 + data_size).to_le_bytes()); // File size - 8
+    wav.extend_from_slice(b"WAVE");
+
+    // fmt chunk
+    wav.extend_from_slice(b"fmt ");
+    wav.extend_from_slice(&16u32.to_le_bytes()); // Chunk size
+    wav.extend_from_slice(&1u16.to_le_bytes()); // Audio format (PCM)
+    wav.extend_from_slice(&num_channels.to_le_bytes());
+    wav.extend_from_slice(&sample_rate.to_le_bytes());
+    wav.extend_from_slice(&(sample_rate * u32::from(num_channels) * u32::from(bits_per_sample / 8)).to_le_bytes()); // Byte rate
+    wav.extend_from_slice(&(num_channels * bits_per_sample / 8).to_le_bytes()); // Block align
+    wav.extend_from_slice(&bits_per_sample.to_le_bytes());
+
+    // data chunk
+    wav.extend_from_slice(b"data");
+    wav.extend_from_slice(&data_size.to_le_bytes());
+
+    // Audio data (silence - all zeros)
+    wav.resize(wav.len() + data_size as usize, 0);
+
+    wav
+}
+
 /// Setup test environment
 fn setup_test_environment(server_path: &Path) -> anyhow::Result<TestEnvironment> {
     teeprintln!(
@@ -447,6 +483,11 @@ And this is the third subtitle.
 </svg>
 ",
     )?;
+
+    // Audio file for transcription test (minimal WAV header with silence)
+    // Create a minimal valid 16-bit mono 8kHz WAV file with 1 second of silence
+    let wav_data = create_minimal_wav();
+    fs::write(files_folder.join("sample.wav"), wav_data)?;
 
     // Create a minimal ZIP archive for testing
     let zip_path = files_folder.join("archives/test.zip");
