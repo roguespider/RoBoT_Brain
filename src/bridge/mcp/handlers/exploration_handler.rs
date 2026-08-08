@@ -128,6 +128,130 @@ impl ToolHandler for ExplorationToolsHandler {
         true
     }
 
+    fn get_tools(&self) -> Vec<rmcp::model::Tool> {
+        use crate::bridge::mcp::handlers::json_to_schema;
+        vec![
+            rmcp::model::Tool::new(
+                "start_exploration",
+                "Start a new exploration to investigate a problem or hypothesis",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "topic": { "type": "string", "description": "Topic to explore" },
+                        "approach": { "type": "string", "description": "Exploration approach" }
+                    },
+                    "required": ["topic"]
+                })),
+            ).with_title("Start Exploration"),
+            rmcp::model::Tool::new(
+                "get_exploration_status",
+                "Get the current status of an exploration",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "exploration_id": { "type": "string", "description": "Exploration ID" }
+                    },
+                    "required": ["exploration_id"]
+                })),
+            ).with_title("Get Exploration Status"),
+            rmcp::model::Tool::new(
+                "pause_exploration",
+                "Pause an ongoing exploration",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "exploration_id": { "type": "string", "description": "Exploration ID" }
+                    },
+                    "required": ["exploration_id"]
+                })),
+            ).with_title("Pause Exploration"),
+            rmcp::model::Tool::new(
+                "resume_exploration",
+                "Resume a paused exploration",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "exploration_id": { "type": "string", "description": "Exploration ID" }
+                    },
+                    "required": ["exploration_id"]
+                })),
+            ).with_title("Resume Exploration"),
+            rmcp::model::Tool::new(
+                "complete_exploration",
+                "Complete an exploration with findings",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "exploration_id": { "type": "string", "description": "Exploration ID" },
+                        "findings": { "type": "string", "description": "Key findings" }
+                    },
+                    "required": ["exploration_id", "findings"]
+                })),
+            ).with_title("Complete Exploration"),
+            rmcp::model::Tool::new(
+                "abandon_exploration",
+                "Abandon an exploration without findings",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "exploration_id": { "type": "string", "description": "Exploration ID" }
+                    },
+                    "required": ["exploration_id"]
+                })),
+            ).with_title("Abandon Exploration"),
+            rmcp::model::Tool::new(
+                "record_attempt",
+                "Record an attempt during exploration",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "exploration_id": { "type": "string", "description": "Exploration ID" },
+                        "description": { "type": "string", "description": "What was attempted" },
+                        "result": { "type": "string", "description": "Result of the attempt" }
+                    },
+                    "required": ["exploration_id", "description", "result"]
+                })),
+            ).with_title("Record Attempt"),
+            rmcp::model::Tool::new(
+                "add_hypothesis",
+                "Add a hypothesis to an exploration",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "exploration_id": { "type": "string", "description": "Exploration ID" },
+                        "hypothesis": { "type": "string", "description": "Hypothesis statement" }
+                    },
+                    "required": ["exploration_id", "hypothesis"]
+                })),
+            ).with_title("Add Hypothesis"),
+            rmcp::model::Tool::new(
+                "evaluate_exploration_hypothesis",
+                "Evaluate a hypothesis during exploration",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "exploration_id": { "type": "string", "description": "Exploration ID" },
+                        "hypothesis_id": { "type": "string", "description": "Hypothesis ID" },
+                        "result": { "type": "string", "description": "supported, partially_supported, rejected, or unknown" }
+                    },
+                    "required": ["exploration_id", "hypothesis_id", "result"]
+                })),
+            ).with_title("Evaluate Exploration Hypothesis"),
+            rmcp::model::Tool::new(
+                "promote_finding",
+                "Promote a finding to reusable knowledge",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "exploration_id": { "type": "string", "description": "Exploration ID" },
+                        "finding_id": { "type": "string", "description": "Finding ID to promote" }
+                    },
+                    "required": ["exploration_id", "finding_id"]
+                })),
+            ).with_title("Promote Finding"),
+        ]
+    }
+
     fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
         async move {
             match name {

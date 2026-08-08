@@ -113,6 +113,71 @@ impl ToolHandler for IngestorToolsHandler {
         self.context.database.connection().is_ok()
     }
 
+    fn get_tools(&self) -> Vec<rmcp::model::Tool> {
+        use crate::bridge::mcp::handlers::json_to_schema;
+        vec![
+            rmcp::model::Tool::new(
+                "ingest_files",
+                "Ingest files from files_to_import folder into memory",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "folder": { "type": "string", "description": "Folder name (defaults to 'files_to_import')" },
+                        "limit": { "type": "number", "description": "Number of files to ingest" },
+                        "file_path": { "type": "string", "description": "Ingest specific file by path" },
+                        "memory_type": { "type": "string", "description": "Memory type: file, conversation, code, note" }
+                    }
+                })),
+            ).with_title("Ingest Files"),
+            rmcp::model::Tool::new(
+                "list_importable",
+                "List files available for import",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "folder": { "type": "string", "description": "Folder name" },
+                        "limit": { "type": "number", "description": "Max files to return" }
+                    }
+                })),
+            ).with_title("List Importable Files"),
+            rmcp::model::Tool::new(
+                "list_ingested_files",
+                "List files that have been ingested",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "folder": { "type": "string", "description": "Folder name" },
+                        "limit": { "type": "number", "description": "Max files to return" }
+                    }
+                })),
+            ).with_title("List Ingested Files"),
+            rmcp::model::Tool::new(
+                "delete_ingested_files",
+                "Delete original files after successful ingestion",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "files": { "type": "array", "items": { "type": "string" }, "description": "File paths to delete" },
+                        "confirmation": { "type": "string", "description": "Must be 'yes'" }
+                    },
+                    "required": ["files", "confirmation"]
+                })),
+            ).with_title("Delete Ingested Files"),
+            rmcp::model::Tool::new(
+                "transcribe_audio",
+                "Transcribe an audio file to text using Whisper AI",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "path": { "type": "string", "description": "Full path to the audio file" },
+                        "store_as_memory": { "type": "boolean", "description": "Store as memory" }
+                    },
+                    "required": ["path"]
+                })),
+            ).with_title("Transcribe Audio"),
+        ]
+    }
+
     fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
         async move {
             match name {

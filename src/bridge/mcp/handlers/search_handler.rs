@@ -73,6 +73,45 @@ impl ToolHandler for SearchToolsHandler {
         self.context.database.connection().is_ok()
     }
 
+    fn get_tools(&self) -> Vec<rmcp::model::Tool> {
+        use crate::bridge::mcp::handlers::json_to_schema;
+        vec![
+            rmcp::model::Tool::new(
+                "global_search",
+                "Search across all memories, experiences, and knowledge",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "query": { "type": "string", "description": "Search query" },
+                        "limit": { "type": "number", "description": "Maximum results per category" }
+                    },
+                    "required": ["query"]
+                })),
+            ).with_title("Global Search"),
+            rmcp::model::Tool::new(
+                "get_recommendations",
+                "Get recommendations based on patterns and history",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "category": { "type": "string", "description": "Recommendation category" }
+                    }
+                })),
+            ).with_title("Get Recommendations"),
+            rmcp::model::Tool::new(
+                "get_reputation",
+                "Get reputation/quality score for a tool or approach",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "tool_name": { "type": "string", "description": "Tool name to check" }
+                    },
+                    "required": ["tool_name"]
+                })),
+            ).with_title("Get Reputation"),
+        ]
+    }
+
     fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
         async move {
             match name {

@@ -81,8 +81,72 @@ impl ToolHandler for KnowledgeToolsHandler {
     }
 
     fn is_healthy(&self) -> bool {
-        // Health check would be async - for now return true if context is available
         true
+    }
+
+    fn get_tools(&self) -> Vec<rmcp::model::Tool> {
+        use crate::bridge::mcp::handlers::json_to_schema;
+        vec![
+            rmcp::model::Tool::new(
+                "add_knowledge",
+                "Add new validated knowledge to the knowledge base",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "statement": { "type": "string", "description": "The knowledge statement" },
+                        "knowledge_type": { "type": "string", "description": "Type: fact, procedure, causality, pattern, insight, rule, concept" },
+                        "source": { "type": "string", "description": "Source of the knowledge" },
+                        "confidence": { "type": "number", "description": "Initial confidence (0.0-1.0)" },
+                        "tags": { "type": "array", "items": { "type": "string" }, "description": "Tags" }
+                    },
+                    "required": ["statement"]
+                })),
+            ).with_title("Add Knowledge"),
+            rmcp::model::Tool::new(
+                "query_knowledge",
+                "Query the knowledge base for relevant knowledge",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "query": { "type": "string", "description": "Search query" },
+                        "knowledge_type": { "type": "string", "description": "Filter by type" },
+                        "limit": { "type": "number", "description": "Maximum results" },
+                        "min_confidence": { "type": "number", "description": "Minimum confidence" }
+                    },
+                    "required": ["query"]
+                })),
+            ).with_title("Query Knowledge"),
+            rmcp::model::Tool::new(
+                "record_knowledge_application",
+                "Record the result of applying knowledge",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "knowledge_id": { "type": "string", "description": "Knowledge ID" },
+                        "success": { "type": "boolean", "description": "Whether application was successful" }
+                    },
+                    "required": ["knowledge_id", "success"]
+                })),
+            ).with_title("Record Knowledge Application"),
+            rmcp::model::Tool::new(
+                "get_knowledge_stats",
+                "Get knowledge base statistics",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {}
+                })),
+            ).with_title("Get Knowledge Stats"),
+            rmcp::model::Tool::new(
+                "get_mature_knowledge",
+                "Get mature (high-confidence) knowledge",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "limit": { "type": "number", "description": "Maximum results" }
+                    }
+                })),
+            ).with_title("Get Mature Knowledge"),
+        ]
     }
 
     fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
