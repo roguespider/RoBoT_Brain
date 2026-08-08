@@ -91,8 +91,14 @@ impl ServerHandler for types::McpServerHandler {
                     Ok(CallToolResult::success(content))
                 } else {
                     // Tool returned success=false, treat as error response
-                    let json_str = serde_json::to_string(&result.data)
-                        .unwrap_or_else(|_| result.data.to_string());
+                    let error_msg = result.error.clone().unwrap_or_else(|| "Unknown error".to_string());
+                    let error_response = serde_json::json!({
+                        "success": false,
+                        "data": result.data,
+                        "error": error_msg
+                    });
+                    let json_str = serde_json::to_string(&error_response)
+                        .unwrap_or_else(|_| r#"{"success": false, "error": "Failed to serialize error"}"#.to_string());
                     let content = vec![ContentBlock::text(json_str)];
                     Ok(CallToolResult::error(content))
                 }

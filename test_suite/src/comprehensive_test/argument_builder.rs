@@ -156,7 +156,8 @@ pub fn build_test_arguments(
         }),
         "hypothesis_create" => serde_json::json!({
             "statement": "Users prefer memory-first approach",
-            "domain": "testing"
+            "domain": "testing",
+            "source_observations": []
         }),
         "hypothesis_add_evidence" => serde_json::json!({
             "hypothesis_id": "00000000-0000-0000-0000-000000000001",

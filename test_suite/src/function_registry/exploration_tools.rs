@@ -108,7 +108,7 @@ pub fn exploration_tools() -> Vec<TestRequirement> {
         },
         TestRequirement {
             id: "exploration_evaluate_hypothesis".to_string(),
-            function_name: "evaluate_hypothesis".to_string(),
+            function_name: "evaluate_exploration_hypothesis".to_string(),
             category: "Exploration".to_string(),
             requires_workflow: true,
             requires_data: Some(DataRequirement {

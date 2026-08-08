@@ -119,7 +119,7 @@ impl ToolHandler for ExplorationToolsHandler {
             "abandon_exploration".to_string(),
             "record_attempt".to_string(),
             "add_hypothesis".to_string(),
-            "evaluate_hypothesis".to_string(),
+            "evaluate_exploration_hypothesis".to_string(),
             "promote_finding".to_string(),
         ]
     }
@@ -171,7 +171,7 @@ impl ToolHandler for ExplorationToolsHandler {
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
                     Ok(self.execute_add_hypothesis(input))
                 }
-                "evaluate_hypothesis" => {
+                "evaluate_exploration_hypothesis" => {
                     let input: exploration::EvaluateHypothesisInput = serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
                     Ok(self.execute_evaluate_hypothesis(input))
