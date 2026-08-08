@@ -25,16 +25,6 @@ impl InMemoryChannel {
         }
     }
 
-    /// Create a new in-memory channel with pre-allocated buffer
-    #[allow(dead_code)]
-    pub fn with_buffer(name: &str, capacity: usize) -> Self {
-        Self {
-            name: name.to_string(),
-            messages: Arc::new(std::sync::Mutex::new(Vec::with_capacity(capacity))),
-            waiting: Arc::new(AtomicBool::new(false)),
-        }
-    }
-
     /// Send a message through the channel
     pub fn send(&self, message: AcpMessage) -> Result<()> {
         let mut messages = self.messages.lock().map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;

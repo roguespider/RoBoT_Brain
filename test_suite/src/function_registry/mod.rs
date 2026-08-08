@@ -33,9 +33,7 @@ pub mod types;
 pub mod vector_index_tools;
 pub mod workflow_tools;
 
-pub use types::{
-    CheckType, DataRequirement, TestRequirement, ValidationCheck,
-};
+pub use types::{CheckType, TestRequirement, ValidationCheck};
 
 /// All registered functions that need testing
 pub struct FunctionRegistry;

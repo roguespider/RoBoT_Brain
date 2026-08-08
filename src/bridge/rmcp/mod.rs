@@ -13,9 +13,6 @@ pub mod handler;
 
 pub use handler::run_stdio_server;
 
-use std::collections::HashMap;
-use std::sync::Arc;
-
 use rmcp::handler::server::ServerHandler;
 use rmcp::model::{
     CallToolRequestParams, CallToolResult, ContentBlock,

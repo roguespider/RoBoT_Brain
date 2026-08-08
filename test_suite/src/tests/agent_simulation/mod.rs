@@ -10,10 +10,6 @@ pub mod workflows;
 pub mod memory_agent;
 pub mod decision_making;
 
-pub use workflows::test_agent_workflows;
-pub use memory_agent::test_memory_based_agent;
-pub use decision_making::test_agent_decision_making;
-
 use crate::{TestMcpClient, TestStats};
 
 /// Agent simulation test results
@@ -52,12 +48,15 @@ pub async fn run_agent_simulation_tests(
     crate::teeprintln!("{}", "-".repeat(60));
     let decision_results = decision_making::test_agent_decision_making(client, stats).await?;
 
+    let total_passed = workflow_results.passed + memory_results.passed + decision_results.passed;
+    let total_failed = workflow_results.failed + memory_results.failed + decision_results.failed;
+
     let results = AgentSimulationResults {
         workflows: workflow_results,
         memory_agent: memory_results,
         decision_making: decision_results,
-        total_passed: 0,
-        total_failed: 0,
+        total_passed,
+        total_failed,
     };
 
     print_simulation_results(&results);
@@ -88,10 +87,7 @@ fn print_simulation_results(results: &AgentSimulationResults) {
     crate::teeprintln!("  ❌ Failed: {}", results.decision_making.failed);
     crate::teeprintln!("  ℹ  Decisions Made: {}", results.decision_making.decisions_tested);
 
-    let total_passed = results.workflows.passed + results.memory_agent.passed + results.decision_making.passed;
-    let total_failed = results.workflows.failed + results.memory_agent.failed + results.decision_making.failed;
-    
     crate::teeprintln!("\n📊 Overall:");
-    crate::teeprintln!("  Total Passed: {}", total_passed);
-    crate::teeprintln!("  Total Failed: {}", total_failed);
+    crate::teeprintln!("  Total Passed: {}", results.total_passed);
+    crate::teeprintln!("  Total Failed: {}", results.total_failed);
 }

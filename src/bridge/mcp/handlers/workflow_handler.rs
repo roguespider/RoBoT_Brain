@@ -89,6 +89,14 @@ impl WorkflowToolsHandler {
     ) -> crate::bridge::tools::ToolOutput {
         workflow::execute_delete_workflow(input, &self.context.workflow_engine).await
     }
+
+    /// Set a workflow variable
+    pub async fn execute_set_workflow_variable(
+        &self,
+        input: workflow::SetWorkflowVariableInput,
+    ) -> crate::bridge::tools::ToolOutput {
+        workflow::execute_set_workflow_variable(input, &self.context.workflow_engine).await
+    }
 }
 
 impl ToolHandler for WorkflowToolsHandler {
@@ -107,6 +115,7 @@ impl ToolHandler for WorkflowToolsHandler {
             "resume_workflow".to_string(),
             "cancel_workflow".to_string(),
             "delete_workflow".to_string(),
+            "set_workflow_variable".to_string(),
         ]
     }
 
@@ -216,6 +225,19 @@ impl ToolHandler for WorkflowToolsHandler {
                     "required": ["workflow_id"]
                 })),
             ).with_title("Delete Workflow"),
+            rmcp::model::Tool::new(
+                "set_workflow_variable",
+                "Set a variable on a workflow for use in step parameter substitution",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "workflow_id": { "type": "string", "description": "Workflow ID" },
+                        "key": { "type": "string", "description": "Variable name" },
+                        "value": { "type": "string", "description": "Variable value" }
+                    },
+                    "required": ["workflow_id", "key", "value"]
+                })),
+            ).with_title("Set Workflow Variable"),
         ]
     }
 
@@ -267,6 +289,11 @@ impl ToolHandler for WorkflowToolsHandler {
                     let input: workflow::DeleteWorkflowInput = serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
                     Ok(self.execute_delete_workflow(input).await)
+                }
+                "set_workflow_variable" => {
+                    let input: workflow::SetWorkflowVariableInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_set_workflow_variable(input).await)
                 }
                 other => Err(HandlerError::ToolNotFound(other.to_string())),
             }

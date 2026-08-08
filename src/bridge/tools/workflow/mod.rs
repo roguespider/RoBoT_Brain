@@ -69,6 +69,14 @@ pub struct DeleteWorkflowInput {
     pub workflow_id: String,
 }
 
+/// Tool: Set a workflow variable
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct SetWorkflowVariableInput {
+    pub workflow_id: String,
+    pub key: String,
+    pub value: String,
+}
+
 /// Workflow tool definitions
 pub mod definitions {
     pub const CREATE_WORKFLOW: &str = "create_workflow";
@@ -80,6 +88,7 @@ pub mod definitions {
     pub const RESUME_WORKFLOW: &str = "resume_workflow";
     pub const CANCEL_WORKFLOW: &str = "cancel_workflow";
     pub const DELETE_WORKFLOW: &str = "delete_workflow";
+    pub const SET_WORKFLOW_VARIABLE: &str = "set_workflow_variable";
 
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         vec![
@@ -227,6 +236,28 @@ pub mod definitions {
                         }
                     },
                     "required": ["workflow_id"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: SET_WORKFLOW_VARIABLE.to_string(),
+                description: "Set a variable on a workflow for use in step parameter substitution.".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "workflow_id": {
+                            "type": "string",
+                            "description": "ID of the workflow"
+                        },
+                        "key": {
+                            "type": "string",
+                            "description": "Variable name"
+                        },
+                        "value": {
+                            "type": "string",
+                            "description": "Variable value"
+                        }
+                    },
+                    "required": ["workflow_id", "key", "value"]
                 }),
             },
         ]
@@ -477,5 +508,21 @@ pub async fn execute_delete_workflow(
             "workflow_id": input.workflow_id,
             "error": e.to_string(),
         })),
+    }
+}
+
+/// Execute set workflow variable tool
+pub async fn execute_set_workflow_variable(
+    input: SetWorkflowVariableInput,
+    engine: &Arc<WorkflowEngine>,
+) -> ToolOutput {
+    match engine.set_variable(&input.workflow_id, input.key.clone(), input.value.clone()).await {
+        Ok(()) => ToolOutput::success(serde_json::json!({
+            "success": true,
+            "workflow_id": input.workflow_id,
+            "key": input.key,
+            "value": input.value,
+        })),
+        Err(e) => ToolOutput::error(format!("Failed to set variable: {}", e)),
     }
 }

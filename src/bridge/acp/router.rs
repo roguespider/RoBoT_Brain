@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 
-use super::message::{AcpAgentId, AcpMessage, AcpMessageType};
+use super::message::{AcpMessage, AcpMessageType};
 use super::registry::AcpRegistry;
 
 /// ACP router for routing messages between agents

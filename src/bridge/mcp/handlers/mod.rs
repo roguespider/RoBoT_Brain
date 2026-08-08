@@ -99,13 +99,8 @@ pub trait ToolHandler: Send + Sync {
     
     /// Execute a tool by name with arguments
     /// 
-    /// Default implementation returns ToolNotFound error.
-    /// Override this method to handle actual tool execution.
-    fn execute_tool(&self, name: &str, _: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
-        async move {
-            Err(HandlerError::ToolNotFound(name.to_string()))
-        }
-    }
+    /// Each handler must implement this to handle its own tool execution.
+    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send;
 }
 
 /// Marker trait for handlers that need workflow enforcement

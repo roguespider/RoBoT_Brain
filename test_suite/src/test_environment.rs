@@ -36,7 +36,9 @@ impl Drop for TestEnvironment {
     fn drop(&mut self) {
         // Clean up test environment on drop
         if self.root_dir.exists() {
-            let _ = fs::remove_dir_all(&self.root_dir);
+            if let Err(e) = fs::remove_dir_all(&self.root_dir) {
+                eprintln!("Warning: failed to clean up test environment: {}", e);
+            }
         }
     }
 }

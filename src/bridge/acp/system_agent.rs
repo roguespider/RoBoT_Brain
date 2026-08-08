@@ -7,7 +7,7 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
 use super::agent::AcpAgent;
-use super::message::{AcpAgentId, AcpMessage, AcpMessageType};
+use super::message::{AcpAgentId, AcpMessage};
 
 /// System agent capabilities
 #[derive(Debug, Clone, Serialize, Deserialize)]

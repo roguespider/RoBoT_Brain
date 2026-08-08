@@ -130,7 +130,8 @@ pub async fn test_acp_agents(
         "capabilities": ["test_capability"]
     })).await {
         Ok(result) => {
-            crate::teeprintln!("    ✅ register_agent SUCCESS");
+            crate::teeprintln!("    ✅ register_agent SUCCESS (result keys: {})",
+                result.as_object().map(|o| o.len()).unwrap_or(0));
             results.agents_tested += 1;
             results.passed += 1;
             stats.passed += 1;
@@ -155,7 +156,8 @@ pub async fn test_acp_agents(
         "instance_id": "test_1"
     })).await {
         Ok(result) => {
-            crate::teeprintln!("    ✅ unregister_agent SUCCESS");
+            crate::teeprintln!("    ✅ unregister_agent SUCCESS (result keys: {})",
+                result.as_object().map(|o| o.len()).unwrap_or(0));
             results.passed += 1;
             stats.passed += 1;
         }

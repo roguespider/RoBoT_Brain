@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
-use crate::bridge::acp::{AcpRegistry, AcpRouter};
+use crate::bridge::acp::AcpRouter;
 use crate::bridge::mcp::McpContext;
 use crate::database::sqlite::SqliteDatabase;
 use crate::experience::coordinator::ExperienceCoordinator;

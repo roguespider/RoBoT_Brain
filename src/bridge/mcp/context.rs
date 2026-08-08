@@ -14,6 +14,7 @@ use crate::experience::reflection::ReflectionEngine;
 use crate::experience::scheduler::Scheduler;
 use crate::experience::worker_manager::WorkerManager;
 use crate::knowledge::KnowledgeStore;
+use crate::memory::events::MemoryEventBus;
 use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory};
 use crate::planner::{Planner, PolicyEngine};
 use crate::skills::registry::SkillRegistry;
@@ -77,6 +78,9 @@ pub struct McpContext {
     /// ACP registry for agent registration
     pub acp_registry: Arc<AcpRegistry>,
 
+    /// Memory event bus - per Architecture §35 (short-term: in-memory event bus)
+    pub memory_event_bus: Arc<MemoryEventBus>,
+
     /// Server info
     pub server_info: McpServerInfo,
 
@@ -104,6 +108,7 @@ impl McpContext {
         skills: Arc<SkillRegistry>,
         acp_router: Arc<AcpRouter>,
         acp_registry: Arc<AcpRegistry>,
+        memory_event_bus: Arc<MemoryEventBus>,
     ) -> Self {
         Self {
             database,
@@ -124,6 +129,7 @@ impl McpContext {
             skills,
             acp_router,
             acp_registry,
+            memory_event_bus,
             server_info: McpServerInfo {
                 name: env!("CARGO_PKG_NAME").to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),

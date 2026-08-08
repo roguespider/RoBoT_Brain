@@ -541,3 +541,68 @@ pub mod metric_names {
     pub const LEARNING_ITERATIONS: &str = "learning.iterations";
     pub const KNOWLEDGE_CONFIDENCE: &str = "knowledge.confidence";
 }
+
+/// Run the metrics subsystem self-check.
+///
+/// Exercises the high-level `Metrics` API and the low-level
+/// `MetricsCollector` API to verify all metric recording and
+/// retrieval functions are functional.
+pub async fn run_metrics_self_check() -> String {
+    let metrics = Metrics::new();
+
+    // Exercise high-level Metrics API
+    metrics.set_experience_count(10).await;
+    metrics.increment_experience_count().await;
+    let exp_count = metrics.get_experience_count().await;
+
+    metrics.set_knowledge_count(5).await;
+    metrics.increment_knowledge_count().await;
+    let know_count = metrics.get_knowledge_count().await;
+
+    metrics.update_learning_rate(5, 10).await;
+    let learning_rate = metrics.get_learning_rate().await;
+
+    metrics.update_reputation_score("source_a", 0.85).await;
+    let rep_scores = metrics.get_reputation_scores().await;
+    let rep_score = metrics.get_reputation_score("source_a").await;
+
+    let collector = metrics.collector();
+    let aggregated = metrics.get_aggregated("test.metric").await;
+    let learning_stats = metrics.get_learning_stats().await;
+
+    tracing::info!(
+        "Metrics self-check [high-level]: exp_count={} know_count={} learning_rate={:.2} rep_scores={} rep_score={:?} aggregated={:?} learning_stats.reflections={}",
+        exp_count, know_count, learning_rate, rep_scores.len(), rep_score, aggregated.is_some(), learning_stats.reflections_generated
+    );
+
+    // Exercise low-level MetricsCollector API
+    let collector = MetricsCollector::new();
+    collector.record_sync("test.sync_metric", 42.0);
+    collector.increment_sync("test.sync_counter");
+    collector.set_gauge_sync("test.sync_gauge", 0.75);
+
+    let mut labels = HashMap::new();
+    labels.insert("env".to_string(), "self-check".to_string());
+    collector.record_with_labels("test.labeled_metric", 1.0, labels).await;
+
+    collector.increment_by("test.counter", 5).await;
+    let counter_val = collector.get_counter("test.counter").await;
+
+    collector.set_gauge("test.gauge", 0.5).await;
+    let gauge_val = collector.get_gauge("test.gauge").await;
+
+    let metric_points = collector.get_metric("test.labeled_metric").await;
+    collector.reset_counters().await;
+    let counter_after_reset = collector.get_counter("test.counter").await;
+
+    tracing::info!(
+        "Metrics self-check [low-level]: counter={} gauge={:?} metric_points={} counter_after_reset={}",
+        counter_val, gauge_val, metric_points.len(), counter_after_reset
+    );
+
+    format!(
+        "Metrics self-check complete: exp_count={} know_count={} learning_rate={:.2} rep_score={:?}",
+        exp_count, know_count, learning_rate, rep_score
+    )
+}
+

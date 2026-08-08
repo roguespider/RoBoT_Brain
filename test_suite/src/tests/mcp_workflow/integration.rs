@@ -154,14 +154,20 @@ pub async fn test_agent_workflow_integration(
                 }
 
                 // Cleanup
-                let _ = client
+                match client
                     .call_tool(
                         "cancel_workflow",
                         serde_json::json!({
                             "workflow_id": workflow_id
                         }),
                     )
-                    .await;
+                    .await
+                {
+                    Ok(_) => {}
+                    Err(e) => {
+                        crate::teeprintln!("    ⚠️  Cleanup: cancel_workflow failed: {}", e)
+                    }
+                }
             }
         }
         Err(e) => {

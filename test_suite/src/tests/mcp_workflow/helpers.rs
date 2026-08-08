@@ -262,7 +262,6 @@ pub fn print_mcp_workflow_results(results: &super::results::McpWorkflowTestResul
     );
 
     // Overall Assessment
-    let total_checks = 20;
     let mut passed_checks = 0;
     
     // Count workflow discovery (3 checks)

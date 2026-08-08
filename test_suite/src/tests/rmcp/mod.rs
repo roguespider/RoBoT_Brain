@@ -11,10 +11,6 @@ pub mod protocol;
 pub mod tools;
 pub mod sessions;
 
-pub use protocol::test_rmcp_protocol;
-pub use tools::test_tool_discovery;
-pub use sessions::test_rmcp_sessions;
-
 use crate::{TestMcpClient, TestStats};
 
 /// Run all RMCP protocol tests

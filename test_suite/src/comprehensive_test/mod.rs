@@ -10,7 +10,7 @@ use crate::code_analyzer::{CodeAnalyzer, LintAnalyzer, LintSummary};
 use crate::function_registry::FunctionRegistry;
 use crate::test_environment::TestEnvironment;
 use crate::test_results::print_issues_table;
-use crate::test_results::{TestReport, TestResult, TestStatus};
+use crate::test_results::{TestReport, TestStatus};
 use crate::{TestMcpClient, TestStats};
 
 pub mod argument_builder;
@@ -191,7 +191,10 @@ pub async fn run_comprehensive_tests(
 
     // Also call search_memory to satisfy memory search requirement
     crate::teeprintln!("  🔍 Checking memory...");
-    let _ = client.call_tool("search_memory", serde_json::json!({"query": "test"})).await;
+    match client.call_tool("search_memory", serde_json::json!({"query": "test"})).await {
+        Ok(_) => crate::teeprintln!("    ✓ Memory search responded"),
+        Err(e) => crate::teeprintln!("    ⚠️  Memory search failed: {}", e),
+    }
     
     crate::teeprintln!("  ✅ Workflow enforcement satisfied - running tests...\n");
 
@@ -203,20 +206,20 @@ pub async fn run_comprehensive_tests(
         test_num += 1;
         let result = run_single_test(client, requirement, &data_created, env).await;
 
+        // Capture status before moving result into tracking/report
+        let status_icon = helpers::get_status_icon(&result.status);
+        let is_pass = result.status == TestStatus::Pass;
+
         // Track created data for dependent tests
-        if result.status == TestStatus::Pass {
-            if let Some(data_req) = &requirement.requires_data {
-                data_created
-                    .entry(data_req.data_type.clone())
-                    .or_default()
-                    .push(requirement.id.clone());
-            }
-        }
+        let updated_data = runner::track_data_creation(
+            result.status.clone(),
+            requirement,
+            data_created.clone(),
+        );
+        data_created = updated_data;
 
         // Print test result in table format
-        let status_icon = helpers::get_status_icon(&result.status);
-        
-        let details = if result.status == TestStatus::Pass {
+        let details = if is_pass {
             "OK".to_string()
         } else {
             result
@@ -225,31 +228,13 @@ pub async fn run_comprehensive_tests(
                 .unwrap_or_else(|| "Unknown error".to_string())
         };
 
-        // Truncate for table
-        let cat_str = if requirement.category.len() > 18 {
-            format!("{}...", &requirement.category[..15])
-        } else {
-            requirement.category.clone()
-        };
-        let name_str = if requirement.function_name.len() > 28 {
-            format!("{}...", &requirement.function_name[..25])
-        } else {
-            requirement.function_name.clone()
-        };
-        let detail_str = if details.len() > 48 {
-            format!("{}...", &details[..45])
-        } else {
-            details
-        };
-
-        crate::teeprintln!(
-            "  │ {:>3} │ {:<18} │ {:<28} │ {} │ {:<48} │",
+        let table_row = helpers::format_test_result(
             test_num,
-            cat_str,
-            name_str,
+            requirement,
             status_icon,
-            detail_str
+            &details,
         );
+        crate::teeprintln!("{}", table_row);
 
         report.add_result(result);
 

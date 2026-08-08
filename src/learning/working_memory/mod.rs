@@ -22,6 +22,7 @@ pub mod promotion;
 
 pub use memory_state::{MemoryState, StateTransition, StateTransitionRecord};
 pub use promotion::PromotionPolicy;
+pub use store::WorkingMemory;
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};

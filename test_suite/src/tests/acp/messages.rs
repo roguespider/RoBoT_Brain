@@ -38,7 +38,8 @@ pub async fn test_acp_messages(
         "payload": {"action": "ping"}
     })).await {
         Ok(result) => {
-            crate::teeprintln!("    ✅ create_acp_message SUCCESS");
+            crate::teeprintln!("    ✅ create_acp_message SUCCESS (result keys: {})",
+                result.as_object().map(|o| o.len()).unwrap_or(0));
             results.messages_handled += 1;
             results.passed += 1;
             stats.passed += 1;

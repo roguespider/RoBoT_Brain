@@ -102,5 +102,9 @@ pub async fn test_rmcp_sessions(
         results.failed += 1;
     }
 
+    // Update overall stats from session test results
+    stats.passed += results.passed;
+    stats.failed += results.failed;
+
     Ok(results)
 }

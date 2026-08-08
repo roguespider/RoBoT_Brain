@@ -2,7 +2,7 @@
 //! Memory promotion policies and evaluation logic
 
 use serde::{Deserialize, Serialize};
-use chrono::{DateTime, Duration, Utc};
+use chrono::{DateTime, Utc};
 
 use super::memory_state::{MemoryState, StateTransition};
 

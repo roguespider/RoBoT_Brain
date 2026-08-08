@@ -27,9 +27,13 @@ impl TeeWriter {
     
     /// Write a string to the file
     pub fn write(&mut self, s: &str) {
-        // Write to file
-        let _ = self.file.write_all(s.as_bytes());
-        let _ = self.file.flush();
+        // Write to file — handle errors gracefully (best-effort logging)
+        if let Err(e) = self.file.write_all(s.as_bytes()) {
+            eprintln!("Warning: failed to write to output file: {}", e);
+        }
+        if let Err(e) = self.file.flush() {
+            eprintln!("Warning: failed to flush output file: {}", e);
+        }
     }
     
     /// Write a string with newline to the file
@@ -40,7 +44,9 @@ impl TeeWriter {
 
     /// Flush the buffer to ensure all data is written
     pub fn flush(&mut self) {
-        let _ = self.file.flush();
+        if let Err(e) = self.file.flush() {
+            eprintln!("Warning: failed to flush output file: {}", e);
+        }
     }
 }
 
