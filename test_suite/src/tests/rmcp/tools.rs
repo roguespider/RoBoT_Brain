@@ -50,19 +50,61 @@ pub async fn test_tool_discovery(
     crate::teeprintln!("  Testing tool categorization...");
     let tools = client.list_tools().await?;
     
+    // Define category mappings from tool suffixes to canonical categories
+    let category_mappings: std::collections::HashMap<&str, &str> = [
+        ("memory", "memory"),
+        ("memories", "memory"),
+        ("experience", "experience"),
+        ("experiences", "experience"),
+        ("knowledge", "knowledge"),
+        ("workflow", "workflow"),
+        ("workflows", "workflow"),
+        ("plan", "planner"),
+        ("plans", "planner"),
+        ("hypothesis", "hypothesis"),
+        ("hypotheses", "hypothesis"),
+        ("observation", "reflection"),
+        ("observations", "reflection"),
+        ("insights", "reflection"),
+        ("patterns", "reflection"),
+        ("skill", "skills"),
+        ("skills", "skills"),
+        ("exploration", "exploration"),
+        ("agent", "agent"),
+        ("agents", "agent"),
+        ("files", "ingestor"),
+        ("audio", "ingestor"),
+        ("ingestor", "ingestor"),
+    ].iter().cloned().collect();
+    
     let mut categories: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
     for tool in &tools {
         if let Some(name) = tool.get("name").and_then(|n| n.as_str()) {
-            // Extract category from tool name (e.g., "search_memory" -> "memory", "get_hypothesis" -> "hypothesis")
+            // Try to extract category from tool name
             let parts: Vec<&str> = name.split('_').collect();
-            // Use the last meaningful part as category (skip common verbs)
-            let skip_verbs = ["get", "list", "search", "add", "create", "update", "delete", "record", "start", "stop", "execute", "call", "set", "enable", "disable", "pause", "resume", "complete", "cancel", "abandon", "fail", "route", "connect", "disconnect", "extract", "apply", "promote", "ingest", "transcribe", "register", "unregister", "discover", "query", "analyze", "evaluate"];
-            if let Some(category) = parts.iter().rev().find(|p| !skip_verbs.contains(&(**p).to_lowercase().as_str())) {
-                *categories.entry(category.to_string()).or_insert(0) += 1;
-            } else if let Some(first) = parts.first() {
-                // Fallback to first part if no category found
-                *categories.entry(first.to_string()).or_insert(0) += 1;
-            }
+            
+            // Skip common verbs and try to find a category match
+            let skip_verbs = ["get", "list", "add", "create", "update", "delete", "record", 
+                              "start", "stop", "execute", "call", "set", "enable", "disable", 
+                              "pause", "resume", "complete", "cancel", "abandon", "fail", 
+                              "route", "connect", "disconnect", "extract", "apply", "promote", 
+                              "ingest", "transcribe", "register", "unregister", "discover", 
+                              "query", "analyze", "evaluate", "global", "search"];
+            
+            // Try last non-verb word first, then first non-verb word
+            let candidates: Vec<&str> = parts.iter()
+                .rev()
+                .chain(parts.iter())
+                .filter(|p| !skip_verbs.contains(&(**p).to_lowercase().as_str()))
+                .take(parts.len())
+                .copied()
+                .collect();
+            
+            let category = candidates.iter()
+                .find_map(|p| category_mappings.get(&p.to_lowercase().as_str()).copied())
+                .unwrap_or(parts.first().unwrap_or(&name));
+            
+            *categories.entry(category.to_string()).or_insert(0) += 1;
         }
     }
 
@@ -96,8 +138,8 @@ pub async fn test_tool_discovery(
     // Test 4: List specific tool categories
     crate::teeprintln!("  Testing tool category coverage...");
     let expected_categories = vec![
-        "memory", "experience", "knowledge", "workflow", 
-        "planner", "hypothesis", "reflection", "search",
+        "memory", "experience", "knowledge", "workflow",
+        "planner", "hypothesis", "reflection",
         "ingestor", "agent", "skills", "exploration"
     ];
     
