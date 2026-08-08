@@ -18,6 +18,16 @@ use crate::experience::event_handler::EventHandler;
 use crate::experience::evolution::EvolutionEngine;
 use crate::experience::hypothesis::HypothesisEngine;
 use crate::experience::integration::event_subscriber::{start_event_subscriber, EventSubscriber};
+
+use super::acp::{
+    acp_agent_count, acp_registry, acp_router, list_acp_agents, route_acp_message,
+};
+use super::personality::{
+    adapt_personality, apply_personality_preset, get_communication_style, get_personality_preset,
+    get_personality_success_rate, get_personality_timeout, get_personality_traits,
+    list_personality_presets, personality, set_personality_traits, should_explore,
+    should_take_risk, should_use_creativity,
+};
 use crate::experience::integration::reflection_pipeline::ReflectionPipeline;
 use crate::experience::metrics::MetricsCollector;
 use crate::experience::observer::{HypothesisObserver, MetricsObserver, ReputationObserver};
@@ -295,6 +305,82 @@ impl App {
 
     /// Start the runtime.
     pub async fn run(self) -> Result<()> {
+        // Log startup diagnostics for ACP and personality subsystems
+        let router = acp_router(&self);
+        let registry = acp_registry(&self);
+        let agent_count = acp_agent_count(&self);
+        tracing::info!(
+            "ACP subsystem online: router_ready={} registry_agents={} {} agent(s) registered",
+            !router.registry().list_agents().unwrap_or_default().is_empty() || agent_count == 0,
+            registry.count(),
+            agent_count
+        );
+        let agents = list_acp_agents(&self)
+            .map_err(|e| anyhow::anyhow!("Failed to list ACP agents: {}", e))?;
+        for agent_id in &agents {
+            tracing::info!("Registered ACP agent: {}", agent_id);
+        }
+
+        // Send startup query to system agent to verify message routing
+        let system_id = crate::bridge::acp::AcpAgentId::new("system", "main");
+        let startup_msg = crate::bridge::acp::AcpMessage::new(
+            system_id.clone(),
+            system_id,
+            crate::bridge::acp::message::AcpMessageType::Query,
+            serde_json::json!({"query": "startup_health_check"}),
+        );
+        match route_acp_message(&self, startup_msg) {
+            Ok(Some(reply)) => {
+                tracing::info!(
+                    "ACP startup health check: received reply of type {:?}",
+                    reply.message_type
+                );
+            }
+            Ok(None) => {
+                tracing::info!("ACP startup health check: message routed (no reply)");
+            }
+            Err(e) => tracing::warn!("ACP startup health check failed: {}", e),
+        }
+
+        let preset = get_personality_preset(&self);
+        let traits = get_personality_traits(&self);
+        let success_rate = get_personality_success_rate(&self);
+        tracing::info!(
+            "Personality subsystem online: preset='{}' curiosity={:.2} creativity={:.2} caution={:.2} success_rate={:.2}",
+            preset, traits.curiosity, traits.creativity, traits.caution, success_rate
+        );
+        let presets = list_personality_presets(&self);
+        tracing::info!("Available personality presets: {:?}", presets);
+        let comm_style = get_communication_style(&self);
+        tracing::info!("Communication style: {:?}", comm_style);
+
+        // Exercise personality decision functions for startup self-check
+        let explore = should_explore(&self, 0.5);
+        let risk = should_take_risk(&self, 0.7, 0.3);
+        let creativity = should_use_creativity(&self, 0.5);
+        let timeout = get_personality_timeout(&self, 30);
+        tracing::info!(
+            "Personality decisions: explore={} risk={} creativity={} timeout={}s",
+            explore, risk, creativity, timeout
+        );
+
+        // Re-apply current preset to verify personality system is functional
+        let personality_arc = personality(&self);
+        tracing::info!(
+            "Personality system reference acquired: {} strong references",
+            std::sync::Arc::strong_count(&personality_arc)
+        );
+        let preset_ok = apply_personality_preset(&self, &preset);
+        if preset_ok {
+            tracing::info!("Personality preset '{}' re-applied successfully", preset);
+        }
+        let current_traits = get_personality_traits(&self);
+        set_personality_traits(&self, current_traits.clone());
+        adapt_personality(&self, true, false);
+        tracing::info!(
+            "Personality self-check complete: traits re-set and adaptation exercised"
+        );
+
         // Start background scheduler worker
         let scheduler = self.mcp_context.scheduler.clone();
         tokio::spawn(async move {

@@ -163,6 +163,19 @@ impl MemoryToolsHandler {
             .emit_relationship_added(from_id, to_id, "related");
         memory::execute_link_memories(input).await
     }
+
+    /// Ranked search across permanent memory
+    pub async fn execute_ranked_search(
+        &self,
+        input: memory::RankedSearchInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        let results = self
+            .context
+            .permanent_memory
+            .ranked_search(&input.query, input.limit.unwrap_or(10))
+            .await;
+        memory::execute_ranked_search(input, results).await
+    }
 }
 
 impl ToolHandler for MemoryToolsHandler {
@@ -184,6 +197,7 @@ impl ToolHandler for MemoryToolsHandler {
             "get_embedding_stats".to_string(),
             "archive_memory".to_string(),
             "link_memories".to_string(),
+            "ranked_search".to_string(),
         ]
     }
 
@@ -262,6 +276,18 @@ impl ToolHandler for MemoryToolsHandler {
                     "required": ["from_id", "to_id"]
                 })),
             ).with_title("Link Memories"),
+            rmcp::model::Tool::new(
+                "ranked_search",
+                "Search permanent memory with relevance ranking",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "query": { "type": "string", "description": "Search query" },
+                        "limit": { "type": "number", "description": "Maximum results (default 10)" }
+                    },
+                    "required": ["query"]
+                })),
+            ).with_title("Ranked Search"),
         ]
     }
     
@@ -336,6 +362,12 @@ impl ToolHandler for MemoryToolsHandler {
                     let input: memory::LinkMemoriesInput = serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
                     self.execute_link_memories(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "ranked_search" => {
+                    let input: memory::RankedSearchInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_ranked_search(input).await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 _ => Err(HandlerError::ToolNotFound(name.to_string()))

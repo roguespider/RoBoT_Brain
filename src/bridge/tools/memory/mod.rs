@@ -59,6 +59,13 @@ pub struct LinkMemoriesInput {
     pub to_id: String,
 }
 
+/// Tool: Ranked search across permanent memory
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct RankedSearchInput {
+    pub query: String,
+    pub limit: Option<usize>,
+}
+
 /// Memory tool definitions
 pub mod definitions {
     pub const STORE_MEMORY: &str = "store_memory";
@@ -827,5 +834,24 @@ pub async fn execute_link_memories(input: LinkMemoriesInput) -> Result<ToolOutpu
         "from_id": input.from_id,
         "to_id": input.to_id,
         "relationship": "related",
+    })))
+}
+
+/// Execute ranked search tool
+pub async fn execute_ranked_search(
+    input: RankedSearchInput,
+    results: Vec<(crate::memory::types::MemoryItem, f32)>,
+) -> Result<ToolOutput> {
+    let serialized: Vec<serde_json::Value> = results
+        .iter()
+        .map(|(item, score)| serde_json::json!({
+            "memory": item,
+            "relevance_score": score,
+        }))
+        .collect();
+    Ok(ToolOutput::success(serde_json::json!({
+        "query": input.query,
+        "results": serialized,
+        "count": results.len(),
     })))
 }
