@@ -11,7 +11,6 @@ use crate::experience::metrics::MetricsCollector;
 use crate::experience::reflection::ReflectionEngine;
 use crate::experience::types::Experience;
 use crate::experience::types::outcome::OutcomeKind;
-use chrono::Utc;
 use uuid::Uuid;
 
 use super::config::LearningCoordinatorConfig;

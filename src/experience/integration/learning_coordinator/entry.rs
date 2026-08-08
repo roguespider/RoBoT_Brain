@@ -7,12 +7,10 @@ use crate::experience::types::Experience;
 
 use super::config::LearningCoordinatorConfig;
 use super::exploration::ExplorationManager;
-use super::generalization::GeneralizationMethods;
 use super::hypothesis::HypothesisMethods;
 use super::knowledge::KnowledgeMethods;
-use super::reinforcement::ReinforcementMethods;
 use super::reputation::ReputationManager;
-use super::results::{GeneralizationResult, LearningResult, MaintenanceStats, ReinforcementResult, TransferResult, ValidationResult};
+use super::results::{LearningResult, MaintenanceStats, ValidationResult};
 
 /// Entry point methods for LearningCoordinator
 pub struct EntryMethods<'a> {
