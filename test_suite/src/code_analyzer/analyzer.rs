@@ -786,16 +786,9 @@ fn extract_imported_names(use_stmt: &str) -> Vec<String> {
     let stmt = stmt.strip_prefix("use ").unwrap_or(stmt);
     let stmt = stmt.trim_end_matches(';').trim();
 
-    // Handle `as` aliases: the last name after `as` is the local name
-    if let Some(as_pos) = stmt.rfind(" as ") {
-        let alias = stmt[as_pos + 4..].trim();
-        if !alias.is_empty() {
-            names.push(alias.to_string());
-        }
-        return names;
-    }
-
-    // Handle grouped imports: `foo::{bar, baz}`
+    // Handle grouped imports FIRST: `foo::{bar, baz as qux}`
+    // This must be checked before the top-level `as` handler, because
+    // `as` can appear inside a group.
     if let Some(brace_pos) = stmt.rfind('{') {
         let group = &stmt[brace_pos + 1..];
         let group = group.trim_end_matches('}');
@@ -810,6 +803,15 @@ fn extract_imported_names(use_stmt: &str) -> Vec<String> {
             } else if !part.is_empty() {
                 names.push(part.to_string());
             }
+        }
+        return names;
+    }
+
+    // Handle top-level `as` aliases: `use foo as bar;`
+    if let Some(as_pos) = stmt.rfind(" as ") {
+        let alias = stmt[as_pos + 4..].trim();
+        if !alias.is_empty() {
+            names.push(alias.to_string());
         }
         return names;
     }
