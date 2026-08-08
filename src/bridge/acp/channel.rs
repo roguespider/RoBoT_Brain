@@ -4,7 +4,7 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 use super::message::AcpMessage;
 
