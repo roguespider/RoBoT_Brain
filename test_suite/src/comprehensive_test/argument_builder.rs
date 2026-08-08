@@ -237,32 +237,37 @@ pub fn build_test_arguments(
 
         // Planner tools
         "planner_create" => serde_json::json!({
-            "description": "Test Plan"
+            "goal": "Test Plan Goal"
         }),
         "planner_add_step" => serde_json::json!({
-            "description": "Step 1"
+            "plan_id": "00000000-0000-0000-0000-000000000001",
+            "description": "Step 1 Description",
+            "action": "test_action"
         }),
         "planner_add_dependency" => serde_json::json!({
+            "plan_id": "00000000-0000-0000-0000-000000000001",
             "step_id": "00000000-0000-0000-0000-000000000001",
             "depends_on": "00000000-0000-0000-0000-000000000002"
         }),
         "planner_get" => serde_json::json!({
-            "plan_id": "00000000-0000-0000-0000-000000000000"
+            "plan_id": "00000000-0000-0000-0000-000000000001"
         }),
         "planner_start" => serde_json::json!({
-            "plan_id": "00000000-0000-0000-0000-000000000000"
+            "plan_id": "00000000-0000-0000-0000-000000000001"
         }),
         "planner_complete_step" => serde_json::json!({
-            "plan_id": "00000000-0000-0000-0000-000000000000",
+            "plan_id": "00000000-0000-0000-0000-000000000001",
             "step_id": "00000000-0000-0000-0000-000000000001",
             "result": "Success"
         }),
         "planner_fail_step" => serde_json::json!({
-            "plan_id": "00000000-0000-0000-0000-000000000000",
+            "plan_id": "00000000-0000-0000-0000-000000000001",
             "step_id": "00000000-0000-0000-0000-000000000002",
             "error": "Test failure"
         }),
-        "planner_cancel" => serde_json::json!({}),
+        "planner_cancel" => serde_json::json!({
+            "plan_id": "00000000-0000-0000-0000-000000000001"
+        }),
         "planner_list" => serde_json::json!({}),
 
         // Workflow tools
