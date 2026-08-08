@@ -139,7 +139,7 @@ pub fn build_test_arguments(
             "file_ids": ["test_file_id"]
         }),
         "ingestor_transcribe_audio" => serde_json::json!({
-            "path": env.files_folder.join("sample.mp3").to_string_lossy().to_string(),
+            "path": env.files_folder.join("sample.wav").to_string_lossy().to_string(),
             "store_as_memory": true
         }),
 

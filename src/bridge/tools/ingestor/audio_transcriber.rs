@@ -21,8 +21,8 @@ use std::sync::Arc;
 use anyhow::{Context, Result};
 
 // Use candle from candle_transformers to ensure same version
-use candle_transformers::models::mimi::candle::{DType, Device, IndexOp, Tensor};
-use candle_transformers::models::mimi::candle_nn::VarBuilder;
+use candle::{DType, Device, IndexOp, Tensor};
+use candle_nn::VarBuilder;
 use candle_transformers::models::whisper::{self as whisper, Config};
 use hf_hub::api::sync::Api;
 use tokenizers::Tokenizer;
@@ -129,9 +129,10 @@ impl AudioAnalysis {
 
 /// Whisper transcriber using Candle
 pub struct WhisperTranscriber {
-    model: whisper::model::Whisper,
-    tokenizer: Tokenizer,
+    model: Option<whisper::model::Whisper>,
+    tokenizer: Option<Tokenizer>,
     device: Device,
+    config: Config,
 }
 
 impl WhisperTranscriber {
@@ -158,17 +159,17 @@ impl WhisperTranscriber {
 
         // Load config
         let config_content = std::fs::read_to_string(&config_path)?;
-        let config: serde_json::Value = serde_json::from_str(&config_content)?;
+        let config_json: serde_json::Value = serde_json::from_str(&config_content)?;
 
-        let num_mel_bins = config["n_mels"].as_i64().unwrap_or(80) as usize;
-        let max_source_positions = config["n_audio_ctx"].as_i64().unwrap_or(1500) as usize;
-        let d_model = config["d_model"].as_i64().unwrap_or(512) as usize;
-        let encoder_attention_heads = config["n_audio_head"].as_i64().unwrap_or(8) as usize;
-        let encoder_layers = config["n_audio_layer"].as_i64().unwrap_or(4) as usize;
-        let vocab_size = config["n_vocab"].as_i64().unwrap_or(51865) as usize;
-        let max_target_positions = config["n_text_ctx"].as_i64().unwrap_or(448) as usize;
-        let decoder_attention_heads = config["n_text_head"].as_i64().unwrap_or(8) as usize;
-        let decoder_layers = config["n_text_layer"].as_i64().unwrap_or(4) as usize;
+        let num_mel_bins = config_json["n_mels"].as_i64().unwrap_or(80) as usize;
+        let max_source_positions = config_json["n_audio_ctx"].as_i64().unwrap_or(1500) as usize;
+        let d_model = config_json["d_model"].as_i64().unwrap_or(512) as usize;
+        let encoder_attention_heads = config_json["n_audio_head"].as_i64().unwrap_or(8) as usize;
+        let encoder_layers = config_json["n_audio_layer"].as_i64().unwrap_or(4) as usize;
+        let vocab_size = config_json["n_vocab"].as_i64().unwrap_or(51865) as usize;
+        let max_target_positions = config_json["n_text_ctx"].as_i64().unwrap_or(448) as usize;
+        let decoder_attention_heads = config_json["n_text_head"].as_i64().unwrap_or(8) as usize;
+        let decoder_layers = config_json["n_text_layer"].as_i64().unwrap_or(4) as usize;
 
         let whisper_config = Config {
             num_mel_bins,
@@ -187,7 +188,7 @@ impl WhisperTranscriber {
         let vb =
             unsafe { VarBuilder::from_mmaped_safetensors(&[model_path], DType::F32, &device)? };
 
-        let model = whisper::model::Whisper::load(&vb, whisper_config)?;
+        let model = whisper::model::Whisper::load(&vb, whisper_config.clone())?;
 
         // Load tokenizer
         let tokenizer = Tokenizer::from_file(tokenizer_path)
@@ -196,9 +197,10 @@ impl WhisperTranscriber {
         tracing::info!("Whisper model loaded successfully");
 
         Ok(Self {
-            model,
-            tokenizer,
+            model: Some(model),
+            tokenizer: Some(tokenizer),
             device,
+            config: whisper_config,
         })
     }
 
@@ -206,24 +208,29 @@ impl WhisperTranscriber {
     pub fn transcribe(&mut self, samples: &[f32]) -> Result<TranscriptionResult> {
         let duration_seconds = samples.len() as f32 / 16000.0;
 
+        let model = self.model.as_mut()
+            .ok_or_else(|| anyhow::anyhow!("Whisper model not loaded"))?;
+        let tokenizer = self.tokenizer.as_ref()
+            .ok_or_else(|| anyhow::anyhow!("Tokenizer not loaded"))?;
+
         // Compute mel spectrogram using Candle's audio module
         let mel_filters = load_mel_filters()?;
-        let mel_spec = whisper::audio::pcm_to_mel(&self.model.config, samples, &mel_filters);
+        let mel_spec = whisper::audio::pcm_to_mel(&self.config, samples, &mel_filters);
 
         // Convert to tensor [1, n_mel, n_frames]
-        let n_mel = self.model.config.num_mel_bins;
+        let n_mel = self.config.num_mel_bins;
         let n_frames = mel_spec.len() / n_mel;
         let mel_tensor = Tensor::from_slice(&mel_spec, (1, n_mel, n_frames), &self.device)?;
 
         tracing::info!("Mel spectrogram shape: {:?}", mel_tensor.shape());
 
         // Run encoder
-        let audio_features = self.model.encoder.forward(&mel_tensor, true)?;
+        let audio_features = model.encoder.forward(&mel_tensor, true)?;
 
         tracing::info!("Audio features shape: {:?}", audio_features.dims());
 
         // Decode to text
-        let text = self.decode(&audio_features)?;
+        let text = self.decode_internal(model, tokenizer, &audio_features)?;
 
         Ok(TranscriptionResult {
             text,
@@ -234,29 +241,27 @@ impl WhisperTranscriber {
     }
 
     /// Decode audio features to text
-    fn decode(&mut self, audio_features: &Tensor) -> Result<String> {
+    fn decode_internal(&mut self, model: &whisper::model::Whisper, tokenizer: &Tokenizer, audio_features: &Tensor) -> Result<String> {
         // Get special tokens
-        let sot_token = get_token_id(&self.tokenizer, whisper::SOT_TOKEN)?;
-        let transcribe_token = get_token_id(&self.tokenizer, whisper::TRANSCRIBE_TOKEN)?;
-        let no_timestamps_token = get_token_id(&self.tokenizer, whisper::NO_TIMESTAMPS_TOKEN)?;
-        let eot_token = get_token_id(&self.tokenizer, whisper::EOT_TOKEN)?;
+        let sot_token = get_token_id(tokenizer, whisper::SOT_TOKEN)?;
+        let transcribe_token = get_token_id(tokenizer, whisper::TRANSCRIBE_TOKEN)?;
+        let no_timestamps_token = get_token_id(tokenizer, whisper::NO_TIMESTAMPS_TOKEN)?;
+        let eot_token = get_token_id(tokenizer, whisper::EOT_TOKEN)?;
 
         // Build token sequence: <|startoftranscript|><|en|><|transcribe|><|notimestamps|>
         let mut tokens = vec![sot_token, transcribe_token, no_timestamps_token];
 
-        let sample_len = self.model.config.max_target_positions / 2;
+        let sample_len = self.config.max_target_positions / 2;
 
         for _ in 0..sample_len {
             let tokens_t = Tensor::new(tokens.as_slice(), &self.device)?.unsqueeze(0)?;
 
-            let ys = self
-                .model
+            let ys = model
                 .decoder
                 .forward(&tokens_t, audio_features, tokens.len() == 3)?;
 
             let (_, seq_len, _) = ys.dims3()?;
-            let logits = self
-                .model
+            let logits = model
                 .decoder
                 .final_linear(&ys.i((..1, seq_len - 1..))?)?
                 .i(0)?
@@ -273,14 +278,13 @@ impl WhisperTranscriber {
 
             tokens.push(next_token);
 
-            if next_token == eot_token || tokens.len() > self.model.config.max_target_positions {
+            if next_token == eot_token || tokens.len() > self.config.max_target_positions {
                 break;
             }
         }
 
         // Decode tokens to text
-        let text = self
-            .tokenizer
+        let text = tokenizer
             .decode(&tokens, true)
             .map_err(|e| anyhow::anyhow!("Failed to decode tokens: {}", e))?;
 
@@ -293,7 +297,19 @@ impl Default for WhisperTranscriber {
         Self {
             model: None,
             tokenizer: None,
-            mel_filters: None,
+            device: Device::Cpu,
+            config: Config {
+                num_mel_bins: 80,
+                max_source_positions: 1500,
+                d_model: 512,
+                encoder_attention_heads: 8,
+                encoder_layers: 4,
+                vocab_size: 51865,
+                max_target_positions: 448,
+                decoder_attention_heads: 8,
+                decoder_layers: 4,
+                suppress_tokens: vec![],
+            },
         }
     }
 }
