@@ -179,8 +179,17 @@ pub async fn run_cli_tool_tests() -> Vec<CliTestResult> {
     for result in &results {
         let status = if result.success { "✓" } else { "✗" };
         let test_type = result.test_name.split('.').next().unwrap_or("unknown");
-        println!("  {:12} {:20} {}", status, result.test_name, 
+        println!("  {:12} {:12} {:20} {}", status, test_type, result.test_name, 
             if result.success { "PASS" } else { "FAIL" });
+        if !result.success {
+            if let Some(err) = &result.error {
+                println!("    Error: {}", err);
+            }
+            if !result.output.is_empty() {
+                let preview: String = result.output.chars().take(200).collect();
+                println!("    Output: {}", preview);
+            }
+        }
     }
     
     println!("\n  Total: {}/{} passed ({:.0}%)", passed, total, 

@@ -815,6 +815,23 @@ async fn main() -> anyhow::Result<()> {
     tests::run_acp_tests(&mut client, &mut stats, None).await?;
     tests::run_agent_simulation_tests(&mut client, &mut stats, None).await?;
 
+    // Run CLI-based tool tests (tests robot_brain CLI subcommands)
+    teeprintln!(
+        "
+{}",
+        "=".repeat(120)
+    );
+    teeprintln!("RUNNING CLI TOOL TESTS");
+    teeprintln!("{}", "=".repeat(120));
+    let cli_results = tests::cli_tools::run_cli_tool_tests().await;
+    for cli_result in &cli_results {
+        if cli_result.success {
+            stats.passed += 1;
+        } else {
+            stats.failed += 1;
+        }
+    }
+
     // Print unified summary table
     teeprintln!("\n{}", "=".repeat(120));
     teeprintln!("{}", "=".repeat(120));

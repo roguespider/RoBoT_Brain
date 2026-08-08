@@ -34,7 +34,6 @@ pub use ingestor::run_ingestor_tests;
 pub use agent::run_agent_tests;
 pub use error_handling::run_error_handling_tests;
 pub use mcp_workflow::run_mcp_workflow_tests;
-pub use cli_tools::run_cli_tool_tests;
 pub use rmcp::run_rmcp_tests;
 pub use acp::run_acp_tests;
 pub use agent_simulation::run_agent_simulation_tests;

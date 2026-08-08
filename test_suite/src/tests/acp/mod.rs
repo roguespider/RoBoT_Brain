@@ -11,11 +11,6 @@ pub mod router;
 pub mod agents;
 pub mod messages;
 
-pub use registry::test_acp_registry;
-pub use router::test_acp_router;
-pub use agents::test_acp_agents;
-pub use messages::test_acp_messages;
-
 use crate::{TestMcpClient, TestStats};
 
 /// Run all ACP tests

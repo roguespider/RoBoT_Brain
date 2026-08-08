@@ -15,7 +15,6 @@ pub mod patterns;
 pub mod types;
 
 // Re-export for convenience
-pub use analyzer::{AnalysisSummary, CodeAnalyzer};
+pub use analyzer::CodeAnalyzer;
 pub use lint::{LintAnalyzer, LintSummary};
-pub use patterns::get_fallback_regex;
-pub use types::{CodeIssue, IssueType, LintIssue, LintLevel};
+pub use types::{CodeIssue, LintIssue, LintLevel};

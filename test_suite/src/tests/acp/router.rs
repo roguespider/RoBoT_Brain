@@ -79,7 +79,8 @@ pub async fn test_acp_router(
         "payload": {"action": "broadcast_test"}
     })).await {
         Ok(result) => {
-            crate::teeprintln!("    ✅ Broadcast routing SUCCESS");
+            crate::teeprintln!("    ✅ Broadcast routing SUCCESS (result keys: {})", 
+                result.as_object().map(|o| o.len()).unwrap_or(0));
             results.messages_routed += 1;
             results.passed += 1;
             stats.passed += 1;

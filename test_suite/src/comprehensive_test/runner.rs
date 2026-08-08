@@ -20,7 +20,6 @@ pub async fn run_single_test(
     data_created: &HashMap<String, Vec<String>>,
     env: &TestEnvironment,
 ) -> TestResult {
-    let _ = data_created; // Currently unused, placeholder for future dependency tracking
     let start = Instant::now();
     let mut validation_results = Vec::new();
 
@@ -28,6 +27,13 @@ pub async fn run_single_test(
     eprintln!("[TEST] Starting: {} ({})", requirement.function_name, requirement.id);
     eprintln!("[TEST] Category: {}, Priority: {}", requirement.category, requirement.priority);
     eprintln!("[TEST] Expected: {}", requirement.expected_behavior);
+
+    // Log available data dependencies (if any were created by prior tests)
+    if let Some(data_req) = &requirement.requires_data {
+        if let Some(ids) = data_created.get(&data_req.data_type) {
+            eprintln!("[TEST] Dependent on {} ({} items available)", data_req.data_type, ids.len());
+        }
+    }
 
     // Build the arguments for this tool
     let args = argument_builder::build_test_arguments(requirement, env);

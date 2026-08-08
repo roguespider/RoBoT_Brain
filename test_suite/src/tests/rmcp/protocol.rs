@@ -88,5 +88,9 @@ pub async fn test_rmcp_protocol(
         }
     }
 
+    // Update overall stats from protocol test results
+    stats.passed += results.passed;
+    stats.failed += results.failed;
+
     Ok(results)
 }
