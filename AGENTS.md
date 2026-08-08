@@ -20,10 +20,19 @@ cargo build --release -p robot_brain
 # Build test binary  
 cargo build --release -p test_suite
 
-# Check compilation
-cargo check -p robot_brain
-cargo check -p test_suite
+# Run test suite (outputs to test_suite/test_suite_output.txt)
+./target/release/test_suite
 ```
+
+## Handling Unused Type Warnings
+
+Many types (like `SimpleAgent`, `AcpCapability`, ACP message builders) are defined for testing/future use but unused in production. When fixing lint warnings:
+
+1. **Wrap test-only types in `#[cfg(test)]` modules** - keeps them available for tests without affecting production
+2. **Move unused re-exports to test modules** - don't expose unused types in public API
+3. **Keep production trait minimal** - implement only what's actually used (e.g., `AcpAgent` trait only needs `id()` and `handle()` methods)
+
+This pattern reduced warnings from 480+ to ~359.
 
 ## Code Style Conventions
 
