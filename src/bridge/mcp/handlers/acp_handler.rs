@@ -171,7 +171,7 @@ impl AcpToolsHandler {
     }
 
     /// List all registered ACP agents
-    pub async fn execute_list_acp_agents(&self, _input: ListAcpAgentsInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    pub async fn execute_list_acp_agents(&self, _: ListAcpAgentsInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         let agents = self.context.acp_registry.list_agents()
             .map_err(|e| anyhow::anyhow!("{}", e))?;
         
@@ -184,7 +184,7 @@ impl AcpToolsHandler {
     }
 
     /// Get count of registered ACP agents
-    pub async fn execute_acp_agent_count(&self, _input: AcpAgentCountInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    pub async fn execute_acp_agent_count(&self, _: AcpAgentCountInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         let count = self.context.acp_registry.count();
         
         Ok(crate::bridge::tools::ToolOutput::success(serde_json::json!({
@@ -193,7 +193,7 @@ impl AcpToolsHandler {
     }
 
     /// Get ACP router info
-    pub async fn execute_acp_router(&self, _input: GetAcpRouterInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    pub async fn execute_acp_router(&self, _: GetAcpRouterInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         Ok(crate::bridge::tools::ToolOutput::success(serde_json::json!({
             "status": "available",
             "message": "ACP router is available"
@@ -201,7 +201,7 @@ impl AcpToolsHandler {
     }
 
     /// Get ACP registry info
-    pub async fn execute_acp_registry(&self, _input: GetAcpRegistryInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    pub async fn execute_acp_registry(&self, _: GetAcpRegistryInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         let count = self.context.acp_registry.count();
         Ok(crate::bridge::tools::ToolOutput::success(serde_json::json!({
             "status": "available",
@@ -289,7 +289,7 @@ impl AcpToolsHandler {
     }
 
     /// Get system status
-    pub async fn execute_get_system_status(&self, _input: GetSystemStatusInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    pub async fn execute_get_system_status(&self, _: GetSystemStatusInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         let agent_count = self.context.acp_registry.count();
         let agents = self.context.acp_registry.list_agents()
             .map_err(|e| anyhow::anyhow!("{}", e))?;
@@ -326,7 +326,7 @@ impl AcpToolsHandler {
     pub async fn execute_unregister_agent(&self, input: UnregisterAgentInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         let agent_id = AcpAgentId::new(&input.agent_type, &input.instance_id);
         
-        if let Some(_agent) = self.context.acp_registry.unregister(&agent_id)
+        if let Some(..) = self.context.acp_registry.unregister(&agent_id)
             .map_err(|e| anyhow::anyhow!("{}", e))? 
         {
             Ok(crate::bridge::tools::ToolOutput::success(serde_json::json!({

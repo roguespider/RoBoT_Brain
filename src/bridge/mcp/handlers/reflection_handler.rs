@@ -74,6 +74,56 @@ impl ToolHandler for ReflectionToolsHandler {
         true
     }
 
+    fn get_tools(&self) -> Vec<rmcp::model::Tool> {
+        use crate::bridge::mcp::handlers::json_to_schema;
+        vec![
+            rmcp::model::Tool::new(
+                "get_insights",
+                "Get actionable insights from past experiences",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "domain": { "type": "string", "description": "Filter by domain" },
+                        "limit": { "type": "number", "description": "Maximum insights to return" }
+                    }
+                })),
+            ).with_title("Get Insights"),
+            rmcp::model::Tool::new(
+                "create_reflection",
+                "Create a reflection on recent experiences",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "title": { "type": "string", "description": "Reflection title" },
+                        "content": { "type": "string", "description": "Reflection content" },
+                        "experience_ids": { "type": "array", "items": { "type": "string" }, "description": "Related experience IDs" }
+                    },
+                    "required": ["title", "content"]
+                })),
+            ).with_title("Create Reflection"),
+            rmcp::model::Tool::new(
+                "analyze_patterns",
+                "Analyze recent experiences for patterns",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "lookback_days": { "type": "number", "description": "Days to look back" }
+                    }
+                })),
+            ).with_title("Analyze Patterns"),
+            rmcp::model::Tool::new(
+                "get_patterns",
+                "Get detected patterns from analysis",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "pattern_type": { "type": "string", "description": "Filter by pattern type" }
+                    }
+                })),
+            ).with_title("Get Patterns"),
+        ]
+    }
+
     fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
         async move {
             match name {

@@ -117,8 +117,119 @@ impl ToolHandler for PlannerToolsHandler {
     }
 
     fn is_healthy(&self) -> bool {
-        // Planner is considered healthy if we can list plans
         true
+    }
+
+    fn get_tools(&self) -> Vec<rmcp::model::Tool> {
+        use crate::bridge::mcp::handlers::json_to_schema;
+        vec![
+            rmcp::model::Tool::new(
+                "create_plan",
+                "Create a new task plan",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "goal": { "type": "string", "description": "The plan goal/objective" }
+                    },
+                    "required": ["goal"]
+                })),
+            ).with_title("Create Plan"),
+            rmcp::model::Tool::new(
+                "add_plan_step",
+                "Add a step to an existing plan",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "plan_id": { "type": "string", "description": "Plan ID" },
+                        "description": { "type": "string", "description": "Step description" },
+                        "expected_duration": { "type": "number", "description": "Expected duration in minutes" }
+                    },
+                    "required": ["plan_id", "description"]
+                })),
+            ).with_title("Add Plan Step"),
+            rmcp::model::Tool::new(
+                "add_step_dependency",
+                "Add a dependency between plan steps",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "plan_id": { "type": "string", "description": "Plan ID" },
+                        "step_id": { "type": "string", "description": "Step that depends on another" },
+                        "depends_on": { "type": "string", "description": "Step ID it depends on" }
+                    },
+                    "required": ["plan_id", "step_id", "depends_on"]
+                })),
+            ).with_title("Add Step Dependency"),
+            rmcp::model::Tool::new(
+                "get_plan",
+                "Get a plan by ID",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "plan_id": { "type": "string", "description": "Plan ID" }
+                    },
+                    "required": ["plan_id"]
+                })),
+            ).with_title("Get Plan"),
+            rmcp::model::Tool::new(
+                "list_plans",
+                "List all plans",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "status": { "type": "string", "description": "Filter by status" }
+                    }
+                })),
+            ).with_title("List Plans"),
+            rmcp::model::Tool::new(
+                "start_plan",
+                "Start executing a plan",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "plan_id": { "type": "string", "description": "Plan ID to start" }
+                    },
+                    "required": ["plan_id"]
+                })),
+            ).with_title("Start Plan"),
+            rmcp::model::Tool::new(
+                "complete_step",
+                "Mark a step as completed",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "plan_id": { "type": "string", "description": "Plan ID" },
+                        "step_id": { "type": "string", "description": "Step ID to complete" },
+                        "outcome": { "type": "string", "description": "Outcome summary" }
+                    },
+                    "required": ["plan_id", "step_id"]
+                })),
+            ).with_title("Complete Step"),
+            rmcp::model::Tool::new(
+                "fail_step",
+                "Mark a step as failed",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "plan_id": { "type": "string", "description": "Plan ID" },
+                        "step_id": { "type": "string", "description": "Step ID that failed" },
+                        "reason": { "type": "string", "description": "Failure reason" }
+                    },
+                    "required": ["plan_id", "step_id", "reason"]
+                })),
+            ).with_title("Fail Step"),
+            rmcp::model::Tool::new(
+                "cancel_plan",
+                "Cancel a plan",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "plan_id": { "type": "string", "description": "Plan ID to cancel" }
+                    },
+                    "required": ["plan_id"]
+                })),
+            ).with_title("Cancel Plan"),
+        ]
     }
 
     fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {

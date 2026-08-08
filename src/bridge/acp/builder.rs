@@ -6,7 +6,7 @@ use anyhow::{anyhow, Result};
 use super::message::{AcpAgentId, AcpMessage, AcpMessageType};
 
 /// Builder for ACP messages
-pub struct AcpMessageBuilder {
+pub(crate) struct AcpMessageBuilder {
     sender: Option<AcpAgentId>,
     receiver: Option<AcpAgentId>,
     message_type: Option<AcpMessageType>,

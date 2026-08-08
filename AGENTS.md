@@ -103,7 +103,6 @@ Files over 320 lines that could benefit from modular structure:
 - `src/skills/registry.rs` (931 lines)
 - `src/database/queries.rs` (890 lines)
 - `src/bridge/app.rs` (870 lines)
-- `src/planner/planner.rs` (836 lines)
 - `src/bridge/tools/memory/mod.rs` (803 lines)
 - `src/bridge/tools/exploration/handlers.rs` (791 lines)
 - `src/personality/mod.rs` (614 lines)
@@ -113,8 +112,92 @@ Files over 320 lines that could benefit from modular structure:
 - `src/skills/registry/` (983 total → types.rs, skill.rs, registry.rs, context.rs, result.rs, metrics.rs, executor.rs, mod.rs)
 - `src/database/queries/` (934 total → helpers.rs, memory.rs, scheduled_tasks.rs, observations.rs, experiences.rs, embeddings.rs, relationships.rs, tests.rs, mod.rs)
 - `src/bridge/app/` (944 total → state.rs, initialization.rs, scheduler.rs, personality.rs, acp.rs, mod.rs)
+- `src/planner/engine/` (836 lines → planner.rs, types.rs, actions.rs, replanning.rs, mod.rs)
 - `test_suite/src/code_analyzer/` (1050 lines → types.rs, patterns.rs, analyzer.rs, lint.rs, mod.rs)
 - `src/bridge/acp/` (950 lines → message.rs, error.rs, channel.rs, agent.rs, registry.rs, router.rs, builder.rs, mod.rs)
 - `test_suite/src/tests/rmcp/` (NEW: 650 lines → mod.rs, protocol.rs, tools.rs, sessions.rs)
 - `test_suite/src/tests/acp/` (NEW: 750 lines → mod.rs, registry.rs, router.rs, agents.rs, messages.rs)
 - `test_suite/src/tests/agent_simulation/` (NEW: 440 lines → mod.rs, workflows.rs, memory_agent.rs, decision_making.rs)
+
+---
+
+## OpenHands MCP Integration
+
+RoBoT Brain can be used as an MCP server by **OpenHands agents** to access memory, knowledge, planning, and learning tools.
+
+### Quick Start
+
+```python
+from openhands.sdk import LLM, Agent, Conversation
+from openhands.sdk.tool import Tool
+from openhands.tools.terminal import TerminalTool
+
+# Configure MCP connection
+mcp_config = {
+    "mcpServers": {
+        "robot_brain": {
+            "command": "cargo run --release -p robot_brain",
+        }
+    }
+}
+
+# Create agent with robot_brain tools
+agent = Agent(
+    llm=LLM(model="anthropic/claude-sonnet-4-5-20250929", api_key="..."),
+    tools=[Tool(name=TerminalTool.name)],
+    mcp_config=mcp_config,
+)
+
+# Run conversation
+conversation = Conversation(agent=agent, workspace=".")
+conversation.send_message("Search memory for Rust patterns")
+conversation.run()
+```
+
+### Complete Example
+
+See `examples/robot_brain_agent.py` for a full-featured script:
+
+```bash
+export LLM_API_KEY="your-key"
+python examples/robot_brain_agent.py -m "Search memory for architecture patterns"
+```
+
+### Available Tools (~89 total)
+
+| Category | Key Tools |
+|----------|-----------|
+| **Memory** | `store_memory`, `search_memory`, `get_memory`, `list_memories` |
+| **Knowledge** | `query_knowledge`, `add_knowledge`, `global_search` |
+| **Experience** | `record_experience`, `list_experiences`, `get_insights` |
+| **Planning** | `create_plan`, `get_plan`, `list_plans` |
+| **Workflows** | `create_workflow`, `start_workflow`, `list_workflows` |
+| **Hypothesis** | `create_hypothesis`, `add_evidence`, `evaluate_hypothesis` |
+| **Exploration** | `start_exploration`, `evaluate_exploration_hypothesis` |
+| **Skills** | `register_skill`, `discover_skill`, `execute_skill` |
+| **ACP** | `route_acp_message`, `register_agent`, `list_agents` |
+
+### Environment Variables
+
+| Variable | Description | Default |
+|----------|-------------|---------|
+| `ROBOT_BRAIN_PATH` | Path to robot_brain binary | Auto-detected |
+| `LLM_API_KEY` | API key for LLM | Required |
+| `LLM_MODEL` | Model name | `anthropic/claude-sonnet-4-5-20250929` |
+
+### Loading the Skill
+
+This repo includes an OpenHands skill at `.agents/skills/robot-brain/skill.md` that documents all available tools and usage patterns. When working in an OpenHands environment, this skill is automatically loaded and provides context for using robot_brain tools.
+
+### Tool Filtering
+
+If you only want specific tools, use regex filtering:
+
+```python
+agent = Agent(
+    ...
+    filter_tools_regex="^(search_memory|store_memory|query_knowledge)$",
+)
+```
+
+This allows OpenHands to use robot_brain alongside other tools, focusing on specific capabilities as needed.

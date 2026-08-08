@@ -371,19 +371,19 @@ impl ToolHandlerCollection {
     /// Check overall health of all handlers
     pub fn is_healthy(&self) -> bool {
         // At least one handler should be healthy
-        self.acp.as_ref().map_or(false, |h| h.is_healthy())
-            || self.agent.as_ref().map_or(false, |h| h.is_healthy())
-            || self.experience.as_ref().map_or(false, |h| h.is_healthy())
-            || self.exploration.as_ref().map_or(false, |h| h.is_healthy())
-            || self.hypothesis.as_ref().map_or(false, |h| h.is_healthy())
-            || self.ingestor.as_ref().map_or(false, |h| h.is_healthy())
-            || self.knowledge.as_ref().map_or(false, |h| h.is_healthy())
-            || self.memory.as_ref().map_or(false, |h| h.is_healthy())
-            || self.planner.as_ref().map_or(false, |h| h.is_healthy())
-            || self.reflection.as_ref().map_or(false, |h| h.is_healthy())
-            || self.search.as_ref().map_or(false, |h| h.is_healthy())
-            || self.skills.as_ref().map_or(false, |h| h.is_healthy())
-            || self.workflow.as_ref().map_or(false, |h| h.is_healthy())
+        self.acp.as_ref().is_some_and(|h| h.is_healthy())
+            || self.agent.as_ref().is_some_and(|h| h.is_healthy())
+            || self.experience.as_ref().is_some_and(|h| h.is_healthy())
+            || self.exploration.as_ref().is_some_and(|h| h.is_healthy())
+            || self.hypothesis.as_ref().is_some_and(|h| h.is_healthy())
+            || self.ingestor.as_ref().is_some_and(|h| h.is_healthy())
+            || self.knowledge.as_ref().is_some_and(|h| h.is_healthy())
+            || self.memory.as_ref().is_some_and(|h| h.is_healthy())
+            || self.planner.as_ref().is_some_and(|h| h.is_healthy())
+            || self.reflection.as_ref().is_some_and(|h| h.is_healthy())
+            || self.search.as_ref().is_some_and(|h| h.is_healthy())
+            || self.skills.as_ref().is_some_and(|h| h.is_healthy())
+            || self.workflow.as_ref().is_some_and(|h| h.is_healthy())
     }
 
     /// Get all tools from all handlers as MCP Tool definitions
@@ -407,70 +407,44 @@ impl ToolHandlerCollection {
 
     /// Get a single tool by name from any handler
     pub fn get_tool(&self, name: &str) -> Option<rmcp::model::Tool> {
-        if let Some(ref h) = self.acp { 
-            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
-                return Some(tool);
-            }
+        if let Some(tool) = self.acp.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+            return Some(tool);
         }
-        if let Some(ref h) = self.agent { 
-            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
-                return Some(tool);
-            }
+        if let Some(tool) = self.agent.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+            return Some(tool);
         }
-        if let Some(ref h) = self.experience { 
-            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
-                return Some(tool);
-            }
+        if let Some(tool) = self.experience.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+            return Some(tool);
         }
-        if let Some(ref h) = self.exploration { 
-            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
-                return Some(tool);
-            }
+        if let Some(tool) = self.exploration.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+            return Some(tool);
         }
-        if let Some(ref h) = self.hypothesis { 
-            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
-                return Some(tool);
-            }
+        if let Some(tool) = self.hypothesis.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+            return Some(tool);
         }
-        if let Some(ref h) = self.ingestor { 
-            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
-                return Some(tool);
-            }
+        if let Some(tool) = self.ingestor.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+            return Some(tool);
         }
-        if let Some(ref h) = self.knowledge { 
-            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
-                return Some(tool);
-            }
+        if let Some(tool) = self.knowledge.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+            return Some(tool);
         }
-        if let Some(ref h) = self.memory { 
-            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
-                return Some(tool);
-            }
+        if let Some(tool) = self.memory.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+            return Some(tool);
         }
-        if let Some(ref h) = self.planner { 
-            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
-                return Some(tool);
-            }
+        if let Some(tool) = self.planner.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+            return Some(tool);
         }
-        if let Some(ref h) = self.reflection { 
-            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
-                return Some(tool);
-            }
+        if let Some(tool) = self.reflection.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+            return Some(tool);
         }
-        if let Some(ref h) = self.search { 
-            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
-                return Some(tool);
-            }
+        if let Some(tool) = self.search.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+            return Some(tool);
         }
-        if let Some(ref h) = self.skills { 
-            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
-                return Some(tool);
-            }
+        if let Some(tool) = self.skills.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+            return Some(tool);
         }
-        if let Some(ref h) = self.workflow { 
-            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
-                return Some(tool);
-            }
+        if let Some(tool) = self.workflow.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+            return Some(tool);
         }
         None
     }

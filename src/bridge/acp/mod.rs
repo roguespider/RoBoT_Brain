@@ -49,7 +49,7 @@ mod tests {
     // Re-export test types
     pub use super::agent::test_types::{AcpCapability, SimpleAgent};
     pub use super::builder::AcpMessageBuilder;
-    pub use super::channel::{AcpChannel, InMemoryChannel};
+    pub use super::channel::InMemoryChannel;
     pub use super::error::{AcpError, AcpErrorCode};
     pub use super::message::AcpMessageType;
 
@@ -333,6 +333,24 @@ mod tests {
             .from(AcpAgentId::new("a", "1"))
             .build();
         assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_message_builder_conversation_and_reply() {
+        let conv_id = "conv-123".to_string();
+        let reply_id = "msg-456".to_string();
+        
+        let msg = AcpMessageBuilder::new()
+            .from(AcpAgentId::new("sender", "1"))
+            .to(AcpAgentId::new("receiver", "1"))
+            .message_type(AcpMessageType::Request)
+            .in_conversation(conv_id.clone())
+            .reply_to(reply_id.clone())
+            .build()
+            .expect("build should succeed");
+
+        assert_eq!(msg.conversation_id, Some(conv_id));
+        assert_eq!(msg.reply_to, Some(reply_id));
     }
 
     #[test]

@@ -102,6 +102,77 @@ impl ToolHandler for ExperienceToolsHandler {
         self.context.database.connection().is_ok()
     }
 
+    fn get_tools(&self) -> Vec<rmcp::model::Tool> {
+        use crate::bridge::mcp::handlers::json_to_schema;
+        vec![
+            rmcp::model::Tool::new(
+                "record_experience",
+                "Record a new experience from an action or observation",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "title": { "type": "string", "description": "Brief title for the experience" },
+                        "description": { "type": "string", "description": "Detailed description of what happened" },
+                        "experience_type": { "type": "string", "description": "Type of experience" },
+                        "outcome": { "type": "string", "description": "Outcome of the experience" },
+                        "context": { "type": "string", "description": "JSON-encoded context information" }
+                    },
+                    "required": ["title", "description", "experience_type", "outcome"]
+                })),
+            ).with_title("Record Experience"),
+            rmcp::model::Tool::new(
+                "get_experience_stats",
+                "Get statistics about recorded experiences",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "period": { "type": "string", "description": "Time period: day, week, month, or all" }
+                    }
+                })),
+            ).with_title("Get Experience Stats"),
+            rmcp::model::Tool::new(
+                "list_experiences",
+                "List recent experiences with optional filtering",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "limit": { "type": "number", "description": "Maximum results (default: 20)" },
+                        "experience_type": { "type": "string", "description": "Filter by experience type" }
+                    }
+                })),
+            ).with_title("List Experiences"),
+            rmcp::model::Tool::new(
+                "get_experience",
+                "Get a specific experience by ID",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "id": { "type": "string", "description": "Experience UUID" }
+                    },
+                    "required": ["id"]
+                })),
+            ).with_title("Get Experience"),
+            rmcp::model::Tool::new(
+                "get_worker_stats",
+                "Get background worker statistics",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "observer_name": { "type": "string", "description": "Filter stats by observer name" }
+                    }
+                })),
+            ).with_title("Get Worker Stats"),
+            rmcp::model::Tool::new(
+                "get_worker_count",
+                "Get the number of active background workers",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {}
+                })),
+            ).with_title("Get Worker Count"),
+        ]
+    }
+
     fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
         async move {
             match name {

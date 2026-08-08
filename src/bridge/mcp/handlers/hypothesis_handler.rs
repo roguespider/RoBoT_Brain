@@ -145,6 +145,144 @@ impl ToolHandler for HypothesisToolsHandler {
         self.context.database.connection().is_ok()
     }
 
+    fn get_tools(&self) -> Vec<rmcp::model::Tool> {
+        use crate::bridge::mcp::handlers::json_to_schema;
+        vec![
+            rmcp::model::Tool::new(
+                "record_observation",
+                "Record an observation as the starting point for learning",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "content": { "type": "string", "description": "What was observed" },
+                        "observation_type": { "type": "string", "description": "Type: success, failure, pattern, anomaly" },
+                        "context": { "type": "string", "description": "Context or circumstances" }
+                    },
+                    "required": ["content", "observation_type"]
+                })),
+            ).with_title("Record Observation"),
+            rmcp::model::Tool::new(
+                "create_hypothesis",
+                "Create a testable hypothesis from observations",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "statement": { "type": "string", "description": "The hypothesis statement" },
+                        "domain": { "type": "string", "description": "Domain/category" },
+                        "source_observations": { "type": "array", "items": { "type": "string" }, "description": "Observation IDs" }
+                    },
+                    "required": ["statement", "domain"]
+                })),
+            ).with_title("Create Hypothesis"),
+            rmcp::model::Tool::new(
+                "add_evidence",
+                "Add evidence to a hypothesis",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "hypothesis_id": { "type": "string", "description": "ID of the hypothesis" },
+                        "content": { "type": "string", "description": "Description of the evidence" },
+                        "direction": { "type": "string", "description": "support or contradict" },
+                        "evidence_type": { "type": "string", "description": "Type: success, failure, correlation, anomaly" },
+                        "strength": { "type": "number", "description": "Strength 0.0-1.0" }
+                    },
+                    "required": ["hypothesis_id", "content", "direction"]
+                })),
+            ).with_title("Add Evidence"),
+            rmcp::model::Tool::new(
+                "get_hypothesis",
+                "Get details of a specific hypothesis",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "hypothesis_id": { "type": "string", "description": "ID of the hypothesis" }
+                    },
+                    "required": ["hypothesis_id"]
+                })),
+            ).with_title("Get Hypothesis"),
+            rmcp::model::Tool::new(
+                "list_hypotheses",
+                "List all hypotheses with optional filters",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "limit": { "type": "number", "description": "Maximum results" },
+                        "status": { "type": "string", "description": "Filter by status" },
+                        "domain": { "type": "string", "description": "Filter by domain" }
+                    }
+                })),
+            ).with_title("List Hypotheses"),
+            rmcp::model::Tool::new(
+                "list_observations",
+                "List recorded observations",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "limit": { "type": "number", "description": "Maximum results" },
+                        "observation_type": { "type": "string", "description": "Filter by type" }
+                    }
+                })),
+            ).with_title("List Observations"),
+            rmcp::model::Tool::new(
+                "evaluate_hypothesis",
+                "Evaluate a hypothesis based on accumulated evidence",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "hypothesis_id": { "type": "string", "description": "ID of the hypothesis to evaluate" }
+                    },
+                    "required": ["hypothesis_id"]
+                })),
+            ).with_title("Evaluate Hypothesis"),
+            rmcp::model::Tool::new(
+                "get_knowledge",
+                "Get learned knowledge that can inform future decisions",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "domain": { "type": "string", "description": "Filter by domain" },
+                        "limit": { "type": "number", "description": "Maximum results" }
+                    }
+                })),
+            ).with_title("Get Knowledge"),
+            rmcp::model::Tool::new(
+                "extract_knowledge",
+                "Extract supported hypothesis as reusable knowledge",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "hypothesis_id": { "type": "string", "description": "ID of the supported hypothesis" },
+                        "knowledge_content": { "type": "string", "description": "The knowledge content to extract" }
+                    },
+                    "required": ["hypothesis_id", "knowledge_content"]
+                })),
+            ).with_title("Extract Knowledge"),
+            rmcp::model::Tool::new(
+                "get_evidence",
+                "Get a specific evidence record by its ID",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "evidence_id": { "type": "string", "description": "ID of the evidence" }
+                    },
+                    "required": ["evidence_id"]
+                })),
+            ).with_title("Get Evidence"),
+            rmcp::model::Tool::new(
+                "list_evidence",
+                "List all evidence records across hypotheses",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "limit": { "type": "number", "description": "Maximum results" },
+                        "direction": { "type": "string", "description": "Filter by direction" },
+                        "evidence_type": { "type": "string", "description": "Filter by type" }
+                    }
+                })),
+            ).with_title("List Evidence"),
+        ]
+    }
+
     fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
         async move {
             match name {

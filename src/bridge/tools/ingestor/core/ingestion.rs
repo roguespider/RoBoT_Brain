@@ -187,7 +187,13 @@ pub async fn ingest_single_file(
     }
 
     // Check if this is a JSON file - use smart JSON importer
-    if crate::bridge::tools::ingestor::file_collector::is_supported_extension(path, JSON_EXTENSIONS) {
+    // Note: JSONL files are not valid JSON and should be handled as text
+    let is_json = path.extension()
+        .and_then(|e| e.to_str())
+        .map(|e| e.eq_ignore_ascii_case("json"))
+        .unwrap_or(false);
+    
+    if is_json {
         return ingest_json_file(
             path,
             recommended_chunk_size,

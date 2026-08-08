@@ -4,30 +4,19 @@
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use anyhow::Result;
 
 use super::message::AcpMessage;
 
-/// ACP channel for sending and receiving messages
-pub trait AcpChannel: Send + Sync {
-    /// Send a message through the channel
-    fn send(&self, message: AcpMessage) -> Result<()>;
-
-    /// Receive a message from the channel (non-blocking)
-    fn try_recv(&self) -> Result<Option<AcpMessage>>;
-
-    /// Get channel name for debugging
-    fn name(&self) -> &str;
-}
-
 /// In-memory channel for local agent communication
-pub struct InMemoryChannel {
+pub(crate) struct InMemoryChannel {
     name: String,
     messages: Arc<std::sync::Mutex<Vec<AcpMessage>>>,
     waiting: Arc<AtomicBool>,
 }
 
 impl InMemoryChannel {
+    /// Create a new in-memory channel
     pub fn new(name: &str) -> Self {
         Self {
             name: name.to_string(),
@@ -36,6 +25,8 @@ impl InMemoryChannel {
         }
     }
 
+    /// Create a new in-memory channel with pre-allocated buffer
+    #[allow(dead_code)]
     pub fn with_buffer(name: &str, capacity: usize) -> Self {
         Self {
             name: name.to_string(),
@@ -43,23 +34,24 @@ impl InMemoryChannel {
             waiting: Arc::new(AtomicBool::new(false)),
         }
     }
-}
 
-impl AcpChannel for InMemoryChannel {
-    fn send(&self, message: AcpMessage) -> Result<()> {
+    /// Send a message through the channel
+    pub fn send(&self, message: AcpMessage) -> Result<()> {
         let mut messages = self.messages.lock().map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         messages.push(message);
         self.waiting.store(true, Ordering::SeqCst);
         Ok(())
     }
 
-    fn try_recv(&self) -> Result<Option<AcpMessage>> {
+    /// Receive a message from the channel (non-blocking)
+    pub fn try_recv(&self) -> Result<Option<AcpMessage>> {
         let mut messages = self.messages.lock().map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         self.waiting.store(false, Ordering::SeqCst);
         Ok(messages.pop())
     }
 
-    fn name(&self) -> &str {
+    /// Get channel name for debugging
+    pub fn name(&self) -> &str {
         &self.name
     }
 }

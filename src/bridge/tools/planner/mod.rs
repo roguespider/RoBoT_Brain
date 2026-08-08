@@ -7,7 +7,7 @@
 use std::sync::Arc;
 use serde::{Deserialize, Serialize};
 
-use crate::planner::planner::{Planner, Plan, PlanStatus};
+use crate::planner::engine::{Planner, Plan, PlanStatus};
 use crate::bridge::tools::ToolOutput;
 
 /// Tool: Create a new plan
