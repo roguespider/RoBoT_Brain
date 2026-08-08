@@ -37,7 +37,7 @@ pub struct GetSkillInput {
     pub skill_id: String,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
 pub struct ListSkillsInput {
     pub category: Option<String>,
     pub enabled_only: Option<bool>,
@@ -50,7 +50,7 @@ pub struct UpdateSkillMasteryInput {
     pub success: Option<bool>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
 pub struct GetSkillRecommendationsInput {
     pub limit: Option<u32>,
     pub category: Option<String>,
@@ -64,10 +64,10 @@ pub struct ExecuteSkillInput {
     pub time_limit_secs: Option<u64>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
 pub struct GetSkillStatsInput {}
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
 pub struct ApplySkillDecayInput {
     pub decay_rate: Option<f32>,
 }

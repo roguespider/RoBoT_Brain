@@ -39,7 +39,7 @@ pub struct GetPlanInput {
 }
 
 /// Tool: List active plans
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct ListPlansInput {
     pub status: Option<String>,
 }

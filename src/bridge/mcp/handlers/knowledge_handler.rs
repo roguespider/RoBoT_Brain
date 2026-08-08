@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::knowledge;
-use crate::bridge::mcp::handlers::{HandlerInitResult, ToolHandler};
+use crate::bridge::mcp::handlers::{HandlerError, HandlerInitResult, ToolHandler};
 use crate::workflows::enforcement::WorkflowEnforcer;
 
 /// Handler for knowledge-related tools
@@ -83,5 +83,38 @@ impl ToolHandler for KnowledgeToolsHandler {
     fn is_healthy(&self) -> bool {
         // Health check would be async - for now return true if context is available
         true
+    }
+
+    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
+        async move {
+            match name {
+                "add_knowledge" => {
+                    let input: knowledge::AddKnowledgeInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_add_knowledge(input).await)
+                }
+                "query_knowledge" => {
+                    let input: knowledge::QueryKnowledgeInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_query_knowledge(input).await)
+                }
+                "record_knowledge_application" => {
+                    let input: knowledge::RecordKnowledgeApplicationInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_record_knowledge_application(input).await)
+                }
+                "get_knowledge_stats" => {
+                    let input: knowledge::GetKnowledgeStatsInput = serde_json::from_value(args)
+                        .unwrap_or_default();
+                    Ok(self.execute_get_knowledge_stats(input).await)
+                }
+                "get_mature_knowledge" => {
+                    let input: knowledge::GetMatureKnowledgeInput = serde_json::from_value(args)
+                        .unwrap_or_default();
+                    Ok(self.execute_get_mature_knowledge(input).await)
+                }
+                _ => Err(HandlerError::ToolNotFound(name.to_string()))
+            }
+        }
     }
 }

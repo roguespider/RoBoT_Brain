@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::hypothesis;
-use crate::bridge::mcp::handlers::{HandlerInitError, HandlerInitResult, ToolHandler};
+use crate::bridge::mcp::handlers::{HandlerError, HandlerInitError, HandlerInitResult, ToolHandler};
 use crate::workflows::enforcement::WorkflowEnforcer;
 
 /// Handler for hypothesis-related tools
@@ -143,5 +143,79 @@ impl ToolHandler for HypothesisToolsHandler {
 
     fn is_healthy(&self) -> bool {
         self.context.database.connection().is_ok()
+    }
+
+    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
+        async move {
+            match name {
+                "record_observation" => {
+                    let input: hypothesis::RecordObservationInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_record_observation(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "create_hypothesis" => {
+                    let input: hypothesis::CreateHypothesisInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_create_hypothesis(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "add_evidence" => {
+                    let input: hypothesis::AddEvidenceInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_add_evidence(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "get_hypothesis" => {
+                    let input: hypothesis::GetHypothesisInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_get_hypothesis(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "list_hypotheses" => {
+                    let input: hypothesis::ListHypothesesInput = serde_json::from_value(args)
+                        .unwrap_or_default();
+                    self.execute_list_hypotheses(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "list_observations" => {
+                    let input: hypothesis::ListObservationsInput = serde_json::from_value(args)
+                        .unwrap_or_default();
+                    self.execute_list_observations(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "evaluate_hypothesis" => {
+                    let input: hypothesis::EvaluateHypothesisInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_evaluate_hypothesis(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "get_knowledge" => {
+                    let input: hypothesis::GetKnowledgeInput = serde_json::from_value(args)
+                        .unwrap_or_default();
+                    self.execute_get_knowledge(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "extract_knowledge" => {
+                    let input: hypothesis::ExtractKnowledgeInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_extract_knowledge(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "get_evidence" => {
+                    let input: hypothesis::GetEvidenceInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_get_evidence(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "list_evidence" => {
+                    let input: hypothesis::ListEvidenceInput = serde_json::from_value(args)
+                        .unwrap_or_default();
+                    self.execute_list_evidence(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                _ => Err(HandlerError::ToolNotFound(name.to_string()))
+            }
+        }
     }
 }

@@ -2,7 +2,7 @@
 // Exploration tools handler - handles exploration tools
 
 use crate::bridge::tools::exploration;
-use crate::bridge::mcp::handlers::{HandlerInitResult, ToolHandler};
+use crate::bridge::mcp::handlers::{HandlerError, HandlerInitResult, ToolHandler};
 use crate::workflows::enforcement::WorkflowEnforcer;
 use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
@@ -126,5 +126,63 @@ impl ToolHandler for ExplorationToolsHandler {
 
     fn is_healthy(&self) -> bool {
         true
+    }
+
+    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
+        async move {
+            match name {
+                "start_exploration" => {
+                    let input: exploration::StartExplorationInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_start_exploration(input))
+                }
+                "get_exploration_status" => {
+                    let input: exploration::GetExplorationStatusInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_get_exploration_status(input))
+                }
+                "pause_exploration" => {
+                    let input: exploration::GetExplorationStatusInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_pause_exploration(input))
+                }
+                "resume_exploration" => {
+                    let input: exploration::GetExplorationStatusInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_resume_exploration(input))
+                }
+                "complete_exploration" => {
+                    let input: exploration::CompleteExplorationInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_complete_exploration(input))
+                }
+                "abandon_exploration" => {
+                    let input: exploration::GetExplorationStatusInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_abandon_exploration(input))
+                }
+                "record_attempt" => {
+                    let input: exploration::RecordAttemptInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_record_attempt(input))
+                }
+                "add_hypothesis" => {
+                    let input: exploration::AddHypothesisInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_add_hypothesis(input))
+                }
+                "evaluate_hypothesis" => {
+                    let input: exploration::EvaluateHypothesisInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_evaluate_hypothesis(input))
+                }
+                "promote_finding" => {
+                    let input: exploration::PromoteFindingInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_promote_finding(input))
+                }
+                _ => Err(HandlerError::ToolNotFound(name.to_string()))
+            }
+        }
     }
 }

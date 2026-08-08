@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::search;
-use crate::bridge::mcp::handlers::{HandlerInitError, HandlerInitResult, ToolHandler};
+use crate::bridge::mcp::handlers::{HandlerError, HandlerInitError, HandlerInitResult, ToolHandler};
 use crate::workflows::enforcement::WorkflowEnforcer;
 
 /// Handler for search-related tools
@@ -71,5 +71,31 @@ impl ToolHandler for SearchToolsHandler {
 
     fn is_healthy(&self) -> bool {
         self.context.database.connection().is_ok()
+    }
+
+    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
+        async move {
+            match name {
+                "global_search" => {
+                    let input: search::GlobalSearchInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_global_search(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "get_recommendations" => {
+                    let input: search::GetRecommendationsInput = serde_json::from_value(args)
+                        .unwrap_or_default();
+                    self.execute_get_recommendations(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "get_reputation" => {
+                    let input: search::GetReputationInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_get_reputation(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                _ => Err(HandlerError::ToolNotFound(name.to_string()))
+            }
+        }
     }
 }

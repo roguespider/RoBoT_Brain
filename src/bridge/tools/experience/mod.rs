@@ -26,13 +26,13 @@ pub struct RecordExperienceInput {
 }
 
 /// Tool: Get experience statistics
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct GetExperienceStatsInput {
     pub period: Option<String>,
 }
 
 /// Tool: List recent experiences
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct ListExperiencesInput {
     pub experience_type: Option<String>,
     pub limit: Option<usize>,
@@ -49,7 +49,7 @@ pub struct GetExperienceInput {
 // ============================================================================
 
 /// Tool: Get worker statistics
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct GetWorkerStatsInput {
     pub observer_name: Option<String>,
 }

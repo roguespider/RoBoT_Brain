@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::planner;
-use crate::bridge::mcp::handlers::{HandlerInitResult, ToolHandler};
+use crate::bridge::mcp::handlers::{HandlerError, HandlerInitResult, ToolHandler};
 use crate::workflows::enforcement::WorkflowEnforcer;
 
 /// Handler for planner-related tools
@@ -119,5 +119,58 @@ impl ToolHandler for PlannerToolsHandler {
     fn is_healthy(&self) -> bool {
         // Planner is considered healthy if we can list plans
         true
+    }
+
+    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
+        async move {
+            match name {
+                "create_plan" => {
+                    let input: planner::CreatePlanInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_create_plan(input).await)
+                }
+                "add_plan_step" => {
+                    let input: planner::AddPlanStepInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_add_plan_step(input).await)
+                }
+                "add_step_dependency" => {
+                    let input: planner::AddStepDependencyInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_add_step_dependency(input).await)
+                }
+                "get_plan" => {
+                    let input: planner::GetPlanInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_get_plan(input).await)
+                }
+                "list_plans" => {
+                    let input: planner::ListPlansInput = serde_json::from_value(args)
+                        .unwrap_or_default();
+                    Ok(self.execute_list_plans(input).await)
+                }
+                "start_plan" => {
+                    let input: planner::StartPlanInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_start_plan(input).await)
+                }
+                "complete_step" => {
+                    let input: planner::CompleteStepInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_complete_step(input).await)
+                }
+                "fail_step" => {
+                    let input: planner::FailStepInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_fail_step(input).await)
+                }
+                "cancel_plan" => {
+                    let input: planner::CancelPlanInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_cancel_plan(input).await)
+                }
+                _ => Err(HandlerError::ToolNotFound(name.to_string()))
+            }
+        }
     }
 }

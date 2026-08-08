@@ -4,7 +4,7 @@
 use serde::{Deserialize, Serialize};
 
 /// Tool: Get insights
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct GetInsightsInput {
     pub min_confidence: Option<f32>,
     pub limit: Option<usize>,
@@ -26,7 +26,7 @@ pub struct AnalyzePatternsInput {
 }
 
 /// Tool: Get pattern summary
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct GetPatternsInput {
     pub min_confidence: Option<f32>,
     pub pattern_type: Option<String>,

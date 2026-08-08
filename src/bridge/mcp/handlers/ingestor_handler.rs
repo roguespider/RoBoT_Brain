@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::ingestor;
-use crate::bridge::mcp::handlers::{HandlerInitError, HandlerInitResult, ToolHandler};
+use crate::bridge::mcp::handlers::{HandlerError, HandlerInitError, HandlerInitResult, ToolHandler};
 use crate::workflows::enforcement::WorkflowEnforcer;
 
 /// Handler for ingestor-related tools
@@ -85,5 +85,37 @@ impl ToolHandler for IngestorToolsHandler {
 
     fn is_healthy(&self) -> bool {
         self.context.database.connection().is_ok()
+    }
+
+    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
+        async move {
+            match name {
+                "ingest_files" => {
+                    let input: ingestor::IngestFilesInput = serde_json::from_value(args)
+                        .unwrap_or_default();
+                    self.execute_ingest_files(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "list_importable" => {
+                    let input: ingestor::ListImportableInput = serde_json::from_value(args)
+                        .unwrap_or_default();
+                    self.execute_list_importable(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "list_ingested_files" => {
+                    let input: ingestor::ListIngestedFilesInput = serde_json::from_value(args)
+                        .unwrap_or_default();
+                    self.execute_list_ingested_files(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "delete_ingested_files" => {
+                    let input: ingestor::DeleteIngestedFilesInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_delete_ingested_files(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                _ => Err(HandlerError::ToolNotFound(name.to_string()))
+            }
+        }
     }
 }

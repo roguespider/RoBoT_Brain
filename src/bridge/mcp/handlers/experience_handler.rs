@@ -4,7 +4,7 @@
 use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::experience;
-use crate::bridge::mcp::handlers::{HandlerInitError, HandlerInitResult, ToolHandler};
+use crate::bridge::mcp::handlers::{HandlerError, HandlerInitError, HandlerInitResult, ToolHandler};
 use crate::workflows::enforcement::WorkflowEnforcer;
 
 /// Handler for experience-related tools
@@ -100,5 +100,47 @@ impl ToolHandler for ExperienceToolsHandler {
 
     fn is_healthy(&self) -> bool {
         self.context.database.connection().is_ok()
+    }
+
+    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
+        async move {
+            match name {
+                "record_experience" => {
+                    let input: experience::RecordExperienceInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_record_experience(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "get_experience_stats" => {
+                    let input: experience::GetExperienceStatsInput = serde_json::from_value(args)
+                        .unwrap_or_default();
+                    self.execute_get_experience_stats(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "list_experiences" => {
+                    let input: experience::ListExperiencesInput = serde_json::from_value(args)
+                        .unwrap_or_default();
+                    self.execute_list_experiences(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "get_experience" => {
+                    let input: experience::GetExperienceInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_get_experience(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "get_worker_stats" => {
+                    let input: experience::GetWorkerStatsInput = serde_json::from_value(args)
+                        .unwrap_or_default();
+                    self.execute_get_worker_stats(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "get_worker_count" => {
+                    self.execute_get_worker_count().await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                _ => Err(HandlerError::ToolNotFound(name.to_string()))
+            }
+        }
     }
 }
