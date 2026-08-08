@@ -17,9 +17,10 @@ pub async fn run_agent_tests(
     test_get_tool(client, stats, "store_memory").await?;
     test_get_tool(client, stats, "search_memory").await?;
 
-    // Test connect_mcp_server (may fail in test env but should not panic)
-    test_connect_mcp_server(client, stats).await?;
-    test_call_tool(client, stats).await?;
+    // Note: External MCP server tests are informational only
+    // connect_mcp_server and call_tool require an actual external MCP server
+    // These are tested separately in integration environments
+    test_external_mcp_capability(client, stats).await?;
 
     Ok(())
 }
@@ -100,53 +101,24 @@ async fn test_get_tool(
     Ok(())
 }
 
-async fn test_connect_mcp_server(
+/// Test external MCP server connectivity (informational)
+/// Note: These tools require an actual external MCP server to be meaningful
+async fn test_external_mcp_capability(
     client: &mut TestMcpClient,
     stats: &mut TestStats,
 ) -> anyhow::Result<()> {
-    match client
-        .call_tool(
-            "connect_mcp_server",
-            serde_json::json!({
-                "name": "test_server",
-                "command": "echo",
-                "args": []
-            }),
-        )
-        .await
-    {
-        Ok(_) => {
-            crate::teeprintln!("  ✓ connect_mcp_server - SUCCESS");
-            stats.passed += 1;
-        }
-        Err(e) => {
-            // May fail in test env but that's expected - just log it
-            crate::teeprintln!("  ⚠ connect_mcp_server - SKIPPED: {}", e);
-            stats.skipped += 1;
-        }
+    // Test if the external MCP tools are available
+    let tools = client.list_tools().await?;
+    
+    let has_connect = tools.iter().any(|t| t.get("name").and_then(|n| n.as_str()) == Some("connect_mcp_server"));
+    let has_call = tools.iter().any(|t| t.get("name").and_then(|n| n.as_str()) == Some("call_tool"));
+    
+    if has_connect && has_call {
+        crate::teeprintln!("  ℹ External MCP client tools available (connect_mcp_server, call_tool)");
+        crate::teeprintln!("    → These require an actual external MCP server for full testing");
+        crate::teeprintln!("    → Skipping live connection tests in unit test environment");
+        stats.skipped += 2;
     }
-    Ok(())
-}
-
-async fn test_call_tool(client: &mut TestMcpClient, stats: &mut TestStats) -> anyhow::Result<()> {
-    match client
-        .call_tool(
-            "call_tool",
-            serde_json::json!({
-                "tool_name": "get_workflow",
-                "arguments": "{\"purpose\": \"general\"}"
-            }),
-        )
-        .await
-    {
-        Ok(_) => {
-            crate::teeprintln!("  ✓ call_tool - SUCCESS");
-            stats.passed += 1;
-        }
-        Err(e) => {
-            crate::teeprintln!("  ⚠ call_tool - SKIPPED: {}", e);
-            stats.skipped += 1;
-        }
-    }
+    
     Ok(())
 }
