@@ -20,8 +20,8 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 
-// Use candle from candle_transformers to ensure same version
-use candle::{DType, Device, IndexOp, Tensor};
+// Use candle-core from candle_transformers to ensure same version
+use candle_core::{DType, Device, IndexOp, Tensor};
 use candle_nn::VarBuilder;
 use candle_transformers::models::whisper::{self as whisper, Config};
 use hf_hub::api::sync::Api;
@@ -208,11 +208,6 @@ impl WhisperTranscriber {
     pub fn transcribe(&mut self, samples: &[f32]) -> Result<TranscriptionResult> {
         let duration_seconds = samples.len() as f32 / 16000.0;
 
-        let model = self.model.as_mut()
-            .ok_or_else(|| anyhow::anyhow!("Whisper model not loaded"))?;
-        let tokenizer = self.tokenizer.as_ref()
-            .ok_or_else(|| anyhow::anyhow!("Tokenizer not loaded"))?;
-
         // Compute mel spectrogram using Candle's audio module
         let mel_filters = load_mel_filters()?;
         let mel_spec = whisper::audio::pcm_to_mel(&self.config, samples, &mel_filters);
@@ -224,13 +219,20 @@ impl WhisperTranscriber {
 
         tracing::info!("Mel spectrogram shape: {:?}", mel_tensor.shape());
 
-        // Run encoder
-        let audio_features = model.encoder.forward(&mel_tensor, true)?;
+        // Run encoder and decode - do everything in one borrow
+        let text = {
+            let model = self.model.as_mut()
+                .ok_or_else(|| anyhow::anyhow!("Whisper model not loaded"))?;
+            let tokenizer = self.tokenizer.as_ref()
+                .ok_or_else(|| anyhow::anyhow!("Tokenizer not loaded"))?;
 
-        tracing::info!("Audio features shape: {:?}", audio_features.dims());
+            // Run encoder
+            let audio_features = model.encoder.forward(&mel_tensor, true)?;
+            tracing::info!("Audio features shape: {:?}", audio_features.dims());
 
-        // Decode to text
-        let text = self.decode_internal(model, tokenizer, &audio_features)?;
+            // Decode tokens - pass config and device explicitly to avoid borrow conflict
+            decode_tokens_from_features(&self.config, &self.device, model, tokenizer, &audio_features)?
+        };
 
         Ok(TranscriptionResult {
             text,
@@ -239,57 +241,57 @@ impl WhisperTranscriber {
             segments: vec![],
         })
     }
+}
 
-    /// Decode audio features to text
-    fn decode_internal(&mut self, model: &whisper::model::Whisper, tokenizer: &Tokenizer, audio_features: &Tensor) -> Result<String> {
-        // Get special tokens
-        let sot_token = get_token_id(tokenizer, whisper::SOT_TOKEN)?;
-        let transcribe_token = get_token_id(tokenizer, whisper::TRANSCRIBE_TOKEN)?;
-        let no_timestamps_token = get_token_id(tokenizer, whisper::NO_TIMESTAMPS_TOKEN)?;
-        let eot_token = get_token_id(tokenizer, whisper::EOT_TOKEN)?;
+/// Decode audio features to text (free function to avoid borrow conflicts)
+fn decode_tokens_from_features(config: &Config, device: &Device, model: &mut whisper::model::Whisper, tokenizer: &Tokenizer, audio_features: &Tensor) -> Result<String> {
+    // Get special tokens
+    let sot_token = get_token_id(tokenizer, whisper::SOT_TOKEN)?;
+    let transcribe_token = get_token_id(tokenizer, whisper::TRANSCRIBE_TOKEN)?;
+    let no_timestamps_token = get_token_id(tokenizer, whisper::NO_TIMESTAMPS_TOKEN)?;
+    let eot_token = get_token_id(tokenizer, whisper::EOT_TOKEN)?;
 
-        // Build token sequence: <|startoftranscript|><|en|><|transcribe|><|notimestamps|>
-        let mut tokens = vec![sot_token, transcribe_token, no_timestamps_token];
+    // Build token sequence: <|startoftranscript|><|en|><|transcribe|><|notimestamps|>
+    let mut tokens = vec![sot_token, transcribe_token, no_timestamps_token];
 
-        let sample_len = self.config.max_target_positions / 2;
+    let sample_len = config.max_target_positions / 2;
 
-        for _ in 0..sample_len {
-            let tokens_t = Tensor::new(tokens.as_slice(), &self.device)?.unsqueeze(0)?;
+    for _ in 0..sample_len {
+        let tokens_t = Tensor::new(tokens.as_slice(), device)?.unsqueeze(0)?;
 
-            let ys = model
-                .decoder
-                .forward(&tokens_t, audio_features, tokens.len() == 3)?;
+        let ys = model
+            .decoder
+            .forward(&tokens_t, audio_features, tokens.len() == 3)?;
 
-            let (_, seq_len, _) = ys.dims3()?;
-            let logits = model
-                .decoder
-                .final_linear(&ys.i((..1, seq_len - 1..))?)?
-                .i(0)?
-                .i(0)?;
+        let (_, seq_len, _) = ys.dims3()?;
+        let logits = model
+            .decoder
+            .final_linear(&ys.i((..1, seq_len - 1..))?)?
+            .i(0)?
+            .i(0)?;
 
-            // Greedy decoding
-            let logits_v: Vec<f32> = logits.to_vec1()?;
-            let next_token = logits_v
-                .iter()
-                .enumerate()
-                .max_by(|(_, u), (_, v)| u.partial_cmp(v).unwrap_or(std::cmp::Ordering::Equal))
-                .map(|(i, _)| i as u32)
-                .unwrap_or(0);
+        // Greedy decoding
+        let logits_v: Vec<f32> = logits.to_vec1()?;
+        let next_token = logits_v
+            .iter()
+            .enumerate()
+            .max_by(|(_, u), (_, v)| u.partial_cmp(v).unwrap_or(std::cmp::Ordering::Equal))
+            .map(|(i, _)| i as u32)
+            .unwrap_or(0);
 
-            tokens.push(next_token);
+        tokens.push(next_token);
 
-            if next_token == eot_token || tokens.len() > self.config.max_target_positions {
-                break;
-            }
+        if next_token == eot_token || tokens.len() > config.max_target_positions {
+            break;
         }
-
-        // Decode tokens to text
-        let text = tokenizer
-            .decode(&tokens, true)
-            .map_err(|e| anyhow::anyhow!("Failed to decode tokens: {}", e))?;
-
-        Ok(text)
     }
+
+    // Decode tokens to text
+    let text = tokenizer
+        .decode(&tokens, true)
+        .map_err(|e| anyhow::anyhow!("Failed to decode tokens: {}", e))?;
+
+    Ok(text)
 }
 
 impl Default for WhisperTranscriber {
