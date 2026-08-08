@@ -336,6 +336,24 @@ mod tests {
     }
 
     #[test]
+    fn test_message_builder_conversation_and_reply() {
+        let conv_id = "conv-123".to_string();
+        let reply_id = "msg-456".to_string();
+        
+        let msg = AcpMessageBuilder::new()
+            .from(AcpAgentId::new("sender", "1"))
+            .to(AcpAgentId::new("receiver", "1"))
+            .message_type(AcpMessageType::Request)
+            .in_conversation(conv_id.clone())
+            .reply_to(reply_id.clone())
+            .build()
+            .expect("build should succeed");
+
+        assert_eq!(msg.conversation_id, Some(conv_id));
+        assert_eq!(msg.reply_to, Some(reply_id));
+    }
+
+    #[test]
     fn test_simple_agent() {
         let agent = SimpleAgent::new(
             AcpAgentId::new("echo", "1"),
