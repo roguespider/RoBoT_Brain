@@ -42,6 +42,7 @@ pub mod pattern;
 pub mod reflection;
 pub mod review;
 pub mod services;
+pub mod self_check;
 
 // Re-export from submodules
 pub use engine::ReflectionEngine;
