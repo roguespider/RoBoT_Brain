@@ -49,7 +49,7 @@ mod tests {
     // Re-export test types
     pub use super::agent::test_types::{AcpCapability, SimpleAgent};
     pub use super::builder::AcpMessageBuilder;
-    pub use super::channel::{AcpChannel, InMemoryChannel};
+    pub use super::channel::InMemoryChannel;
     pub use super::error::{AcpError, AcpErrorCode};
     pub use super::message::AcpMessageType;
 
