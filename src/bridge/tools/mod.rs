@@ -81,15 +81,15 @@ pub fn register_tools() {
     // Register each tool category following the MCP Pipeline order:
     // ORDER MATTERS - tools are listed in the order they're meant to be used:
     // 1. Agent (ENTRY POINT - get_workflow, list_tools MUST be called first)
-    // 2. Memory (foundation - search_memory, store_memory, etc.)
-    // 3. Experience (tracks all operations)
-    // 4. Reflection (analyzes experience - get_patterns, get_insights)
-    // 5. Search (uses memory, experience - global_search)
-    // 6. Knowledge (stores learned info)
-    // 7. Planner (planning operations)
-    // 8. Exploration & Hypothesis (hypothesis generation & evaluation)
-    // 9. Skills (uses planner, exploration)
-    // 10. Workflow (workflow management)
+    // 2. Workflow (right after Agent since get_workflow is entry point)
+    // 3. Memory (foundation - search_memory, store_memory, etc.)
+    // 4. Experience (tracks all operations)
+    // 5. Reflection (analyzes experience - get_patterns, get_insights)
+    // 6. Search (uses memory, experience - global_search)
+    // 7. Knowledge (stores learned info)
+    // 8. Planner (planning operations)
+    // 9. Exploration & Hypothesis (hypothesis generation & evaluation)
+    // 10. Skills (uses planner, exploration)
     // 11. Ingestor (file ingestion)
     // 12. BackgroundWorkers (async workers)
 
@@ -97,44 +97,44 @@ pub fn register_tools() {
     let agent_tools = agent::definitions::all();
     tracing::info!("Registered {} agent tools", agent_tools.len());
 
-    // Phase 2: Memory Foundation
+    // Phase 2: Workflow Management (right after Agent since get_workflow is entry point)
+    let workflow_tools = workflow::definitions::all();
+    tracing::info!("Registered {} workflow tools", workflow_tools.len());
+
+    // Phase 3: Memory Foundation
     let memory_tools = memory::definitions::all();
     tracing::info!("Registered {} memory tools", memory_tools.len());
 
-    // Phase 3: Experience Tracking
+    // Phase 4: Experience Tracking
     let experience_tools = experience::definitions::all();
     tracing::info!("Registered {} experience tools", experience_tools.len());
 
-    // Phase 4: Reflection & Analysis
+    // Phase 5: Reflection & Analysis
     let reflection_tools = reflection::definitions::all();
     tracing::info!("Registered {} reflection tools", reflection_tools.len());
 
-    // Phase 5: Search
+    // Phase 6: Search
     let search_tools = search::definitions::all();
     tracing::info!("Registered {} search tools", search_tools.len());
 
-    // Phase 6: Knowledge Base
+    // Phase 7: Knowledge Base
     let knowledge_tools = knowledge::definitions::all();
     tracing::info!("Registered {} knowledge tools", knowledge_tools.len());
 
-    // Phase 7: Planning
+    // Phase 8: Planning
     let planner_tools = planner::definitions::all();
     tracing::info!("Registered {} planner tools", planner_tools.len());
 
-    // Phase 8: Exploration & Learning
+    // Phase 9: Exploration & Learning
     let exploration_tools = exploration::definitions::all();
     tracing::info!("Registered {} exploration tools", exploration_tools.len());
 
     let hypothesis_tools = hypothesis::definitions::all();
     tracing::info!("Registered {} hypothesis tools", hypothesis_tools.len());
 
-    // Phase 9: Skills
+    // Phase 10: Skills
     let skills_tools = skills::definitions::all();
     tracing::info!("Registered {} skills tools", skills_tools.len());
-
-    // Phase 10: Workflow Management
-    let workflow_tools = workflow::definitions::all();
-    tracing::info!("Registered {} workflow tools", workflow_tools.len());
 
     // Phase 11: File Operations
     let ingestor_tools = ingestor::definitions::all();
@@ -143,6 +143,7 @@ pub fn register_tools() {
     // Collect all tools in pipeline order (Agent entry point first)
     let all_tools = agent_tools
         .into_iter()
+        .chain(workflow_tools)
         .chain(memory_tools)
         .chain(experience_tools)
         .chain(reflection_tools)
@@ -152,7 +153,6 @@ pub fn register_tools() {
         .chain(exploration_tools)
         .chain(hypothesis_tools)
         .chain(skills_tools)
-        .chain(workflow_tools)
         .chain(ingestor_tools)
         .collect();
 

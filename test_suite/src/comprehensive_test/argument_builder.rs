@@ -261,19 +261,35 @@ pub fn build_test_arguments(
         "planner_list" => serde_json::json!({}),
 
         // Workflow tools
+        // Note: create_workflow creates a workflow, subsequent tests need that workflow_id
+        // For now, we use a static test workflow ID since data tracking isn't fully implemented
         "workflow_create" => serde_json::json!({
             "name": "Test Workflow"
         }),
         "workflow_add_step" => serde_json::json!({
+            "workflow_id": "00000000-0000-0000-0000-000000000001",
             "name": "Step 1",
-            "tool_name": "store_memory"
+            "action": "store_memory",
+            "parameters": null
         }),
-        "workflow_status" => serde_json::json!({}),
-        "workflow_start" => serde_json::json!({}),
-        "workflow_pause" => serde_json::json!({}),
-        "workflow_resume" => serde_json::json!({}),
-        "workflow_cancel" => serde_json::json!({}),
-        "workflow_delete" => serde_json::json!({}),
+        "workflow_status" => serde_json::json!({
+            "workflow_id": "00000000-0000-0000-0000-000000000001"
+        }),
+        "workflow_start" => serde_json::json!({
+            "workflow_id": "00000000-0000-0000-0000-000000000001"
+        }),
+        "workflow_pause" => serde_json::json!({
+            "workflow_id": "00000000-0000-0000-0000-000000000001"
+        }),
+        "workflow_resume" => serde_json::json!({
+            "workflow_id": "00000000-0000-0000-0000-000000000001"
+        }),
+        "workflow_cancel" => serde_json::json!({
+            "workflow_id": "00000000-0000-0000-0000-000000000001"
+        }),
+        "workflow_delete" => serde_json::json!({
+            "workflow_id": "00000000-0000-0000-0000-000000000001"
+        }),
         "workflow_list" => serde_json::json!({}),
 
         // Skills tools

@@ -3,6 +3,9 @@
 
 // src/workflows/enforcement/enforcer.rs
 //! WorkflowEnforcer implementation
+//! 
+//! Enforcement is ALWAYS enabled - agents MUST follow workflows.
+//! There is no option to disable enforcement.
 
 use std::sync::Arc;
 use std::time::{Duration, Instant};
@@ -10,46 +13,20 @@ use tokio::sync::RwLock;
 
 use crate::workflows::enforcement::{SessionState, WorkflowEnforcementError, EXEMPT_TOOLS, MEMORY_SEARCH_TOOLS};
 
-/// Workflow enforcement engine
+/// Workflow enforcement engine - ALWAYS ENABLED
 pub struct WorkflowEnforcer {
     /// Per-session state tracking
     sessions: Arc<RwLock<std::collections::HashMap<String, SessionState>>>,
-    /// Configuration
-    enforcement_enabled: bool,
+    /// Session timeout
     session_timeout: Duration,
-    require_memory_search: bool,
-    require_patterns_review: bool,
 }
 
 impl WorkflowEnforcer {
-    /// Create a new workflow enforcer
-    /// 
-    /// NOTE: Workflow enforcement is disabled by default for better editor compatibility.
-    /// MCP clients like Zed Editor may not follow the expected workflow pattern (get_workflow first),
-    /// so blocking tools can cause hangs or unexpected behavior.
+    /// Create a new workflow enforcer (enforcement is always enabled)
     pub fn new() -> Self {
         Self {
             sessions: Arc::new(RwLock::new(std::collections::HashMap::new())),
-            enforcement_enabled: false, // Disabled for editor compatibility
             session_timeout: Duration::from_secs(3600), // 1 hour default
-            require_memory_search: false, // Disabled with enforcement
-            require_patterns_review: false,
-        }
-    }
-
-    /// Create with custom configuration
-    pub fn with_config(
-        enforcement_enabled: bool,
-        session_timeout_secs: u64,
-        require_memory_search: bool,
-        require_patterns_review: bool,
-    ) -> Self {
-        Self {
-            sessions: Arc::new(RwLock::new(std::collections::HashMap::new())),
-            enforcement_enabled,
-            session_timeout: Duration::from_secs(session_timeout_secs),
-            require_memory_search,
-            require_patterns_review,
         }
     }
 
@@ -129,20 +106,15 @@ impl WorkflowEnforcer {
         MEMORY_SEARCH_TOOLS.contains(&tool_name)
     }
 
-    /// Main enforcement check - returns error if tool should be blocked
+    /// Main enforcement check - ALWAYS ENFORCED
+    /// Returns error if agent hasn't followed required workflow steps
     pub async fn check_enforcement(
         &self,
         session_id: &str,
         tool_name: &str,
     ) -> Result<(), WorkflowEnforcementError> {
-        // If enforcement disabled, allow all
-        if !self.enforcement_enabled {
-            return Ok(());
-        }
-
-        // Exempt tools always allowed
+        // Exempt tools always allowed (get_workflow, list_tools, get_tool)
         if Self::is_exempt(tool_name) {
-            // For get_workflow, mark workflow as retrieved
             if tool_name == "get_workflow" {
                 self.record_workflow_retrieved(session_id, None).await;
             }
@@ -151,13 +123,13 @@ impl WorkflowEnforcer {
 
         let session = self.get_session(session_id).await;
 
-        // Check if workflow was retrieved
+        // Agent MUST have called get_workflow first
         if !session.workflow_retrieved {
             return Err(WorkflowEnforcementError::workflow_not_retrieved());
         }
 
-        // Check if memory was searched (for non-exempt, non-memory tools)
-        if !Self::is_memory_search(tool_name) && self.require_memory_search && !session.memory_searched {
+        // For non-memory tools, agent MUST have searched memory first
+        if !Self::is_memory_search(tool_name) && !session.memory_searched {
             return Err(WorkflowEnforcementError::memory_not_searched());
         }
 
@@ -201,16 +173,6 @@ impl WorkflowEnforcer {
         let before = sessions.len();
         sessions.retain(|_, state| !state.is_session_expired(self.session_timeout));
         before - sessions.len()
-    }
-
-    /// Enable/disable enforcement at runtime
-    pub fn set_enforcement_enabled(&mut self, enabled: bool) {
-        self.enforcement_enabled = enabled;
-    }
-
-    /// Get current enforcement status
-    pub fn is_enforcement_enabled(&self) -> bool {
-        self.enforcement_enabled
     }
 
     /// Update session with workflow purpose

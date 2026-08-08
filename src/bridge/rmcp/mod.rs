@@ -66,9 +66,22 @@ impl ServerHandler for types::McpServerHandler {
         let arguments = request.arguments.map(|args| serde_json::Value::Object(args))
             .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
 
+        // Check workflow enforcement FIRST - agent MUST follow workflows
+        if let Err(e) = self.enforcer.check_enforcement(&self.session_id, tool_name).await {
+            let error_msg = serde_json::to_string(&e).unwrap_or_else(|_| e.message.clone());
+            let content = vec![ContentBlock::text(error_msg)];
+            return Ok(CallToolResult::error(content));
+        }
+
         // Try to execute via handler first
-        match self.handlers.call_tool(tool_name, arguments).await {
+        match self.handlers.call_tool(tool_name, arguments.clone()).await {
             Ok(result) => {
+                // Record tool execution for workflow tracking
+                let query = arguments.get("query")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                self.enforcer.record_tool_execution(&self.session_id, tool_name, query).await;
+                
                 // Check if the tool considers itself successful
                 if result.success {
                     // Return the tool's data directly so validation can find expected fields
