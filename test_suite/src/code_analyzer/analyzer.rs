@@ -419,6 +419,13 @@ impl CodeAnalyzer {
     /// Detect functions whose body only returns `Err(...)`, regardless of input.
     ///
     /// Such functions always fail and represent incomplete or stub implementations.
+    ///
+    /// To avoid false positives, this only flags functions where:
+    /// - The body contains `return Err(` or a trailing `Err(` expression
+    /// - There is NO `return Ok(` or trailing `Ok(` expression
+    /// - There is NO `match` statement (match arms can produce different results)
+    /// - There is NO `.await` call (async results can succeed)
+    /// - There is NO `if`/`else` branching that could produce Ok
     fn analyze_always_err(&self, content: &str, file_path: &Path) -> Vec<CodeIssue> {
         let mut issues = Vec::new();
         let lines: Vec<&str> = content.lines().collect();
@@ -427,7 +434,7 @@ impl CodeAnalyzer {
         let mut function_start = 0;
         let mut brace_count = 0;
         let mut function_name = String::new();
-        let mut return_lines: Vec<&str> = Vec::new();
+        let mut function_body: Vec<&str> = Vec::new();
 
         for (i, line) in lines.iter().enumerate() {
             let trimmed = line.trim();
@@ -441,7 +448,7 @@ impl CodeAnalyzer {
                 in_function = true;
                 function_start = i;
                 brace_count = 0;
-                return_lines.clear();
+                function_body.clear();
                 function_name = trimmed
                     .split(|c: char| c == '(' || c == '{')
                     .next()
@@ -456,21 +463,43 @@ impl CodeAnalyzer {
                 brace_count += line.matches('{').count() as i32;
                 brace_count -= line.matches('}').count() as i32;
 
-                // Collect all return statements in the function
-                if trimmed.contains("return ") || trimmed.contains("Ok(") || trimmed.contains("Err(") {
-                    if !trimmed.starts_with("//") {
-                        return_lines.push(trimmed);
-                    }
+                // Collect non-comment body lines
+                if !trimmed.starts_with("//") && !trimmed.starts_with("///") && !trimmed.is_empty() {
+                    function_body.push(trimmed);
                 }
 
                 // Function ends
                 if brace_count == 0 && i > function_start {
-                    // If all return paths are Err(...) and none are Ok(...)
-                    let has_ok = return_lines.iter().any(|l| l.contains("Ok("));
-                    let has_err = return_lines.iter().any(|l| l.contains("Err("));
-                    let all_err = has_err && !has_ok && !return_lines.is_empty();
+                    // Check for explicit Ok/Err returns and trailing expressions
+                    let has_return_ok = function_body.iter().any(|l| l.contains("return Ok"));
+                    let has_return_err = function_body.iter().any(|l| l.contains("return Err"));
+                    let has_trailing_ok = function_body.iter().any(|l| {
+                        l.starts_with("Ok(") || l.starts_with("Ok (")
+                    });
+                    let has_trailing_err = function_body.iter().any(|l| {
+                        l.starts_with("Err(") || l.starts_with("Err (")
+                    });
 
-                    if all_err {
+                    // Exclude functions with complex logic that could produce Ok
+                    let has_match = function_body.iter().any(|l| {
+                        l.contains("match ") || l.starts_with("match")
+                    });
+                    let has_await = function_body.iter().any(|l| l.contains(".await"));
+                    let has_if_branch = function_body.iter().any(|l| {
+                        l.starts_with("if ") || l.starts_with("if(")
+                    });
+
+                    let has_any_ok = has_return_ok || has_trailing_ok;
+                    let has_any_err = has_return_err || has_trailing_err;
+
+                    // Only flag if: has Err but no Ok, and no complex logic
+                    let is_always_err = has_any_err
+                        && !has_any_ok
+                        && !has_match
+                        && !has_await
+                        && !has_if_branch;
+
+                    if is_always_err {
                         issues.push(CodeIssue {
                             file_path: file_path.to_path_buf(),
                             line_number: function_start + 1,

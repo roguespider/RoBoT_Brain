@@ -24,6 +24,21 @@ cargo build --release -p test_suite
 ./target/release/test_suite
 ```
 
+## Post-Compile: Connect to robot_brain MCP/ACP
+
+**IMPORTANT (User Requirement):** After compiling `robot_brain`, the AI agent MUST connect to the running robot_brain MCP/ACP server directly to test it. Do not rely solely on the test_suite — connect yourself as a client.
+
+Steps after a successful `cargo build --release -p robot_brain`:
+1. Invoke the `robot-brain` skill (`.agents/skills/robot-brain/skill.md`)
+2. Connect to the compiled `robot_brain` binary via MCP protocol
+3. Test key tools to verify what is working and what is not:
+   - **MCP tools**: `store_memory`, `search_memory`, `list_memories`, `create_plan`, `list_plans`, `create_workflow`, `start_workflow`, `query_knowledge`, `record_experience`
+   - **ACP tools**: `route_acp_message`, `register_agent`, `list_agents`
+   - **Discovery**: `list_tools` to confirm all ~92 tools are available
+4. Report which tools work and which fail
+
+This direct testing makes it easier to identify working vs. broken functionality immediately after compilation, rather than only seeing aggregate pass/fail from the test suite.
+
 ## Handling Unused Type Warnings
 
 Many types (like `SimpleAgent`, `AcpCapability`, ACP message builders) are defined for testing/future use but unused in production. When fixing lint warnings:
