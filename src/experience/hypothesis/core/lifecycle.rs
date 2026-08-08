@@ -12,7 +12,6 @@
 //! This module owns state transitions only.
 //! Confidence calculation belongs to the evaluator.
 
-use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
 use super::hypothesis::{Hypothesis, HypothesisStatus};
