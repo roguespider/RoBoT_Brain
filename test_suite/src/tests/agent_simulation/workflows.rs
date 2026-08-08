@@ -28,7 +28,7 @@ pub async fn test_agent_workflows(
     if client.call_tool("get_workflow", serde_json::json!({"purpose": "research_task"})).await.is_ok() {
         steps_done += 1;
     }
-    if client.call_tool("search_all", serde_json::json!({"query": "artificial intelligence", "limit": 5})).await.is_ok() {
+    if client.call_tool("global_search", serde_json::json!({"query": "artificial intelligence", "limit": 5})).await.is_ok() {
         steps_done += 1;
     }
     if client.call_tool("query_knowledge", serde_json::json!({"query": "AI techniques", "limit": 5})).await.is_ok() {
@@ -85,7 +85,7 @@ pub async fn test_agent_workflows(
     if client.call_tool("get_recent_experiences", serde_json::json!({"limit": 5})).await.is_ok() {
         steps_done += 1;
     }
-    if client.call_tool("list_reflections", serde_json::json!({"limit": 5})).await.is_ok() {
+    if client.call_tool("get_insights", serde_json::json!({})).await.is_ok() {
         steps_done += 1;
     }
     

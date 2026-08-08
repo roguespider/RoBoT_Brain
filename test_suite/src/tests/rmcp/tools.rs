@@ -133,18 +133,15 @@ pub async fn test_tool_execution(
         
         // Knowledge tools
         ("query_knowledge", serde_json::json!({"query": "test", "limit": 5}), "knowledge"),
-        ("search_knowledge", serde_json::json!({"query": "test", "limit": 5}), "knowledge"),
         
         // Experience tools
         ("list_experiences", serde_json::json!({"limit": 5}), "experience"),
-        ("get_recent_experiences", serde_json::json!({"limit": 5}), "experience"),
         
         // Workflow tools
-        ("get_workflow", serde_json::json!({"purpose": "test"}), "workflow"),
         ("list_workflows", serde_json::json!({}), "workflow"),
         
         // Planner tools
-        ("get_plan", serde_json::json!({"goal": "test goal"}), "planner"),
+        ("create_plan", serde_json::json!({"goal": "test goal"}), "planner"),
         ("list_plans", serde_json::json!({}), "planner"),
         
         // Hypothesis tools
@@ -152,11 +149,11 @@ pub async fn test_tool_execution(
         ("get_hypothesis", serde_json::json!({"id": "00000000-0000-0000-0000-000000000000"}), "hypothesis"),
         
         // Reflection tools
-        ("list_reflections", serde_json::json!({"limit": 5}), "reflection"),
-        ("get_reflection", serde_json::json!({"id": "00000000-0000-0000-0000-000000000000"}), "reflection"),
+        ("get_insights", serde_json::json!({}), "reflection"),
+        ("get_patterns", serde_json::json!({}), "reflection"),
         
         // Search tools
-        ("search_all", serde_json::json!({"query": "test", "limit": 5}), "search"),
+        ("global_search", serde_json::json!({"query": "test", "limit": 5}), "search"),
         
         // Skills tools
         ("list_skills", serde_json::json!({}), "skills"),

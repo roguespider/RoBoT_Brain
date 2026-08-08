@@ -53,7 +53,7 @@ pub async fn test_memory_based_agent(
 
     // Test 3: Cross-memory search
     crate::teeprintln!("  Testing cross-memory search...");
-    match client.call_tool("search_all", serde_json::json!({"query": "architecture", "limit": 10})).await {
+    match client.call_tool("global_search", serde_json::json!({"query": "architecture", "limit": 10})).await {
         Ok(_) => {
             crate::teeprintln!("    ✅ Cross-memory search SUCCESS");
             results.operations_tested += 1;
@@ -99,7 +99,7 @@ pub async fn test_memory_based_agent(
     
     let mut chain_success = 0;
     
-    if client.call_tool("list_reflections", serde_json::json!({"limit": 5})).await.is_ok() {
+    if client.call_tool("get_insights", serde_json::json!({})).await.is_ok() {
         chain_success += 1;
     }
     if client.call_tool("list_experiences", serde_json::json!({"limit": 10})).await.is_ok() {
