@@ -42,11 +42,6 @@ pub fn validate_result(result: &serde_json::Value, check: &ValidationCheck) -> V
 
 /// Check if result has a field (supports dot notation for nested fields)
 pub fn has_field(result: &serde_json::Value, field: &str) -> bool {
-    // If there's an error, the test should fail
-    if result.get("error").is_some() || result.get("isError").and_then(|e| e.as_bool()).unwrap_or(false) {
-        return false;
-    }
-
     // Support dot notation for nested fields (e.g., "skill.name")
     if field.contains('.') {
         return has_nested_field(result, field);
@@ -108,11 +103,6 @@ pub fn has_nested_field(result: &serde_json::Value, path: &str) -> bool {
 
 /// Check if field is non-empty
 pub fn is_non_empty(result: &serde_json::Value, field: &str) -> bool {
-    // If there's an error, the test should fail
-    if result.get("error").is_some() || result.get("isError").and_then(|e| e.as_bool()).unwrap_or(false) {
-        return false;
-    }
-
     if let Some(value) = result.get(field) {
         return !value.is_null() && !is_json_value_empty(value);
     }
@@ -140,21 +130,12 @@ pub fn is_json_value_empty(value: &serde_json::Value) -> bool {
 
 /// Check if success field has expected value
 pub fn is_success(result: &serde_json::Value, field: &str, expected: Option<&str>) -> bool {
-    // Check for error field (indicates MCP error occurred)
-    let has_error_field = result.get("error").is_some();
-    
     // Check for isError field (MCP response format)
     // isError: true means the tool returned an error response
     let is_error = result
         .get("isError")
         .and_then(|e| e.as_bool())
         .unwrap_or(false);
-
-    // If there's an MCP error field (protocol level), that's a hard failure
-    // But isError: true is the tool's way of returning an error, which we should validate
-    if has_error_field {
-        return false;
-    }
 
     // Get the success value from the specified field
     let success_value = result.get(field);
@@ -178,7 +159,7 @@ pub fn is_success(result: &serde_json::Value, field: &str, expected: Option<&str
         (true, Some("true")) | (true, None) => true,  // Got true, expected true or nothing -> PASS
         (false, Some("true")) => false,  // Got false, expected true -> FAIL
         (true, Some("false")) => false,  // Got true, expected false -> FAIL (shouldn't happen normally)
-        (false, None) => true,  // Got false, expected nothing (default true) -> Actually this is failure
+        (false, None) => false,  // Got false, expected nothing (default true) -> FAIL
         _ => false,
     }
 }

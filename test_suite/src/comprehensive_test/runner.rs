@@ -24,11 +24,27 @@ pub async fn run_single_test(
     let start = Instant::now();
     let mut validation_results = Vec::new();
 
+    // Debug: Print test start with full details
+    eprintln!("[TEST] Starting: {} ({})", requirement.function_name, requirement.id);
+    eprintln!("[TEST] Category: {}, Priority: {}", requirement.category, requirement.priority);
+    eprintln!("[TEST] Expected: {}", requirement.expected_behavior);
+
     // Build the arguments for this tool
     let args = argument_builder::build_test_arguments(requirement, env);
+    eprintln!("[TEST] Args: {:?}", args);
 
     // Call the tool
     let tool_result = client.call_tool(&requirement.function_name, args).await;
+    
+    // Debug: Print raw result
+    match &tool_result {
+        Ok(result) => {
+            eprintln!("[TEST] Raw result: {:?}", result);
+        }
+        Err(e) => {
+            eprintln!("[TEST] Raw error: {}", e);
+        }
+    }
 
     // Run validation even if there's an error (for tests that expect errors)
     // Note: We need to distinguish between:
@@ -44,23 +60,59 @@ pub async fn run_single_test(
                 .unwrap_or(false);
             
             if has_is_error {
-                // Tool returned an error response - treat as success=false
-                (serde_json::json!({"success": false}), true)
+                // Tool returned an error response (isError: true)
+                // Parse the tool's response from the content array
+                if let Some(content) = result
+                    .get("content")
+                    .and_then(|c| c.as_array())
+                    .and_then(|arr| arr.first())
+                {
+                    if let Some(text) = content.get("text").and_then(|t| t.as_str()) {
+                        if let Ok(parsed) = serde_json::from_str::<serde_json::Value>(text) {
+                            // Return the parsed tool response with isError flag
+                            let mut tool_response = parsed;
+                            tool_response["isError"] = serde_json::json!(true);
+                            (tool_response, true)
+                        } else {
+                            // Fallback: create mock result
+                            (serde_json::json!({"success": false, "isError": true}), true)
+                        }
+                    } else {
+                        // Fallback: create mock result
+                        (serde_json::json!({"success": false, "isError": true}), true)
+                    }
+                } else {
+                    // Fallback: create mock result
+                    (serde_json::json!({"success": false, "isError": true}), true)
+                }
             } else {
                 // Tool succeeded - use actual result
                 (result.clone(), false)
             }
         }
-        Err(_) => {
+        Err(e) => {
             // MCP call failed entirely - this is a real protocol error
-            // Create mock result for validation but mark it as a real error
-            (serde_json::json!({"success": false}), true)
+            // Extract error message and create result for validation
+            let error_msg = e.to_string();
+            (serde_json::json!({
+                "success": false,
+                "isError": true,
+                "error": error_msg
+            }), true)
         }
     };
 
     for check in &requirement.validation {
         let vr = validation::validate_result(&result_for_validation, check);
         validation_results.push(vr);
+    }
+
+    // Debug: Print validation results
+    eprintln!("[TEST] Validation Results:");
+    for vr in &validation_results {
+        let icon = if vr.passed { "✓" } else { "✗" };
+        let msg = vr.message.as_deref().unwrap_or("no message");
+        eprintln!("[TEST]   {} {} - {}", icon, vr.field, msg);
     }
 
     let all_passed = validation_results.iter().all(|v| v.passed);
