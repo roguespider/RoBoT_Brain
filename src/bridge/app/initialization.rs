@@ -22,21 +22,17 @@ use crate::experience::integration::reflection_pipeline::ReflectionPipeline;
 use crate::experience::metrics::MetricsCollector;
 use crate::experience::observer::{HypothesisObserver, MetricsObserver, ReputationObserver};
 use crate::experience::reflection::ReflectionEngine;
-use crate::experience::reputation::decay::ReputationDecay;
-use crate::experience::scheduler::{Scheduler, TaskSchedule, TaskType};
 use crate::experience::scorer::ExperienceScorer;
 use crate::experience::worker_manager::WorkerManager;
 use crate::knowledge::KnowledgeStore;
 use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory as MemWorkingMemory};
-use crate::personality::{Personality, PersonalityTraits};
+use crate::personality::Personality;
 use crate::planner::{Planner, PolicyEngine};
 use crate::skills::registry::SkillRegistry;
 use crate::workflows::engine::WorkflowEngine;
 
 use super::state::App;
 use super::scheduler;
-use super::personality as personality_methods;
-use super::acp as acp_methods;
 
 impl App {
     /// Build the application.

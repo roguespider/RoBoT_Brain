@@ -9,9 +9,6 @@ use crate::bridge::acp::{AcpRegistry, AcpMessage, AcpRouter, AcpAgentId};
 
 use super::state::App;
 
-// =========================================================================
-// ACP (Agent Communication Protocol) Methods (designed for future use)
-// =========================================================================
 /// Get reference to ACP router
 pub fn acp_router(app: &App) -> Arc<AcpRouter> {
     app.acp_router.clone()
