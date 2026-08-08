@@ -401,6 +401,10 @@ impl App {
         let reflection_summary = crate::experience::reflection::self_check::run_reflection_self_check().await;
         tracing::info!("{}", reflection_summary);
 
+        // Hypothesis subsystem self-check
+        let hypothesis_summary = crate::experience::hypothesis::self_check::run_hypothesis_self_check().await;
+        tracing::info!("{}", hypothesis_summary);
+
         // Start background scheduler worker
         let scheduler = self.mcp_context.scheduler.clone();
         tokio::spawn(async move {
