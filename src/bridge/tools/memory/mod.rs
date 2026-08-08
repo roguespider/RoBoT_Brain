@@ -643,7 +643,7 @@ pub struct SearchSimilarInput {
 }
 
 /// Tool: List embeddings input
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct ListEmbeddingsInput {
     pub limit: Option<usize>,
 }
