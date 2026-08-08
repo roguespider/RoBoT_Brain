@@ -134,10 +134,12 @@ impl ToolHandler for WorkflowToolsHandler {
                 json_to_schema(serde_json::json!({
                     "type": "object",
                     "properties": {
+                        "workflow_id": { "type": "string", "description": "Workflow ID" },
                         "name": { "type": "string", "description": "Step name" },
-                        "tool_name": { "type": "string", "description": "Tool to execute" }
+                        "action": { "type": "string", "description": "Tool/action to execute" },
+                        "parameters": { "type": "string", "description": "JSON parameters for the action" }
                     },
-                    "required": ["name", "tool_name"]
+                    "required": ["workflow_id", "name", "action"]
                 })),
             ).with_title("Add Workflow Step"),
             rmcp::model::Tool::new(

@@ -65,7 +65,7 @@ pub async fn test_acp_messages(
         "payload": {"action": "get_data"},
         "reply_to": "original_msg_id"
     })).await {
-        Ok(result) => {
+        Ok(_result) => {
             crate::teeprintln!("    ✅ Message with reply SUCCESS");
             results.messages_handled += 1;
             results.passed += 1;

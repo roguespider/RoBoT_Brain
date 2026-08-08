@@ -16,7 +16,7 @@ use crate::bridge::tools::ingestor::file_collector::{
 };
 use crate::bridge::tools::ingestor::workflow::find_empty_folders_after_deletion;
 
-use super::helpers::{file_info_size, format_size};
+use super::helpers::{file_info_size, format_size, is_archive_file};
 use super::ingestion::{ingest_archive, ingest_single_file};
 use super::tracker::record_ingested_files;
 use super::types::{
@@ -66,23 +66,44 @@ pub async fn execute_ingest_files(
             }
         };
 
-        let result = time::timeout(
-            Duration::from_secs(timeout_secs),
-            ingest_single_file(
-                &resolved_path,
-                chunk_size,
-                super::ingestion::parse_memory_type(&memory_type),
-                db.clone(),
-                working_memory.clone(),
-            ),
-        )
-        .await;
+        // Check if it's an archive and handle accordingly
+        let result = if is_archive_file(&resolved_path) {
+            time::timeout(
+                Duration::from_secs(timeout_secs),
+                ingest_archive(
+                    &resolved_path,
+                    chunk_size,
+                    super::ingestion::parse_memory_type(&memory_type),
+                    db.clone(),
+                    working_memory.clone(),
+                ),
+            )
+            .await
+            .map(|r| r.map(|res| vec![res]))
+        } else {
+            time::timeout(
+                Duration::from_secs(timeout_secs),
+                async { Ok(vec![ingest_single_file(
+                    &resolved_path,
+                    chunk_size,
+                    super::ingestion::parse_memory_type(&memory_type),
+                    db.clone(),
+                    working_memory.clone(),
+                ).await?]) }
+            )
+            .await
+        };
 
         match result {
-            Ok(Ok(result)) => {
-                // Record ingested file
-                if result.success {
-                    record_ingested_files(vec![file_path.to_string()]).await;
+            Ok(Ok(results)) => {
+                // Get the first result for summary
+                let first = results.first();
+                
+                // Record all ingested files
+                for r in &results {
+                    if r.success {
+                        record_ingested_files(vec![r.file_path.clone()]).await;
+                    }
                 }
 
                 // Cleanup WAL
@@ -90,28 +111,33 @@ pub async fn execute_ingest_files(
                     tracing::warn!("Failed to cleanup WAL files: {}", e);
                 }
 
-                let file_size = file_info_size(&result.file_path);
+                // Calculate totals
+                let total_chunks: usize = results.iter().map(|r| r.chunks_created).sum();
+                let all_success = results.iter().all(|r| r.success);
+                let first_error = results.iter().find(|r| !r.success).and_then(|r| r.error.clone());
 
                 return Ok(ToolOutput::success(serde_json::json!({
-                    "success": result.success,
-                    "filename": result.filename,
-                    "file_path": result.file_path,
-                    "file_size": file_size,
-                    "chunks_created": result.chunks_created,
-                    "memory_ids": result.memory_ids,
-                    "error": result.error,
-                    "message": if result.success {
-                        format!("Added {} chunks to memory from '{}'", result.chunks_created, filename)
+                    "success": all_success,
+                    "filename": first.map(|r| r.filename.clone()).unwrap_or(filename.clone()),
+                    "file_path": first.map(|r| r.file_path.clone()).unwrap_or_default(),
+                    "file_size": first.as_ref().map(|r| file_info_size(&r.file_path)).unwrap_or_default(),
+                    "chunks_created": total_chunks,
+                    "memory_ids": results.iter().flat_map(|r| r.memory_ids.clone()).collect::<Vec<_>>(),
+                    "error": first_error,
+                    "message": if all_success {
+                        format!("Added {} chunks from '{}'", total_chunks, filename)
                     } else {
-                        result.error.unwrap_or_else(|| "Unknown error".to_string())
+                        results.iter().find(|r| !r.success)
+                            .and_then(|r| r.error.clone())
+                            .unwrap_or_else(|| "Some files failed".to_string())
                     },
-                    "ask_delete_file": if result.success {
+                    "ask_delete_file": if all_success {
                         serde_json::json!("Can I delete the original file to save space?")
                     } else {
                         serde_json::Value::Null
                     },
-                    "deletion_candidates": if result.success {
-                        vec![file_path]
+                    "deletion_candidates": if all_success {
+                        results.iter().map(|r| r.file_path.clone()).collect::<Vec<_>>()
                     } else {
                         vec![]
                     },
