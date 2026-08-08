@@ -16,7 +16,7 @@ pub fn exploration_tools() -> Vec<TestRequirement> {
             expected_behavior: "Starts a new exploration".to_string(),
             validation: vec![ValidationCheck {
                 check_type: CheckType::HasField,
-                field: "id".to_string(),
+                field: "exploration_id".to_string(),
                 expected_value: None,
             }],
             priority: 1,
@@ -51,14 +51,14 @@ pub fn exploration_tools() -> Vec<TestRequirement> {
         },
         TestRequirement {
             id: "exploration_add_hypothesis".to_string(),
-            function_name: "add_exploration_hypothesis".to_string(),
+            function_name: "add_hypothesis".to_string(),
             category: "Exploration".to_string(),
             requires_workflow: true,
             requires_data: None,
             expected_behavior: "Adds a hypothesis to exploration".to_string(),
             validation: vec![ValidationCheck {
-                check_type: CheckType::IsSuccess,
-                field: "success".to_string(),
+                check_type: CheckType::HasField,
+                field: "hypothesis_count".to_string(),
                 expected_value: None,
             }],
             priority: 2,
@@ -76,13 +76,13 @@ pub fn exploration_tools() -> Vec<TestRequirement> {
             expected_behavior: "Completes an exploration with findings".to_string(),
             validation: vec![
                 ValidationCheck {
-                    check_type: CheckType::IsSuccess,
-                    field: "success".to_string(),
+                    check_type: CheckType::HasField,
+                    field: "status".to_string(),
                     expected_value: None,
                 },
                 ValidationCheck {
                     check_type: CheckType::HasField,
-                    field: "findings".to_string(),
+                    field: "finding_count".to_string(),
                     expected_value: None,
                 },
             ],
@@ -108,7 +108,7 @@ pub fn exploration_tools() -> Vec<TestRequirement> {
         },
         TestRequirement {
             id: "exploration_evaluate_hypothesis".to_string(),
-            function_name: "evaluate_exploration_hypothesis".to_string(),
+            function_name: "evaluate_hypothesis".to_string(),
             category: "Exploration".to_string(),
             requires_workflow: true,
             requires_data: Some(DataRequirement {
@@ -118,8 +118,8 @@ pub fn exploration_tools() -> Vec<TestRequirement> {
             }),
             expected_behavior: "Sets the result for a hypothesis based on evidence".to_string(),
             validation: vec![ValidationCheck {
-                check_type: CheckType::IsSuccess,
-                field: "success".to_string(),
+                check_type: CheckType::HasField,
+                field: "result".to_string(),
                 expected_value: None,
             }],
             priority: 2,
