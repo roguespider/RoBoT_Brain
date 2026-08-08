@@ -3,17 +3,25 @@
 //! This module provides true end-to-end testing for all MCP tools.
 //! It validates actual functionality without stubs or mocking.
 
+use std::collections::HashMap;
+use std::time::Instant;
+
 use crate::code_analyzer::{CodeAnalyzer, LintAnalyzer, LintSummary};
-use crate::function_registry::{CheckType, FunctionRegistry, TestRequirement};
+use crate::function_registry::FunctionRegistry;
 use crate::test_environment::TestEnvironment;
 use crate::test_results::print_issues_table;
 use crate::test_results::{TestReport, TestResult, TestStatus};
 use crate::{TestMcpClient, TestStats};
-use std::collections::HashMap;
-use std::time::Instant;
 
-mod argument_builder;
-mod validation;
+pub mod argument_builder;
+pub mod helpers;
+pub mod protocol;
+pub mod runner;
+pub mod validation;
+
+pub use helpers::{get_categories, get_category_count};
+pub use protocol::test_mcp_basics;
+pub use runner::run_single_test;
 
 /// Run the comprehensive end-to-end test suite
 pub async fn run_comprehensive_tests(
@@ -188,14 +196,8 @@ pub async fn run_comprehensive_tests(
         }
 
         // Print test result in table format
-        let status_icon = match result.status {
-            TestStatus::Pass => "✅ PASS",
-            TestStatus::Fail => "❌ FAIL",
-            TestStatus::Error => "💥 ERROR",
-            TestStatus::Skipped => "⏭️  SKIP",
-            TestStatus::Blocked => "🚫 BLOCK",
-        };
-
+        let status_icon = helpers::get_status_icon(&result.status);
+        
         let details = if result.status == TestStatus::Pass {
             "OK".to_string()
         } else {
@@ -262,134 +264,4 @@ pub async fn run_comprehensive_tests(
     crate::teeprintln!("\n  Total test duration: {:?}", start_time.elapsed());
 
     Ok(report)
-}
-
-/// Run a single test for a requirement
-async fn run_single_test(
-    client: &mut TestMcpClient,
-    requirement: &TestRequirement,
-    _data_created: &HashMap<String, Vec<String>>,
-    env: &TestEnvironment,
-) -> TestResult {
-    let start = Instant::now();
-    let mut validation_results = Vec::new();
-
-    // Build the arguments for this tool
-    let args = argument_builder::build_test_arguments(requirement, env);
-
-    // Call the tool
-    let tool_result = client.call_tool(&requirement.function_name, args).await;
-
-    // Run validation even if there's an error (for tests that expect errors)
-    let result_for_validation = match &tool_result {
-        Ok(result) => result.clone(),
-        Err(_) => {
-            // Create a mock result for validation that indicates error
-            // The validation can check for expected error conditions
-            serde_json::json!({
-                "success": false,
-                "error": tool_result.as_ref().err().map(|e| e.to_string())
-            })
-        }
-    };
-
-    for check in &requirement.validation {
-        let vr = validation::validate_result(&result_for_validation, check);
-        validation_results.push(vr);
-    }
-
-    match tool_result {
-        Ok(_result) => {
-            // Check if all validations passed
-            let all_passed = validation_results.iter().all(|v| v.passed);
-
-            TestResult {
-                requirement: requirement.clone(),
-                status: if all_passed {
-                    TestStatus::Pass
-                } else {
-                    TestStatus::Fail
-                },
-                error_message: if all_passed {
-                    None
-                } else {
-                    Some("Validation failed".to_string())
-                },
-                duration_ms: start.elapsed().as_millis() as u64,
-                validation_results,
-            }
-        }
-        Err(_e) => {
-            // MCP error occurred - ALL validations should fail
-            // (even if they expect success=false, we want to know MCP is broken)
-            let all_passed = validation_results.iter().all(|v| v.passed);
-
-            TestResult {
-                requirement: requirement.clone(),
-                status: if all_passed {
-                    // This shouldn't happen if validation properly checks for errors
-                    TestStatus::Pass
-                } else {
-                    TestStatus::Error
-                },
-                error_message: Some("MCP protocol error - tools/call method not found".to_string()),
-                duration_ms: start.elapsed().as_millis() as u64,
-                validation_results,
-            }
-        }
-    }
-}
-
-/// Get unique categories from requirements
-pub fn get_categories(requirements: &[TestRequirement]) -> Vec<String> {
-    let mut categories: Vec<String> = requirements.iter().map(|r| r.category.clone()).collect();
-    categories.sort();
-    categories.dedup();
-    categories
-}
-
-/// Get category count
-pub fn get_category_count(requirements: &[TestRequirement]) -> usize {
-    get_categories(requirements).len()
-}
-
-/// Test basic MCP protocol functionality
-async fn test_mcp_basics(client: &mut TestMcpClient, stats: &mut TestStats) -> bool {
-    let mut all_ok = true;
-    
-    // Test tools/list
-    crate::teeprintln!("  Testing tools/list...");
-    match client.list_tools().await {
-        Ok(tools) => {
-            crate::teeprintln!("    ✓ tools/list - SUCCESS ({} tools)", tools.len());
-            stats.passed += 1;
-        }
-        Err(e) => {
-            crate::teeprintln!("    ✗ tools/list - FAILED: {}", e);
-            stats.failed += 1;
-            all_ok = false;
-        }
-    }
-    
-    // Test tools/call (this will likely fail)
-    crate::teeprintln!("  Testing tools/call...");
-    match client.call_tool("get_workflow", serde_json::json!({"purpose": "test"})).await {
-        Ok(_) => {
-            crate::teeprintln!("    ✓ tools/call - SUCCESS");
-            stats.passed += 1;
-        }
-        Err(e) => {
-            let error_str = e.to_string();
-            if error_str.contains("method_not_found") || error_str.contains("-32601") {
-                crate::teeprintln!("    ✗ tools/call - NOT IMPLEMENTED");
-                crate::teeprintln!("    ℹ  Server returns method_not_found for tools/call");
-            } else {
-                crate::teeprintln!("    ✗ tools/call - ERROR: {}", e);
-            }
-            stats.failed += 1;
-            all_ok = false;
-        }
-    }
-    
-    all_ok
 }

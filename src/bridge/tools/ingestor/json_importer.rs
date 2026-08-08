@@ -213,7 +213,7 @@ fn extract_conversation(
     };
     
     // Extract metadata (id, title, etc.)
-    let metadata_fields = ["id", "_id", "title", "name", "created_at", "updated_at", "conversation_id"];
+    let metadata_fields = ["id", "title", "name", "created_at", "updated_at", "conversation_id"];
     let mut metadata_pairs = Vec::new();
     
     for key in metadata_fields {
@@ -266,7 +266,7 @@ fn extract_message_item(item: &Value, path: &str, config: &JsonImportConfig, ite
     
     // Collect sibling context (role, timestamp, etc.)
     let mut sibling_context = Vec::new();
-    let context_fields = ["role", "speaker", "author", "timestamp", "date", "time", "sender", "id", "_id"];
+    let context_fields = ["role", "speaker", "author", "timestamp", "date", "time", "sender", "id"];
     
     for key in context_fields {
         if let Some(val) = obj.get(key) {

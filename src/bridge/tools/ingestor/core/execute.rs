@@ -549,9 +549,9 @@ pub async fn execute_transcribe_audio(
 /// Tool: Transcribe an audio file (stub when audio feature is disabled)
 #[cfg(not(feature = "audio"))]
 pub async fn execute_transcribe_audio(
-    _input: TranscribeAudioInput,
-    _db: Arc<SqliteDatabase>,
-    _working_memory: Arc<WorkingMemory>,
+    _: TranscribeAudioInput,
+    _: Arc<SqliteDatabase>,
+    _: Arc<WorkingMemory>,
 ) -> Result<ToolOutput> {
     Ok(ToolOutput::error(
         "Audio transcription is not available. Enable the 'audio' feature to use this tool.".to_string()

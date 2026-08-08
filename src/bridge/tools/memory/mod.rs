@@ -40,7 +40,7 @@ pub struct GetMemoryInput {
 }
 
 /// Tool: List recent memories
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct ListMemoriesInput {
     pub memory_type: Option<String>,
     pub limit: Option<usize>,
@@ -279,14 +279,7 @@ pub async fn execute_store_memory(
     database: &Arc<SqliteDatabase>,
     working_memory: &Arc<WorkingMemory>,
 ) -> Result<ToolOutput> {
-    // Per test requirement: Memory must be searched before storing
-    // Check if there are any existing memories
     let conn = database.connection()?;
-    let existing_memories = queries::search_memory(&conn, "", 1);
-    if existing_memories.is_err() || existing_memories.as_ref().map(|m| m.is_empty()).unwrap_or(true) {
-        // Per test expectation: MEMORY_NOT_SEARCHED error
-        return Ok(ToolOutput::error("MEMORY_NOT_SEARCHED: search_memory must be called before store_memory".to_string()));
-    }
 
     let memory_type = parse_memory_type(&input.memory_type);
 

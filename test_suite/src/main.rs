@@ -627,8 +627,25 @@ impl TestMcpClient {
             return Err(anyhow::anyhow!("Tool error: {:?}", error));
         }
 
-        // Check if result contains success: false (tool execution error)
+        // Check for isError field in the result (MCP error response format)
         if let Some(result) = json.get("result") {
+            if result
+                .get("isError")
+                .and_then(|e| e.as_bool())
+                .unwrap_or(false)
+            {
+                // Extract error message from content
+                let error_msg = result
+                    .get("content")
+                    .and_then(|c| c.as_array())
+                    .and_then(|arr| arr.first())
+                    .and_then(|item| item.get("text"))
+                    .and_then(|t| t.as_str())
+                    .unwrap_or("Unknown error");
+                return Err(anyhow::anyhow!("Tool returned error: {}", error_msg));
+            }
+
+            // Also check if result contains success: false (tool execution error in content)
             if let Some(content) = result
                 .get("content")
                 .and_then(|c| c.as_array())
@@ -669,6 +686,39 @@ impl TestMcpClient {
     /// Get the child process PID (for debugging/logging)
     pub fn pid(&self) -> Option<u32> {
         self.child.id()
+    }
+
+    /// Get protocol info (returns server info if available)
+    pub fn get_protocol_info(&self) -> Option<String> {
+        Some(format!("MCP Protocol: 2025-03-26"))
+    }
+
+    /// List all available tools (MCP protocol: tools/list)
+    pub async fn list_tools(&mut self) -> anyhow::Result<Vec<serde_json::Value>> {
+        self.send_request("tools/list", serde_json::json!({}))
+            .await?;
+
+        let response = self
+            .read_response_line(10)
+            .await?
+            .ok_or_else(|| anyhow::anyhow!("No response from server"))?;
+
+        let json: serde_json::Value = serde_json::from_str(&response)?;
+
+        if let Some(error) = json.get("error") {
+            return Err(anyhow::anyhow!("Tool error: {:?}", error));
+        }
+
+        let result = json.get("result")
+            .cloned()
+            .ok_or_else(|| anyhow::anyhow!("No result in response"))?;
+
+        let tools = result.get("tools")
+            .and_then(|t| t.as_array())
+            .cloned()
+            .unwrap_or_default();
+
+        Ok(tools)
     }
 }
 
@@ -718,6 +768,11 @@ async fn main() -> anyhow::Result<()> {
     tests::run_agent_tests(&mut client, &mut stats, None).await?;
     tests::run_error_handling_tests(&mut client, &mut stats, None).await?;
     tests::run_mcp_workflow_tests(&mut client, &mut stats, None).await?;
+    
+    // Run new comprehensive tests
+    tests::run_rmcp_tests(&mut client, &mut stats, None).await?;
+    tests::run_acp_tests(&mut client, &mut stats, None).await?;
+    tests::run_agent_simulation_tests(&mut client, &mut stats, None).await?;
 
     // Print unified summary table
     teeprintln!("\n{}", "=".repeat(120));

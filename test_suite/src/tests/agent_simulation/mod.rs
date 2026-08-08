@@ -1,0 +1,97 @@
+//! End-to-End AI Agent Simulation Tests
+//!
+//! Simulates realistic AI agent workflows by:
+//! - Executing multi-step tool chains
+//! - Testing agent decision-making patterns
+//! - Verifying workflow integration
+//! - Testing memory-based agent behavior
+
+pub mod workflows;
+pub mod memory_agent;
+pub mod decision_making;
+
+pub use workflows::test_agent_workflows;
+pub use memory_agent::test_memory_based_agent;
+pub use decision_making::test_agent_decision_making;
+
+use crate::{TestMcpClient, TestStats};
+
+/// Agent simulation test results
+#[derive(Debug, Default)]
+pub struct AgentSimulationResults {
+    pub workflows: workflows::WorkflowResults,
+    pub memory_agent: memory_agent::MemoryAgentResults,
+    pub decision_making: decision_making::DecisionResults,
+    pub total_passed: usize,
+    pub total_failed: usize,
+}
+
+/// Run all agent simulation tests
+pub async fn run_agent_simulation_tests(
+    client: &mut TestMcpClient,
+    stats: &mut TestStats,
+    _filter: Option<&str>,
+) -> anyhow::Result<AgentSimulationResults> {
+    crate::teeprintln!("\n{}", "=".repeat(80));
+    crate::teeprintln!("END-TO-END AI AGENT SIMULATION TESTS");
+    crate::teeprintln!("Simulating realistic AI agent workflows and decision-making");
+    crate::teeprintln!("{}", "=".repeat(80));
+
+    // Phase 1: Multi-step workflow tests
+    crate::teeprintln!("\n📋 PHASE 1: MULTI-STEP WORKFLOWS");
+    crate::teeprintln!("{}", "-".repeat(60));
+    let workflow_results = workflows::test_agent_workflows(client, stats).await?;
+
+    // Phase 2: Memory-based agent behavior
+    crate::teeprintln!("\n📋 PHASE 2: MEMORY-BASED AGENT BEHAVIOR");
+    crate::teeprintln!("{}", "-".repeat(60));
+    let memory_results = memory_agent::test_memory_based_agent(client, stats).await?;
+
+    // Phase 3: Agent decision-making
+    crate::teeprintln!("\n📋 PHASE 3: AGENT DECISION-MAKING");
+    crate::teeprintln!("{}", "-".repeat(60));
+    let decision_results = decision_making::test_agent_decision_making(client, stats).await?;
+
+    let results = AgentSimulationResults {
+        workflows: workflow_results,
+        memory_agent: memory_results,
+        decision_making: decision_results,
+        total_passed: 0,
+        total_failed: 0,
+    };
+
+    print_simulation_results(&results);
+    Ok(results)
+}
+
+fn print_simulation_results(results: &AgentSimulationResults) {
+    crate::teeprintln!("\n{}", "=".repeat(80));
+    crate::teeprintln!("AGENT SIMULATION TEST RESULTS SUMMARY");
+    crate::teeprintln!("{}", "=".repeat(80));
+
+    // Workflow results
+    crate::teeprintln!("\n🔄 Multi-Step Workflows:");
+    crate::teeprintln!("  ✅ Passed: {}", results.workflows.passed);
+    crate::teeprintln!("  ❌ Failed: {}", results.workflows.failed);
+    crate::teeprintln!("  ℹ  Workflows Tested: {}", results.workflows.workflows_tested);
+    crate::teeprintln!("  ℹ  Steps Completed: {}", results.workflows.steps_completed);
+
+    // Memory agent results
+    crate::teeprintln!("\n🧠 Memory-Based Agent:");
+    crate::teeprintln!("  ✅ Passed: {}", results.memory_agent.passed);
+    crate::teeprintln!("  ❌ Failed: {}", results.memory_agent.failed);
+    crate::teeprintln!("  ℹ  Memory Operations: {}", results.memory_agent.operations_tested);
+
+    // Decision-making results
+    crate::teeprintln!("\n🎯 Agent Decision-Making:");
+    crate::teeprintln!("  ✅ Passed: {}", results.decision_making.passed);
+    crate::teeprintln!("  ❌ Failed: {}", results.decision_making.failed);
+    crate::teeprintln!("  ℹ  Decisions Made: {}", results.decision_making.decisions_tested);
+
+    let total_passed = results.workflows.passed + results.memory_agent.passed + results.decision_making.passed;
+    let total_failed = results.workflows.failed + results.memory_agent.failed + results.decision_making.failed;
+    
+    crate::teeprintln!("\n📊 Overall:");
+    crate::teeprintln!("  Total Passed: {}", total_passed);
+    crate::teeprintln!("  Total Failed: {}", total_failed);
+}

@@ -543,7 +543,7 @@ pub async fn execute_execute_skill(
 
 /// Execute get_skill_stats tool
 pub async fn execute_get_skill_stats(
-    _input: GetSkillStatsInput,
+    _: GetSkillStatsInput,
     context: &McpContext,
 ) -> Result<ToolOutput> {
     let stats = context.skills.get_discovery_stats().await;

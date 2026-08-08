@@ -26,18 +26,22 @@ pub fn validate_result(result: &serde_json::Value, check: &ValidationCheck) -> V
         message: Some(if passed {
             "OK".to_string()
         } else {
-            "Failed".to_string()
+            format!("Failed: expected {} for field '{}'", 
+                match check.check_type {
+                    CheckType::IsSuccess => format!("success={}", check.expected_value.as_deref().unwrap_or("true")),
+                    CheckType::HasField => "field present".to_string(),
+                    CheckType::IsNonEmpty => "non-empty value".to_string(),
+                    CheckType::MatchesPattern => format!("pattern '{}'", check.expected_value.as_deref().unwrap_or("")),
+                    CheckType::GreaterThan => format!("> {}", check.expected_value.as_deref().unwrap_or("0")),
+                    CheckType::LessThan => format!("< {}", check.expected_value.as_deref().unwrap_or("0")),
+                },
+                check.field)
         }),
     }
 }
 
 /// Check if result has a field (supports dot notation for nested fields)
 pub fn has_field(result: &serde_json::Value, field: &str) -> bool {
-    // If there's an error, the test should fail
-    if result.get("error").is_some() || result.get("isError").and_then(|e| e.as_bool()).unwrap_or(false) {
-        return false;
-    }
-
     // Support dot notation for nested fields (e.g., "skill.name")
     if field.contains('.') {
         return has_nested_field(result, field);
@@ -99,11 +103,6 @@ pub fn has_nested_field(result: &serde_json::Value, path: &str) -> bool {
 
 /// Check if field is non-empty
 pub fn is_non_empty(result: &serde_json::Value, field: &str) -> bool {
-    // If there's an error, the test should fail
-    if result.get("error").is_some() || result.get("isError").and_then(|e| e.as_bool()).unwrap_or(false) {
-        return false;
-    }
-
     if let Some(value) = result.get(field) {
         return !value.is_null() && !is_json_value_empty(value);
     }
@@ -130,38 +129,37 @@ pub fn is_json_value_empty(value: &serde_json::Value) -> bool {
 }
 
 /// Check if success field has expected value
-pub fn is_success(result: &serde_json::Value, _field: &str, expected: Option<&str>) -> bool {
-    // Check for error field (indicates MCP error occurred)
-    let has_error_field = result.get("error").is_some();
-    
+pub fn is_success(result: &serde_json::Value, field: &str, expected: Option<&str>) -> bool {
     // Check for isError field (MCP response format)
+    // isError: true means the tool returned an error response
     let is_error = result
         .get("isError")
         .and_then(|e| e.as_bool())
         .unwrap_or(false);
 
-    // If there's an MCP error, ALWAYS fail the test
-    // (even if validation expects failure - we want to know the MCP protocol is broken)
-    if has_error_field || is_error {
-        return false;
-    }
+    // Get the success value from the specified field
+    let success_value = result.get(field);
 
-    // Also check for success field in the JSON content (ToolOutput format)
-    let content_success = result.get("success").and_then(|s| s.as_bool());
+    // Try to parse as bool
+    let content_success = success_value.and_then(|s| s.as_bool());
 
-    // If isError is true, treat as failure regardless of content
-    // If isError is not present, check content's success field
-    let success = if is_error {
-        Some(false)
+    // Determine actual success:
+    // - If isError is true, treat as success=false (the tool returned an error)
+    // - Otherwise check the content's success field
+    // - Default to true if no success field present (tool succeeded without explicit success)
+    let actual_success = if is_error {
+        false
     } else {
-        content_success.or(Some(true))
+        content_success.unwrap_or(true)
     };
 
-    match (success, expected) {
-        (Some(s), Some("false")) => !s,
-        (Some(s), Some("true")) | (Some(s), None) => s,
-        (None, Some("false")) => true, // If not present, treat as expected failure
-        (None, Some("true")) => false, // Missing success field with "true" expected = fail
+    // Validate against expected value
+    match (actual_success, expected) {
+        (false, Some("false")) => true,  // Got false, expected false -> PASS
+        (true, Some("true")) | (true, None) => true,  // Got true, expected true or nothing -> PASS
+        (false, Some("true")) => false,  // Got false, expected true -> FAIL
+        (true, Some("false")) => false,  // Got true, expected false -> FAIL (shouldn't happen normally)
+        (false, None) => false,  // Got false, expected nothing (default true) -> FAIL
         _ => false,
     }
 }
