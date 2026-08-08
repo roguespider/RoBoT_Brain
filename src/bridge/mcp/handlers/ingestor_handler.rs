@@ -67,6 +67,31 @@ impl IngestorToolsHandler {
     ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         ingestor::execute_delete_ingested_files(input).await
     }
+
+    /// Transcribe audio file using Candle/Whisper
+    #[cfg(feature = "audio")]
+    pub async fn execute_transcribe_audio(
+        &self,
+        input: ingestor::TranscribeAudioInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        ingestor::execute_transcribe_audio(
+            input,
+            self.context.database.clone(),
+            self.context.working_memory.clone(),
+        )
+        .await
+    }
+
+    /// Stub for transcribe_audio when audio feature is disabled
+    pub async fn execute_transcribe_audio_disabled(
+        &self,
+        input: ingestor::TranscribeAudioInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        Ok(crate::bridge::tools::ToolOutput::error(format!(
+            "Audio transcription is not available. Audio file not found: {}",
+            input.path
+        )))
+    }
 }
 
 impl ToolHandler for IngestorToolsHandler {
@@ -80,6 +105,7 @@ impl ToolHandler for IngestorToolsHandler {
             "list_importable".to_string(),
             "list_ingested_files".to_string(),
             "delete_ingested_files".to_string(),
+            "transcribe_audio".to_string(),
         ]
     }
 
@@ -113,6 +139,20 @@ impl ToolHandler for IngestorToolsHandler {
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
                     self.execute_delete_ingested_files(input).await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "transcribe_audio" => {
+                    let input: ingestor::TranscribeAudioInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    #[cfg(feature = "audio")]
+                    {
+                        self.execute_transcribe_audio(input).await
+                            .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                    }
+                    #[cfg(not(feature = "audio"))]
+                    {
+                        self.execute_transcribe_audio_disabled(input).await
+                            .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                    }
                 }
                 _ => Err(HandlerError::ToolNotFound(name.to_string()))
             }
