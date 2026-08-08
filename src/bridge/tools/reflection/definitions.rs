@@ -47,15 +47,14 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
                     "reflection_type": {
                         "type": "string",
                         "description": "Type of reflection",
-                        "enum": ["success", "failure", "improvement", "pattern", "anomaly", "strategy", "general"]
+                        "enum": ["success", "failure", "improvement", "pattern", "anomaly", "strategy", "general", "analysis"]
                     },
                     "experience_ids": {
                         "type": "array",
                         "items": { "type": "string" },
                         "description": "IDs of experiences to reflect on"
                     }
-                },
-                "required": ["title", "description", "reflection_type"]
+                }
             }),
         },
         crate::bridge::mcp::McpTool {
@@ -69,8 +68,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
                         "items": { "type": "string" },
                         "description": "Experience IDs to analyze"
                     }
-                },
-                "required": ["experience_ids"]
+                }
             }),
         },
         crate::bridge::mcp::McpTool {

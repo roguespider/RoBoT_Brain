@@ -231,6 +231,40 @@ impl ToolHandler for MemoryToolsHandler {
                     self.execute_list_memories(input).await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
+                "store_embedding" => {
+                    let input: memory::StoreEmbeddingInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_store_embedding(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "get_embedding" => {
+                    let input: memory::GetEmbeddingInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_get_embedding(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "search_similar" => {
+                    let input: memory::SearchSimilarInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_search_similar(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "list_embeddings" => {
+                    let input: memory::ListEmbeddingsInput = serde_json::from_value(args)
+                        .unwrap_or_default();
+                    self.execute_list_embeddings(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "delete_embedding" => {
+                    let input: memory::DeleteEmbeddingInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_delete_embedding(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "get_embedding_stats" => {
+                    self.execute_get_embedding_stats().await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
                 _ => Err(HandlerError::ToolNotFound(name.to_string()))
             }
         }

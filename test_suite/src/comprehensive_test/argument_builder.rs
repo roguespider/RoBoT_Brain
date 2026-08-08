@@ -84,12 +84,13 @@ pub fn build_test_arguments(
 
         // Experience tools
         "experience_record" => serde_json::json!({
-            "action": "Test Action",
-            "outcome": "Success",
-            "tool_name": "test_tool"
+            "title": "Test Experience",
+            "description": "Testing the experience recording functionality",
+            "experience_type": "tool_execution",
+            "outcome": "Success"
         }),
         "experience_get" => serde_json::json!({
-            "id": "00000000-0000-0000-0000-000000000000"
+            "id": "00000000-0000-0000-0000-000000000001"
         }),
         "experience_list" => serde_json::json!({}),
         "experience_stats" => serde_json::json!({}),
@@ -104,11 +105,15 @@ pub fn build_test_arguments(
         // Reflection tools
         "reflection_create" => serde_json::json!({
             "title": "Test Reflection",
-            "reflection_type": "analysis"
+            "description": "Testing the reflection creation functionality",
+            "reflection_type": "Success",
+            "experience_ids": []
         }),
         "reflection_get_patterns" => serde_json::json!({}),
         "reflection_get_insights" => serde_json::json!({}),
-        "reflection_analyze" => serde_json::json!({}),
+        "reflection_analyze" => serde_json::json!({
+            "experience_ids": []
+        }),
 
         // Search tools
         "search_global" => serde_json::json!({
@@ -139,7 +144,7 @@ pub fn build_test_arguments(
             "file_ids": ["test_file_id"]
         }),
         "ingestor_transcribe_audio" => serde_json::json!({
-            "path": env.files_folder.join("sample.mp3").to_string_lossy().to_string(),
+            "path": env.files_folder.join("sample.wav").to_string_lossy().to_string(),
             "store_as_memory": true
         }),
 
@@ -151,7 +156,8 @@ pub fn build_test_arguments(
         }),
         "hypothesis_create" => serde_json::json!({
             "statement": "Users prefer memory-first approach",
-            "domain": "testing"
+            "domain": "testing",
+            "source_observations": []
         }),
         "hypothesis_add_evidence" => serde_json::json!({
             "hypothesis_id": "00000000-0000-0000-0000-000000000001",
@@ -232,48 +238,69 @@ pub fn build_test_arguments(
 
         // Planner tools
         "planner_create" => serde_json::json!({
-            "description": "Test Plan"
+            "goal": "Test Plan Goal"
         }),
         "planner_add_step" => serde_json::json!({
-            "description": "Step 1"
+            "plan_id": "00000000-0000-0000-0000-000000000001",
+            "description": "Step 1 Description",
+            "action": "test_action"
         }),
         "planner_add_dependency" => serde_json::json!({
+            "plan_id": "00000000-0000-0000-0000-000000000001",
             "step_id": "00000000-0000-0000-0000-000000000001",
             "depends_on": "00000000-0000-0000-0000-000000000002"
         }),
         "planner_get" => serde_json::json!({
-            "plan_id": "00000000-0000-0000-0000-000000000000"
+            "plan_id": "00000000-0000-0000-0000-000000000001"
         }),
         "planner_start" => serde_json::json!({
-            "plan_id": "00000000-0000-0000-0000-000000000000"
+            "plan_id": "00000000-0000-0000-0000-000000000001"
         }),
         "planner_complete_step" => serde_json::json!({
-            "plan_id": "00000000-0000-0000-0000-000000000000",
+            "plan_id": "00000000-0000-0000-0000-000000000001",
             "step_id": "00000000-0000-0000-0000-000000000001",
             "result": "Success"
         }),
         "planner_fail_step" => serde_json::json!({
-            "plan_id": "00000000-0000-0000-0000-000000000000",
+            "plan_id": "00000000-0000-0000-0000-000000000001",
             "step_id": "00000000-0000-0000-0000-000000000002",
             "error": "Test failure"
         }),
-        "planner_cancel" => serde_json::json!({}),
+        "planner_cancel" => serde_json::json!({
+            "plan_id": "00000000-0000-0000-0000-000000000001"
+        }),
         "planner_list" => serde_json::json!({}),
 
         // Workflow tools
+        // Note: create_workflow creates a workflow, subsequent tests need that workflow_id
+        // For now, we use a static test workflow ID since data tracking isn't fully implemented
         "workflow_create" => serde_json::json!({
             "name": "Test Workflow"
         }),
         "workflow_add_step" => serde_json::json!({
+            "workflow_id": "00000000-0000-0000-0000-000000000001",
             "name": "Step 1",
-            "tool_name": "store_memory"
+            "action": "store_memory",
+            "parameters": null
         }),
-        "workflow_status" => serde_json::json!({}),
-        "workflow_start" => serde_json::json!({}),
-        "workflow_pause" => serde_json::json!({}),
-        "workflow_resume" => serde_json::json!({}),
-        "workflow_cancel" => serde_json::json!({}),
-        "workflow_delete" => serde_json::json!({}),
+        "workflow_status" => serde_json::json!({
+            "workflow_id": "00000000-0000-0000-0000-000000000001"
+        }),
+        "workflow_start" => serde_json::json!({
+            "workflow_id": "00000000-0000-0000-0000-000000000001"
+        }),
+        "workflow_pause" => serde_json::json!({
+            "workflow_id": "00000000-0000-0000-0000-000000000001"
+        }),
+        "workflow_resume" => serde_json::json!({
+            "workflow_id": "00000000-0000-0000-0000-000000000001"
+        }),
+        "workflow_cancel" => serde_json::json!({
+            "workflow_id": "00000000-0000-0000-0000-000000000001"
+        }),
+        "workflow_delete" => serde_json::json!({
+            "workflow_id": "00000000-0000-0000-0000-000000000001"
+        }),
         "workflow_list" => serde_json::json!({}),
 
         // Skills tools

@@ -15,10 +15,10 @@ pub async fn run_experience_tests(
     crate::teeprintln!("\n--- Experience Tools Tests ---");
     
     // Record experiences and get the ID from the first one
-    let exp_id = test_record_experience_with_id(client, stats, "Tool Execution Success", "Success", "store_memory").await?;
-    test_record_experience(client, stats, "Memory Lookup", "Success", "search_memory").await?;
-    test_record_experience(client, stats, "Partial Success", "Partial", "get_memory").await?;
-    test_record_experience(client, stats, "Failed Attempt", "Failure", "nonexistent_tool").await?;
+    let exp_id = test_record_experience_with_id(client, stats, "Tool Execution Success", "Success", "tool_execution").await?;
+    test_record_experience(client, stats, "Memory Lookup", "Success", "memory_lookup").await?;
+    test_record_experience(client, stats, "Partial Success", "Partial", "memory_store").await?;
+    test_record_experience(client, stats, "Failed Attempt", "Failure", "tool_execution").await?;
     
     // Test get_experience with a valid ID (will return not found but valid UUID)
     test_get_experience(client, stats, &exp_id).await?;
@@ -36,17 +36,18 @@ pub async fn run_experience_tests(
 async fn test_record_experience_with_id(
     client: &mut TestMcpClient,
     stats: &mut TestStats,
-    action: &str,
+    title: &str,
     outcome: &str,
-    tool_name: &str,
+    experience_type: &str,
 ) -> anyhow::Result<String> {
     match client.call_tool("record_experience", serde_json::json!({
-        "action": action,
-        "outcome": outcome,
-        "tool_name": tool_name
+        "title": title,
+        "description": format!("Test description for {}", title),
+        "experience_type": experience_type,
+        "outcome": outcome
     })).await {
         Ok(result) => {
-            crate::teeprintln!("  ✓ record_experience({}, {}) - SUCCESS", action, outcome);
+            crate::teeprintln!("  ✓ record_experience({}, {}) - SUCCESS", title, outcome);
             stats.passed += 1;
             // Extract the ID from the result
             if let Some(id) = result.get("id").and_then(|v| v.as_str()) {
@@ -56,7 +57,7 @@ async fn test_record_experience_with_id(
             }
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ record_experience({}, {}) - FAILED: {}", action, outcome, e);
+            crate::teeprintln!("  ✗ record_experience({}, {}) - FAILED: {}", title, outcome, e);
             stats.failed += 1;
             Ok("00000000-0000-0000-0000-000000000000".to_string())
         }
@@ -66,21 +67,22 @@ async fn test_record_experience_with_id(
 async fn test_record_experience(
     client: &mut TestMcpClient,
     stats: &mut TestStats,
-    action: &str,
+    title: &str,
     outcome: &str,
-    tool_name: &str,
+    experience_type: &str,
 ) -> anyhow::Result<()> {
     match client.call_tool("record_experience", serde_json::json!({
-        "action": action,
-        "outcome": outcome,
-        "tool_name": tool_name
+        "title": title,
+        "description": format!("Test description for {}", title),
+        "experience_type": experience_type,
+        "outcome": outcome
     })).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ record_experience({}, {}) - SUCCESS", action, outcome);
+            crate::teeprintln!("  ✓ record_experience({}, {}) - SUCCESS", title, outcome);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ record_experience({}, {}) - FAILED: {}", action, outcome, e);
+            crate::teeprintln!("  ✗ record_experience({}, {}) - FAILED: {}", title, outcome, e);
             stats.failed += 1;
         }
     }

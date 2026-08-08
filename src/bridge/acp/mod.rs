@@ -32,13 +32,11 @@ pub mod error;
 pub mod message;
 pub mod registry;
 pub mod router;
+pub mod system_agent;
 
-// Re-export types for convenience
-pub use agent::{AcpAgent, AcpCapability, SimpleAgent};
-pub use builder::AcpMessageBuilder;
-pub use channel::{AcpChannel, InMemoryChannel};
-pub use error::{AcpError, AcpErrorCode};
-pub use message::{AcpAgentId, AcpMessage, AcpMessageType};
+// Re-export production types only
+pub use agent::AcpAgent;
+pub use message::{AcpAgentId, AcpMessage};
 pub use registry::AcpRegistry;
 pub use router::AcpRouter;
 
@@ -48,7 +46,12 @@ pub use router::AcpRouter;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+    // Re-export test types
+    pub use super::agent::test_types::{AcpCapability, SimpleAgent};
+    pub use super::builder::AcpMessageBuilder;
+    pub use super::channel::{AcpChannel, InMemoryChannel};
+    pub use super::error::{AcpError, AcpErrorCode};
+    pub use super::message::AcpMessageType;
 
     #[test]
     fn test_agent_id() {

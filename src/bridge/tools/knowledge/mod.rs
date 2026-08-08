@@ -52,13 +52,13 @@ pub struct RecordKnowledgeApplicationInput {
 }
 
 /// Tool: Get knowledge statistics
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct GetKnowledgeStatsInput {
     // No parameters needed
 }
 
 /// Tool: Get mature knowledge
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct GetMatureKnowledgeInput {
     pub limit: Option<usize>,
 }

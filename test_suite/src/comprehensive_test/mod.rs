@@ -177,6 +177,24 @@ pub async fn run_comprehensive_tests(
         ""
     );
 
+    // CRITICAL: Initialize workflow enforcement by calling get_workflow first
+    // This is REQUIRED before any non-exempt tool can be called
+    crate::teeprintln!("\n🔒 WORKFLOW ENFORCEMENT: Initializing...");
+    match client.call_tool("get_workflow", serde_json::json!({"purpose": "general"})).await {
+        Ok(_result) => {
+            crate::teeprintln!("  ✅ Workflow retrieved - enforcement active");
+        }
+        Err(e) => {
+            crate::teeprintln!("  ⚠️  Failed to retrieve workflow: {}", e);
+        }
+    }
+
+    // Also call search_memory to satisfy memory search requirement
+    crate::teeprintln!("  🔍 Checking memory...");
+    let _ = client.call_tool("search_memory", serde_json::json!({"query": "test"})).await;
+    
+    crate::teeprintln!("  ✅ Workflow enforcement satisfied - running tests...\n");
+
     // Run tests for each category
     let mut data_created: HashMap<String, Vec<String>> = HashMap::new();
     let mut test_num = 0;

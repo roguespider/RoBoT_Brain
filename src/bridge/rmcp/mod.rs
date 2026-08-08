@@ -66,9 +66,22 @@ impl ServerHandler for types::McpServerHandler {
         let arguments = request.arguments.map(|args| serde_json::Value::Object(args))
             .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
 
+        // Check workflow enforcement FIRST - agent MUST follow workflows
+        if let Err(e) = self.enforcer.check_enforcement(&self.session_id, tool_name).await {
+            let error_msg = serde_json::to_string(&e).unwrap_or_else(|_| e.message.clone());
+            let content = vec![ContentBlock::text(error_msg)];
+            return Ok(CallToolResult::error(content));
+        }
+
         // Try to execute via handler first
-        match self.handlers.call_tool(tool_name, arguments).await {
+        match self.handlers.call_tool(tool_name, arguments.clone()).await {
             Ok(result) => {
+                // Record tool execution for workflow tracking
+                let query = arguments.get("query")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                self.enforcer.record_tool_execution(&self.session_id, tool_name, query).await;
+                
                 // Check if the tool considers itself successful
                 if result.success {
                     // Return the tool's data directly so validation can find expected fields
@@ -78,8 +91,14 @@ impl ServerHandler for types::McpServerHandler {
                     Ok(CallToolResult::success(content))
                 } else {
                     // Tool returned success=false, treat as error response
-                    let json_str = serde_json::to_string(&result.data)
-                        .unwrap_or_else(|_| result.data.to_string());
+                    let error_msg = result.error.clone().unwrap_or_else(|| "Unknown error".to_string());
+                    let error_response = serde_json::json!({
+                        "success": false,
+                        "data": result.data,
+                        "error": error_msg
+                    });
+                    let json_str = serde_json::to_string(&error_response)
+                        .unwrap_or_else(|_| r#"{"success": false, "error": "Failed to serialize error"}"#.to_string());
                     let content = vec![ContentBlock::text(json_str)];
                     Ok(CallToolResult::error(content))
                 }

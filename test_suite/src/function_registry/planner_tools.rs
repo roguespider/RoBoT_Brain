@@ -58,7 +58,7 @@ pub fn planner_tools() -> Vec<TestRequirement> {
             expected_behavior: "Returns the current plan".to_string(),
             validation: vec![ValidationCheck {
                 check_type: CheckType::HasField,
-                field: "plan".to_string(),
+                field: "found".to_string(),
                 expected_value: None,
             }],
             priority: 2,

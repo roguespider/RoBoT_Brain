@@ -7,7 +7,7 @@ use serde::{Deserialize, Serialize};
 pub const DEFAULT_INGEST_TIMEOUT_SECS: u64 = 60;
 
 /// Tool: Ingest files from import folder
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct IngestFilesInput {
     pub folder: Option<String>,
     pub file_path: Option<String>,
@@ -46,7 +46,7 @@ impl IngestFilesInput {
 }
 
 /// Tool: List files ready for import
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct ListImportableInput {
     pub folder: Option<String>,
     pub limit: Option<usize>,
@@ -73,7 +73,7 @@ pub struct DeleteIngestedFilesInput {
 }
 
 /// Tool: List files that were successfully ingested
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct ListIngestedFilesInput {
     pub folder: Option<String>,
     pub limit: Option<usize>,

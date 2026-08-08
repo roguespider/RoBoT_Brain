@@ -43,7 +43,7 @@ pub struct GetHypothesisInput {
 }
 
 /// List hypotheses with optional filter
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct ListHypothesesInput {
     pub domain: Option<String>,
     pub status: Option<String>,
@@ -51,14 +51,14 @@ pub struct ListHypothesesInput {
 }
 
 /// List observations
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct ListObservationsInput {
     pub observation_type: Option<String>,
     pub limit: Option<usize>,
 }
 
 /// Get learned knowledge
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct GetKnowledgeInput {
     pub domain: Option<String>,
     pub limit: Option<usize>,
@@ -84,7 +84,7 @@ pub struct GetEvidenceInput {
 }
 
 /// List all evidence across hypotheses
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct ListEvidenceInput {
     pub evidence_type: Option<String>,
     pub direction: Option<String>,

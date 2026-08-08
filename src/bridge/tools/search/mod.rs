@@ -22,7 +22,7 @@ pub struct GlobalSearchInput {
 }
 
 /// Tool: Get recommendations
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct GetRecommendationsInput {
     pub context: Option<String>,
     pub limit: Option<usize>,

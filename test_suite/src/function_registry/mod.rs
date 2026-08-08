@@ -45,42 +45,43 @@ impl FunctionRegistry {
     /// 
     /// Order follows the MCP Pipeline from the General MCP Workflow:
     /// - Agent (ENTRY POINT) MUST be called first - get_workflow, list_tools
-    /// - Memory (check memory before action)
-    /// - Reflection (review patterns for repetitive decisions)
+    /// - Workflow (next - since get_workflow is the entry point)
+    /// - Memory (foundation - search_memory, store_memory)
+    /// - Then remaining tools...
     pub fn get_all_functions() -> Vec<TestRequirement> {
         let mut functions = Vec::new();
 
         // Phase 1: ENTRY POINT - Agent tools (get_workflow, list_tools MUST be called first)
         functions.extend(agent_tools::agent_tools());          // get_workflow, list_tools, connect_mcp_server, call_tool, get_tool
         
-        // Phase 2: Memory Foundation (per workflow: check memory before action)
+        // Phase 2: Workflow Management (right after Agent since get_workflow is entry point)
+        functions.extend(workflow_tools::workflow_tools());      // create_workflow, add_workflow_step, start_workflow, etc.
+        
+        // Phase 3: Memory Foundation (per workflow: check memory before action)
         functions.extend(memory_tools::memory_tools());          // search_memory, store_memory, etc.
         functions.extend(vector_index_tools::vector_index_tools()); // store_embedding, search_similar, etc.
         
-        // Phase 3: Experience Tracking (records all operations)
+        // Phase 4: Experience Tracking (records all operations)
         functions.extend(experience_tools::experience_tools());   // record_experience, get_experience_stats, etc.
         
-        // Phase 4: Reflection & Analysis (uses experience)
+        // Phase 5: Reflection & Analysis (uses experience)
         functions.extend(reflection_tools::reflection_tools());  // get_insights, create_reflection, analyze_patterns, etc.
         
-        // Phase 5: Search (uses memory, experience)
+        // Phase 6: Search (uses memory, experience)
         functions.extend(search_tools::search_tools());          // global_search, get_recommendations, get_reputation
         
-        // Phase 6: Knowledge Base (stores learned info)
+        // Phase 7: Knowledge Base (stores learned info)
         functions.extend(knowledge_tools::knowledge_tools());    // add_knowledge, query_knowledge, etc.
         
-        // Phase 7: Planning (planning operations)
+        // Phase 8: Planning (planning operations)
         functions.extend(planner_tools::planner_tools());        // create_plan, add_plan_step, etc.
         
-        // Phase 8: Exploration & Learning
+        // Phase 9: Exploration & Learning
         functions.extend(exploration_tools::exploration_tools()); // record_observation, create_hypothesis, etc.
         functions.extend(hypothesis_tools::hypothesis_tools()); // evaluate_exploration_hypothesis, etc.
         
-        // Phase 9: Skills (uses planner, exploration)
+        // Phase 10: Skills (uses planner, exploration)
         functions.extend(skills_tools::skills_tools());          // register_skill, discover_skill, execute_skill, etc.
-        
-        // Phase 10: Workflow Management
-        functions.extend(workflow_tools::workflow_tools());      // create_workflow, add_workflow_step, start_workflow, etc.
         
         // Phase 11: File Operations
         functions.extend(ingestor_tools::ingestor_tools());      // ingest_files, list_importable, etc.

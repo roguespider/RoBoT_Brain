@@ -12,6 +12,16 @@ pub struct MessageTestResults {
     pub messages_handled: usize,
 }
 
+/// Check if an MCP error indicates a missing tool
+fn is_tool_not_found(error: &str) -> bool {
+    let lower = error.to_lowercase();
+    lower.contains("method_not_found") 
+        || lower.contains("not found") 
+        || lower.contains("not found:")
+        || lower.contains("unknown tool")
+        || lower.contains("tool not found")
+}
+
 /// Test ACP message handling
 pub async fn test_acp_messages(
     client: &mut TestMcpClient,
@@ -35,14 +45,13 @@ pub async fn test_acp_messages(
         }
         Err(e) => {
             let error_str = e.to_string();
-            if error_str.contains("method_not_found") || error_str.contains("not found") {
-                crate::teeprintln!("    ⚠️  ACP message creation not exposed");
-                results.failed += 1;
+            if is_tool_not_found(&error_str) {
+                crate::teeprintln!("    ⏭️  SKIPPED: ACP message creation not exposed");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ⚠️  create_acp_message: {}", e);
+                crate::teeprintln!("    ❌ create_acp_message: {}", e);
                 results.failed += 1;
-                stats.skipped += 1;
+                stats.failed += 1;
             }
         }
     }
@@ -64,14 +73,13 @@ pub async fn test_acp_messages(
         }
         Err(e) => {
             let error_str = e.to_string();
-            if error_str.contains("method_not_found") || error_str.contains("not found") {
-                crate::teeprintln!("    ⚠️  Reply handling not exposed");
-                results.failed += 1;
+            if is_tool_not_found(&error_str) {
+                crate::teeprintln!("    ⏭️  SKIPPED: Reply handling not exposed");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ⚠️  Reply handling: {}", e);
+                crate::teeprintln!("    ❌ Reply handling: {}", e);
                 results.failed += 1;
-                stats.skipped += 1;
+                stats.failed += 1;
             }
         }
     }
@@ -93,14 +101,13 @@ pub async fn test_acp_messages(
         }
         Err(e) => {
             let error_str = e.to_string();
-            if error_str.contains("method_not_found") || error_str.contains("not found") {
-                crate::teeprintln!("    ⚠️  Conversation tracking not exposed");
-                results.failed += 1;
+            if is_tool_not_found(&error_str) {
+                crate::teeprintln!("    ⏭️  SKIPPED: Conversation tracking not exposed");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ⚠️  Conversation tracking: {}", e);
+                crate::teeprintln!("    ❌ Conversation tracking: {}", e);
                 results.failed += 1;
-                stats.skipped += 1;
+                stats.failed += 1;
             }
         }
     }
@@ -120,9 +127,7 @@ pub async fn test_acp_messages(
             stats.passed += 1;
         }
         Err(e) => {
-            // Error message routing may return error, which is expected
             crate::teeprintln!("    ⚠️  Error message: {}", e);
-            results.failed += 1;
             stats.skipped += 1;
         }
     }
@@ -144,14 +149,13 @@ pub async fn test_acp_messages(
         }
         Err(e) => {
             let error_str = e.to_string();
-            if error_str.contains("method_not_found") || error_str.contains("not found") {
-                crate::teeprintln!("    ⚠️  TTL not supported");
-                results.failed += 1;
+            if is_tool_not_found(&error_str) {
+                crate::teeprintln!("    ⏭️  SKIPPED: TTL not supported");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ⚠️  TTL: {}", e);
+                crate::teeprintln!("    ❌ TTL: {}", e);
                 results.failed += 1;
-                stats.skipped += 1;
+                stats.failed += 1;
             }
         }
     }

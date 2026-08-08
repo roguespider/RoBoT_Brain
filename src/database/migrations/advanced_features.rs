@@ -112,7 +112,8 @@ fn migration_008_add_hypothesis_engine(conn: &Connection) -> Result<()> {
             evidence_type TEXT NOT NULL,
             direction TEXT NOT NULL,
             strength REAL DEFAULT 0.5,
-            experience_id TEXT
+            experience_id TEXT,
+            created_at TEXT NOT NULL
         );
         CREATE INDEX IF NOT EXISTS idx_evidence_hypothesis ON evidence(hypothesis_id);
         CREATE TABLE IF NOT EXISTS learned_knowledge (

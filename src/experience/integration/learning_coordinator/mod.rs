@@ -20,32 +20,23 @@ pub mod results;
 pub use config::LearningCoordinatorConfig;
 pub use entry::EntryMethods;
 pub use exploration::ExplorationManager;
-pub use generalization::GeneralizationMethods;
-pub use hypothesis::HypothesisMethods;
-pub use knowledge::KnowledgeMethods;
-pub use reinforcement::ReinforcementMethods;
 pub use reputation::ReputationManager;
 pub use results::{
-    GeneralizationResult, LearningCoordinatorStats, LearningPattern, MaintenanceStats,
-    PatternKind, ReinforcementResult, TransferResult, ValidationResult, LearningResult,
+    LearningCoordinatorStats, LearningResult, MaintenanceStats, ValidationResult,
 };
 
 use anyhow::Result;
-use chrono::{Duration, Utc};
 use std::sync::Arc;
-use uuid::Uuid;
 
 use crate::database::sqlite::SqliteDatabase;
 use crate::experience::bus::ExperienceBus;
-use crate::experience::events::ExperienceEvent;
 use crate::experience::exploration::Exploration;
-use crate::experience::hypothesis::core::hypothesis::Hypothesis;
 use crate::experience::hypothesis::HypothesisEngine;
 use crate::experience::metrics::MetricsCollector;
 use crate::experience::reflection::ReflectionEngine;
 use crate::experience::reputation::reputation::Reputation;
 use crate::experience::types::Experience;
-use crate::knowledge::{KnowledgeItem, KnowledgeStore};
+use crate::knowledge::KnowledgeStore;
 use crate::skills::registry::SkillRegistry;
 
 /// Learning Coordinator - Main orchestrator for the learning pipeline

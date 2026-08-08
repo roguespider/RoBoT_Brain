@@ -26,13 +26,13 @@ pub struct RecordExperienceInput {
 }
 
 /// Tool: Get experience statistics
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct GetExperienceStatsInput {
     pub period: Option<String>,
 }
 
 /// Tool: List recent experiences
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct ListExperiencesInput {
     pub experience_type: Option<String>,
     pub limit: Option<usize>,
@@ -49,7 +49,7 @@ pub struct GetExperienceInput {
 // ============================================================================
 
 /// Tool: Get worker statistics
-#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
 pub struct GetWorkerStatsInput {
     pub observer_name: Option<String>,
 }
@@ -275,6 +275,11 @@ pub async fn execute_get_experience_stats(
     });
 
     Ok(ToolOutput::success(serde_json::json!({
+        "stats": {
+            "total": total,
+            "by_type": by_type,
+            "by_outcome": by_outcome
+        },
         "total": total,
         "by_type": by_type,
         "by_outcome": by_outcome
@@ -321,6 +326,7 @@ pub async fn execute_get_experience(
 
     match memory {
         Some(m) => Ok(ToolOutput::success(serde_json::json!({
+            "id": m.id.to_string(),
             "found": true,
             "experience": {
                 "id": m.id.to_string(),
@@ -332,6 +338,7 @@ pub async fn execute_get_experience(
             }
         }))),
         None => Ok(ToolOutput::success(serde_json::json!({
+            "id": null,
             "found": false,
             "experience": serde_json::Value::Null
         }))),

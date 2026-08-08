@@ -13,6 +13,7 @@
 
 use std::sync::Arc;
 
+pub mod acp_handler;
 pub mod agent_handler;
 pub mod experience_handler;
 pub mod exploration_handler;
@@ -128,6 +129,7 @@ pub fn json_to_schema(schema: serde_json::Value) -> std::sync::Arc<serde_json::M
     }
 }
 
+pub use acp_handler::AcpToolsHandler;
 pub use agent_handler::AgentToolsHandler;
 pub use experience_handler::ExperienceToolsHandler;
 pub use exploration_handler::ExplorationToolsHandler;
@@ -144,6 +146,7 @@ pub use workflow_handler::WorkflowToolsHandler;
 /// Collection of all tool handlers with graceful degradation
 #[derive(Clone)]
 pub struct ToolHandlerCollection {
+    pub acp: Option<AcpToolsHandler>,
     pub agent: Option<AgentToolsHandler>,
     pub experience: Option<ExperienceToolsHandler>,
     pub exploration: Option<ExplorationToolsHandler>,
@@ -161,6 +164,7 @@ pub struct ToolHandlerCollection {
 impl Default for ToolHandlerCollection {
     fn default() -> Self {
         Self {
+            acp: None,
             agent: None,
             experience: None,
             exploration: None,
@@ -195,6 +199,17 @@ impl ToolHandlerCollection {
         let mut errors = Vec::new();
 
         // Initialize each handler, capturing errors but continuing
+        match AcpToolsHandler::new(context.clone()) {
+            Ok(handler) => {
+                tracing::info!("ACP tools handler initialized with {} tools", handler.tool_names().len());
+                collection.acp = Some(handler);
+            }
+            Err(e) => {
+                tracing::warn!("Failed to initialize ACP tools handler: {}", e.message);
+                errors.push(e);
+            }
+        }
+
         match AgentToolsHandler::new(context.clone(), enforcer.clone()) {
             Ok(handler) => {
                 tracing::info!("Agent tools handler initialized with {} tools", handler.tool_names().len());
@@ -337,6 +352,7 @@ impl ToolHandlerCollection {
     /// Count total number of tools across all handlers
     pub fn count_tools(&self) -> usize {
         let mut count = 0;
+        if let Some(ref h) = self.acp { count += h.tool_names().len(); }
         if let Some(ref h) = self.agent { count += h.tool_names().len(); }
         if let Some(ref h) = self.experience { count += h.tool_names().len(); }
         if let Some(ref h) = self.exploration { count += h.tool_names().len(); }
@@ -355,7 +371,8 @@ impl ToolHandlerCollection {
     /// Check overall health of all handlers
     pub fn is_healthy(&self) -> bool {
         // At least one handler should be healthy
-        self.agent.as_ref().map_or(false, |h| h.is_healthy())
+        self.acp.as_ref().map_or(false, |h| h.is_healthy())
+            || self.agent.as_ref().map_or(false, |h| h.is_healthy())
             || self.experience.as_ref().map_or(false, |h| h.is_healthy())
             || self.exploration.as_ref().map_or(false, |h| h.is_healthy())
             || self.hypothesis.as_ref().map_or(false, |h| h.is_healthy())
@@ -372,6 +389,7 @@ impl ToolHandlerCollection {
     /// Get all tools from all handlers as MCP Tool definitions
     pub fn get_all_tools(&self) -> Vec<rmcp::model::Tool> {
         let mut tools = Vec::new();
+        if let Some(ref h) = self.acp { tools.extend(h.get_tools()); }
         if let Some(ref h) = self.agent { tools.extend(h.get_tools()); }
         if let Some(ref h) = self.experience { tools.extend(h.get_tools()); }
         if let Some(ref h) = self.exploration { tools.extend(h.get_tools()); }
@@ -389,6 +407,11 @@ impl ToolHandlerCollection {
 
     /// Get a single tool by name from any handler
     pub fn get_tool(&self, name: &str) -> Option<rmcp::model::Tool> {
+        if let Some(ref h) = self.acp { 
+            if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
+                return Some(tool);
+            }
+        }
         if let Some(ref h) = self.agent { 
             if let Some(tool) = h.get_tools().into_iter().find(|t| t.name == name) {
                 return Some(tool);
@@ -459,6 +482,11 @@ impl ToolHandlerCollection {
         args: serde_json::Value,
     ) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
         // Try each handler in order
+        if let Some(ref h) = self.acp {
+            if h.tool_names().contains(&name.to_string()) {
+                return h.execute_tool(name, args).await;
+            }
+        }
         if let Some(ref h) = self.agent {
             if h.tool_names().contains(&name.to_string()) {
                 return h.execute_tool(name, args).await;
