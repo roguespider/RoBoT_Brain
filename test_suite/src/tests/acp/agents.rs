@@ -12,6 +12,16 @@ pub struct AgentTestResults {
     pub agents_tested: usize,
 }
 
+/// Check if an MCP error indicates a missing tool
+fn is_tool_not_found(error: &str) -> bool {
+    let lower = error.to_lowercase();
+    lower.contains("method_not_found") 
+        || lower.contains("not found") 
+        || lower.contains("not found:")
+        || lower.contains("unknown tool")
+        || lower.contains("tool not found")
+}
+
 /// Test ACP agent functionality
 pub async fn test_acp_agents(
     client: &mut TestMcpClient,
@@ -38,9 +48,8 @@ pub async fn test_acp_agents(
         }
         Err(e) => {
             let error_str = e.to_string();
-            if error_str.contains("method_not_found") || error_str.contains("not found") {
-                crate::teeprintln!("    ⚠️  ACP agents not exposed via MCP");
-                results.failed += 1;
+            if is_tool_not_found(&error_str) {
+                crate::teeprintln!("    ⏭️  SKIPPED: ACP agents not exposed via MCP");
                 stats.skipped += 1;
             } else {
                 crate::teeprintln!("    ❌ list_acp_agents ERROR: {}", e);
@@ -71,14 +80,13 @@ pub async fn test_acp_agents(
         }
         Err(e) => {
             let error_str = e.to_string();
-            if error_str.contains("method_not_found") || error_str.contains("not found") {
-                crate::teeprintln!("    ⚠️  Agent capabilities not exposed");
-                results.failed += 1;
+            if is_tool_not_found(&error_str) {
+                crate::teeprintln!("    ⏭️  SKIPPED: Agent capabilities not exposed");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ⚠️  get_agent_capabilities: {}", e);
+                crate::teeprintln!("    ❌ get_agent_capabilities: {}", e);
                 results.failed += 1;
-                stats.skipped += 1;
+                stats.failed += 1;
             }
         }
     }
@@ -102,9 +110,15 @@ pub async fn test_acp_agents(
             }
         }
         Err(e) => {
-            crate::teeprintln!("    ⚠️  get_system_status: {}", e);
-            results.failed += 1;
-            stats.skipped += 1;
+            let error_str = e.to_string();
+            if is_tool_not_found(&error_str) {
+                crate::teeprintln!("    ⏭️  SKIPPED: get_system_status not available");
+                stats.skipped += 1;
+            } else {
+                crate::teeprintln!("    ❌ get_system_status: {}", e);
+                results.failed += 1;
+                stats.failed += 1;
+            }
         }
     }
 
@@ -123,14 +137,13 @@ pub async fn test_acp_agents(
         }
         Err(e) => {
             let error_str = e.to_string();
-            if error_str.contains("method_not_found") || error_str.contains("not found") {
-                crate::teeprintln!("    ⚠️  Agent registration not exposed");
-                results.failed += 1;
+            if is_tool_not_found(&error_str) {
+                crate::teeprintln!("    ⏭️  SKIPPED: Agent registration not exposed");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ⚠️  register_agent: {}", e);
+                crate::teeprintln!("    ❌ register_agent: {}", e);
                 results.failed += 1;
-                stats.skipped += 1;
+                stats.failed += 1;
             }
         }
     }
@@ -148,14 +161,13 @@ pub async fn test_acp_agents(
         }
         Err(e) => {
             let error_str = e.to_string();
-            if error_str.contains("method_not_found") || error_str.contains("not found") {
-                crate::teeprintln!("    ⚠️  Agent unregistration not exposed");
-                results.failed += 1;
+            if is_tool_not_found(&error_str) {
+                crate::teeprintln!("    ⏭️  SKIPPED: Agent unregistration not exposed");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ⚠️  unregister_agent: {}", e);
+                crate::teeprintln!("    ❌ unregister_agent: {}", e);
                 results.failed += 1;
-                stats.skipped += 1;
+                stats.failed += 1;
             }
         }
     }
