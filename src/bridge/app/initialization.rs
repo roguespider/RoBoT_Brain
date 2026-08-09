@@ -184,6 +184,14 @@ impl App {
         let graph_checks = crate::experience::hypothesis::support::graph::self_check::run();
         tracing::info!("Hypothesis graph self-check completed ({} checks passed)", graph_checks);
 
+        // Run the hypothesis services self-check to exercise the service-layer
+        // API (generator generate/generate_from_pattern, matcher
+        // match_text/match_experience, analytics analyze/stability_score,
+        // validator check_conflict, statistics reset) so those code paths
+        // remain live. Per §9.
+        let service_checks = crate::experience::hypothesis::services::self_check::run();
+        tracing::info!("Hypothesis services self-check completed ({} checks passed)", service_checks);
+
         // Create the Learning Coordinator - the main orchestrator for the
         // learning pipeline (Architecture §9 / §4.04):
         // Experience → Reflection → Hypothesis → Validation → Knowledge → Reputation

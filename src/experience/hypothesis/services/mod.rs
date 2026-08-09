@@ -21,5 +21,6 @@ pub mod analytics;
 pub mod generator;
 pub mod matcher;
 pub mod repository;
+pub mod self_check;
 pub mod validator;
 
