@@ -11,7 +11,7 @@
 //! find relationships, detect cycles, and perform graph analysis.
 
 mod graph_algorithms;
-mod graph_builder;
+pub mod graph_builder;
 mod graph_types;
 
 use std::collections::HashMap;
