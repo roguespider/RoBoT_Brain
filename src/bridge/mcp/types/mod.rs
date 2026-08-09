@@ -14,11 +14,7 @@ pub mod tools;
 
 // Re-exports
 pub use capabilities::{McpCapabilities, McpEmpty, McpResourcesCapability};
-pub use error::McpError;
 pub use info::{McpClientInfo, McpServerInfo};
-pub use message::{McpMessage, McpNotification, McpRequest, McpResponse};
-pub use prompts::{McpPrompt, McpPromptArgument};
-pub use resources::McpResource;
 pub use tools::McpTool;
 
 use serde::{Deserialize, Serialize};
