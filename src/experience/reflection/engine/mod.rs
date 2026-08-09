@@ -169,10 +169,19 @@ impl ReflectionEngine {
             insight.add_reflection(rid);
         }
 
-        self.insights
-            .write()
-            .await
-            .insert(insight.id.clone(), insight.clone());
+        // Enforce the configured in-memory cache cap so max_cached_reflections
+        // remains a live, enforced limit (Architecture §10 reflection engine).
+        {
+            let mut insights = self.insights.write().await;
+            if insights.len() >= self.config.max_cached_reflections {
+                // Drop the oldest entry by inserted-id ordering is unavailable
+                // without extra metadata; evict an arbitrary key instead.
+                if let Some(first_key) = insights.keys().next().cloned() {
+                    insights.remove(&first_key);
+                }
+            }
+            insights.insert(insight.id.clone(), insight.clone());
+        }
 
         tracing::info!("Created insight: {}", insight.id);
         Ok(insight)

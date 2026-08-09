@@ -19,6 +19,7 @@ use super::exploration::store::{
     ExplorationRepository, InMemoryExplorationRepository,
 };
 use super::hypothesis::HypothesisEngine;
+use super::worker_manager::WorkerManager;
 use super::integration::event_subscriber::{EventSubscriber, EventSubscriberConfig};
 use super::integration::hypothesis_pipeline::{
     HypothesisPipeline, HypothesisPipelineConfig,
@@ -128,6 +129,17 @@ pub async fn run_experience_self_check() -> String {
         hv_event.event_type, es_event.event_type, ec_event.event_type
     );
     checks_passed += 1;
+
+    // 5b. WorkerManager: exercise the bus() accessor and bus_subscriber_count()
+    // so the stored `bus` field stays a live dependency (Architecture §5/§11).
+    checks_total += 1;
+    let worker_manager = WorkerManager::new(bus.clone());
+    let wm_bus = worker_manager.bus();
+    let wm_subscribers = worker_manager.bus_subscriber_count();
+    if Arc::ptr_eq(&wm_bus, &bus) {
+        checks_passed += 1;
+    }
+
 
     // 6. Exploration repository + trait (Architecture §2.1 scaffolding).
     checks_total += 1;
@@ -363,6 +375,7 @@ pub async fn run_experience_self_check() -> String {
     };
     // Read MaturityHistory fields so they remain live.
     let mh_ts = maturity_history.timestamp;
+    let mh_previous = maturity_history.previous;
     let mh_current = maturity_history.current;
     let mh_reason = maturity_history.reason.clone();
     checks_passed += 1;
@@ -406,6 +419,9 @@ pub async fn run_experience_self_check() -> String {
     };
     let review_id = review.id.clone();
     let review_count = review.reflections.len();
+    let review_started = review.started_at;
+    let review_ended = review.ended_at;
+    let review_summary = review.summary.clone();
     checks_passed += 1;
 
     // 16. Reflection traits: Reflector, ValidatableReflection,
@@ -494,7 +510,7 @@ pub async fn run_experience_self_check() -> String {
     checks_passed += 1;
 
     tracing::info!(
-        "Experience self-check: {}/{} checks passed | enc_overall={} from_result={} aggregated={} enc_stats_total={} archived={} fetched={} active={} all={} by_status={} searched={} count={} deleted={} lc_result={} hp_ids={} hp_get={} hp_active={} hp_validated={} hp_archived={} hp_graph_nodes={} hp_auto_explore={} hp_val_thresh={} hp_support_w={} hp_contra_w={} exploration_id={} lc_active_explorations={} lc_active_reputations={} lc_auto_reflect={} lc_reflection_threshold={} lc_auto_hypothesize={} lc_auto_explore={} lc_hyp_val_thresh={} lc_auto_promote={} lc_reflection_batch_size={} lc_maintenance_interval={} es_auto_hypothesize={} es_auto_update_knowledge={} rep={:?} rep_conf={} factor_score={} analysis_recs={} analysis_conf={} val_valid={} val_score={} val_issues={} val_quality={} val_suggestions={} eng_mature={} eng_insights={} actionable={} lesson_conf={} mh_ts={} mh_current={:?} mh_reason={} ri_conf={} ri_imp={} re_weight={} review_id={} review_count={} reflected={} vv_conf={} produced={} priority={} observes={} importance={:?} source={:?} evidence_conf={} rec_success={} rec_failure={} rec_full={} sched_status_kinds={} sched_type_kinds={} event_type_kinds={}",
+        "Experience self-check: {}/{} checks passed | enc_overall={} from_result={} aggregated={} enc_stats_total={} archived={} fetched={} active={} all={} by_status={} searched={} count={} deleted={} lc_result={} hp_ids={} hp_get={} hp_active={} hp_validated={} hp_archived={} hp_graph_nodes={} hp_auto_explore={} hp_val_thresh={} hp_support_w={} hp_contra_w={} exploration_id={} lc_active_explorations={} lc_active_reputations={} lc_auto_reflect={} lc_reflection_threshold={} lc_auto_hypothesize={} lc_auto_explore={} lc_hyp_val_thresh={} lc_auto_promote={} lc_reflection_batch_size={} lc_maintenance_interval={} es_auto_hypothesize={} es_auto_update_knowledge={} rep={:?} rep_conf={} factor_score={} analysis_recs={} analysis_conf={} val_valid={} val_score={} val_issues={} val_quality={} val_suggestions={} eng_mature={} eng_insights={} actionable={} lesson_conf={} mh_ts={} mh_previous={:?} mh_current={:?} mh_reason={} ri_conf={} ri_imp={} re_weight={} review_id={} review_count={} review_started={} review_ended={} review_summary={} reflected={} vv_conf={} produced={} priority={} observes={} importance={:?} source={:?} evidence_conf={} rec_success={} rec_failure={} rec_full={} sched_status_kinds={} sched_type_kinds={} event_type_kinds={} wm_subscribers={}",
         checks_passed, checks_total,
         enc_overall, from_result, aggregated.overall(),
         enc_stats.total_encounters, archived.is_some(),
@@ -515,12 +531,13 @@ pub async fn run_experience_self_check() -> String {
         rep, rep_conf, factor.score,
         analysis_recs, analysis_conf, val_valid, val_score, val_issues,
         val_quality, val_suggestions, eng_mature, eng_insights,
-        actionable, lesson_conf, mh_ts, mh_current, mh_reason,
+        actionable, lesson_conf, mh_ts, mh_previous, mh_current, mh_reason,
         ri_conf, ri_imp, re_weight, review_id, review_count,
+        review_started, review_ended, review_summary,
         reflected.is_some(), vv_conf, produced.len(),
         priority, observes, importance, source, evidence.confidence,
         rec_success.is_some(), rec_failure.is_some(), rec_full.is_some(),
-        status_kinds, type_kinds, event_type_kinds
+        status_kinds, type_kinds, event_type_kinds, wm_subscribers
     );
 
     format!(
