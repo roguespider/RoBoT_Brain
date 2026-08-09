@@ -9,7 +9,9 @@
 use chrono::Utc;
 use uuid::Uuid;
 
-use super::candidates::{CandidateGenerator, CandidateScore, CandidateType};
+use super::candidates::{
+    CandidateGenerator, CandidateScore, CandidateStats, CandidateType, RiskLevel,
+};
 use super::hypothesis::{EvidenceBuilder, EvidenceType, HypothesisManager, HypothesisStatus};
 use super::lineage::{
     Confirmation, ConfirmationSource, Contradiction, ContradictionResolution, EvidenceRef,
@@ -47,9 +49,23 @@ pub async fn run_self_check() -> String {
     generator.update_score(&candidate.id, score).await.ok();
     generator.select(&candidate.id).await.ok();
     let history = generator.get_history().await;
+
+    // Exercise the remaining CandidateGenerator query/mutation API
+    // (get, list, get_by_type, remove, clear, stats) and RiskLevel::as_str
+    // so those code paths stay live (Architecture §9 candidate generation).
+    let fetched = generator.get(&candidate.id).await;
+    let listed = generator.list().await;
+    let by_type = generator.get_by_type(CandidateType::Strategy).await;
+    let stats: CandidateStats = generator.stats().await;
+    let risk_str = RiskLevel::Low.as_str();
+    let removed = generator.remove(&candidate.id).await;
+    generator.clear().await;
+    let stats_after_clear = generator.stats().await;
     tracing::info!(
-        "Learning self-check [candidates]: top={} low_risk={} history={}",
-        top.len(), low_risk_count, history.len()
+        "Learning self-check [candidates]: top={} low_risk={} history={} fetched={} listed={} by_type={} stats_total={} risk_str={} removed={} stats_after_clear={}",
+        top.len(), low_risk_count, history.len(),
+        fetched.is_some(), listed.len(), by_type.len(), stats.total, risk_str,
+        removed.is_some(), stats_after_clear.total
     );
 
     // 2. Hypothesis manager self-check

@@ -11,7 +11,6 @@ use tracing::info;
 
 use std::sync::Arc;
 
-use super::agent::AcpAgent;
 use super::builder::AcpMessageBuilder;
 use super::channel::InMemoryChannel;
 use super::error::{AcpError, AcpErrorCode};
