@@ -143,8 +143,12 @@ pub async fn run_hypothesis_self_check() -> String {
     let should_act = sim_result.should_act();
     let best = sim_result.best_outcome();
     let ev = sim_result.expected_value;
-    let _cons_sim = HypothesisSimulator::with_params(conservative).simulate(&h2);
-    let _aggr_sim = HypothesisSimulator::with_params(aggressive).simulate(&h3);
+    let cons_sim = HypothesisSimulator::with_params(conservative).simulate(&h2);
+    let aggr_sim = HypothesisSimulator::with_params(aggressive).simulate(&h3);
+    let cons_should_act = cons_sim.should_act();
+    let aggr_should_act = aggr_sim.should_act();
+    let cons_ev = cons_sim.expected_value;
+    let aggr_ev = aggr_sim.expected_value;
     checks_passed += 1;
 
     // ---- HypothesisAnalytics API ----
@@ -202,13 +206,14 @@ pub async fn run_hypothesis_self_check() -> String {
     checks_passed += 1;
 
     tracing::info!(
-        "Hypothesis self-check: {}/{} checks passed, nodes={}, edges={}, cycles={}, sccs={}, topo_ok={}, path_ok={}, stats(avg_conf={:.2}, supp={:.2}, conf={:.2}), plans={}, prioritized={}, sim(ev={:.2}, should_act={}), stability={:.2}, exp_matches={}, text_matches={}, engine_nodes={}, edge_support_ok={}, edge_contra_ok={}, removed={}, has_node={}, got_node={}, connected={}, supporters={}, contradictions={}, dependencies={}, sim_batch={}, safest_ok={}, compared={}, best_ok={}, validation_valid={}, conflict_ok={}, gen_ok={}, pattern_ok={}, node_meta_ok={}, labels={}, inv_supports={}, edge_dep_not_contra={}, edge_rel_not_support={}, edges_from_h1={}, incoming_h2={}, graph_stats(cycles={}), plan_actions={}, engine_graph_ok={}, node_id_len={}",
+        "Hypothesis self-check: {}/{} checks passed, nodes={}, edges={}, cycles={}, sccs={}, topo_ok={}, path_ok={}, stats(avg_conf={:.2}, supp={:.2}, conf={:.2}), plans={}, prioritized={}, sim(ev={:.2}, should_act={}), cons_sim(ev={:.2}, should_act={}), aggr_sim(ev={:.2}, should_act={}), stability={:.2}, exp_matches={}, text_matches={}, engine_nodes={}, edge_support_ok={}, edge_contra_ok={}, removed={}, has_node={}, got_node={}, connected={}, supporters={}, contradictions={}, dependencies={}, sim_batch={}, safest_ok={}, compared={}, best_ok={}, validation_valid={}, conflict_ok={}, gen_ok={}, pattern_ok={}, node_meta_ok={}, labels={}, inv_supports={}, edge_dep_not_contra={}, edge_rel_not_support={}, edges_from_h1={}, incoming_h2={}, graph_stats(cycles={}), plan_actions={}, engine_graph_ok={}, node_id_len={}",
         checks_passed, checks_total,
         node_count, edge_count, cycles.len(), sccs.len(),
         topo.is_some(), path.is_some(),
         avg_conf, supp_rate, conf_rate,
         plans.len(), prioritized.len(),
         ev, should_act, stability,
+        cons_ev, cons_should_act, aggr_ev, aggr_should_act,
         exp_matches.len(), text_matches.len(),
         engine_stats.node_count,
         s_ok, c_ok, removed, has_node, got_node.is_some(),

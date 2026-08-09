@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2024"
 description = "Comprehensive test suite for RoBoT Brain ACP/MCP Server"
 license = "AGPL-3.0-or-later"
-authors = ["RoBoT Team"]
+authors = ["Rogue Spider"]
 
 [[bin]]
 name = "test_suite"

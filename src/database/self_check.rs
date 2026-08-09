@@ -133,7 +133,7 @@ pub fn run(database: &SqliteDatabase) -> usize {
                 "self-check item".to_string(),
                 "database self-check".to_string(),
             );
-            let stored = repo.store(&item).is_ok();
+            let stored = MemoryRepository::store(&repo, &item).is_ok();
             // Clean up the temp database file.
             drop(repo);
             let removed = std::fs::remove_file(&temp_db_path);
