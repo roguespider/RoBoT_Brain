@@ -15,9 +15,11 @@ use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::process::Stdio;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::io::{AsyncBufReadExt, AsyncWriteExt, BufReader};
 use tokio::process::{Child, ChildStdout, Command as AsyncCommand};
+use tokio::sync::Mutex;
 use tokio::time::timeout;
 
 // Shared output module - provides teeprintln macro for all modules
@@ -512,6 +514,23 @@ It should be extracted and ingested.
     Ok(test_env)
 }
 
+/// A ring buffer of recent server log lines captured from stderr.
+///
+/// The server (robot_brain) writes all `tracing` output to stderr. Capturing
+/// it lets us attach server-side context to failing test results, turning a
+/// bare "Tool returned error: X" into "X | server: WARN ...".
+pub type ServerLogBuffer = Arc<Mutex<std::collections::VecDeque<String>>>;
+
+/// Maximum number of log lines retained in the ring buffer.
+const SERVER_LOG_BUFFER_CAPACITY: usize = 500;
+
+/// Build a shared server-log ring buffer.
+fn new_server_log_buffer() -> ServerLogBuffer {
+    Arc::new(Mutex::new(std::collections::VecDeque::with_capacity(
+        SERVER_LOG_BUFFER_CAPACITY,
+    )))
+}
+
 /// MCP Client wrapper for testing
 pub struct TestMcpClient {
     /// The child process (kept alive to maintain the server)
@@ -519,6 +538,8 @@ pub struct TestMcpClient {
     stdin: tokio::process::ChildStdin,
     stdout: BufReader<ChildStdout>,
     send_id: u64,
+    /// Recent server log lines captured from stderr (shared with a background reader task).
+    server_logs: ServerLogBuffer,
 }
 
 impl TestMcpClient {
@@ -526,6 +547,7 @@ impl TestMcpClient {
         let mut child = AsyncCommand::new(server_path)
             .stdout(Stdio::piped())
             .stdin(Stdio::piped())
+            .stderr(Stdio::piped())
             .kill_on_drop(true)
             .spawn()?;
 
@@ -533,19 +555,27 @@ impl TestMcpClient {
             .ok_or_else(|| anyhow::anyhow!("Failed to take stdin - process may not have been spawned correctly"))?;
         let stdout = child.stdout.take()
             .ok_or_else(|| anyhow::anyhow!("Failed to take stdout - process may not have been spawned correctly"))?;
+        let stderr = child.stderr.take()
+            .ok_or_else(|| anyhow::anyhow!("Failed to take stderr - process may not have been spawned correctly"))?;
+
+        let server_logs = new_server_log_buffer();
+        // Spawn a background task that continuously reads stderr lines into the
+        // ring buffer so we always have recent server-side context available.
+        spawn_stderr_reader(stderr, server_logs.clone());
 
         let mut client = Self {
             child,
             stdin,
             stdout: BufReader::new(stdout),
             send_id: 1,
+            server_logs,
         };
 
         client
             .send_request(
                 "initialize",
                 serde_json::json!({
-                    "protocolVersion": "2024-11-05",
+                    "protocolVersion": "2025-03-26",
                     "capabilities": { "tools": {} },
                     "clientInfo": { "name": "test_suite", "version": "1.0.0" }
                 }),
@@ -743,6 +773,80 @@ impl TestMcpClient {
 
         Ok(tools)
     }
+
+    /// Retrieve the most recent `count` server log lines (from stderr).
+    ///
+    /// Returns lines oldest-first. Used to attach server-side context to
+    /// failing test results so diagnosis doesn't require a separate log hunt.
+    pub async fn recent_server_logs(&self, count: usize) -> Vec<String> {
+        let buf = self.server_logs.lock().await;
+        let len = buf.len();
+        let start = len.saturating_sub(count);
+        buf.iter().skip(start).cloned().collect()
+    }
+
+    /// Retrieve all server log lines containing `needle` (case-insensitive),
+    /// plus one line of surrounding context when available.
+    pub async fn server_logs_matching(&self, needle: &str) -> Vec<String> {
+        let needle_lower = needle.to_lowercase();
+        let buf = self.server_logs.lock().await;
+        let lines: Vec<&String> = buf.iter().collect();
+        let mut matches = Vec::new();
+        for (idx, line) in lines.iter().enumerate() {
+            if line.to_lowercase().contains(&needle_lower) {
+                let mut entry = String::new();
+                if idx > 0 {
+                    entry.push_str(lines[idx - 1].as_str());
+                    entry.push('\n');
+                }
+                entry.push_str(line.as_str());
+                if idx + 1 < lines.len() {
+                    entry.push('\n');
+                    entry.push_str(lines[idx + 1].as_str());
+                }
+                matches.push(entry);
+            }
+        }
+        matches
+    }
+}
+
+/// Background task that continuously reads server stderr into a ring buffer.
+///
+/// This keeps the most recent `SERVER_LOG_BUFFER_CAPACITY` log lines available
+/// for attaching to failing test results. Older lines are evicted automatically
+/// by the `VecDeque` capacity bound.
+fn spawn_stderr_reader(mut stderr: tokio::process::ChildStderr, buffer: ServerLogBuffer) {
+    tokio::spawn(async move {
+        let mut reader = BufReader::new(&mut stderr);
+        let mut line = String::new();
+        loop {
+            line.clear();
+            match reader.read_line(&mut line).await {
+                Ok(0) => break, // EOF: server closed stderr
+                Ok(_) => {
+                    let trimmed = line.trim();
+                    if trimmed.is_empty() {
+                        continue;
+                    }
+                    let mut buf = buffer.lock().await;
+                    if buf.len() >= SERVER_LOG_BUFFER_CAPACITY {
+                        buf.pop_front();
+                    }
+                    buf.push_back(trimmed.to_string());
+                }
+                Err(e) => {
+                    // Read error — surface it once then stop the reader.
+                    let mut buf = buffer.lock().await;
+                    if buf.len() >= SERVER_LOG_BUFFER_CAPACITY {
+                        buf.pop_front();
+                    }
+                    buf.push_back(format!("[test_suite stderr reader error: {}]", e));
+                    break;
+                }
+            }
+        }
+    });
 }
 
 #[tokio::main]
@@ -821,6 +925,18 @@ async fn main() -> anyhow::Result<()> {
     // Print comprehensive test results table
     report.print_report();
 
+    // Write machine-readable JSON report alongside the text output.
+    // Enables run-to-run diffing and CI tooling.
+    let json_path = paths::test_suite_dir().join("test_suite_report.json");
+    match report.write_json(&json_path) {
+        Ok(()) => {
+            teeprintln!("\n✅ JSON report saved to: {}", json_path.display());
+        }
+        Err(e) => {
+            teeprintln!("\n⚠️  Failed to write JSON report: {}", e);
+        }
+    }
+
     // Print overall summary
     teeprintln!("\n{}", "=".repeat(120));
     teeprintln!("OVERALL SUMMARY");
@@ -887,7 +1003,8 @@ async fn main() -> anyhow::Result<()> {
     teeprintln!("\n{}", "═".repeat(120));
     teeprintln!("  {:^116}", "🎉 ALL TESTS PASSED - SYSTEM READY!");
     teeprintln!("{}", "═".repeat(120));
-    teeprintln!("\n✅ Full output saved to: {}", output_file.display());
+    teeprintln!("\n✅ Text output saved to: {}", output_file.display());
+    teeprintln!("✅ JSON report saved to: {}", json_path.display());
     output::flush();
     Ok(())
 }

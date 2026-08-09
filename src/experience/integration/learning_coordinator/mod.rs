@@ -224,6 +224,12 @@ impl LearningCoordinator {
         manager.complete_exploration(exploration_id).await
     }
 
+    /// Number of currently active explorations (Architecture §2.7 diagnostics).
+    pub async fn active_exploration_count(&self) -> usize {
+        let manager = ExplorationManager::new(self.explorations.clone(), self.bus.clone());
+        manager.active_count().await
+    }
+
     // ========================================================================
     // Reputation Pipeline
     // ========================================================================
@@ -241,6 +247,12 @@ impl LearningCoordinator {
     pub async fn get_reputation(&self, source: &str) -> Option<f64> {
         let manager = ReputationManager::new(self.reputations.clone(), self.bus.clone());
         manager.get_reputation(source).await
+    }
+
+    /// Number of sources with active reputation records (Architecture §12).
+    pub async fn active_reputation_count(&self) -> usize {
+        let manager = ReputationManager::new(self.reputations.clone(), self.bus.clone());
+        manager.active_count().await
     }
 
     // ========================================================================

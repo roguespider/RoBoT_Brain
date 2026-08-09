@@ -19,8 +19,8 @@ pub use tools::McpTool;
 
 use serde::{Deserialize, Serialize};
 
-/// MCP protocol version
-pub const MCP_VERSION: &str = "2024-11-05";
+/// MCP protocol version (server negotiates 2025-03-26 via the rmcp crate)
+pub const MCP_VERSION: &str = "2025-03-26";
 
 /// Initialize request parameters
 #[derive(Debug, Clone, Serialize, Deserialize)]

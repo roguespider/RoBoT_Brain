@@ -139,9 +139,9 @@ impl ToolHandler for PlannerToolsHandler {
                     "properties": {
                         "plan_id": { "type": "string", "description": "Plan ID" },
                         "description": { "type": "string", "description": "Step description" },
-                        "expected_duration": { "type": "number", "description": "Expected duration in minutes" }
+                        "action": { "type": "string", "description": "Action to perform for this step" }
                     },
-                    "required": ["plan_id", "description"]
+                    "required": ["plan_id", "description", "action"]
                 })),
             ).with_title("Add Plan Step"),
             rmcp::model::Tool::new(

@@ -131,6 +131,51 @@ pub async fn run_comprehensive_tests(
         crate::teeprintln!("    - {}: {} tests", category, count);
     }
 
+    // Coverage cross-check: diff the tools the server actually exposes (via
+    // tools/list) against the tools the FunctionRegistry exercises. Any server
+    // tool with no matching test requirement is a coverage gap — a tool that
+    // could break without the suite noticing.
+    crate::teeprintln!("\n  🔎 TOOL COVERAGE ANALYSIS");
+    let server_tool_names: Vec<String> = match client.list_tools().await {
+        Ok(tools) => tools
+            .iter()
+            .filter_map(|t| t.get("name").and_then(|n| n.as_str()).map(|s| s.to_string()))
+            .collect(),
+        Err(e) => {
+            crate::teeprintln!("    ⚠️  Could not retrieve server tool list for coverage check: {}", e);
+            Vec::new()
+        }
+    };
+    let tested_tool_names: Vec<String> = requirements
+        .iter()
+        .map(|r| r.function_name.clone())
+        .collect();
+    let coverage = crate::test_results::CoverageReport::new(server_tool_names, tested_tool_names);
+    crate::teeprintln!(
+        "    Server exposes {} tools; registry tests {} (coverage {:.1}%)",
+        coverage.server_tool_count(),
+        coverage.tested_tool_count(),
+        coverage.coverage_percent()
+    );
+    if coverage.has_gap() {
+        crate::teeprintln!(
+            "    ⚠️  {} server tool(s) have NO test: {}",
+            coverage.untested_count(),
+            coverage.untested_tools.join(", ")
+        );
+    }
+    if !coverage.phantom_tools.is_empty() {
+        crate::teeprintln!(
+            "    ℹ️  {} registry tool(s) not exposed by server: {}",
+            coverage.phantom_count(),
+            coverage.phantom_tools.join(", ")
+        );
+    }
+    if !coverage.has_gap() && coverage.phantom_tools.is_empty() {
+        crate::teeprintln!("    ✅ Tool coverage is complete — every server tool is tested");
+    }
+    report.set_coverage(coverage);
+
     // Step 3: Run all tests
     crate::teeprintln!("\n🧪 PHASE 3: RUNNING END-TO-END TESTS");
     crate::teeprintln!("{}", "─".repeat(100));

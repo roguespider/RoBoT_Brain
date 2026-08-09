@@ -7,6 +7,8 @@
 //! - `code_issues`: Code quality issues display
 
 pub mod code_issues;
+pub mod consolidated;
+pub mod coverage;
 pub mod summary;
 pub mod tables;
 pub mod test_display;
@@ -23,6 +25,9 @@ impl TestReport {
 
         // Summary statistics
         self.print_summary();
+
+        // Tool coverage section (server tools vs tested tools)
+        self.print_coverage();
 
         // Code quality issues section
         if !self.code_issues.is_empty() {
@@ -44,6 +49,11 @@ impl TestReport {
 
         // Full test table
         self.print_full_table();
+
+        // Consolidated issues view (all problem kinds in one place)
+        if self.has_issues() {
+            self.print_consolidated_issues();
+        }
 
         // Final verdict
         self.print_verdict();

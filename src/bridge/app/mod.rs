@@ -14,7 +14,7 @@ pub use state::App;
 pub use personality::{
     adapt_personality, apply_personality_preset, get_communication_style, get_personality_preset,
     get_personality_success_rate, get_personality_timeout, get_personality_traits, list_personality_presets,
-    personality, should_explore, should_take_risk, should_use_creativity,
+    personality, set_personality_traits, should_explore, should_take_risk, should_use_creativity,
 };
 
 // Re-export ACP methods

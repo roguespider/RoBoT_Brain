@@ -29,7 +29,7 @@ impl<'a> KnowledgeMethods<'a> {
             experience.id,
         );
 
-        let _ = self.knowledge_store.add(knowledge).await;
+        let added_id = self.knowledge_store.add(knowledge).await;
 
         // Publish KnowledgeUpdated event
         let event = ExperienceEvent::knowledge_updated(Uuid::new_v4());
@@ -38,6 +38,10 @@ impl<'a> KnowledgeMethods<'a> {
             tracing::warn!("Failed to publish knowledge event: {}", e);
         }
 
+        // Record knowledge promotion metric (Architecture §22 observability).
+        self.metrics.increment("knowledge.created").await;
+
+        tracing::debug!("Promoted experience {} to knowledge {}", experience.id, added_id);
         Ok(())
     }
 

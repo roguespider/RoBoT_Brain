@@ -11,8 +11,12 @@ use tracing::info;
 
 use super::capabilities::McpCapabilities;
 use super::error::McpError;
+use super::info::{McpClientInfo, McpServerInfo};
 use super::message::{McpMessage, McpNotification, McpRequest, McpResponse};
+use super::prompts::{McpPrompt, McpPromptArgument};
+use super::resources::McpResource;
 use super::tools::McpTool;
+use super::{InitializeParams, MCP_VERSION};
 
 /// Run the MCP types self-check. Returns the number of checks that passed.
 pub fn run() -> usize {
@@ -71,9 +75,50 @@ pub fn run() -> usize {
         checks_passed += 1;
     }
 
+    // 6. McpClientInfo / McpServerInfo constructors (Architecture §8).
+    checks_total += 1;
+    let client_info = McpClientInfo::new("self-check-client", "0.1.0");
+    let server_info = McpServerInfo::new("robot_brain", "0.1.0");
+    if client_info.name == "self-check-client" && server_info.name == "robot_brain" {
+        checks_passed += 1;
+    }
+
+    // 7. InitializeParams::new wires MCP_VERSION + capabilities + client
+    // info (Architecture §8 initialization handshake).
+    checks_total += 1;
+    let init = InitializeParams::new(client_info.clone());
+    if init.protocol_version == MCP_VERSION {
+        checks_passed += 1;
+    }
+
+    // 8. McpPrompt / McpPromptArgument constructors (Architecture §8 prompts).
+    checks_total += 1;
+    let prompt_arg = McpPromptArgument::new("topic", true);
+    let prompt = McpPrompt {
+        name: "summarize".to_string(),
+        description: Some("Summarize a topic".to_string()),
+        arguments: vec![prompt_arg],
+    };
+    if prompt.arguments.len() == 1 && prompt.arguments[0].required {
+        checks_passed += 1;
+    }
+
+    // 9. McpResource::new (Architecture §8 resources).
+    checks_total += 1;
+    let resource = McpResource::new("memory://recent", "Recent memories");
+    if resource.uri == "memory://recent" && resource.mime_type.is_none() {
+        checks_passed += 1;
+    }
+
     info!(
-        "MCP types self-check: {}/{} checks passed",
-        checks_passed, checks_total
+        "MCP types self-check: {}/{} checks passed, init_version={}, client={}, server={}, prompt={}, resource={}",
+        checks_passed,
+        checks_total,
+        init.protocol_version,
+        client_info.name,
+        server_info.name,
+        prompt.name,
+        resource.uri
     );
     checks_passed
 }

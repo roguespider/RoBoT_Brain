@@ -17,12 +17,18 @@ fn binary_name() -> &'static str {
     }
 }
 
-/// Candidate project-root locations, evaluated relative to the current
-/// working directory. The test suite is normally run from `test_suite/`, so
-/// `..` is the expected root; `.` covers running directly from the root.
+/// Candidate project-root locations, evaluated by walking up from the current
+/// working directory to its ancestors. This handles being run from any
+/// subdirectory (e.g. `test_suite/target/release/`), not just `test_suite/`.
 fn root_candidates() -> Vec<PathBuf> {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
-    vec![cwd.join(".."), cwd.clone()]
+    let mut candidates = Vec::new();
+    let mut current: Option<&Path> = Some(cwd.as_path());
+    while let Some(dir) = current {
+        candidates.push(dir.to_path_buf());
+        current = dir.parent();
+    }
+    candidates
 }
 
 /// True when a directory looks like the robot_brain project root: it either
@@ -59,19 +65,17 @@ fn read_package_name(cargo_toml: &Path) -> Option<String> {
 
 /// Resolve the robot_brain project root directory at runtime.
 ///
-/// Returns the first candidate directory that looks like the project root,
-/// falling back to `cwd/..` (the standard test_suite layout) so that
-/// `build_server` can still construct the binary if it has not been built yet.
+/// Walks up from the current working directory to the filesystem root and
+/// returns the first ancestor that looks like the project root. Falls back to
+/// `cwd` so `build_server` can still construct a path if no root is detected.
 pub fn project_root() -> PathBuf {
     for candidate in root_candidates() {
         if is_robot_brain_root(&candidate) {
             return candidate;
         }
     }
-    // Fallback: assume the canonical layout (run from test_suite/).
-    std::env::current_dir()
-        .unwrap_or_else(|_| PathBuf::from("."))
-        .join("..")
+    // Fallback: assume the current working directory is within the project.
+    std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."))
 }
 
 /// Resolve the directory the test suite itself lives in.

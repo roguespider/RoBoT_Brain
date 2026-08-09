@@ -36,12 +36,16 @@ impl<'a> HypothesisMethods<'a> {
         let hypothesis = self.create_hypothesis_from_experience(experience).await;
 
         if let Some(h) = hypothesis {
-            hypothesis_ids.push(h.id.0.clone());
-            tracing::info!(
-                "Generated hypothesis {} from experience {}",
-                h.id.0,
-                experience.id
-            );
+            // Only retain hypotheses that clear the validation threshold
+            // configured for this coordinator (Architecture §11).
+            if h.confidence.value >= self.config.hypothesis_validation_threshold {
+                hypothesis_ids.push(h.id.0.clone());
+                tracing::info!(
+                    "Generated hypothesis {} from experience {}",
+                    h.id.0,
+                    experience.id
+                );
+            }
         }
 
         // Publish HypothesisGenerated event
@@ -49,6 +53,13 @@ impl<'a> HypothesisMethods<'a> {
         let publish_result = self.bus.publish(event);
         if let Err(e) = publish_result {
             tracing::warn!("Failed to publish hypothesis event: {}", e);
+        }
+
+        // Record hypothesis generation metric (Architecture §22 observability).
+        if !hypothesis_ids.is_empty() {
+            self.metrics
+                .increment(crate::experience::metrics::metric_names::HYPOTHESES_GENERATED)
+                .await;
         }
 
         Ok(hypothesis_ids)

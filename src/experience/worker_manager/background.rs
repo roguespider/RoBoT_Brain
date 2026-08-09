@@ -16,6 +16,10 @@ pub fn start_worker_manager(
     tokio::spawn(async move {
         let mut receiver = bus.subscribe();
         tracing::info!("Worker manager started, listening for events");
+        tracing::debug!(
+            "Event bus subscriber count: {}",
+            bus.subscriber_count()
+        );
 
         loop {
             match receiver.recv().await {
@@ -34,5 +38,6 @@ pub fn start_worker_manager(
                 }
             }
         }
+        bus.unsubscribe();
     })
 }

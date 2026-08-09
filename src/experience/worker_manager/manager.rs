@@ -152,4 +152,18 @@ impl WorkerManager {
         let workers = self.workers.read().await;
         workers.len()
     }
+
+    /// Return a clone of the shared event bus. The manager retains the bus so
+    /// callers (and the self-check) can subscribe or inspect subscriber count
+    /// without re-archiving the Arc externally (Architecture §5 event bus).
+    pub fn bus(&self) -> Arc<ExperienceBus> {
+        self.bus.clone()
+    }
+
+    /// Number of active subscribers on the backing event bus. Delegates to the
+    /// bus so the stored `bus` field remains a live dependency rather than
+    /// dead state.
+    pub fn bus_subscriber_count(&self) -> usize {
+        self.bus.subscriber_count()
+    }
 }

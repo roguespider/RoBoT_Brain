@@ -152,10 +152,10 @@ impl ToolHandler for HypothesisToolsHandler {
                     "type": "object",
                     "properties": {
                         "content": { "type": "string", "description": "What was observed" },
-                        "observation_type": { "type": "string", "description": "Type: success, failure, pattern, anomaly" },
-                        "context": { "type": "string", "description": "Context or circumstances" }
+                        "context": { "type": "string", "description": "Context or circumstances of the observation" },
+                        "observation_type": { "type": "string", "description": "Type: success, failure, pattern, anomaly" }
                     },
-                    "required": ["content", "observation_type"]
+                    "required": ["content", "context", "observation_type"]
                 })),
             ).with_title("Record Observation"),
             rmcp::model::Tool::new(
@@ -166,9 +166,9 @@ impl ToolHandler for HypothesisToolsHandler {
                     "properties": {
                         "statement": { "type": "string", "description": "The hypothesis statement" },
                         "domain": { "type": "string", "description": "Domain/category" },
-                        "source_observations": { "type": "array", "items": { "type": "string" }, "description": "Observation IDs" }
+                        "source_observations": { "type": "array", "items": { "type": "string" }, "description": "Observation IDs that informed this hypothesis" }
                     },
-                    "required": ["statement", "domain"]
+                    "required": ["statement", "domain", "source_observations"]
                 })),
             ).with_title("Create Hypothesis"),
             rmcp::model::Tool::new(
@@ -179,11 +179,11 @@ impl ToolHandler for HypothesisToolsHandler {
                     "properties": {
                         "hypothesis_id": { "type": "string", "description": "ID of the hypothesis" },
                         "content": { "type": "string", "description": "Description of the evidence" },
-                        "direction": { "type": "string", "description": "support or contradict" },
                         "evidence_type": { "type": "string", "description": "Type: success, failure, correlation, anomaly" },
+                        "direction": { "type": "string", "description": "support or contradict" },
                         "strength": { "type": "number", "description": "Strength 0.0-1.0" }
                     },
-                    "required": ["hypothesis_id", "content", "direction"]
+                    "required": ["hypothesis_id", "content", "evidence_type", "direction", "strength"]
                 })),
             ).with_title("Add Evidence"),
             rmcp::model::Tool::new(

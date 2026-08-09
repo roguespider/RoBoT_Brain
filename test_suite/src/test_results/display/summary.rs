@@ -117,6 +117,23 @@ impl TestReport {
             ""
         );
 
+        crate::teeprintln!(
+            "│  {:<30} {:>15} {:>15} {:>15} {:>15} │",
+            "Tool Coverage:",
+            format!("{:.1}%", self.coverage.coverage_percent()),
+            "",
+            "",
+            ""
+        );
+        crate::teeprintln!(
+            "│  {:<30} {:>15} {:>15} {:>15} {:>15} │",
+            "Untested Tools:",
+            self.coverage.untested_count(),
+            "",
+            "",
+            ""
+        );
+
         crate::teeprintln!("└{:─<98}┘", "");
     }
 
@@ -127,7 +144,8 @@ impl TestReport {
         let all_passed = self.all_passed();
         let no_code_issues = self.code_issues.is_empty();
         let no_lint_issues = self.lint_errors == 0 && self.lint_warnings == 0;
-        let overall_success = all_passed && no_code_issues && no_lint_issues;
+        let no_coverage_gap = !self.coverage.has_gap() && self.coverage.phantom_tools.is_empty();
+        let overall_success = all_passed && no_code_issues && no_lint_issues && no_coverage_gap;
 
         if overall_success {
             crate::teeprintln!(
@@ -144,6 +162,7 @@ impl TestReport {
             crate::teeprintln!("│  ✅ No #[allow(*)] annotations that hide issues");
             crate::teeprintln!("│  ✅ All sub-functions complete and working");
             crate::teeprintln!("│  ✅ No compiler errors or warnings");
+            crate::teeprintln!("│  ✅ Full tool coverage (every server tool tested)");
             crate::teeprintln!("│");
         } else {
             crate::teeprintln!(
@@ -176,6 +195,15 @@ impl TestReport {
                 crate::teeprintln!("│     See compiler errors & warnings section above");
             }
 
+            if !no_coverage_gap {
+                crate::teeprintln!(
+                    "│  🔎 {} server tool(s) untested (coverage {:.1}%)",
+                    self.coverage.untested_count(),
+                    self.coverage.coverage_percent()
+                );
+                crate::teeprintln!("│     See tool coverage section above for the list");
+            }
+
             crate::teeprintln!("│");
             crate::teeprintln!("│  Required actions:");
             let mut action_num = 1;
@@ -196,6 +224,13 @@ impl TestReport {
             }
             if !no_lint_issues {
                 crate::teeprintln!("│    {}. Fix compiler errors and warnings", action_num);
+                action_num += 1;
+            }
+            if !no_coverage_gap {
+                crate::teeprintln!(
+                    "│    {}. Add test requirements for untested server tools",
+                    action_num
+                );
             }
             crate::teeprintln!("│");
         }

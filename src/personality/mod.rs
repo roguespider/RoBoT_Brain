@@ -361,17 +361,30 @@ impl Personality {
     /// Make a decision based on context and personality
     pub fn decide(&self, context: &DecisionContext) -> Decision {
         let approach = self.determine_approach();
-        let should_act = self.should_take_risk(context.potential_gain, context.potential_loss);
-        let _ = self.should_explore(context.confidence);
+        // Time pressure and uncertainty tilt toward faster, more cautious
+        // choices (Architecture: Personality System).
+        let time_pressure = context.time_available < 5;
+        let should_explore = self.should_explore(context.confidence);
+        let mut should_act =
+            self.should_take_risk(context.potential_gain, context.potential_loss);
+
+        // High uncertainty with limited time favors caution.
+        if context.uncertainty > 0.7 && time_pressure {
+            should_act = false;
+        }
 
         let reason = format!(
-            "Based on {} personality (curiosity={:.2}, caution={:.2}, risk={:.2}): {}",
+            "Based on {} personality (curiosity={:.2}, caution={:.2}, risk={:.2}, uncertainty={:.2}, time={}s): {}",
             self.current_preset,
             self.traits.curiosity,
             self.traits.caution,
             self.traits.risk_tolerance,
+            context.uncertainty,
+            context.time_available,
             if should_act {
                 "choosing to act"
+            } else if should_explore {
+                "exploring cautiously"
             } else {
                 "choosing caution"
             }
@@ -416,6 +429,8 @@ impl Default for Personality {
         Self::new()
     }
 }
+
+pub mod self_check;
 
 #[cfg(test)]
 mod tests {
