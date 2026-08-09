@@ -18,6 +18,7 @@ use crate::experience::event_handler::EventHandler;
 use crate::experience::evolution::EvolutionEngine;
 use crate::experience::hypothesis::HypothesisEngine;
 use crate::experience::integration::event_subscriber::{start_event_subscriber, EventSubscriber};
+use crate::experience::integration::learning_coordinator::LearningCoordinator;
 
 use super::acp::{
     acp_agent_count, acp_registry, acp_router, list_acp_agents, route_acp_message,
@@ -151,6 +152,24 @@ impl App {
         skills_registry.load_defaults().await;
         tracing::info!("Skills registry initialized with default skills");
 
+        // Create the Learning Coordinator - the main orchestrator for the
+        // learning pipeline (Architecture §9 / §4.04):
+        // Experience → Reflection → Hypothesis → Validation → Knowledge → Reputation
+        // It wires together reflection, hypothesis, knowledge, reputation and
+        // exploration subsystems and drives generalization/transfer learning.
+        let learning_coordinator = Arc::new(
+            LearningCoordinator::new(
+                reflection_engine.clone(),
+                hypothesis_engine_for_subscriber.clone(),
+                knowledge_store.clone(),
+                bus.clone(),
+                metrics.clone(),
+            )
+            .with_database(database.clone())
+            .with_skill_registry(skills_registry.clone()),
+        );
+        tracing::info!("Learning coordinator initialized");
+
         // Create event subscriber for the learning pipeline
         // Per Architecture §4.04: Experience → Reflection → Hypothesis → Knowledge → Reputation
         let event_subscriber = Arc::new(EventSubscriber::with_coordinator(
@@ -209,6 +228,7 @@ impl App {
             evolution_engine.clone(),
             metrics.clone(),
             database.clone(),
+            learning_coordinator.clone(),
         )
         .await;
 

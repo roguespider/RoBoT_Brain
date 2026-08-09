@@ -74,6 +74,16 @@ pub async fn setup_scheduler(database: Arc<SqliteDatabase>) -> Result<Arc<Schedu
         )
         .await?;
 
+    // Schedule learning coordinator maintenance (every 2 hours)
+    // Per Architecture §9: drives generalization, transfer learning and decay.
+    scheduler
+        .create_task(
+            "learning_maintenance",
+            TaskType::LearningMaintenance,
+            TaskSchedule::Interval { seconds: 7200 },
+        )
+        .await?;
+
     Ok(scheduler)
 }
 
@@ -86,6 +96,7 @@ pub async fn register_task_handlers(
     evolution_engine: Arc<EvolutionEngine>,
     metrics: Arc<MetricsCollector>,
     database: Arc<SqliteDatabase>,
+    learning_coordinator: Arc<crate::experience::integration::learning_coordinator::LearningCoordinator>,
 ) {
     use crate::experience::scheduler::TaskType;
 
@@ -373,5 +384,129 @@ pub async fn register_task_handlers(
         )
         .await;
 
-    tracing::info!("Registered {} task handlers", 9);
+    // Learning coordinator maintenance handler - runs generalization, transfer
+    // learning and decay across the learning pipeline (Architecture §9).
+    let learning_coordinator_clone = learning_coordinator.clone();
+    let database_learning = database.clone();
+    scheduler
+        .register_handler(
+            TaskType::LearningMaintenance,
+            Box::new(move || {
+                let coordinator = learning_coordinator_clone.clone();
+                let database = database_learning.clone();
+                Box::pin(async move {
+                    tracing::info!("Executing scheduled learning maintenance");
+
+                    match coordinator.run_maintenance().await {
+                        Ok(stats) => {
+                            tracing::info!(
+                                "Learning maintenance complete: {} hypotheses decayed, {} explorations archived, {} knowledge consolidated",
+                                stats.hypotheses_decayed,
+                                stats.explorations_archived,
+                                stats.knowledge_consolidated
+                            );
+                        }
+                        Err(e) => {
+                            tracing::error!("Learning maintenance failed: {}", e);
+                        }
+                    }
+
+                    // Process recent experiences through the full learning
+                    // pipeline (Architecture §9: Experience → Reflection →
+                    // Hypothesis → Validation → Knowledge → Reputation).
+                    let conn = database.connection();
+                    let recent: Vec<crate::experience::types::Experience> = match conn {
+                        Ok(c) => {
+                            crate::database::queries::list_experiences(&c, 20).unwrap_or_default()
+                        }
+                        Err(e) => {
+                            tracing::warn!("Could not open DB for learning processing: {}", e);
+                            Vec::new()
+                        }
+                    };
+                    // Extract common patterns across recent experiences
+                    // (Architecture §9: generalization).
+                    let patterns = coordinator.extract_patterns(&recent);
+                    if !patterns.is_empty() {
+                        tracing::info!(
+                            "Extracted {} common patterns from recent experiences",
+                            patterns.len()
+                        );
+                        for pattern in &patterns {
+                            tracing::debug!(
+                                "Pattern [{:?}] ({} sources, confidence {:.2}): {}",
+                                pattern.pattern_type,
+                                pattern.source_experience_count,
+                                pattern.confidence,
+                                pattern.description
+                            );
+                        }
+                    }
+
+                    for experience in &recent {
+                        match coordinator.process_experience_full(experience).await {
+                            Ok(result) => {
+                                tracing::debug!(
+                                    "Processed experience {} via learning pipeline (score {:.2}, {} hypotheses, knowledge={:?})",
+                                    result.experience_id,
+                                    result.score,
+                                    result.hypothesis_ids.len(),
+                                    result.knowledge_id
+                                );
+                                // Validate any hypotheses generated for this experience.
+                                for hypothesis_id in &result.hypothesis_ids {
+                                    match coordinator.validate_hypothesis(hypothesis_id).await {
+                                        Ok(validation) => {
+                                            tracing::debug!(
+                                                "Hypothesis {} validation: is_valid={}, confidence={:.2}, promoted={}",
+                                                validation.hypothesis_id,
+                                                validation.is_valid,
+                                                validation.confidence,
+                                                validation.promoted_to_knowledge
+                                            );
+                                            if validation.promoted_to_knowledge {
+                                                tracing::info!(
+                                                    "Hypothesis {} promoted to knowledge",
+                                                    validation.hypothesis_id
+                                                );
+                                            }
+                                        }
+                                        Err(e) => {
+                                            tracing::warn!(
+                                                "Hypothesis validation failed for {}: {}",
+                                                hypothesis_id,
+                                                e
+                                            );
+                                        }
+                                    }
+                                }
+                            }
+                            Err(e) => {
+                                tracing::warn!(
+                                    "Learning pipeline failed for experience {}: {}",
+                                    experience.id,
+                                    e
+                                );
+                            }
+                        }
+                    }
+
+                    let stats = coordinator.get_stats().await;
+                    tracing::info!(
+                        "Learning coordinator stats: {} reflections, {} insights ({} trusted), {} patterns, {} reputations, {} explorations",
+                        stats.total_reflections,
+                        stats.total_insights,
+                        stats.trusted_insights,
+                        stats.total_patterns,
+                        stats.active_reputations,
+                        stats.active_explorations
+                    );
+
+                    Ok(())
+                })
+            }),
+        )
+        .await;
+
+    tracing::info!("Registered {} task handlers", 10);
 }

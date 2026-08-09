@@ -98,6 +98,9 @@ pub enum TaskType {
     /// Checkpoint in-memory caches to database
     MemoryCheckpoint,
 
+    /// Run learning coordinator maintenance (generalization, transfer, decay)
+    LearningMaintenance,
+
     /// Custom task
     Custom,
 }

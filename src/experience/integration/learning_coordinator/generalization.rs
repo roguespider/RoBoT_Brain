@@ -60,7 +60,12 @@ impl<'a> GeneralizationMethods<'a> {
                     pattern.confidence,
                     Uuid::new_v4(),
                 );
-                let _ = self.knowledge_store.add(generalized_knowledge).await;
+                let new_id = self.knowledge_store.add(generalized_knowledge).await;
+                tracing::debug!(
+                    "Promoted pattern to knowledge {} (confidence {:.2})",
+                    new_id,
+                    pattern.confidence
+                );
                 result.generalized_knowledge_count += 1;
             }
         }
@@ -120,6 +125,53 @@ impl<'a> GeneralizationMethods<'a> {
                     pattern_type: PatternKind::Contextual,
                 });
             }
+        }
+
+        // Detect temporal patterns: experiences clustered in time often
+        // indicate a recurring workflow or seasonal effect.
+        let mut by_time: Vec<&Experience> = experiences.iter().collect();
+        by_time.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+        if by_time.len() >= 3 {
+            let first_ts = by_time.first().map(|f| f.timestamp.timestamp()).unwrap_or(0);
+            let last_ts = by_time.last().map(|l| l.timestamp.timestamp()).unwrap_or(0);
+            let span = last_ts - first_ts;
+            if span > 0 {
+                let density = by_time.len() as f64 / span as f64;
+                patterns.push(LearningPattern {
+                    description: format!(
+                        "{} experiences observed over {}s (density {:.4}/s)",
+                        by_time.len(),
+                        span,
+                        density
+                    ),
+                    confidence: (((1.0 / (1.0 + density)) * 0.5).min(1.0) as f32),
+                    source_experience_count: by_time.len(),
+                    pattern_type: PatternKind::Temporal,
+                });
+            }
+        }
+
+        // Detect causal patterns: a failure followed by a success in the
+        // same workflow suggests a corrective learning effect.
+        let mut causal_chains = 0usize;
+        for window in by_time.windows(2) {
+            if matches!(window[0].outcome.kind, OutcomeKind::Failure)
+                && matches!(window[1].outcome.kind, OutcomeKind::Success)
+            {
+                causal_chains += 1;
+            }
+        }
+        if causal_chains > 0 {
+            let confidence = (causal_chains as f32 / by_time.len() as f32).min(1.0);
+            patterns.push(LearningPattern {
+                description: format!(
+                    "{} failure→success transitions suggest corrective learning",
+                    causal_chains
+                ),
+                confidence,
+                source_experience_count: causal_chains,
+                pattern_type: PatternKind::Causal,
+            });
         }
 
         patterns
