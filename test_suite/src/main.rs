@@ -545,7 +545,7 @@ impl TestMcpClient {
             .send_request(
                 "initialize",
                 serde_json::json!({
-                    "protocolVersion": "2024-11-05",
+                    "protocolVersion": "2025-03-26",
                     "capabilities": { "tools": {} },
                     "clientInfo": { "name": "test_suite", "version": "1.0.0" }
                 }),

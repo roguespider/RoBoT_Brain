@@ -128,10 +128,10 @@ impl ToolHandler for ExplorationToolsHandler {
                 json_to_schema(serde_json::json!({
                     "type": "object",
                     "properties": {
-                        "topic": { "type": "string", "description": "Topic to explore" },
-                        "approach": { "type": "string", "description": "Exploration approach" }
+                        "title": { "type": "string", "description": "Title of the exploration" },
+                        "purpose": { "type": "string", "description": "Purpose or goal of the exploration" }
                     },
-                    "required": ["topic"]
+                    "required": ["title", "purpose"]
                 })),
             ).with_title("Start Exploration"),
             rmcp::model::Tool::new(
@@ -197,10 +197,11 @@ impl ToolHandler for ExplorationToolsHandler {
                     "type": "object",
                     "properties": {
                         "exploration_id": { "type": "string", "description": "Exploration ID" },
-                        "description": { "type": "string", "description": "What was attempted" },
-                        "result": { "type": "string", "description": "Result of the attempt" }
+                        "action": { "type": "string", "description": "Action that was attempted" },
+                        "expected_result": { "type": "string", "description": "Expected result of the action" },
+                        "actual_result": { "type": "string", "description": "Actual result that occurred" }
                     },
-                    "required": ["exploration_id", "description", "result"]
+                    "required": ["exploration_id", "action"]
                 })),
             ).with_title("Record Attempt"),
             rmcp::model::Tool::new(
@@ -210,9 +211,10 @@ impl ToolHandler for ExplorationToolsHandler {
                     "type": "object",
                     "properties": {
                         "exploration_id": { "type": "string", "description": "Exploration ID" },
-                        "hypothesis": { "type": "string", "description": "Hypothesis statement" }
+                        "statement": { "type": "string", "description": "Hypothesis statement" },
+                        "initial_confidence": { "type": "number", "description": "Initial confidence 0.0-1.0" }
                     },
-                    "required": ["exploration_id", "hypothesis"]
+                    "required": ["exploration_id", "statement"]
                 })),
             ).with_title("Add Hypothesis"),
             rmcp::model::Tool::new(
