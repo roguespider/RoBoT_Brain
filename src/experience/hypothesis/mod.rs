@@ -78,8 +78,45 @@ impl HypothesisEngine {
         let related_hypotheses = self.find_related_hypotheses(&insights);
         
         // 3. Evaluate evidence and update graph relationships
+        use crate::experience::hypothesis::core::evidence::{
+            Evidence, EvidenceRelationship, EvidenceSource, EvidenceStrength,
+        };
+        use crate::experience::hypothesis::core::hypothesis::Hypothesis;
+
+        let outcome_relationship = match experience.outcome.kind {
+            crate::experience::types::OutcomeKind::Success => EvidenceRelationship::Supports,
+            crate::experience::types::OutcomeKind::Failure => EvidenceRelationship::Contradicts,
+            _ => EvidenceRelationship::Neutral,
+        };
+
         for insight in &insights {
             let hypothesis_id = self.find_or_create_hypothesis(insight)?;
+
+            // Build evidence from this experience outcome and run the evaluator
+            // to update hypothesis confidence (Architecture step 3).
+            let mut hypothesis = Hypothesis::new(insight.clone(), insight.clone());
+            hypothesis.id = hypothesis_id.clone();
+
+            let mut evidence = Evidence::new(insight.clone(), outcome_relationship);
+            evidence.source = EvidenceSource::Experience;
+            evidence.strength = EvidenceStrength::Moderate;
+            evidence.experience_id = Some(experience.id.to_string());
+            // Confidence scales with experience score when available.
+            if let Some(ref score) = experience.score {
+                evidence.set_confidence(score.confidence);
+            }
+            evidence.add_tag(format!("outcome:{:?}", experience.outcome.kind));
+
+            let result = self.evaluator.evaluate(&mut hypothesis, &evidence);
+            if result.changed {
+                tracing::debug!(
+                    "Hypothesis {} confidence updated: {:.3} -> {:.3} ({:?})",
+                    result.hypothesis_id.0,
+                    result.previous_confidence,
+                    result.new_confidence,
+                    result.relationship
+                );
+            }
             
             // Create support/contradiction relationships in graph
             for related_id in &related_hypotheses {
@@ -225,18 +262,13 @@ impl HypothesisEngine {
         }
     }
 
-    /// Observe an experience (for observer pattern)
-    pub fn observe(&self, experience: &Experience) -> Result<()> {
-        tracing::debug!("HypothesisEngine observing experience: {}", experience.id);
-        Ok(())
-    }
-
     /// Perform periodic maintenance.
     pub fn maintenance(&mut self) -> Result<()> {
         tracing::info!("Running hypothesis engine maintenance");
         
         {
-            let graph_result = self.graph.lock();
+            let graph = self.get_graph();
+            let graph_result = graph.lock();
             match graph_result {
                 Ok(graph) => {
                     let cycles = graph.detect_cycles();

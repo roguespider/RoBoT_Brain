@@ -56,18 +56,12 @@ impl HypothesisEvaluator {
     pub fn evaluate(&self, hypothesis: &mut Hypothesis, evidence: &Evidence) -> EvaluationResult {
         let previous_confidence = hypothesis.confidence.value;
 
-        match evidence.relationship {
-            EvidenceRelationship::Supports => {
-                self.apply_support(hypothesis, evidence);
-            }
-
-            EvidenceRelationship::Contradicts => {
-                self.apply_contradiction(hypothesis, evidence);
-            }
-
-            EvidenceRelationship::Neutral => {
-                hypothesis.evaluations += 1;
-            }
+        if evidence.supports() {
+            self.apply_support(hypothesis, evidence);
+        } else if evidence.contradicts() {
+            self.apply_contradiction(hypothesis, evidence);
+        } else if evidence.neutral() {
+            hypothesis.evaluations += 1;
         }
 
         self.update_status(hypothesis);

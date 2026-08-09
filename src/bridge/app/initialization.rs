@@ -73,8 +73,15 @@ impl App {
 
         // Create learning engines first (needed for observers)
         let reflection_engine = Arc::new(ReflectionEngine::new());
-        let hypothesis_engine_for_subscriber = Arc::new(HypothesisEngine::new());
-        let hypothesis_engine = Arc::new(Mutex::new(HypothesisEngine::new()));
+        // Both the subscriber-side and scheduler-side hypothesis engines share
+        // a single hypothesis graph so observations and maintenance stay consistent.
+        let shared_graph: Arc<Mutex<crate::experience::hypothesis::support::graph::HypothesisGraph>> =
+            Arc::new(Mutex::new(
+                crate::experience::hypothesis::support::graph::HypothesisGraph::new(),
+            ));
+        let hypothesis_engine_for_subscriber =
+            Arc::new(HypothesisEngine::with_graph(Arc::clone(&shared_graph)));
+        let hypothesis_engine = Arc::new(Mutex::new(HypothesisEngine::with_graph(shared_graph)));
         let evolution_engine = Arc::new(EvolutionEngine::new());
         let metrics = Arc::new(MetricsCollector::new());
 
