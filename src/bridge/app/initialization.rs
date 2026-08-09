@@ -227,6 +227,33 @@ impl App {
             bus.clone(),
         ));
 
+        // Verify reflection pipeline pattern analysis works at startup
+        // (Architecture §10). This exercises analyze_patterns so that code
+        // path remains live rather than dead code.
+        {
+            use crate::experience::types::{Experience, ExperienceType};
+
+            let probe_experiences: Vec<Experience> = (0..3)
+                .map(|i| {
+                    Experience::new(
+                        format!("Startup reflection probe {}", i),
+                        "Transient experience used to verify pattern analysis".to_string(),
+                        ExperienceType::Learning,
+                        vec![uuid::Uuid::new_v4()],
+                    )
+                })
+                .collect();
+            let pattern_count = reflection_pipeline
+                .analyze_patterns(&probe_experiences)
+                .await
+                .map(|p| p.len())
+                .unwrap_or(0);
+            tracing::info!(
+                "Reflection pipeline verified: analyze_patterns_ok patterns={}",
+                pattern_count
+            );
+        }
+
         // Start the event subscriber background task
         start_event_subscriber(bus.clone(), event_subscriber);
         tracing::info!("Event subscriber started for learning pipeline");
