@@ -237,3 +237,146 @@ agent = Agent(
 ```
 
 This allows OpenHands to use robot_brain alongside other tools, focusing on specific capabilities as needed.
+
+---
+
+## Roadmap to v2.0 (Architecture Conformance Work)
+
+This section records the gap between the current `robot_brain` implementation and
+`robot_architecture/v0.0.1/ARCHITECTURE.md`, derived from a wiring audit of the
+live runtime. It is the work needed before the project can be called v2.0.
+
+The architecture describes RoBoT as a **continuously self-improving cognitive
+loop**: `Observe → Understand → Predict → Act → Learn → Improve`. The current
+build realizes the *structure* (every subsystem module exists) and produces real
+learning *when fed*, but the loop is **reactive**, not autonomous: it advances
+only on MCP tool calls and scheduler ticks. The tasks below close that gap.
+
+Tasks are ordered by impact. Each references the architecture chapter it
+satisfies and the concrete file(s) to change.
+
+### P0 — Make the §4.04 event spine actually drive learning
+
+The centerpiece event chain is currently only partly wired:
+
+```
+ExperienceRecorded → Reflection → Hypothesis → Knowledge → Reputation
+```
+
+The `WorkerManager` observers (scorer, reputation, hypothesis, metrics) DO real
+work on events. But `EventSubscriber` — the component the doc calls "the main
+coordinator that wires events to learning subsystems" — is currently a
+metrics/reputation relay: `on_experience_recorded` re-publishes an event and
+increments a counter instead of invoking the learning pipeline.
+
+- [ ] **TASK-V2-01: Wire `EventSubscriber.on_experience_recorded` to call
+  `LearningCoordinator.process_experience_full`.**
+  File: `src/experience/integration/event_subscriber/handlers.rs`.
+  `EventSubscriber` already holds `reflection_engine`, `hypothesis_engine`, and
+  `knowledge_store` (see `mod.rs`), but NOT a `LearningCoordinator`. Either give
+  it an `Arc<LearningCoordinator>` (preferred, matches §4.04 single-driver
+  intent) or compose the same engines inline. The handler must run the full
+  Score → Reflect → Hypothesize → Knowledge-promote path per event, not just
+  re-emit. Satisfies §4.04, §5.6.
+- [ ] **TASK-V2-02: Remove the redundant event echo.**
+  `ExperienceCoordinator::record_experience` (in `src/experience/coordinator.rs`)
+  publishes `ExperienceRecorded` on receipt of `ExperienceRecorded`, creating an
+  echo loop that is only safe because handlers are idempotent. After V2-01, the
+  subscriber should consume the event once and drive learning; the coordinator
+  should publish `Scored`/`ExperienceRecorded` exactly once at the *input* edge
+  (MCP tool / recorder), not re-echo on receipt.
+- [ ] **TASK-V2-03: Make `on_reflection_completed`, `on_hypothesis_generated`,
+  `on_hypothesis_validated`, `on_knowledge_updated` actually advance the next
+  stage** instead of only incrementing metrics. Today these handlers mostly
+  `tracing::debug!` + bump counters. Each should invoke the next subsystem in
+  the chain (reflection→hypothesis, hypothesis→exploration, validation→knowledge
+  update, knowledge→reputation adjust). Satisfies §4.04, §5.10.
+
+### P1 — Close the cognitive loop (Act → New Experience)
+
+The architecture's loop ends with `Act → New Experience → Learn`. RoBoT has no
+actuators — "Action" today means "return a tool result to the MCP client." There
+is no autonomous agent that decides to act and generates its own experiences.
+
+- [ ] **TASK-V2-04: Add a goal-driven agent loop.** A component that, given a
+  goal, uses the Planner → Memory retrieval → Knowledge retrieval → Experience
+  retrieval → confidence evaluation → action selection path (§5.7 Decision
+  Flow), then records the outcome as a new experience (closing the loop).
+  This is the single biggest missing piece to realize the vision chapter. Likely
+  a new `src/agent/` module driving the existing planner/workflow engines.
+- [ ] **TASK-V2-05: Record outcomes of MCP tool executions as experiences
+  automatically.** Today `record_experience` is a manually-invoked tool. Every
+  tool execution that produces an outcome should emit an `ExperienceRecorded`
+  event so the learning loop advances without the caller explicitly recording.
+  Satisfies §2.04 ("Everything Important Becomes an Experience") and the loop
+  closure in §5.8.
+
+### P2 — Implement the stub architecture chapters
+
+These chapters are placeholder bullet lists in `ARCHITECTURE.md` itself and have
+no/minimal implementation:
+
+- [ ] **TASK-V2-06: World Model (Chapter 14).** Objects, places, people, events,
+  time, goals, relationships, resources. "Memory stores facts. World Model
+  stores understanding." Currently no `src/world_model/` module. This is called
+  out in the doc as "one of the biggest missing pieces."
+- [ ] **TASK-V2-07: Safety layer (Chapter 16).** Sandboxing, permission checks,
+  confidence thresholds for acting, rollback, hallucination handling,
+  uncertainty reporting. Currently no safety gating on actions. Required before
+  an autonomous loop (V2-04) is safe to run.
+- [ ] **TASK-V2-08: Expand Personality beyond style (Chapter 13).** Current
+  `src/personality/` has traits + communication style + a basic `decide()`. The
+  doc wants speaking style, preferences, humor, curiosity, emotional weighting,
+  interaction policies. Emotional weighting should feed confidence/decision
+  scoring, not just text formatting.
+
+### P3 — Reduce reliance on self-check probes
+
+Much of the code surface is currently kept live only by startup self-check
+probes (the lint-cleanup work), not by real runtime traffic. This signals the
+production wiring is thinner than the code.
+
+- [ ] **TASK-V2-09: Audit each `self_check.rs` and either (a) remove it because
+  the path is now exercised by real wiring from P0/P1, or (b) convert it to a
+  real integration test in `test_suite/`.** A self-check that exists only to
+  silence dead-code warnings is a smell; the goal is that every public API is
+  exercised by genuine runtime or test-suite traffic.
+- [ ] **TASK-V2-10: Finish the remaining ~10 compiler warnings** (down from 118)
+  across `bridge/mcp/client`, `bridge/mcp/handlers`, `bridge/mcp/context`,
+  `bridge/app/state`, `bridge/tools/ingestor`, `experience/integration/
+  hypothesis_pipeline`. Apply the Dead Code Resolution Protocol: implement if
+  the architecture describes the feature, delete if deprecated.
+
+### P4 — Performance & operational maturity (Chapter 17)
+
+- [ ] **TASK-V2-11: Document and enforce threading/queue/async/cache/indexing
+  strategy.** The doc lists these as future work; before v2 they need explicit
+  design, especially the broadcast channel lag handling (the subscriber already
+  logs `Lagged` events) and the in-memory `JobQueue` → SQLite-backed queue
+  migration noted in `initialization.rs`.
+- [ ] **TASK-V2-12: Add metrics/observability for the learning loop itself**
+  (not just experience counts): reflection→hypothesis→knowledge promotion
+  throughput, loop latency, confidence drift. The `MetricsCollector` exists but
+  mostly tracks counters, not loop health.
+
+### Definition of Done for v2.0
+
+- The §4.04 event chain runs end-to-end on a single `ExperienceRecorded` event
+  without scheduler intervention (P0).
+- A goal can be given to the agent loop and it produces, acts, and records a new
+  experience autonomously (P1).
+- World Model + Safety gating exist and gate the autonomous loop (P2).
+- No self-check exists purely to silence dead-code warnings (P3).
+- The test suite passes with 0 warnings and 0 code-quality issues (P3/P4).
+
+### Current state (as of this audit)
+
+- Warning count: 10 (down from 118).
+- test_suite: 333 passed, 0 failed, 5 skipped; 1 code-quality issue (known
+  false positive on `ExperienceObserver` import).
+- Event bus + WorkerManager observers: live and doing real cognitive work.
+- EventSubscriber: relay only (P0 work).
+- Scheduler: drives `process_experience_full` + `validate_hypothesis` +
+  `promote_to_knowledge` every 2h (`LearningMaintenance`, 7200s) — this is the
+  only current path by which knowledge is autonomously earned.
+- No agent/actuator layer; loop is open (P1 work).
