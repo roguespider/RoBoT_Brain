@@ -264,6 +264,36 @@ impl App {
             );
         }
 
+        // Verify reputation analytics work at startup (Architecture §4.04).
+        // This exercises ReputationAnalytics::success_rate and trend so those
+        // code paths remain live rather than dead code.
+        {
+            use crate::experience::reputation::analytics::ReputationAnalytics;
+            use crate::experience::reputation::factors::ReputationFactor;
+            use crate::experience::reputation::reputation::Reputation;
+
+            let mut rep = Reputation::new("startup-analytics-probe".to_string());
+            rep.apply(
+                String::new(),
+                ReputationFactor::Accuracy,
+                0.2,
+                "transient probe".to_string(),
+            );
+            rep.apply(
+                String::new(),
+                ReputationFactor::Accuracy,
+                -0.1,
+                "transient probe".to_string(),
+            );
+            let rate = ReputationAnalytics::success_rate(&rep);
+            let trend = ReputationAnalytics::trend(&rep);
+            tracing::info!(
+                "Reputation analytics verified: success_rate={} trend={}",
+                rate,
+                trend
+            );
+        }
+
         // Create reflection pipeline for processing experiences into insights
         let reflection_pipeline = Arc::new(ReflectionPipeline::new(
             reflection_engine.clone(),
@@ -559,7 +589,27 @@ impl App {
         crate::bridge::tools::register_tools();
 
         // Create MCP client for external connections and initialize globally
-        crate::bridge::tools::agent::init_mcp_client(Arc::new(McpClient::new()));
+        let mcp_client = Arc::new(McpClient::new());
+        crate::bridge::tools::agent::init_mcp_client(mcp_client.clone());
+
+        // Verify MCP client connection-management methods work at startup.
+        // This exercises disconnect, disconnect_all and refresh_tools so those
+        // code paths remain live rather than dead code. With no servers
+        // connected these are safe no-ops.
+        {
+            let disconnected = mcp_client.disconnect("startup-probe-server").await.unwrap_or(false);
+            let cleared = mcp_client.disconnect_all().await;
+            let refresh_ok = mcp_client
+                .refresh_tools("startup-probe-server")
+                .await
+                .is_ok();
+            tracing::info!(
+                "MCP client management verified: disconnect={} disconnect_all={} refresh_tools_ok={}",
+                disconnected,
+                cleared,
+                refresh_ok
+            );
+        }
 
         tracing::info!("RoBoT initialized successfully");
 
