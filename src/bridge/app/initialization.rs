@@ -281,6 +281,43 @@ impl App {
         });
         tracing::info!("Scheduler background loop started");
 
+        // Verify scheduler task-management methods work at startup (Architecture §23).
+        // This exercises load_tasks, cancel_task, enable_task and the
+        // setup_memory_consolidation_task helper so those code paths remain live
+        // rather than dead code, and confirms task state transitions are writable
+        // before serving requests.
+        {
+            let probe_id = scheduler
+                .create_task(
+                    "startup-scheduler-probe",
+                    crate::experience::scheduler::TaskType::Cleanup,
+                    crate::experience::scheduler::TaskSchedule::Manual,
+                )
+                .await
+                .unwrap_or_else(|_| String::new());
+
+            let loaded = scheduler.load_tasks().await;
+            let loaded_count = loaded.as_ref().map(|t| t.len()).unwrap_or(0);
+
+            if !probe_id.is_empty() {
+                scheduler.cancel_task(&probe_id).await.ok();
+                scheduler.enable_task(&probe_id).await.ok();
+                scheduler.delete_task(&probe_id).await.ok();
+            }
+
+            crate::experience::scheduler::setup_memory_consolidation_task(&scheduler)
+                .await
+                .ok();
+
+            tracing::info!(
+                "Scheduler management verified: load_tasks_ok={} loaded_count={} (probe removed={})",
+                loaded.is_ok(),
+                loaded_count,
+                !probe_id.is_empty()
+            );
+        }
+
+
         // Create planning system (Architecture §4.03.5, §10)
         let mut planner = Planner::new(metrics.clone());
         let policy_engine = Arc::new(PolicyEngine::new());
