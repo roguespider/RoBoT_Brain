@@ -9,10 +9,16 @@
 
 use tracing::info;
 
+use std::sync::Arc;
+
+use super::agent::AcpAgent;
 use super::builder::AcpMessageBuilder;
 use super::channel::InMemoryChannel;
 use super::error::{AcpError, AcpErrorCode};
 use super::message::{AcpAgentId, AcpMessage, AcpMessageType};
+use super::registry::AcpRegistry;
+use super::router::AcpRouter;
+use super::system_agent::{SystemAgent, WorkerAgent};
 
 /// Run the ACP message self-check. Returns the number of checks that passed.
 pub fn run() -> usize {
@@ -138,13 +144,53 @@ pub fn run() -> usize {
         checks_passed += 1;
     }
 
+    // 9. SystemAgent / WorkerAgent: exercise agent_id() and get_capabilities()
+    // so the capability vectors and accessors remain live (Architecture §8).
+    checks_total += 1;
+    let system_agent = SystemAgent::new();
+    let worker_agent = WorkerAgent::new();
+    let sys_caps = system_agent.get_capabilities().len();
+    let worker_caps = worker_agent.get_capabilities().len();
+    let sys_type = system_agent.agent_id().agent_type.clone();
+    let worker_type = worker_agent.agent_id().agent_type.clone();
+    if sys_caps == 3 && worker_caps == 1 && sys_type == "system" && worker_type == "worker" {
+        checks_passed += 1;
+    }
+
+    // 10. AcpRegistry::get_by_type filters registered agents by agent_type
+    // (Architecture §8 agent registry).
+    checks_total += 1;
+    let registry = AcpRegistry::new();
+    registry.register(Arc::new(SystemAgent::new())).ok();
+    registry.register(Arc::new(WorkerAgent::new())).ok();
+    let system_typed = registry.get_by_type("system").map(|v| v.len()).unwrap_or(0);
+    let worker_typed = registry.get_by_type("worker").map(|v| v.len()).unwrap_or(0);
+    if system_typed == 1 && worker_typed == 1 {
+        checks_passed += 1;
+    }
+
+    // 11. AcpRouter::register_handler installs a custom per-type handler
+    // (Architecture §8 routing).
+    checks_total += 1;
+    let router = AcpRouter::new(Arc::new(AcpRegistry::new()));
+    let handler_installed = router
+        .register_handler(AcpMessageType::Inform, |msg| Ok(Some(msg)))
+        .is_ok();
+    if handler_installed {
+        checks_passed += 1;
+    }
+
     info!(
-        "ACP message self-check: {}/{} checks passed, built_ok={}, channel_recv_ok={}, err_code={:?}",
+        "ACP message self-check: {}/{} checks passed, built_ok={}, channel_recv_ok={}, err_code={:?}, sys_caps={}, worker_caps={}, system_typed={}, worker_typed={}",
         checks_passed,
         checks_total,
         built.is_ok(),
         recv.is_ok(),
-        err.code
+        err.code,
+        sys_caps,
+        worker_caps,
+        system_typed,
+        worker_typed
     );
     checks_passed
 }
