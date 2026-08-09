@@ -2,8 +2,10 @@
 
 use std::path::{Path, PathBuf};
 
+use serde::Serialize;
+
 /// Represents a code issue found during analysis
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct CodeIssue {
     pub file_path: PathBuf,
     pub line_number: usize,
@@ -23,7 +25,7 @@ impl CodeIssue {
 }
 
 /// Types of issues that can be detected
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub enum IssueType {
     AllowAnnotation,
     DeadCodeAllow,
@@ -57,7 +59,7 @@ impl std::fmt::Display for IssueType {
 }
 
 /// Issue found by linter (clippy/cargo check)
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 pub struct LintIssue {
     pub file_path: String,
     pub line_number: usize,
@@ -68,7 +70,7 @@ pub struct LintIssue {
 }
 
 /// Severity level of a lint issue
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize)]
 pub enum LintLevel {
     Error,
     Warning,

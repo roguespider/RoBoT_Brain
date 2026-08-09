@@ -162,12 +162,31 @@ pub async fn run_single_test(
         (TestStatus::Error, Some(format!("MCP protocol error: {}", err_msg)))
     };
 
+    // Attach recent server logs to non-passing results for diagnosis.
+    // Passes don't need logs (kept empty to minimize noise/report size).
+    let server_logs = if status == TestStatus::Pass {
+        Vec::new()
+    } else {
+        // Pull recent lines plus any lines mentioning this tool name.
+        let mut logs = client.recent_server_logs(15).await;
+        let matching = client
+            .server_logs_matching(&requirement.function_name)
+            .await;
+        for m in matching {
+            if !logs.contains(&m) {
+                logs.push(m);
+            }
+        }
+        logs
+    };
+
     TestResult {
         requirement: requirement.clone(),
         status,
         error_message,
         duration_ms: start.elapsed().as_millis() as u64,
         validation_results,
+        server_logs,
     }
 }
 

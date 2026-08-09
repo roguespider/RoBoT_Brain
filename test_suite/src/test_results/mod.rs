@@ -4,24 +4,29 @@
 //! Shows pass/fail status for each function with detailed information.
 
 pub mod display;
+pub mod json_report;
 
 use crate::code_analyzer::{CodeIssue, LintIssue, LintLevel};
 use crate::function_registry::TestRequirement;
 
+use serde::Serialize;
 use std::path::PathBuf;
 
 /// Represents the result of a single test
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct TestResult {
     pub requirement: TestRequirement,
     pub status: TestStatus,
     pub error_message: Option<String>,
     pub duration_ms: u64,
     pub validation_results: Vec<ValidationResult>,
+    /// Recent server-side log lines captured around the time this test ran.
+    /// Populated for non-passing results to aid diagnosis; empty for passes.
+    pub server_logs: Vec<String>,
 }
 
 /// Status of a test
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Serialize)]
 pub enum TestStatus {
     Pass,
     Fail,
@@ -43,15 +48,96 @@ impl std::fmt::Display for TestStatus {
 }
 
 /// Result of a validation check
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Serialize)]
 pub struct ValidationResult {
     pub field: String,
     pub passed: bool,
     pub message: Option<String>,
 }
 
+/// Tool coverage analysis: compares the tools the server actually exposes
+/// (discovered via `tools/list`) against the tools the `FunctionRegistry`
+/// exercises. Any server tool without a corresponding test requirement is a
+/// coverage gap — a tool that could be broken without the suite noticing.
+#[derive(Debug, Default, Clone, Serialize)]
+pub struct CoverageReport {
+    /// Tool names the server exposes (from `tools/list`), sorted.
+    pub server_tools: Vec<String>,
+    /// Tool names the test registry exercises, sorted.
+    pub tested_tools: Vec<String>,
+    /// Server tools with no matching test requirement (the gap).
+    pub untested_tools: Vec<String>,
+    /// Test-registry tool names the server does NOT expose (stale/phantom tests).
+    pub phantom_tools: Vec<String>,
+}
+
+impl CoverageReport {
+    /// Build a coverage report by diffing server tools against tested tools.
+    pub fn new(server_tools: Vec<String>, tested_tools: Vec<String>) -> Self {
+        let mut server_sorted = server_tools.clone();
+        server_sorted.sort();
+        let mut tested_sorted = tested_tools.clone();
+        tested_sorted.sort();
+
+        use std::collections::HashSet;
+        let server_set: HashSet<&str> =
+            server_sorted.iter().map(|s| s.as_str()).collect();
+        let tested_set: HashSet<&str> =
+            tested_sorted.iter().map(|s| s.as_str()).collect();
+
+        let mut untested_tools: Vec<String> =
+            server_set.difference(&tested_set).map(|s| s.to_string()).collect();
+        untested_tools.sort();
+        let mut phantom_tools: Vec<String> =
+            tested_set.difference(&server_set).map(|s| s.to_string()).collect();
+        phantom_tools.sort();
+
+        Self {
+            server_tools: server_sorted,
+            tested_tools: tested_sorted,
+            untested_tools,
+            phantom_tools,
+        }
+    }
+
+    /// Total tools the server exposes.
+    pub fn server_tool_count(&self) -> usize {
+        self.server_tools.len()
+    }
+
+    /// Tools the registry exercises.
+    pub fn tested_tool_count(&self) -> usize {
+        self.tested_tools.len()
+    }
+
+    /// Number of server tools with no test coverage.
+    pub fn untested_count(&self) -> usize {
+        self.untested_tools.len()
+    }
+
+    /// Number of registry entries that don't match a real server tool.
+    pub fn phantom_count(&self) -> usize {
+        self.phantom_tools.len()
+    }
+
+    /// Coverage percentage of server tools that ARE tested.
+    pub fn coverage_percent(&self) -> f64 {
+        if self.server_tools.is_empty() {
+            0.0
+        } else {
+            let tested = self.server_tool_count() - self.untested_count();
+            (tested as f64 / self.server_tool_count() as f64) * 100.0
+        }
+    }
+
+    /// True if any server tool lacks a test.
+    pub fn has_gap(&self) -> bool {
+        !self.untested_tools.is_empty()
+    }
+}
+
 /// Comprehensive test report
-#[derive(Debug, Default)]
+#[derive(Debug, Default, Serialize)]
 pub struct TestReport {
     pub results: Vec<TestResult>,
     pub code_issues: Vec<CodeIssue>,
@@ -61,6 +147,9 @@ pub struct TestReport {
     pub lint_issues: Vec<LintIssue>,
     pub source_path: Option<PathBuf>,
     pub mcp_protocol_ok: bool,
+    /// Tool coverage gap: tools the server exposes (via `tools/list`) that are
+    /// NOT exercised by any `FunctionRegistry` test requirement.
+    pub coverage: CoverageReport,
 }
 
 impl TestReport {
@@ -87,6 +176,11 @@ impl TestReport {
     /// Set MCP protocol status
     pub fn set_mcp_protocol_ok(&mut self, ok: bool) {
         self.mcp_protocol_ok = ok;
+    }
+
+    /// Set the tool coverage analysis (server tools vs tested tools).
+    pub fn set_coverage(&mut self, coverage: CoverageReport) {
+        self.coverage = coverage;
     }
 
     /// Set lint issues (compiler errors and warnings)
@@ -147,11 +241,15 @@ impl TestReport {
         self.results.iter().all(|r| r.status == TestStatus::Pass)
     }
 
-    /// Check if there are any issues (failed tests, code issues, etc.)
+    /// Check if there are any issues (failed tests, code issues, coverage gaps, etc.)
     pub fn has_issues(&self) -> bool {
         !self.failed_results().is_empty()
             || !self.error_results().is_empty()
             || !self.code_issues.is_empty()
+            || self.lint_errors > 0
+            || self.lint_warnings > 0
+            || self.coverage.has_gap()
+            || !self.coverage.phantom_tools.is_empty()
     }
 
     /// Get all failed results

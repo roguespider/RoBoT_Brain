@@ -6,6 +6,7 @@ target/
 
 LLModel/
 test_suite_output.txt
+test_suite_report.json
 
 # Python live-test cache
 __pycache__/

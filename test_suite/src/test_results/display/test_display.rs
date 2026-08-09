@@ -36,6 +36,13 @@ impl TestReport {
                     );
                 }
             }
+
+            if !result.server_logs.is_empty() {
+                crate::teeprintln!("│  Server Logs (recent stderr):");
+                for log_line in &result.server_logs {
+                    crate::teeprintln!("│    {}", crate::test_results::truncate(log_line, 92));
+                }
+            }
         }
 
         crate::teeprintln!("│{:─<97}│", "");
@@ -60,6 +67,13 @@ impl TestReport {
                 "│  Error: {}",
                 result.error_message.as_deref().unwrap_or("Unknown error")
             );
+
+            if !result.server_logs.is_empty() {
+                crate::teeprintln!("│  Server Logs (recent stderr):");
+                for log_line in &result.server_logs {
+                    crate::teeprintln!("│    {}", crate::test_results::truncate(log_line, 92));
+                }
+            }
         }
 
         crate::teeprintln!("│{:─<97}│", "");

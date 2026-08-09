@@ -380,3 +380,106 @@ production wiring is thinner than the code.
   `promote_to_knowledge` every 2h (`LearningMaintenance`, 7200s) — this is the
   only current path by which knowledge is autonomously earned.
 - No agent/actuator layer; loop is open (P1 work).
+
+## Test Suite Improvements (Diagnosability & Coverage)
+
+The test suite was upgraded to surface previously-invisible problems and make
+failure diagnosis faster. All improvements are implemented and verified.
+
+### What changed
+
+1. **Server stderr capture** (`src/main.rs`)
+   - `TestMcpClient` now pipes `stderr` (previously only stdout/stdin).
+   - A background task streams server `tracing` logs into a 500-line ring
+     buffer (`ServerLogBuffer`).
+   - On any non-passing `TestResult`, the runner attaches the 15 most recent
+     server log lines plus any lines mentioning that tool name
+     (`runner.rs` → `TestResult.server_logs`).
+   - Failed/error test detail views print these logs inline, so a bare
+     "Tool returned error: X" now shows the server-side `WARN`/`ERROR` context
+     that explains *why*.
+
+2. **Tool coverage cross-check** (`src/test_results/mod.rs` `CoverageReport`,
+   `src/comprehensive_test/mod.rs`, `src/test_results/display/coverage.rs`)
+   - After `tools/list`, the suite diffs the server's exposed tool names
+     against the `FunctionRegistry`'s tested tool names.
+   - Produces two lists: **untested tools** (server exposes, no test) and
+     **phantom tools** (registry tests, server doesn't expose).
+   - Rendered as a dedicated report section and counted in the verdict.
+   - This turned the previous misleading "100% coverage" into an honest
+     "81.2% coverage — 18 server tools untested".
+
+3. **Machine-readable JSON report** (`src/test_results/json_report.rs`)
+   - Full report serialized to `test_suite_report.json` alongside the text
+     output: summary, coverage, consolidated issues, all results, lint/code
+     issues.
+   - Enables run-to-run diffing, CI gating, and tooling to filter/group
+     (e.g. "newly failing since last run", "new warnings").
+
+4. **Consolidated issues view** (`src/test_results/display/consolidated.rs`)
+   - One table grouping every problem kind: failing tests, error tests,
+     untested tools, phantom tools, compiler errors/warnings, code-quality
+     issues — each with category, tool/file:line, message, severity, and a
+     suggested action.
+   - Previously these were scattered across separate sections of a 1300+ line
+     text file.
+
+5. **Non-zero exit code on any issue**
+   - `has_issues()` now includes coverage gaps, lint errors, and lint warnings
+     (not just test failures).
+   - Exit code is 1 if anything needs review; 0 only when fully clean.
+   - CI can gate on the exit code.
+
+### Current coverage gaps surfaced by the cross-check
+
+These are tools the server exposes but the `FunctionRegistry` does not test
+(see `test_suite_report.json` → `coverage.untested_tools` for the live list):
+
+- **ACP tools**: `route_acp_message`, `register_agent`, `unregister_agent`,
+  `list_acp_agents`, `acp_agent_count`, `acp_registry`, `acp_router`,
+  `create_acp_message`, `get_agent_capabilities` — tested separately in
+  `tests/acp/` but not in the `FunctionRegistry` pipeline.
+- **Evidence/Observation**: `get_evidence`, `list_evidence`,
+  `list_observations`.
+- **Knowledge**: `get_knowledge` (only `query_knowledge`/`add_knowledge`
+  tested).
+- **Workflow**: `set_workflow_variable`.
+- **Memory**: `archive_memory`, `link_memories`.
+- **Search**: `ranked_search`.
+- **System**: `get_system_status`.
+
+**Phantom tools** (registry tests but server doesn't expose): the embedding
+tools (`store_embedding`, `get_embedding`, `search_similar`, `list_embeddings`,
+`delete_embedding`, `get_embedding_stats`) — these are registered as MCP tools
+in the registry but the server's `tools/list` does not return them, indicating
+a registration wiring gap in robot_brain.
+
+### How to use the new outputs
+
+```bash
+# Run (from test_suite/ or repo root; paths resolve at runtime)
+./target/release/test_suite
+
+# Text report (human-readable, unchanged location)
+test_suite/test_suite_output.txt
+
+# JSON report (machine-readable, for diffing/CI)
+test_suite/test_suite_report.json
+
+# CI gating: exit code is non-zero on any issue
+./target/release/test_suite && echo "clean" || echo "issues found"
+
+# Diff two runs (example)
+jq '.summary' test_suite_report.json
+jq '.issues | map(.kind) | group_by(.) | map({(.[0]): length})' test_suite_report.json
+```
+
+### Still not tested (future work)
+
+- **Schema-validation matrix**: every tool × missing/extra/wrong-type fields.
+- **Edge cases**: malformed JSON, boundary values, Unicode, empty strings,
+  large payloads, concurrent calls, timeouts.
+- **End-to-end learning loop**: `record_experience` → `validate_hypothesis` →
+  `promote_to_knowledge` (overlaps with v2.0 P0).
+- **State isolation**: tests share one server instance; no per-test rollback.
+- **Performance baselines**: durations reported but never gated.
