@@ -9,6 +9,7 @@ pub mod info;
 pub mod message;
 pub mod prompts;
 pub mod resources;
+pub mod self_check;
 pub mod tools;
 
 // Re-exports

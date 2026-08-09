@@ -164,6 +164,13 @@ impl App {
         let skills_checks = crate::skills::self_check::run().await;
         tracing::info!("Skills self-check completed ({} checks passed)", skills_checks);
 
+        // Run the MCP types self-check to exercise protocol type builders and
+        // predicates (is_request/is_response/is_notification, is_success,
+        // with_data, with_tools, with_schema) so those code paths remain
+        // live. Per §8.
+        let mcp_checks = crate::bridge::mcp::types::self_check::run();
+        tracing::info!("MCP types self-check completed ({} checks passed)", mcp_checks);
+
         // Create the Learning Coordinator - the main orchestrator for the
         // learning pipeline (Architecture §9 / §4.04):
         // Experience → Reflection → Hypothesis → Validation → Knowledge → Reputation
