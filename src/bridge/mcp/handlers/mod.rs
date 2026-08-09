@@ -103,12 +103,6 @@ pub trait ToolHandler: Send + Sync {
     fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send;
 }
 
-/// Marker trait for handlers that need workflow enforcement
-pub trait WorkflowEnforced {
-    fn check_enforcement(&self, tool_name: &str) -> impl std::future::Future<Output = Result<(), String>> + Send;
-    fn record_execution(&self, tool_name: &str, query: Option<String>) -> impl std::future::Future<Output = ()> + Send;
-}
-
 /// Convert serde_json::Value to Arc<serde_json::Map<String, serde_json::Value>>
 /// for use in Tool::new()
 pub fn json_to_schema(schema: serde_json::Value) -> std::sync::Arc<serde_json::Map<String, serde_json::Value>> {
@@ -188,7 +182,6 @@ impl ToolHandlerCollection {
     /// Handlers that fail to initialize are set to None and the system continues.
     pub fn initialize_all(
         context: Arc<crate::bridge::mcp::McpContext>,
-        enforcer: Arc<crate::workflows::enforcement::WorkflowEnforcer>,
     ) -> (Self, Vec<HandlerInitError>) {
         let mut collection = Self::new();
         let mut errors = Vec::new();
@@ -205,7 +198,7 @@ impl ToolHandlerCollection {
             }
         }
 
-        match AgentToolsHandler::new(context.clone(), enforcer.clone()) {
+        match AgentToolsHandler::new(context.clone()) {
             Ok(handler) => {
                 tracing::info!("Agent tools handler initialized with {} tools", handler.tool_names().len());
                 collection.agent = Some(handler);
@@ -216,7 +209,7 @@ impl ToolHandlerCollection {
             }
         }
 
-        match ExperienceToolsHandler::new(context.clone(), enforcer.clone()) {
+        match ExperienceToolsHandler::new(context.clone()) {
             Ok(handler) => {
                 tracing::info!("Experience tools handler initialized with {} tools", handler.tool_names().len());
                 collection.experience = Some(handler);
@@ -227,7 +220,7 @@ impl ToolHandlerCollection {
             }
         }
 
-        match ExplorationToolsHandler::new(context.clone(), enforcer.clone()) {
+        match ExplorationToolsHandler::new() {
             Ok(handler) => {
                 tracing::info!("Exploration tools handler initialized with {} tools", handler.tool_names().len());
                 collection.exploration = Some(handler);
@@ -238,7 +231,7 @@ impl ToolHandlerCollection {
             }
         }
 
-        match HypothesisToolsHandler::new(context.clone(), enforcer.clone()) {
+        match HypothesisToolsHandler::new(context.clone()) {
             Ok(handler) => {
                 tracing::info!("Hypothesis tools handler initialized with {} tools", handler.tool_names().len());
                 collection.hypothesis = Some(handler);
@@ -249,7 +242,7 @@ impl ToolHandlerCollection {
             }
         }
 
-        match IngestorToolsHandler::new(context.clone(), enforcer.clone()) {
+        match IngestorToolsHandler::new(context.clone()) {
             Ok(handler) => {
                 tracing::info!("Ingestor tools handler initialized with {} tools", handler.tool_names().len());
                 collection.ingestor = Some(handler);
@@ -260,7 +253,7 @@ impl ToolHandlerCollection {
             }
         }
 
-        match KnowledgeToolsHandler::new(context.clone(), enforcer.clone()) {
+        match KnowledgeToolsHandler::new(context.clone()) {
             Ok(handler) => {
                 tracing::info!("Knowledge tools handler initialized with {} tools", handler.tool_names().len());
                 collection.knowledge = Some(handler);
@@ -271,7 +264,7 @@ impl ToolHandlerCollection {
             }
         }
 
-        match MemoryToolsHandler::new(context.clone(), enforcer.clone()) {
+        match MemoryToolsHandler::new(context.clone()) {
             Ok(handler) => {
                 tracing::info!("Memory tools handler initialized with {} tools", handler.tool_names().len());
                 collection.memory = Some(handler);
@@ -282,7 +275,7 @@ impl ToolHandlerCollection {
             }
         }
 
-        match PlannerToolsHandler::new(context.clone(), enforcer.clone()) {
+        match PlannerToolsHandler::new(context.clone()) {
             Ok(handler) => {
                 tracing::info!("Planner tools handler initialized with {} tools", handler.tool_names().len());
                 collection.planner = Some(handler);
@@ -293,7 +286,7 @@ impl ToolHandlerCollection {
             }
         }
 
-        match ReflectionToolsHandler::new(context.clone(), enforcer.clone()) {
+        match ReflectionToolsHandler::new(context.clone()) {
             Ok(handler) => {
                 tracing::info!("Reflection tools handler initialized with {} tools", handler.tool_names().len());
                 collection.reflection = Some(handler);
@@ -304,7 +297,7 @@ impl ToolHandlerCollection {
             }
         }
 
-        match SearchToolsHandler::new(context.clone(), enforcer.clone()) {
+        match SearchToolsHandler::new(context.clone()) {
             Ok(handler) => {
                 tracing::info!("Search tools handler initialized with {} tools", handler.tool_names().len());
                 collection.search = Some(handler);
@@ -315,7 +308,7 @@ impl ToolHandlerCollection {
             }
         }
 
-        match SkillsToolsHandler::new(context.clone(), enforcer.clone()) {
+        match SkillsToolsHandler::new(context.clone()) {
             Ok(handler) => {
                 tracing::info!("Skills tools handler initialized with {} tools", handler.tool_names().len());
                 collection.skills = Some(handler);

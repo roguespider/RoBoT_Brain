@@ -5,23 +5,20 @@ use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::planner;
 use crate::bridge::mcp::handlers::{HandlerError, HandlerInitResult, ToolHandler};
-use crate::workflows::enforcement::WorkflowEnforcer;
 
 /// Handler for planner-related tools
 #[derive(Clone)]
 pub struct PlannerToolsHandler {
     context: Arc<McpContext>,
-    enforcer: Arc<WorkflowEnforcer>,
 }
 
 impl PlannerToolsHandler {
     /// Create a new planner tools handler
     pub fn new(
         context: Arc<McpContext>,
-        enforcer: Arc<WorkflowEnforcer>,
     ) -> HandlerInitResult<Self> {
         // Planner is available - async validation happens at runtime
-        Ok(Self { context, enforcer })
+        Ok(Self { context })
     }
 
     /// Create a new plan

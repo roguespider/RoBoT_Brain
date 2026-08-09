@@ -5,20 +5,17 @@ use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::ingestor;
 use crate::bridge::mcp::handlers::{HandlerError, HandlerInitError, HandlerInitResult, ToolHandler};
-use crate::workflows::enforcement::WorkflowEnforcer;
 
 /// Handler for ingestor-related tools
 #[derive(Clone)]
 pub struct IngestorToolsHandler {
     context: Arc<McpContext>,
-    enforcer: Arc<WorkflowEnforcer>,
 }
 
 impl IngestorToolsHandler {
     /// Create a new ingestor tools handler
     pub fn new(
         context: Arc<McpContext>,
-        enforcer: Arc<WorkflowEnforcer>,
     ) -> HandlerInitResult<Self> {
         // Validate that required dependencies exist
         if context.database.connection().is_err() {
@@ -28,7 +25,7 @@ impl IngestorToolsHandler {
             ));
         }
 
-        Ok(Self { context, enforcer })
+        Ok(Self { context })
     }
 
     /// Ingest files from import folder

@@ -53,7 +53,6 @@ impl McpServerHandler {
     pub fn initialize_handlers(&mut self) {
         let (handlers, errors) = ToolHandlerCollection::initialize_all(
             self.context.clone(),
-            self.enforcer.clone(),
         );
         self.handlers = handlers;
         self.handler_errors = errors;

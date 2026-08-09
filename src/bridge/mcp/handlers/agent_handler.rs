@@ -5,20 +5,17 @@ use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::agent::{inputs::*, mcp_tools::*, workflows::*};
 use crate::bridge::mcp::handlers::{HandlerError, HandlerInitError, HandlerInitResult, ToolHandler};
-use crate::workflows::enforcement::WorkflowEnforcer;
 
 /// Handler for agent and MCP-related tools
 #[derive(Clone)]
 pub struct AgentToolsHandler {
     context: Arc<McpContext>,
-    enforcer: Arc<WorkflowEnforcer>,
 }
 
 impl AgentToolsHandler {
     /// Create a new agent tools handler
     pub fn new(
         context: Arc<McpContext>,
-        enforcer: Arc<WorkflowEnforcer>,
     ) -> HandlerInitResult<Self> {
         // Validate that required dependencies exist
         if context.database.connection().is_err() {
@@ -28,7 +25,7 @@ impl AgentToolsHandler {
             ));
         }
 
-        Ok(Self { context, enforcer })
+        Ok(Self { context })
     }
 
     /// Get workflow - MUST be called before any other tool

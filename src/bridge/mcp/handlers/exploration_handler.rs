@@ -3,24 +3,15 @@
 
 use crate::bridge::tools::exploration;
 use crate::bridge::mcp::handlers::{HandlerError, HandlerInitResult, ToolHandler};
-use crate::workflows::enforcement::WorkflowEnforcer;
-use std::sync::Arc;
-use crate::bridge::mcp::McpContext;
 
 /// Handler for exploration-related tools
 #[derive(Clone)]
-pub struct ExplorationToolsHandler {
-    context: Arc<McpContext>,
-    enforcer: Arc<WorkflowEnforcer>,
-}
+pub struct ExplorationToolsHandler;
 
 impl ExplorationToolsHandler {
     /// Create a new exploration tools handler
-    pub fn new(
-        context: Arc<McpContext>,
-        enforcer: Arc<WorkflowEnforcer>,
-    ) -> HandlerInitResult<Self> {
-        Ok(Self { context, enforcer })
+    pub fn new() -> HandlerInitResult<Self> {
+        Ok(Self)
     }
 
     /// Start exploration
