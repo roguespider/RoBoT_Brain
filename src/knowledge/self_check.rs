@@ -52,7 +52,7 @@ pub async fn run_knowledge_self_check() -> String {
     checks_total += 1;
     let needing_review = store.get_needing_review().await;
     let needing_review_count = needing_review.len();
-    checks_passed += 1;
+    checks_passed += if needing_review_count >= 1 { 1 } else { 0 };
 
     // 3. add_relation
     checks_total += 1;
@@ -97,13 +97,13 @@ pub async fn run_knowledge_self_check() -> String {
     checks_total += 1;
     let impact = store.get_impact_set(&id1).await;
     let impact_count = impact.len();
-    checks_passed += 1;
+    checks_passed += if impact_count >= 1 { 1 } else { 0 };
 
     // 10. validate_all_dependencies
     checks_total += 1;
     let validations = store.validate_all_dependencies().await;
     let validations_count = validations.len();
-    checks_passed += 1;
+    checks_passed += if validations_count >= 1 { 1 } else { 0 };
 
     // 11. init_version
     checks_total += 1;

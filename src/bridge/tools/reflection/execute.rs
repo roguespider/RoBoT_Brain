@@ -61,7 +61,7 @@ pub async fn execute_create_reflection(
             "success": true,
             "id": r.id.to_string(),
             "reflection_id": r.id.to_string(),
-            "title": r.title,
+            "title": if r.title.is_empty() { title } else { r.title },
             "reflection_type": format!("{:?}", r.reflection_type)
         }))),
         Ok(None) => Ok(ToolOutput::success(serde_json::json!({
