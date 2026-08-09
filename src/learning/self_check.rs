@@ -71,6 +71,26 @@ pub async fn run_self_check() -> String {
         checks_passed += 1;
     }
     manager.update(&hypothesis).await.ok();
+
+    // Also exercise the refute path: a contradicted hypothesis should
+    // transition to Refuted when refute() is called.
+    checks_total += 1;
+    let mut bad_hypothesis = manager
+        .create("refuted_hypothesis", "self-check refuted hypothesis")
+        .await;
+    let contradicting = EvidenceBuilder::new("self-check contradicting evidence")
+        .with_type(EvidenceType::Observation)
+        .with_strength(0.9)
+        .with_source("self-check")
+        .build();
+    bad_hypothesis.add_contradicting(contradicting);
+    bad_hypothesis.start_testing();
+    bad_hypothesis.refute();
+    if bad_hypothesis.status == HypothesisStatus::Refuted {
+        checks_passed += 1;
+    }
+    manager.update(&bad_hypothesis).await.ok();
+
     let supported = manager.get_supported().await;
     let high_conf = manager.get_high_confidence(0.5).await;
     tracing::info!(
