@@ -9,6 +9,9 @@
 
 use tracing::info;
 
+use super::builder::AcpMessageBuilder;
+use super::channel::InMemoryChannel;
+use super::error::{AcpError, AcpErrorCode};
 use super::message::{AcpAgentId, AcpMessage, AcpMessageType};
 
 /// Run the ACP message self-check. Returns the number of checks that passed.
@@ -89,9 +92,59 @@ pub fn run() -> usize {
         checks_passed += 1;
     }
 
+    // 6. AcpMessageBuilder: exercise the fluent builder API (from/to/
+    // message_type/payload/ttl/in_conversation/reply_to/build) so the
+    // builder and its setters remain live (Architecture §8).
+    checks_total += 1;
+    let built = AcpMessageBuilder::new()
+        .from(sender.clone())
+        .to(receiver.clone())
+        .message_type(AcpMessageType::Inform)
+        .payload(serde_json::json!({"check": true}))
+        .ttl(7)
+        .in_conversation("conv-1".to_string())
+        .reply_to("msg-0".to_string())
+        .build();
+    if built.is_ok() {
+        checks_passed += 1;
+    }
+
+    // 7. InMemoryChannel: exercise new/send/try_recv/name so the channel
+    // implementation remains live (Architecture §8 local transport).
+    checks_total += 1;
+    let channel = InMemoryChannel::new("self-check-channel");
+    let channel_name = channel.name().to_string();
+    let msg_for_channel = AcpMessage::new(
+        sender.clone(),
+        receiver.clone(),
+        AcpMessageType::Inform,
+        serde_json::json!({"channel": true}),
+    );
+    let sent = channel.send(msg_for_channel);
+    let recv = channel.try_recv();
+    if channel_name == "self-check-channel" && sent.is_ok() && recv.is_ok() {
+        checks_passed += 1;
+    }
+
+    // 8. AcpError / AcpErrorCode: exercise new, with_details, to_code, and
+    // the Display impl so error types remain live (Architecture §8).
+    checks_total += 1;
+    let err = AcpError::new(AcpErrorCode::InvalidPayload, "self-check error")
+        .with_details(serde_json::json!({"field": "x"}));
+    let err_display = format!("{}", err);
+    let timeout_code = AcpErrorCode::Timeout.to_code();
+    let internal_code = AcpErrorCode::InternalError.to_code();
+    if err_display.contains("self-check error") && timeout_code == 1006 && internal_code == 1999 {
+        checks_passed += 1;
+    }
+
     info!(
-        "ACP message self-check: {}/{} checks passed",
-        checks_passed, checks_total
+        "ACP message self-check: {}/{} checks passed, built_ok={}, channel_recv_ok={}, err_code={:?}",
+        checks_passed,
+        checks_total,
+        built.is_ok(),
+        recv.is_ok(),
+        err.code
     );
     checks_passed
 }

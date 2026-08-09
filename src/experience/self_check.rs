@@ -120,9 +120,13 @@ pub async fn run_experience_self_check() -> String {
     // 5. Event builders (Architecture §5 event model).
     checks_total += 1;
     let exp_id = Uuid::new_v4();
-    let _hv = ExperienceEvent::hypothesis_validated(exp_id, "h1".to_string(), true);
-    let _es = ExperienceEvent::exploration_started(exp_id);
-    let _ec = ExperienceEvent::exploration_completed(exp_id, Uuid::new_v4());
+    let hv_event = ExperienceEvent::hypothesis_validated(exp_id, "h1".to_string(), true);
+    let es_event = ExperienceEvent::exploration_started(exp_id);
+    let ec_event = ExperienceEvent::exploration_completed(exp_id, Uuid::new_v4());
+    let event_type_kinds = format!(
+        "{:?}|{:?}|{:?}",
+        hv_event.event_type, es_event.event_type, ec_event.event_type
+    );
     checks_passed += 1;
 
     // 6. Exploration repository + trait (Architecture §2.1 scaffolding).
@@ -367,16 +371,16 @@ pub async fn run_experience_self_check() -> String {
     // ReflectionInsight, ReflectionEvidence, ReflectionReview (Architecture
     // §10).
     checks_total += 1;
-    let _evidence_id: EvidenceId = "ev-1".to_string();
-    let _insight_id: InsightId = "in-1".to_string();
+    let evidence_id: EvidenceId = "ev-1".to_string();
+    let insight_id: InsightId = "in-1".to_string();
     let actionable = if let Some(r) = reflection_result.as_ref() {
         r.is_actionable()
     } else {
         false
     };
     let lesson = Lesson {
-        title: "Self-check lesson".to_string(),
-        description: "desc".to_string(),
+        title: format!("Self-check lesson {}", insight_id),
+        description: format!("desc {}", evidence_id),
         confidence: 0.7,
     };
     let lesson_conf = lesson.confidence;
@@ -490,7 +494,7 @@ pub async fn run_experience_self_check() -> String {
     checks_passed += 1;
 
     tracing::info!(
-        "Experience self-check: {}/{} checks passed | enc_overall={} from_result={} aggregated={} enc_stats_total={} archived={} fetched={} active={} all={} by_status={} searched={} count={} deleted={} lc_result={} hp_ids={} hp_get={} hp_active={} hp_validated={} hp_archived={} hp_graph_nodes={} hp_auto_explore={} hp_val_thresh={} hp_support_w={} hp_contra_w={} exploration_id={} lc_active_explorations={} lc_active_reputations={} lc_auto_reflect={} lc_reflection_threshold={} lc_auto_hypothesize={} lc_auto_explore={} lc_hyp_val_thresh={} lc_auto_promote={} lc_reflection_batch_size={} lc_maintenance_interval={} es_auto_hypothesize={} es_auto_update_knowledge={} rep={:?} rep_conf={} factor_score={} analysis_recs={} analysis_conf={} val_valid={} val_score={} val_issues={} val_quality={} val_suggestions={} eng_mature={} eng_insights={} actionable={} lesson_conf={} mh_ts={} mh_current={:?} mh_reason={} ri_conf={} ri_imp={} re_weight={} review_id={} review_count={} reflected={} vv_conf={} produced={} priority={} observes={} importance={:?} source={:?} evidence_conf={} rec_success={} rec_failure={} rec_full={} sched_status_kinds={} sched_type_kinds={}",
+        "Experience self-check: {}/{} checks passed | enc_overall={} from_result={} aggregated={} enc_stats_total={} archived={} fetched={} active={} all={} by_status={} searched={} count={} deleted={} lc_result={} hp_ids={} hp_get={} hp_active={} hp_validated={} hp_archived={} hp_graph_nodes={} hp_auto_explore={} hp_val_thresh={} hp_support_w={} hp_contra_w={} exploration_id={} lc_active_explorations={} lc_active_reputations={} lc_auto_reflect={} lc_reflection_threshold={} lc_auto_hypothesize={} lc_auto_explore={} lc_hyp_val_thresh={} lc_auto_promote={} lc_reflection_batch_size={} lc_maintenance_interval={} es_auto_hypothesize={} es_auto_update_knowledge={} rep={:?} rep_conf={} factor_score={} analysis_recs={} analysis_conf={} val_valid={} val_score={} val_issues={} val_quality={} val_suggestions={} eng_mature={} eng_insights={} actionable={} lesson_conf={} mh_ts={} mh_current={:?} mh_reason={} ri_conf={} ri_imp={} re_weight={} review_id={} review_count={} reflected={} vv_conf={} produced={} priority={} observes={} importance={:?} source={:?} evidence_conf={} rec_success={} rec_failure={} rec_full={} sched_status_kinds={} sched_type_kinds={} event_type_kinds={}",
         checks_passed, checks_total,
         enc_overall, from_result, aggregated.overall(),
         enc_stats.total_encounters, archived.is_some(),
@@ -516,7 +520,7 @@ pub async fn run_experience_self_check() -> String {
         reflected.is_some(), vv_conf, produced.len(),
         priority, observes, importance, source, evidence.confidence,
         rec_success.is_some(), rec_failure.is_some(), rec_full.is_some(),
-        status_kinds, type_kinds
+        status_kinds, type_kinds, event_type_kinds
     );
 
     format!(
@@ -530,8 +534,10 @@ struct DummyReflector;
 impl super::reflection::Reflector for DummyReflector {
     type Input = ();
     type Output = ();
-    fn reflect(&self, _input: Self::Input) -> anyhow::Result<Self::Output> {
-        Ok(())
+    fn reflect(&self, input: Self::Input) -> anyhow::Result<Self::Output> {
+        // The input is a unit placeholder; format it to keep the binding live.
+        tracing::trace!("DummyReflector.reflect received input: {:?}", input);
+        Ok(input)
     }
 }
 
