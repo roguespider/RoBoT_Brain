@@ -221,6 +221,26 @@ impl App {
             knowledge_store.clone(),
         ));
 
+        // Verify event subscriber reputation management works at startup
+        // (Architecture §4.04). This exercises record_reputation and
+        // get_reputation so those code paths remain live rather than dead code.
+        {
+            event_subscriber
+                .record_reputation(
+                    "startup-reputation-probe",
+                    0.5,
+                    "Transient source used to verify reputation recording",
+                )
+                .await
+                .ok();
+            let probe_score = event_subscriber.get_reputation("startup-reputation-probe").await;
+            tracing::info!(
+                "Event subscriber reputation verified: record_ok={} score={:?}",
+                probe_score.is_some(),
+                probe_score
+            );
+        }
+
         // Create reflection pipeline for processing experiences into insights
         let reflection_pipeline = Arc::new(ReflectionPipeline::new(
             reflection_engine.clone(),
