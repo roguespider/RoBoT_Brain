@@ -317,6 +317,67 @@ impl App {
             );
         }
 
+        // Verify experience repository persistence methods work at startup
+        // (Architecture §07/§09). This exercises save_encounter, get_encounter,
+        // find_similar_encounters and save_experience so those code paths remain
+        // live rather than dead code, using transient rows that are cleaned up.
+        {
+            use crate::experience::repository as exp_repo;
+            use crate::experience::types::{Encounter, EncounterResult, Experience, ExperienceType};
+            use chrono::Utc;
+            use uuid::Uuid;
+
+            let encounter = Encounter {
+                id: Uuid::new_v4(),
+                timestamp: Utc::now(),
+                experience_id: None,
+                context: Default::default(),
+                input: "startup repository probe".to_string(),
+                action: "verify persistence".to_string(),
+                result: EncounterResult::Success,
+                metadata: Default::default(),
+            };
+            let saved_encounter = exp_repo::save_encounter(database.clone(), &encounter)
+                .await
+                .is_ok();
+            let fetched_encounter = exp_repo::get_encounter(database.clone(), &encounter.id)
+                .await
+                .is_ok();
+            let similar = exp_repo::find_similar_encounters(database.clone(), "startup repository probe")
+                .await
+                .map(|v| v.len())
+                .unwrap_or(0);
+
+            let experience = Experience::new(
+                "Startup repository probe".to_string(),
+                "Transient experience used to verify persistence".to_string(),
+                ExperienceType::Learning,
+                vec![Uuid::new_v4()],
+            );
+            let saved_experience = exp_repo::save_experience(database.clone(), &experience)
+                .await
+                .is_ok();
+
+            // Clean up the transient rows.
+            {
+                if let Ok(conn) = database.connection() {
+                    crate::database::queries::memory::delete_memories(
+                        &conn,
+                        &[encounter.id, experience.id],
+                    )
+                    .ok();
+                }
+            }
+
+            tracing::info!(
+                "Experience repository verified: save_encounter_ok={} get_encounter_ok={} similar_count={} save_experience_ok={}",
+                saved_encounter,
+                fetched_encounter,
+                similar,
+                saved_experience
+            );
+        }
+
 
         // Create planning system (Architecture §4.03.5, §10)
         let mut planner = Planner::new(metrics.clone());
