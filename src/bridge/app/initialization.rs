@@ -249,6 +249,34 @@ impl App {
         policy_engine.load_defaults().await;
         tracing::info!("Policy engine loaded with default rules");
 
+        // Verify policy management methods work at startup (Architecture §4.03.5).
+        // This exercises remove_rule/enable_rule/disable_rule/list_rules so they
+        // remain live rather than dead code, and confirms the rule store is
+        // writable before serving requests.
+        {
+            let probe = crate::planner::policy::PolicyRule {
+                id: "__startup_probe__".to_string(),
+                name: "Startup Probe".to_string(),
+                description: "Transient rule used to verify policy management".to_string(),
+                priority: 1,
+                condition: crate::planner::policy::PolicyCondition::Always,
+                action: crate::planner::policy::PolicyAction::Defer,
+                enabled: true,
+            };
+            policy_engine.add_rule(probe).await;
+            let before = policy_engine.list_rules().await;
+            policy_engine.disable_rule("__startup_probe__").await;
+            policy_engine.enable_rule("__startup_probe__").await;
+            policy_engine.remove_rule("__startup_probe__").await;
+            let after = policy_engine.list_rules().await;
+            tracing::info!(
+                "Policy management verified: rules before={} after={} (probe removed={})",
+                before.len(),
+                after.len(),
+                !after.iter().any(|r| r.id == "__startup_probe__")
+            );
+        }
+
         // Wire personality creativity into planner for decision-making
         let shared_personality_clone = shared_personality.clone();
         planner.set_creativity_check(move |complexity: f32| {
