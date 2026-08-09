@@ -245,6 +245,15 @@ impl HypothesisPipeline {
         Ok(archived)
     }
 
+    /// Snapshot of the underlying hypothesis graph statistics.
+    ///
+    /// Exposes the engine's graph state for diagnostics so the stored
+    /// `HypothesisEngine` remains an active participant in the pipeline
+    /// rather than dead storage (Architecture §11).
+    pub fn graph_stats(&self) -> crate::experience::hypothesis::support::graph::GraphStats {
+        self.engine.get_graph_stats()
+    }
+
     // ========================================================================
     // Private helpers
     // ========================================================================
