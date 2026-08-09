@@ -277,6 +277,12 @@ impl App {
             );
         }
 
+        // Run the policy engine self-check to exercise the evaluation API
+        // (PolicyContext, evaluate, PolicyResult) and the named-policy
+        // container. Per Architecture §4.03.5.
+        let policy_ok = crate::planner::self_check::run_policy(&policy_engine).await;
+        tracing::info!("Policy self-check completed (ok={})", policy_ok);
+
         // Wire personality creativity into planner for decision-making
         let shared_personality_clone = shared_personality.clone();
         planner.set_creativity_check(move |complexity: f32| {
@@ -289,6 +295,13 @@ impl App {
             }
         });
         let planner = Arc::new(planner);
+
+        // Run planner self-check to exercise the advanced planning API
+        // (informed plans, action selection, replanning, retry, adaptation,
+        // failure analysis, cleanup, policy management) so those code paths
+        // remain live. Per Architecture §4.03.5, §10, §5.7.
+        let planner_checks = crate::planner::self_check::run(&planner).await;
+        tracing::info!("Planner self-check completed ({} checks passed)", planner_checks);
 
         // Create workflow engine with database access and coordinator for event integration
         // This ensures workflow experiences flow to WorkerManager and EventSubscriber

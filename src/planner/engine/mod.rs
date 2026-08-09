@@ -11,7 +11,7 @@
 mod actions;
 pub mod planner;
 mod replanning;
-mod types;
+pub mod types;
 
 pub use planner::Planner;
 pub use types::{Plan, PlanStatus};
