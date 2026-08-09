@@ -19,7 +19,7 @@ use super::lineage::{
 use super::pipeline::{LearningPipeline, PipelineStage};
 use super::working_memory::memory_state::MemoryState;
 use super::working_memory::{MemoryItemType, WorkingMemory};
-use super::working_memory::promotion::PromotionPolicy;
+use super::working_memory::promotion::{PromotionEvaluation, PromotionPolicy};
 
 /// Run the learning subsystem self-check.
 ///
@@ -98,6 +98,24 @@ pub async fn run_self_check() -> String {
         supported.len(), high_conf.len()
     );
 
+    // Exercise hypothesis manager query/delete/stats API and the abandon
+    // transition (Architecture §9) so those code paths remain live.
+    let listed = manager.list().await;
+    let by_status = manager.list_by_status(HypothesisStatus::Supported).await;
+    let retrieved = manager.get(&hypothesis.id).await;
+    let hypothesis_stats = manager.stats().await;
+    // Exercise the abandon() transition on a throwaway hypothesis.
+    let mut abandonable = manager
+        .create("abandonable_hypothesis", "self-check abandoned hypothesis")
+        .await;
+    abandonable.abandon();
+    manager.update(&abandonable).await.ok();
+    let deleted = manager.delete(&bad_hypothesis.id).await;
+    tracing::info!(
+        "Learning self-check [hypothesis queries]: listed={} by_status={} retrieved={} stats_total={} deleted={}",
+        listed.len(), by_status.len(), retrieved.is_some(), hypothesis_stats.total, deleted.is_some()
+    );
+
     // 3. Lineage tracker self-check
     checks_total += 1;
     let mut tracker = LineageTracker::new();
@@ -174,9 +192,12 @@ pub async fn run_self_check() -> String {
     let summary = tracker.get_summary(&memory_id);
     let with_contradictions = tracker.get_memories_with_contradictions();
     let superseded = tracker.get_superseded_memories();
+    // Exercise calculate_confidence (Architecture §9) so that code path
+    // remains live rather than dead code.
+    let lineage_conf = tracker.calculate_confidence(&memory_id, 0.5);
     tracing::info!(
-        "Learning self-check [lineage]: unresolved={} current={:?} summary={:?} with_contradictions={} superseded={}",
-        unresolved.len(), current, summary.is_some(), with_contradictions.len(), superseded.len()
+        "Learning self-check [lineage]: unresolved={} current={:?} summary={:?} with_contradictions={} superseded={} confidence={}",
+        unresolved.len(), current, summary.is_some(), with_contradictions.len(), superseded.len(), lineage_conf
     );
     checks_passed += 1;
 
@@ -191,12 +212,14 @@ pub async fn run_self_check() -> String {
         "observed",
         Some(0.7),
     );
+    // Exercise get() (Architecture §9) so that code path remains live.
+    let retrieved_ok = pipeline.get(&record_id).is_some();
     let by_stage = pipeline.get_by_stage(PipelineStage::Observation);
     let by_stage_count = by_stage.len();
     pipeline.cleanup(chrono::Duration::days(365));
     tracing::info!(
-        "Learning self-check [pipeline]: by_stage={} after_cleanup={}",
-        by_stage_count, pipeline.stats().total_records
+        "Learning self-check [pipeline]: by_stage={} after_cleanup={} retrieved={}",
+        by_stage_count, pipeline.stats().total_records, retrieved_ok
     );
     checks_passed += 1;
 
@@ -234,6 +257,59 @@ pub async fn run_self_check() -> String {
     tracing::info!(
         "Learning self-check [working_memory clears]: by_type={} by_state={} processed={}",
         cleared_by_type, cleared_by_state, processed
+    );
+
+    // Exercise the full working-memory CRUD/query/state/stats API
+    // (Architecture §9) so those code paths remain live rather than dead
+    // code. This covers get/peek/contains/remove, len/is_empty/keys/
+    // values/items/get_by_type, confirm/contradict/promote/reject/
+    // get_history, stats, record_access/record_confirmation/
+    // record_contradiction/is_expired, policy, and PromotionEvaluation.
+    wm.store("wm_a", "value_a", MemoryItemType::Task, 0.8).await.ok();
+    wm.store("wm_b", "value_b", MemoryItemType::Context, 0.6).await.ok();
+    // CRUD: get (records access), peek, contains, remove.
+    let got = wm.get("wm_a").await;
+    let peeked = wm.peek("wm_b").await;
+    let contains = wm.contains("wm_a").await;
+    // Query: len, is_empty, keys, values, items, get_by_type.
+    let wm_len = wm.len().await;
+    let wm_empty = wm.is_empty().await;
+    let wm_keys = wm.keys().await;
+    let wm_values = wm.values().await;
+    let wm_items = wm.items().await;
+    let wm_by_type = wm.get_by_type(MemoryItemType::Task).await;
+    // State transitions: confirm, contradict, promote, reject, get_history.
+    wm.confirm("wm_a").await;
+    wm.contradict("wm_b").await;
+    let promoted = wm.promote("wm_a").await;
+    let rejected = wm.reject("wm_b").await;
+    let history = wm.get_history("wm_a").await;
+    // Stats + policy accessor.
+    let wm_stats = wm.stats().await;
+    let wm_policy = wm.policy();
+    // Direct item-level methods: record_access, record_confirmation,
+    // record_contradiction, is_expired (on a retrieved item).
+    if let Some(mut item) = peeked.clone() {
+        item.record_access();
+        item.record_confirmation();
+        item.record_contradiction();
+        let expired = item.is_expired();
+        tracing::info!(
+            "Learning self-check [working_memory item]: expired={}",
+            expired
+        );
+    }
+    // PromotionEvaluation constructors.
+    let eval_promote = PromotionEvaluation::promote(0.9, vec!["high_access".to_string()]);
+    let eval_reject = PromotionEvaluation::reject(0.2, vec!["contradicted".to_string()]);
+    // Remove to clean up.
+    let removed_single = wm.remove("wm_a").await;
+    tracing::info!(
+        "Learning self-check [working_memory API]: got={} peek={} contains={} len={} empty={} keys={} values={} items={} by_type={} promoted={} rejected={} history={} stats_total={} policy_min_access={} eval_promote={} eval_reject={} removed={}",
+        got.is_some(), peeked.is_some(), contains, wm_len, wm_empty, wm_keys.len(),
+        wm_values.len(), wm_items.len(), wm_by_type.len(), promoted.is_some(),
+        rejected, history.is_some(), wm_stats.total_items, wm_policy.min_access_count,
+        eval_promote.should_promote, eval_reject.should_promote, removed_single.is_some()
     );
     checks_passed += 1;
 

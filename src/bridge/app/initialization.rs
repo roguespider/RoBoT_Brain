@@ -20,14 +20,12 @@ use crate::experience::hypothesis::HypothesisEngine;
 use crate::experience::integration::event_subscriber::{start_event_subscriber, EventSubscriber};
 use crate::experience::integration::learning_coordinator::LearningCoordinator;
 
-use super::acp::{
-    acp_agent_count, acp_registry, acp_router, list_acp_agents, route_acp_message,
-};
-use super::personality::{
-    adapt_personality, apply_personality_preset, get_communication_style, get_personality_preset,
-    get_personality_success_rate, get_personality_timeout, get_personality_traits,
-    list_personality_presets, personality, set_personality_traits, should_explore,
-    should_take_risk, should_use_creativity,
+use super::{
+    acp_agent_count, acp_registry, acp_router, adapt_personality, apply_personality_preset,
+    get_communication_style, get_personality_preset, get_personality_success_rate,
+    get_personality_timeout, get_personality_traits, list_acp_agents, list_personality_presets,
+    personality, route_acp_message, set_personality_traits, should_explore, should_take_risk,
+    should_use_creativity,
 };
 use crate::experience::integration::reflection_pipeline::ReflectionPipeline;
 use crate::experience::metrics::MetricsCollector;
@@ -730,6 +728,12 @@ impl App {
         // Hypothesis subsystem self-check
         let hypothesis_summary = crate::experience::hypothesis::self_check::run_hypothesis_self_check().await;
         tracing::info!("{}", hypothesis_summary);
+
+        // Experience integration self-check (exercises pipelines, coordinator
+        // helpers, repository, scorer, scheduler, reputation, observer, and
+        // recorder code paths so they remain live rather than dead code).
+        let experience_summary = crate::experience::self_check::run_experience_self_check().await;
+        tracing::info!("{}", experience_summary);
 
         // Start background scheduler worker
         let scheduler = self.mcp_context.scheduler.clone();

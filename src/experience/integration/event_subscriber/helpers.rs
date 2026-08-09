@@ -8,7 +8,7 @@ use anyhow::Result;
 
 impl EventSubscriber {
     /// Generate reflection from experience
-    pub(super) async fn generate_reflection(&self, experience: &Experience) -> Result<()> {
+    pub(crate) async fn generate_reflection(&self, experience: &Experience) -> Result<()> {
         let _ = self
             .reflection_engine
             .generate_from_single(experience, format!("Reflection on: {}", experience.title))
@@ -19,7 +19,7 @@ impl EventSubscriber {
     }
 
     /// Generate hypothesis from experience
-    pub(super) async fn generate_hypothesis(&self, experience: &Experience) -> Result<()> {
+    pub(crate) async fn generate_hypothesis(&self, experience: &Experience) -> Result<()> {
         // Use hypothesis engine to process the experience
         // If high-scoring, create a behavior via evolution engine
         if let Some(score) = &experience.score {
@@ -50,7 +50,7 @@ impl EventSubscriber {
     }
 
     /// Update knowledge store from reflection insights
-    pub(super) async fn update_knowledge_from_reflection(
+    pub(crate) async fn update_knowledge_from_reflection(
         &self,
         reflection: &crate::experience::reflection::Reflection,
     ) -> Result<()> {
@@ -67,7 +67,7 @@ impl EventSubscriber {
     }
 
     /// Update knowledge from validated hypothesis
-    pub(super) async fn update_knowledge_from_hypothesis(
+    pub(crate) async fn update_knowledge_from_hypothesis(
         &self,
         hypothesis: &crate::experience::hypothesis::core::hypothesis::Hypothesis,
         result: &str,
@@ -94,7 +94,7 @@ impl EventSubscriber {
     }
 
     /// Update hypothesis with new evidence
-    pub(super) async fn update_hypothesis_with_evidence(
+    pub(crate) async fn update_hypothesis_with_evidence(
         &self,
         hypothesis_id: &str,
         evidence: &crate::experience::events::payload::EventPayload,

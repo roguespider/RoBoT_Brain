@@ -125,6 +125,24 @@ impl LearningPipeline {
         };
         
         self.records.insert(id, record);
+
+        // Enforce the max_items cap (Architecture §9): when the pipeline
+        // exceeds its configured capacity, evict the oldest records first
+        // so max_items is a live bound rather than dead configuration.
+        while self.records.len() > self.max_items {
+            let oldest_id = self
+                .records
+                .iter()
+                .min_by_key(|(_, r)| r.started_at)
+                .map(|(id, _)| *id);
+            match oldest_id {
+                Some(oid) => {
+                    self.records.remove(&oid);
+                }
+                None => break,
+            }
+        }
+
         id
     }
     
