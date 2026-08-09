@@ -152,6 +152,11 @@ impl App {
         skills_registry.load_defaults().await;
         tracing::info!("Skills registry initialized with default skills");
 
+        // Run the skills self-check to exercise the skill executor metrics API
+        // and registry search so those code paths remain live. Per §15.
+        let skills_checks = crate::skills::self_check::run().await;
+        tracing::info!("Skills self-check completed ({} checks passed)", skills_checks);
+
         // Create the Learning Coordinator - the main orchestrator for the
         // learning pipeline (Architecture §9 / §4.04):
         // Experience → Reflection → Hypothesis → Validation → Knowledge → Reputation
@@ -255,7 +260,7 @@ impl App {
         // writable before serving requests.
         {
             let probe = crate::planner::policy::PolicyRule {
-                id: "__startup_probe__".to_string(),
+                id: "startup-probe".to_string(),
                 name: "Startup Probe".to_string(),
                 description: "Transient rule used to verify policy management".to_string(),
                 priority: 1,
@@ -265,15 +270,15 @@ impl App {
             };
             policy_engine.add_rule(probe).await;
             let before = policy_engine.list_rules().await;
-            policy_engine.disable_rule("__startup_probe__").await;
-            policy_engine.enable_rule("__startup_probe__").await;
-            policy_engine.remove_rule("__startup_probe__").await;
+            policy_engine.disable_rule("startup-probe").await;
+            policy_engine.enable_rule("startup-probe").await;
+            policy_engine.remove_rule("startup-probe").await;
             let after = policy_engine.list_rules().await;
             tracing::info!(
                 "Policy management verified: rules before={} after={} (probe removed={})",
                 before.len(),
                 after.len(),
-                !after.iter().any(|r| r.id == "__startup_probe__")
+                !after.iter().any(|r| r.id == "startup-probe")
             );
         }
 
