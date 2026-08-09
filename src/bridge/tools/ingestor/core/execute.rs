@@ -8,6 +8,7 @@ use std::time::Duration;
 use anyhow::Result;
 use tokio::time;
 
+use crate::database::models::MemoryType;
 use crate::database::sqlite::SqliteDatabase;
 use crate::memory::WorkingMemory;
 use crate::bridge::tools::ToolOutput;
@@ -534,6 +535,7 @@ pub async fn execute_transcribe_audio(
             &transcription,
             &filename,
             &input.path,
+            MemoryType::File,
             db,
             working_memory,
         )

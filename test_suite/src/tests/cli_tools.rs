@@ -68,19 +68,9 @@ pub fn run_cli_command(args: &[&str]) -> CliTestResult {
 
 /// Find the robot_brain binary path
 fn find_robot_brain() -> String {
-    let test_suite_dir = std::env::var("CARGO_MANIFEST_DIR").unwrap_or_default();
-    let possible_paths = [
-        format!("{}/../target/release/robot_brain", test_suite_dir),
-        format!("{}/../../target/release/robot_brain", test_suite_dir),
-        "/workspace/project/RoBoT_Brain/target/release/robot_brain".to_string(),
-    ];
-    
-    for path in &possible_paths {
-        if std::path::Path::new(path).exists() {
-            return path.clone();
-        }
+    if let Some(path) = crate::paths::server_binary() {
+        return path.display().to_string();
     }
-    
     "robot_brain".to_string()
 }
 

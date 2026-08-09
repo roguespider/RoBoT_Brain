@@ -173,7 +173,7 @@ pub fn search_memory(conn: &Connection, text: &str, limit: usize) -> Result<Vec<
 
 /// List memories, optionally filtered by type
 pub fn list_memories(conn: &Connection, memory_type: Option<&str>, limit: usize) -> Result<Vec<MemoryCard>> {
-    let mut stmt = if let Some(mtype) = memory_type {
+    let mut stmt = if memory_type.is_some() {
         conn.prepare(
             "
             SELECT

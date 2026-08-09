@@ -5,22 +5,19 @@ use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::reflection;
 use crate::bridge::mcp::handlers::{HandlerError, HandlerInitResult, ToolHandler};
-use crate::workflows::enforcement::WorkflowEnforcer;
 
 /// Handler for reflection-related tools
 #[derive(Clone)]
 pub struct ReflectionToolsHandler {
     context: Arc<McpContext>,
-    enforcer: Arc<WorkflowEnforcer>,
 }
 
 impl ReflectionToolsHandler {
     /// Create a new reflection tools handler
     pub fn new(
         context: Arc<McpContext>,
-        enforcer: Arc<WorkflowEnforcer>,
     ) -> HandlerInitResult<Self> {
-        Ok(Self { context, enforcer })
+        Ok(Self { context })
     }
 
     /// Get insights

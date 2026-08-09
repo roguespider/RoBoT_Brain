@@ -68,32 +68,6 @@ impl Metrics {
         }
     }
     
-    /// Collect all system metrics
-    ///
-    /// Per Architecture §4: Gather current state of all subsystems
-    pub async fn collect(&self) -> SystemMetrics {
-        let counters = self.collector.get_all_counters().await;
-        let gauges = self.collector.get_all_gauges().await;
-        let summary = self.collector.summary().await;
-        
-        // Get subsystem-specific metrics
-        let experience_count = *self.experience_count.read().await;
-        let knowledge_count = *self.knowledge_count.read().await;
-        let learning_rate = *self.learning_rate.read().await;
-        let reputation_scores = self.reputation_scores.read().await.clone();
-        
-        SystemMetrics {
-            timestamp: Utc::now(),
-            experience_count,
-            knowledge_count,
-            learning_rate,
-            reputation_scores,
-            counters,
-            gauges,
-            aggregated: summary.metrics,
-        }
-    }
-    
     /// Record experience count
     pub async fn set_experience_count(&self, count: u64) {
         let mut exp_count = self.experience_count.write().await;
@@ -173,16 +147,6 @@ impl Metrics {
         self.reputation_scores.read().await.get(source).copied()
     }
     
-    /// Record metric for a specific subsystem
-    pub async fn record(&self, name: &str, value: f64) {
-        self.collector.record(name, value).await;
-    }
-    
-    /// Increment counter
-    pub async fn increment(&self, name: &str) {
-        self.collector.increment(name).await;
-    }
-    
     /// Get internal collector for direct access
     pub fn collector(&self) -> Arc<MetricsCollector> {
         Arc::clone(&self.collector)
@@ -225,19 +189,6 @@ impl Default for Metrics {
     fn default() -> Self {
         Self::new()
     }
-}
-
-/// System-wide metrics snapshot
-#[derive(Debug, Clone)]
-pub struct SystemMetrics {
-    pub timestamp: DateTime<Utc>,
-    pub experience_count: u64,
-    pub knowledge_count: u64,
-    pub learning_rate: f64,
-    pub reputation_scores: HashMap<String, f64>,
-    pub counters: HashMap<String, u64>,
-    pub gauges: HashMap<String, f64>,
-    pub aggregated: HashMap<String, AggregatedMetric>,
 }
 
 /// Learning-specific metrics
@@ -566,13 +517,29 @@ pub async fn run_metrics_self_check() -> String {
     let rep_scores = metrics.get_reputation_scores().await;
     let rep_score = metrics.get_reputation_score("source_a").await;
 
+    // Exercise the collector accessor exposed by the high-level Metrics API.
     let collector = metrics.collector();
+    collector
+        .record_with_labels(
+            "metrics.high_level_record",
+            1.0,
+            {
+                let mut l = HashMap::new();
+                l.insert("scope".to_string(), "self-check".to_string());
+                l
+            },
+        )
+        .await;
     let aggregated = metrics.get_aggregated("test.metric").await;
     let learning_stats = metrics.get_learning_stats().await;
 
     tracing::info!(
-        "Metrics self-check [high-level]: exp_count={} know_count={} learning_rate={:.2} rep_scores={} rep_score={:?} aggregated={:?} learning_stats.reflections={}",
-        exp_count, know_count, learning_rate, rep_scores.len(), rep_score, aggregated.is_some(), learning_stats.reflections_generated
+        "Metrics self-check [high-level]: exp_count={} know_count={} learning_rate={:.2} rep_scores={} rep_score={:?} aggregated={:?} learning_stats=(reflections={} insights={} hyp_formed={} hyp_confirmed={} hyp_rejected={} validation_rate={:.2} lr={:.2})",
+        exp_count, know_count, learning_rate, rep_scores.len(), rep_score, aggregated.is_some(),
+        learning_stats.reflections_generated, learning_stats.insights_extracted,
+        learning_stats.hypotheses_formed, learning_stats.hypotheses_confirmed,
+        learning_stats.hypotheses_rejected, learning_stats.validation_rate,
+        learning_stats.learning_rate
     );
 
     // Exercise low-level MetricsCollector API
@@ -595,9 +562,39 @@ pub async fn run_metrics_self_check() -> String {
     collector.reset_counters().await;
     let counter_after_reset = collector.get_counter("test.counter").await;
 
+    // Exercise the full standardized metric-name vocabulary so every defined
+    // counter is verified to be recordable through the MetricsCollector API.
+    use crate::experience::metrics::metric_names;
+    for name in [
+        metric_names::REFLECTIONS_VALIDATED,
+        metric_names::PATTERNS_DETECTED,
+        metric_names::EXPLORATIONS_STARTED,
+        metric_names::EXPLORATIONS_COMPLETED,
+        metric_names::FINDINGS_DISCOVERED,
+        metric_names::BEHAVIORS_CREATED,
+        metric_names::BEHAVIORS_ACTIVATED,
+        metric_names::BEHAVIORS_DEPRECATED,
+        metric_names::REPUTATION_UPDATES,
+        metric_names::INSIGHTS_GENERATED,
+        metric_names::LEARNING_ITERATIONS,
+    ] {
+        collector.increment(name).await;
+    }
+    // Performance metrics are gauges (durations/counts), exercise them as such.
+    collector
+        .set_gauge(metric_names::PROCESSING_TIME_MS, 12.5)
+        .await;
+    collector
+        .set_gauge(metric_names::DATABASE_OPERATIONS, 3.0)
+        .await;
+    collector
+        .set_gauge(metric_names::DATABASE_LATENCY_MS, 1.2)
+        .await;
+    let vocab_counters = collector.get_all_counters().await;
+
     tracing::info!(
-        "Metrics self-check [low-level]: counter={} gauge={:?} metric_points={} counter_after_reset={}",
-        counter_val, gauge_val, metric_points.len(), counter_after_reset
+        "Metrics self-check [low-level]: counter={} gauge={:?} metric_points={} counter_after_reset={} vocab_counters={}",
+        counter_val, gauge_val, metric_points.len(), counter_after_reset, vocab_counters.len()
     );
 
     format!(

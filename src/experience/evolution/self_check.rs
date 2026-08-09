@@ -175,9 +175,10 @@ pub async fn run_evolution_self_check() -> String {
     checks_passed += 1;
 
     tracing::info!(
-        "Evolution self-check: {}/{} checks passed, total_behaviors={}, evidence_count={}, should_recommend={}, archived={}, integrated={}, deprecated={}, active={}",
+        "Evolution self-check: {}/{} checks passed, total_behaviors={}, evidence_count={}, should_recommend={}, archived={}, integrated={}, deprecated={}, active={}, promoted={}, summary_integrated={}",
         checks_passed, checks_total, metrics.total_behaviors, evidence.len(),
-        should_rec, archived, integrated.len(), deprecated.len(), active.len()
+        should_rec, archived, integrated.len(), deprecated.len(), active.len(),
+        summary.promoted, summary.integrated
     );
 
     format!(

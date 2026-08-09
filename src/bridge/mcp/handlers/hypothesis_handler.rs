@@ -5,20 +5,17 @@ use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::hypothesis;
 use crate::bridge::mcp::handlers::{HandlerError, HandlerInitError, HandlerInitResult, ToolHandler};
-use crate::workflows::enforcement::WorkflowEnforcer;
 
 /// Handler for hypothesis-related tools
 #[derive(Clone)]
 pub struct HypothesisToolsHandler {
     context: Arc<McpContext>,
-    enforcer: Arc<WorkflowEnforcer>,
 }
 
 impl HypothesisToolsHandler {
     /// Create a new hypothesis tools handler
     pub fn new(
         context: Arc<McpContext>,
-        enforcer: Arc<WorkflowEnforcer>,
     ) -> HandlerInitResult<Self> {
         // Validate that required dependencies exist
         if context.database.connection().is_err() {
@@ -28,7 +25,7 @@ impl HypothesisToolsHandler {
             ));
         }
 
-        Ok(Self { context, enforcer })
+        Ok(Self { context })
     }
 
     /// Record an observation

@@ -8,6 +8,7 @@ use std::time::Instant;
 
 use crate::code_analyzer::{CodeAnalyzer, LintAnalyzer, LintSummary};
 use crate::function_registry::FunctionRegistry;
+use crate::paths;
 use crate::test_environment::TestEnvironment;
 use crate::test_results::print_issues_table;
 use crate::test_results::{TestReport, TestStatus};
@@ -57,9 +58,7 @@ pub async fn run_comprehensive_tests(
     crate::teeprintln!("\n📊 PHASE 1: SOURCE CODE ANALYSIS");
     crate::teeprintln!("{}", "─".repeat(100));
 
-    let source_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-        .join("..")
-        .join("src");
+    let source_path = paths::project_root().join("src");
     let analyzer = CodeAnalyzer::new(source_path.clone());
     let code_issues = analyzer.analyze();
     let summary = analyzer.get_summary(&code_issues);
@@ -75,7 +74,7 @@ pub async fn run_comprehensive_tests(
     crate::teeprintln!("\n📋 PHASE 1B: LINT ANALYSIS (clippy + cargo check)");
     crate::teeprintln!("{}", "─".repeat(100));
 
-    let project_path = std::path::PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+    let project_path = paths::project_root();
 
     crate::teeprintln!("  Running clippy...");
     let clippy_issues = match LintAnalyzer::run_clippy(&project_path) {

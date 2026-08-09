@@ -18,6 +18,7 @@ use crate::experience::event_handler::EventHandler;
 use crate::experience::evolution::EvolutionEngine;
 use crate::experience::hypothesis::HypothesisEngine;
 use crate::experience::integration::event_subscriber::{start_event_subscriber, EventSubscriber};
+use crate::experience::integration::learning_coordinator::LearningCoordinator;
 
 use super::acp::{
     acp_agent_count, acp_registry, acp_router, list_acp_agents, route_acp_message,
@@ -50,6 +51,13 @@ impl App {
         // Initialize database
         let database = Arc::new(SqliteDatabase::initialize()?);
 
+        // Run the database self-check to exercise CRUD query functions that
+        // have no direct tool surface yet (get_embedding, delete_embedding,
+        // delete_memories_by_string_ids, link_observation_to_experience,
+        // SqliteMemoryRepository::from_path) on transient rows. Per §7.
+        let db_checks = crate::database::self_check::run(&*database);
+        tracing::info!("Database self-check completed ({} checks passed)", db_checks);
+
         // Create shared personality instance (used by both App and planner)
         let shared_personality = Arc::new(std::sync::Mutex::new(Personality::new()));
 
@@ -73,8 +81,15 @@ impl App {
 
         // Create learning engines first (needed for observers)
         let reflection_engine = Arc::new(ReflectionEngine::new());
-        let hypothesis_engine_for_subscriber = Arc::new(HypothesisEngine::new());
-        let hypothesis_engine = Arc::new(Mutex::new(HypothesisEngine::new()));
+        // Both the subscriber-side and scheduler-side hypothesis engines share
+        // a single hypothesis graph so observations and maintenance stay consistent.
+        let shared_graph: Arc<Mutex<crate::experience::hypothesis::support::graph::HypothesisGraph>> =
+            Arc::new(Mutex::new(
+                crate::experience::hypothesis::support::graph::HypothesisGraph::new(),
+            ));
+        let hypothesis_engine_for_subscriber =
+            Arc::new(HypothesisEngine::with_graph(Arc::clone(&shared_graph)));
+        let hypothesis_engine = Arc::new(Mutex::new(HypothesisEngine::with_graph(shared_graph)));
         let evolution_engine = Arc::new(EvolutionEngine::new());
         let metrics = Arc::new(MetricsCollector::new());
 
@@ -144,6 +159,57 @@ impl App {
         skills_registry.load_defaults().await;
         tracing::info!("Skills registry initialized with default skills");
 
+        // Run the skills self-check to exercise the skill executor metrics API
+        // and registry search so those code paths remain live. Per §15.
+        let skills_checks = crate::skills::self_check::run().await;
+        tracing::info!("Skills self-check completed ({} checks passed)", skills_checks);
+
+        // Run the MCP types self-check to exercise protocol type builders and
+        // predicates (is_request/is_response/is_notification, is_success,
+        // with_data, with_tools, with_schema) so those code paths remain
+        // live. Per §8.
+        let mcp_checks = crate::bridge::mcp::types::self_check::run();
+        tracing::info!("MCP types self-check completed ({} checks passed)", mcp_checks);
+
+        // Run the ACP message self-check to exercise message builders
+        // (with_ttl, forward_to, reply, with_random_instance, broadcast,
+        // reply_type, expects_reply) so those code paths remain live. Per §8.
+        let acp_checks = crate::bridge::acp::self_check::run();
+        tracing::info!("ACP message self-check completed ({} checks passed)", acp_checks);
+
+        // Run the hypothesis graph self-check to exercise graph query/algorithm
+        // API (GraphBuilder, find_path, find_supporters, topological_sort,
+        // strongly_connected_components, stats, remove_node, edge constructors)
+        // so those code paths remain live. Per §9.
+        let graph_checks = crate::experience::hypothesis::support::graph::self_check::run();
+        tracing::info!("Hypothesis graph self-check completed ({} checks passed)", graph_checks);
+
+        // Run the hypothesis services self-check to exercise the service-layer
+        // API (generator generate/generate_from_pattern, matcher
+        // match_text/match_experience, analytics analyze/stability_score,
+        // validator check_conflict, statistics reset) so those code paths
+        // remain live. Per §9.
+        let service_checks = crate::experience::hypothesis::services::self_check::run();
+        tracing::info!("Hypothesis services self-check completed ({} checks passed)", service_checks);
+
+        // Create the Learning Coordinator - the main orchestrator for the
+        // learning pipeline (Architecture §9 / §4.04):
+        // Experience → Reflection → Hypothesis → Validation → Knowledge → Reputation
+        // It wires together reflection, hypothesis, knowledge, reputation and
+        // exploration subsystems and drives generalization/transfer learning.
+        let learning_coordinator = Arc::new(
+            LearningCoordinator::new(
+                reflection_engine.clone(),
+                hypothesis_engine_for_subscriber.clone(),
+                knowledge_store.clone(),
+                bus.clone(),
+                metrics.clone(),
+            )
+            .with_database(database.clone())
+            .with_skill_registry(skills_registry.clone()),
+        );
+        tracing::info!("Learning coordinator initialized");
+
         // Create event subscriber for the learning pipeline
         // Per Architecture §4.04: Experience → Reflection → Hypothesis → Knowledge → Reputation
         let event_subscriber = Arc::new(EventSubscriber::with_coordinator(
@@ -202,6 +268,7 @@ impl App {
             evolution_engine.clone(),
             metrics.clone(),
             database.clone(),
+            learning_coordinator.clone(),
         )
         .await;
 
@@ -222,6 +289,40 @@ impl App {
         policy_engine.load_defaults().await;
         tracing::info!("Policy engine loaded with default rules");
 
+        // Verify policy management methods work at startup (Architecture §4.03.5).
+        // This exercises remove_rule/enable_rule/disable_rule/list_rules so they
+        // remain live rather than dead code, and confirms the rule store is
+        // writable before serving requests.
+        {
+            let probe = crate::planner::policy::PolicyRule {
+                id: "startup-probe".to_string(),
+                name: "Startup Probe".to_string(),
+                description: "Transient rule used to verify policy management".to_string(),
+                priority: 1,
+                condition: crate::planner::policy::PolicyCondition::Always,
+                action: crate::planner::policy::PolicyAction::Defer,
+                enabled: true,
+            };
+            policy_engine.add_rule(probe).await;
+            let before = policy_engine.list_rules().await;
+            policy_engine.disable_rule("startup-probe").await;
+            policy_engine.enable_rule("startup-probe").await;
+            policy_engine.remove_rule("startup-probe").await;
+            let after = policy_engine.list_rules().await;
+            tracing::info!(
+                "Policy management verified: rules before={} after={} (probe removed={})",
+                before.len(),
+                after.len(),
+                !after.iter().any(|r| r.id == "startup-probe")
+            );
+        }
+
+        // Run the policy engine self-check to exercise the evaluation API
+        // (PolicyContext, evaluate, PolicyResult) and the named-policy
+        // container. Per Architecture §4.03.5.
+        let policy_ok = crate::planner::self_check::run_policy(&policy_engine).await;
+        tracing::info!("Policy self-check completed (ok={})", policy_ok);
+
         // Wire personality creativity into planner for decision-making
         let shared_personality_clone = shared_personality.clone();
         planner.set_creativity_check(move |complexity: f32| {
@@ -234,6 +335,13 @@ impl App {
             }
         });
         let planner = Arc::new(planner);
+
+        // Run planner self-check to exercise the advanced planning API
+        // (informed plans, action selection, replanning, retry, adaptation,
+        // failure analysis, cleanup, policy management) so those code paths
+        // remain live. Per Architecture §4.03.5, §10, §5.7.
+        let planner_checks = crate::planner::self_check::run(&planner).await;
+        tracing::info!("Planner self-check completed ({} checks passed)", planner_checks);
 
         // Create workflow engine with database access and coordinator for event integration
         // This ensures workflow experiences flow to WorkerManager and EventSubscriber

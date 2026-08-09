@@ -2,7 +2,7 @@
 //! Action selection and scoring for the planning engine
 
 use super::types::{
-    ActionCandidate, KnowledgeRef, PlannerPolicy,
+    ActionCandidate, KnowledgeRef, PlannerPolicy, RiskLevel,
 };
 
 /// Score an action candidate based on policy
@@ -11,12 +11,7 @@ pub fn score_action(action: &ActionCandidate, policy: &PlannerPolicy) -> f32 {
 
     // Factor in supporting knowledge confidence
     if !action.supporting_knowledge.is_empty() {
-        let total_confidence: f32 = action
-            .supporting_knowledge
-            .iter()
-            .map(|k| k.confidence)
-            .sum();
-        let avg_confidence = total_confidence / action.supporting_knowledge.len() as f32;
+        let avg_confidence = calculate_knowledge_confidence(&action.supporting_knowledge);
 
         if avg_confidence >= policy.min_knowledge_confidence {
             score += policy.knowledge_weight * avg_confidence;
@@ -36,6 +31,14 @@ pub fn score_action(action: &ActionCandidate, policy: &PlannerPolicy) -> f32 {
 
     // Factor in direct confidence
     score += policy.confidence_weight * action.confidence;
+
+    // Penalize higher-risk actions so risk_level participates in scoring.
+    score -= match action.risk_level {
+        RiskLevel::Low => 0.0,
+        RiskLevel::Medium => 0.1,
+        RiskLevel::High => 0.25,
+        RiskLevel::Critical => 0.4,
+    };
 
     score.clamp(0.0, 1.0)
 }

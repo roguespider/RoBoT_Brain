@@ -1,20 +1,15 @@
-# Workspace for RoBoT Brain MCP Server
+# RoBoT Brain MCP Server
 #
 # MCP Protocol: 2025-03-26 (Streamable HTTP, OAuth 2.1, Tool Annotations)
 # Rust Edition: 2024 (stabilized in Rust 1.85.0, Feb 2025)
-# 
+#
 # Structure:
 #   src/ - Main application including MCP server
 #   src/bridge/ - Bridge layer including tools
-
-[workspace]
-members = [
-    "test_suite",
-]
-exclude = [
-    "test_suite/src/tests",
-]
-resolver = "2"
+#
+# NOTE: test_suite/ is a fully independent project (separate Cargo.toml +
+# Cargo.lock). It is intentionally NOT part of a workspace here so the two
+# projects do not cross-link. Build it directly from its own directory.
 
 [package]
 name = "robot_brain"

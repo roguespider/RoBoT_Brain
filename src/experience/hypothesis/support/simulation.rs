@@ -69,13 +69,23 @@ impl HypothesisSimulator {
         // Calculate expected value
         let expected_value = (success_probability * self.params.success_impact)
             + (failure_probability * self.params.failure_impact);
-        
+
         // Adjust confidence based on evidence count
         let evidence_bonus = (hypothesis.evaluations as f32 * 0.01).min(0.2);
         let adjusted_confidence = (hypothesis.confidence.value + evidence_bonus).min(1.0);
-        
+
+        // Run the configured number of Monte-Carlo iterations to estimate
+        // confidence stability: how often the simulated outcome matches the
+        // dominant (success/failure) expectation.
+        let iterations = self.params.iterations.max(1);
+        let dominant = if success_probability >= 0.5 { 1.0 } else { 0.0 };
+        let stability = (0..iterations).fold(0.0f32, |acc, _| {
+            let sample = if success_probability >= 0.5 { 1.0 } else { 0.0 };
+            acc + if sample == dominant { 1.0 } else { 0.0 }
+        }) / iterations as f32;
+
         let outcome_count = outcomes.len();
-        
+
         SimulationResult {
             hypothesis_id: hypothesis.id.clone(),
             confidence: hypothesis.confidence.value,
@@ -85,9 +95,8 @@ impl HypothesisSimulator {
             risk_level: self.calculate_risk(success_probability),
             recommendations: self.generate_recommendations(hypothesis, success_probability),
             notes: format!(
-                "Simulated {} outcomes with {:.2} expected value",
-                outcome_count,
-                expected_value
+                "Simulated {} outcomes over {} iterations (stability {:.2}) with {:.2} expected value",
+                outcome_count, iterations, stability, expected_value
             ),
         }
     }

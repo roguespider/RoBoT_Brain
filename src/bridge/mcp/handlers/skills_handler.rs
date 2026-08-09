@@ -5,22 +5,19 @@ use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::skills;
 use crate::bridge::mcp::handlers::{HandlerError, HandlerInitResult, ToolHandler};
-use crate::workflows::enforcement::WorkflowEnforcer;
 
 /// Handler for skills-related tools
 #[derive(Clone)]
 pub struct SkillsToolsHandler {
     context: Arc<McpContext>,
-    enforcer: Arc<WorkflowEnforcer>,
 }
 
 impl SkillsToolsHandler {
     /// Create a new skills tools handler
     pub fn new(
         context: Arc<McpContext>,
-        enforcer: Arc<WorkflowEnforcer>,
     ) -> HandlerInitResult<Self> {
-        Ok(Self { context, enforcer })
+        Ok(Self { context })
     }
 
     /// Register a new skill

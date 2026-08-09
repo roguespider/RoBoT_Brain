@@ -244,6 +244,25 @@ impl LearningCoordinator {
     }
 
     // ========================================================================
+    // Generalization
+    // ========================================================================
+
+    /// Extract common patterns from a set of experiences (Architecture §9:
+    /// "Generalization extracts common patterns from specific instances").
+    pub fn extract_patterns(
+        &self,
+        experiences: &[Experience],
+    ) -> Vec<crate::experience::integration::learning_coordinator::results::LearningPattern> {
+        use crate::experience::integration::learning_coordinator::generalization::GeneralizationMethods;
+        let methods = GeneralizationMethods {
+            knowledge_store: &self.knowledge_store,
+            bus: &self.bus,
+            metrics: &self.metrics,
+        };
+        methods.extract_common_patterns(experiences)
+    }
+
+    // ========================================================================
     // Stats
     // ========================================================================
 

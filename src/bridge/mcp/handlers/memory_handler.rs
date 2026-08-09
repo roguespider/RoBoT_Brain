@@ -6,20 +6,17 @@ use uuid::Uuid;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::memory;
 use crate::bridge::mcp::handlers::{HandlerError, HandlerInitError, HandlerInitResult, ToolHandler, json_to_schema};
-use crate::workflows::enforcement::WorkflowEnforcer;
 
 /// Handler for memory-related tools
 #[derive(Clone)]
 pub struct MemoryToolsHandler {
     context: Arc<McpContext>,
-    enforcer: Arc<WorkflowEnforcer>,
 }
 
 impl MemoryToolsHandler {
     /// Create a new memory tools handler
     pub fn new(
         context: Arc<McpContext>,
-        enforcer: Arc<WorkflowEnforcer>,
     ) -> HandlerInitResult<Self> {
         // Validate that required dependencies exist
         if context.database.connection().is_err() {
@@ -29,7 +26,7 @@ impl MemoryToolsHandler {
             ));
         }
 
-        Ok(Self { context, enforcer })
+        Ok(Self { context })
     }
 
     /// Store a new memory

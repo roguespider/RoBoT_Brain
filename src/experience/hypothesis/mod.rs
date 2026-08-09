@@ -35,6 +35,7 @@ use crate::experience::types::Experience;
 /// This is the single entry point used by the ExperienceCoordinator.
 pub struct HypothesisEngine {
     evaluator: HypothesisEvaluator,
+    simulator: support::simulation::HypothesisSimulator,
     graph: Arc<Mutex<HypothesisGraph>>,
 }
 
@@ -43,6 +44,7 @@ impl HypothesisEngine {
     pub fn new() -> Self {
         Self {
             evaluator: HypothesisEvaluator::new(),
+            simulator: support::simulation::HypothesisSimulator::new(),
             graph: Arc::new(Mutex::new(HypothesisGraph::new())),
         }
     }
@@ -51,6 +53,7 @@ impl HypothesisEngine {
     pub fn with_graph(graph: Arc<Mutex<HypothesisGraph>>) -> Self {
         Self {
             evaluator: HypothesisEvaluator::new(),
+            simulator: support::simulation::HypothesisSimulator::new(),
             graph,
         }
     }
@@ -79,9 +82,85 @@ impl HypothesisEngine {
         let related_hypotheses = self.find_related_hypotheses(&insights);
         
         // 3. Evaluate evidence and update graph relationships
+        use crate::experience::hypothesis::core::evidence::{
+            Evidence, EvidenceRelationship, EvidenceSource, EvidenceStrength,
+        };
+        use crate::experience::hypothesis::core::hypothesis::Hypothesis;
+
+        let outcome_relationship = match experience.outcome.kind {
+            crate::experience::types::OutcomeKind::Success => EvidenceRelationship::Supports,
+            crate::experience::types::OutcomeKind::Failure => EvidenceRelationship::Contradicts,
+            _ => EvidenceRelationship::Neutral,
+        };
+
+        let mut evaluated: Vec<Hypothesis> = Vec::new();
+
         for insight in &insights {
             let hypothesis_id = self.find_or_create_hypothesis(insight)?;
-            
+
+            // Build evidence from this experience outcome and run the evaluator
+            // to update hypothesis confidence (Architecture step 3).
+            let mut hypothesis = Hypothesis::new(insight.clone(), insight.clone());
+            hypothesis.id = hypothesis_id.clone();
+
+            let mut evidence = Evidence::new(insight.clone(), outcome_relationship);
+            evidence.source = EvidenceSource::Experience;
+            evidence.strength = EvidenceStrength::Moderate;
+            evidence.experience_id = Some(experience.id.to_string());
+            // Confidence scales with experience score when available.
+            if let Some(ref score) = experience.score {
+                evidence.set_confidence(score.confidence);
+            }
+            evidence.add_tag(format!("outcome:{:?}", experience.outcome.kind));
+
+            let result = self.evaluator.evaluate(&mut hypothesis, &evidence);
+            if result.changed {
+                tracing::debug!(
+                    "Hypothesis {} confidence updated: {:.3} -> {:.3} ({:?})",
+                    result.hypothesis_id.0,
+                    result.previous_confidence,
+                    result.new_confidence,
+                    result.relationship
+                );
+            }
+
+            // Simulate the implications of acting on this hypothesis
+            // (Architecture: simulation-based evaluation before execution).
+            // Use conservative params after a failure, aggressive after a success.
+            use crate::experience::hypothesis::support::simulation::{
+                HypothesisSimulator, SimulationParams,
+            };
+            let sim_result = match experience.outcome.kind {
+                crate::experience::types::OutcomeKind::Failure => {
+                    HypothesisSimulator::with_params(SimulationParams::conservative())
+                        .simulate(&hypothesis)
+                }
+                crate::experience::types::OutcomeKind::Success => {
+                    HypothesisSimulator::with_params(SimulationParams::aggressive())
+                        .simulate(&hypothesis)
+                }
+                _ => self.simulator.simulate(&hypothesis),
+            };
+            if sim_result.should_act() {
+                tracing::info!(
+                    "Simulation recommends acting on hypothesis '{}' (confidence {:.2}, expected value {:.2}, risk {})",
+                    hypothesis.title,
+                    sim_result.confidence,
+                    sim_result.expected_value,
+                    sim_result.risk_level
+                );
+            }
+            if let Some(best) = sim_result.best_outcome() {
+                tracing::debug!(
+                    "Best simulated outcome: {:?} p={:.2} ev={:.2}",
+                    best.outcome_type,
+                    best.probability,
+                    best.expected_value()
+                );
+            }
+
+            evaluated.push(hypothesis);
+
             // Create support/contradiction relationships in graph
             for related_id in &related_hypotheses {
                 if *related_id != hypothesis_id {
@@ -104,6 +183,27 @@ impl HypothesisEngine {
             }
         }
         
+
+        // Compare and rank the hypotheses evaluated in this pass using the
+        // batch simulation APIs (Architecture: simulation-based evaluation).
+        if evaluated.len() > 1 {
+            let batch = self.simulator.simulate_batch(&evaluated);
+            let refs: Vec<&Hypothesis> = evaluated.iter().collect();
+            let compared = self.simulator.compare(&refs);
+            if let Some(safest) = self.simulator.find_safest(&evaluated) {
+                tracing::info!(
+                    "Safest hypothesis to act on: '{}' (confidence {:.2})",
+                    safest.title,
+                    safest.confidence.value
+                );
+            }
+            tracing::debug!(
+                "Batch simulation: {} results, {} compared",
+                batch.len(),
+                compared.len()
+            );
+        }
+
         // 4. Detect cycles and log warnings
         {
             let graph_result = self.graph.lock();
@@ -226,18 +326,13 @@ impl HypothesisEngine {
         }
     }
 
-    /// Observe an experience (for observer pattern)
-    pub fn observe(&self, experience: &Experience) -> Result<()> {
-        tracing::debug!("HypothesisEngine observing experience: {}", experience.id);
-        Ok(())
-    }
-
     /// Perform periodic maintenance.
     pub fn maintenance(&mut self) -> Result<()> {
         tracing::info!("Running hypothesis engine maintenance");
         
         {
-            let graph_result = self.graph.lock();
+            let graph = self.get_graph();
+            let graph_result = graph.lock();
             match graph_result {
                 Ok(graph) => {
                     let cycles = graph.detect_cycles();

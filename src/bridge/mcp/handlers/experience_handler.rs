@@ -5,20 +5,17 @@ use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::experience;
 use crate::bridge::mcp::handlers::{HandlerError, HandlerInitError, HandlerInitResult, ToolHandler};
-use crate::workflows::enforcement::WorkflowEnforcer;
 
 /// Handler for experience-related tools
 #[derive(Clone)]
 pub struct ExperienceToolsHandler {
     context: Arc<McpContext>,
-    enforcer: Arc<WorkflowEnforcer>,
 }
 
 impl ExperienceToolsHandler {
     /// Create a new experience tools handler
     pub fn new(
         context: Arc<McpContext>,
-        enforcer: Arc<WorkflowEnforcer>,
     ) -> HandlerInitResult<Self> {
         // Validate that required dependencies exist
         if context.database.connection().is_err() {
@@ -28,7 +25,7 @@ impl ExperienceToolsHandler {
             ));
         }
 
-        Ok(Self { context, enforcer })
+        Ok(Self { context })
     }
 
     /// Record a new experience

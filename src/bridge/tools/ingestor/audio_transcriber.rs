@@ -27,7 +27,7 @@ use candle_transformers::models::whisper::{self as whisper, Config};
 use hf_hub::api::sync::Api;
 use tokenizers::Tokenizer;
 
-use crate::database::models::MemoryCard;
+use crate::database::models::{MemoryCard, MemoryType};
 use crate::database::sqlite::SqliteDatabase;
 use crate::memory::pipeline::MemoryPipeline;
 use crate::memory::types::MemoryItem;
@@ -667,40 +667,47 @@ fn load_wav(path: &Path) -> Result<Vec<f32>> {
     anyhow::bail!("Invalid WAV file: no data chunk found")
 }
 
-/// Decode WAV sample data into f32 samples
+/// Decode WAV sample data into f32 samples, downmixing to mono when multi-channel
 fn decode_wav_samples(data: &[u8], channels: u16, bits_per_sample: u16) -> Result<Vec<f32>> {
     let bytes_per_sample = (bits_per_sample / 8) as usize;
-    let num_samples = data.len() / bytes_per_sample;
-    let mut samples = Vec::with_capacity(num_samples);
+    let frame_size = bytes_per_sample * channels.max(1) as usize;
+    let num_frames = if frame_size == 0 { 0 } else { data.len() / frame_size };
+    let mut samples = Vec::with_capacity(num_frames);
 
-    for i in 0..num_samples {
-        let offset = i * bytes_per_sample;
-        let sample = match bits_per_sample {
-            8 => {
-                // 8-bit samples are unsigned (0-255), centered at 128
-                let val = data[offset];
-                (val as f32 - 128.0) / 128.0
-            }
-            16 => {
-                let val = i16::from_le_bytes([data[offset], data[offset + 1]]);
-                val as f32 / 32768.0
-            }
-            24 => {
-                let val = i32::from_le_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
-                val as f32 / 8388608.0
-            }
-            32 => {
-                let val = i32::from_le_bytes([
-                    data[offset],
-                    data[offset + 1],
-                    data[offset + 2],
-                    data[offset + 3],
-                ]);
-                val as f32 / 2147483648.0
-            }
-            _ => anyhow::bail!("Unsupported bits per sample: {}", bits_per_sample),
-        };
-        samples.push(sample);
+    for f in 0..num_frames {
+        let frame_offset = f * frame_size;
+        let mut sum = 0.0f32;
+        for c in 0..channels.max(1) as usize {
+            let offset = frame_offset + c * bytes_per_sample;
+            let sample = match bits_per_sample {
+                8 => {
+                    // 8-bit samples are unsigned (0-255), centered at 128
+                    let val = data[offset];
+                    (val as f32 - 128.0) / 128.0
+                }
+                16 => {
+                    let val = i16::from_le_bytes([data[offset], data[offset + 1]]);
+                    val as f32 / 32768.0
+                }
+                24 => {
+                    let val = i32::from_le_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                    val as f32 / 8388608.0
+                }
+                32 => {
+                    let val = i32::from_le_bytes([
+                        data[offset],
+                        data[offset + 1],
+                        data[offset + 2],
+                        data[offset + 3],
+                    ]);
+                    val as f32 / 2147483648.0
+                }
+                _ => anyhow::bail!("Unsupported bits per sample: {}", bits_per_sample),
+            };
+            sum += sample;
+        }
+        // downmix: average across channels (mono when channels == 1)
+        samples.push(sum / channels.max(1) as f32);
     }
 
     Ok(samples)
@@ -768,12 +775,13 @@ pub async fn store_transcription_as_memory(
     transcription: &TranscriptionResult,
     filename: &str,
     source_path: &str,
+    memory_type: MemoryType,
     db: Arc<SqliteDatabase>,
     working_memory: Arc<WorkingMemory>,
 ) -> Result<Vec<String>> {
     let content = format_transcription_as_memory(transcription, filename, source_path);
 
-    let mut memory = MemoryCard::new(content, crate::database::models::MemoryType::File);
+    let mut memory = MemoryCard::new(content, memory_type);
     memory.file_source = Some(source_path.to_string());
 
     let pipeline = MemoryPipeline::new(db.clone());

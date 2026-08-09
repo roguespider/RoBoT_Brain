@@ -537,6 +537,7 @@ pub async fn ingest_audio_file(
         &transcription,
         &filename,
         &file_path_str,
+        memory_type,
         db,
         working_memory,
     )
@@ -563,7 +564,7 @@ pub async fn ingest_audio_file(
         file_path: file_path_str,
         success: true,
         chunks_created: memory_ids.len(),
-        chunk_size_used: 0,
+        chunk_size_used: if memory_ids.is_empty() { 0 } else { chunk_size },
         memory_ids,
         error: None,
         remaining_count: 0,

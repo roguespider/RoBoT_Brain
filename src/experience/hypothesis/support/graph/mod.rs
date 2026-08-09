@@ -13,6 +13,7 @@
 mod graph_algorithms;
 pub mod graph_builder;
 mod graph_types;
+pub mod self_check;
 
 use std::collections::HashMap;
 

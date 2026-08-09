@@ -24,11 +24,7 @@ pub use error::ToolError;
 use std::sync::Arc;
 
 use anyhow::Result;
-use rmcp::{
-    model::{CallToolRequestParams, ClientCapabilities, ClientInfo, Implementation, Tool},
-    service::{RoleClient, RunningService},
-    ClientHandler,
-};
+use rmcp::model::{CallToolRequestParams, ClientCapabilities, ClientInfo, Implementation, Tool};
 use tokio::process::Command;
 use tokio::sync::RwLock;
 

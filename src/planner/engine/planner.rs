@@ -403,7 +403,15 @@ impl Planner {
             None => return Ok(None),
         };
 
-        tracing::info!("Replanning {} because: {:?}", plan_id, reason);
+        let reason_detail = match &reason {
+            ReplanReason::StepFailed(step_id) => format!("step {} failed", step_id),
+            ReplanReason::NewKnowledge(ids) => format!("{} new knowledge items", ids.len()),
+            ReplanReason::ContextChanged => "context changed".to_string(),
+            ReplanReason::UserRequested => "user requested".to_string(),
+            ReplanReason::BetterApproachDiscovered => "better approach discovered".to_string(),
+            ReplanReason::Timeout => "timeout".to_string(),
+        };
+        tracing::info!("Replanning {} because: {}", plan_id, reason_detail);
         drop(plans);
         self.metrics.increment("planner.replans").await;
 

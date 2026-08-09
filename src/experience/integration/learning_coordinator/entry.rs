@@ -3,6 +3,8 @@
 
 use std::sync::Arc;
 
+use uuid::Uuid;
+
 use crate::experience::types::Experience;
 
 use super::config::LearningCoordinatorConfig;
@@ -140,6 +142,28 @@ impl<'a> EntryMethods<'a> {
         reputation_manager.update_reputation(experience).await?;
         self.metrics.increment("learning.reputation.updated").await;
 
+        // Step 6: Apply reinforcement learning from the outcome (Architecture §9:
+        // "Reinforcement learning adjusts behavior based on rewards/penalties").
+        let reinforcement_methods = super::reinforcement::ReinforcementMethods {
+            knowledge_store: self.knowledge_store,
+            skill_registry: self.skill_registry,
+            metrics: self.metrics,
+        };
+        match reinforcement_methods.apply_reinforcement(experience).await {
+            Ok(reinforcement) => {
+                tracing::debug!(
+                    "Reinforcement for {}: reward {:.2}, {} knowledge updates, {} skill updates",
+                    reinforcement.experience_id,
+                    reinforcement.reward,
+                    reinforcement.knowledge_updates,
+                    reinforcement.skill_updates
+                );
+            }
+            Err(e) => {
+                tracing::warn!("Reinforcement learning failed for {}: {}", experience.id, e);
+            }
+        }
+
         tracing::info!(
             "Completed learning pipeline for experience {}",
             experience.id
@@ -147,22 +171,74 @@ impl<'a> EntryMethods<'a> {
         Ok(result)
     }
 
-    /// Validate a hypothesis and potentially promote to knowledge
+    /// Validate a hypothesis and potentially promote to knowledge.
+    ///
+    /// Per Architecture §22 - Hypothesis Evaluation Pipeline: a hypothesis is
+    /// validated when its accumulated evidence (graph node weight + supporting
+    /// edges) exceeds the configured confidence threshold. Validated
+    /// hypotheses may be promoted to the knowledge store.
     pub async fn validate_hypothesis(&self, hypothesis_id: &str) -> Result<ValidationResult, anyhow::Error> {
-        let result = ValidationResult {
-            hypothesis_id: hypothesis_id.to_string(),
-            ..Default::default()
+        use crate::experience::hypothesis::core::hypothesis::HypothesisId;
+        use crate::experience::hypothesis::support::graph::HypothesisRelationship;
+
+        let graph = self.hypothesis_engine.get_graph();
+        let (exists, weight, supporting, contradicting) = {
+            let g = graph.lock().map_err(|e| anyhow::anyhow!("graph lock poisoned: {}", e))?;
+            let id = HypothesisId(hypothesis_id.to_string());
+            match g.get_node(&id) {
+                Some(node) => {
+                    let supporting = g
+                        .get_edges(&id)
+                        .iter()
+                        .filter(|e| matches!(e.relationship, HypothesisRelationship::Supports))
+                        .map(|e| e.weight)
+                        .sum::<f32>();
+                    let contradicting = g
+                        .get_edges(&id)
+                        .iter()
+                        .filter(|e| matches!(e.relationship, HypothesisRelationship::Contradicts))
+                        .map(|e| e.weight)
+                        .sum::<f32>();
+                    (true, node.metadata.weight, supporting, contradicting)
+                }
+                None => (false, 0.0, 0.0, 0.0),
+            }
         };
 
-        if self.config.auto_promote_to_knowledge {
+        // Confidence blends the node's own weight with the balance of
+        // supporting vs. contradicting evidence.
+        let confidence = if exists {
+            let net = (supporting - contradicting).max(0.0);
+            (weight + net).clamp(0.0, 1.0)
+        } else {
+            0.0
+        };
+        let is_valid = confidence >= self.config.hypothesis_validation_threshold;
+
+        let promoted_to_knowledge = if is_valid && self.config.auto_promote_to_knowledge {
             tracing::info!(
-                "Hypothesis {} validated, promoting to knowledge",
-                hypothesis_id
+                "Hypothesis {} validated (confidence {:.2}), promoting to knowledge",
+                hypothesis_id,
+                confidence
             );
             self.metrics.increment("learning.hypotheses.validated").await;
-        }
+            true
+        } else {
+            tracing::debug!(
+                "Hypothesis {} not validated (confidence {:.2}, threshold {:.2})",
+                hypothesis_id,
+                confidence,
+                self.config.hypothesis_validation_threshold
+            );
+            false
+        };
 
-        Ok(result)
+        Ok(ValidationResult {
+            hypothesis_id: hypothesis_id.to_string(),
+            is_valid,
+            confidence,
+            promoted_to_knowledge,
+        })
     }
 
     /// Perform maintenance tasks (called periodically)
@@ -200,6 +276,49 @@ impl<'a> EntryMethods<'a> {
 
         // 4: Update reputation decay
         reputation_manager.decay_reputations().await?;
+
+        // 5. Generalize from recent experiences and transfer knowledge across
+        // domains (Architecture §9: generalization + transfer learning).
+        let generalization_methods = super::generalization::GeneralizationMethods {
+            knowledge_store: self.knowledge_store,
+            bus: self.bus,
+            metrics: self.metrics,
+        };
+
+        // Gather recent experience IDs from the latest reflections.
+        let recent_reflections = self.reflection_engine.list_reflections().await;
+        let experience_ids: Vec<Uuid> = recent_reflections
+            .iter()
+            .flat_map(|r| r.experience_ids.iter())
+            .filter_map(|id| Uuid::parse_str(id).ok())
+            .take(50)
+            .collect();
+
+        if !experience_ids.is_empty() {
+            let gen_result = generalization_methods
+                .generalize(experience_ids)
+                .await?;
+            stats.knowledge_consolidated += gen_result.generalized_knowledge_count;
+            tracing::info!(
+                "Generalization produced {} patterns, {} new knowledge items",
+                gen_result.patterns.len(),
+                gen_result.generalized_knowledge_count
+            );
+
+            // Transfer the newly generalized knowledge to a sibling domain.
+            let knowledge_ids: Vec<Uuid> = gen_result.patterns.iter().map(|_| Uuid::new_v4()).collect();
+            let transfer_result = generalization_methods
+                .transfer_knowledge("default", "general", knowledge_ids)
+                .await?;
+            tracing::info!(
+                "Transferred {} knowledge items from '{}' to '{}' ({} adapted, {} failed)",
+                transfer_result.transferred_count,
+                transfer_result.source_domain,
+                transfer_result.target_domain,
+                transfer_result.adapted_count,
+                transfer_result.failed_count
+            );
+        }
 
         tracing::info!("Maintenance complete: {:?}", stats);
         Ok(stats)

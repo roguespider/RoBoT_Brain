@@ -1,5 +1,26 @@
 # RoBoT Brain - Agent Memory
 
+## Prerequisites (install FIRST, before anything else)
+
+Before building or working on this project, the following must be installed.
+Do this as the very first step — the build will fail without them.
+
+1. **Rust toolchain** (edition 2024 requires Rust 1.85+):
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --profile minimal
+   . "$HOME/.cargo/env"
+   ```
+2. **System packages** (needed by native Rust deps: `openssl-sys`, `rusqlite`/bundled SQLite, etc.):
+   ```bash
+   sudo apt-get update
+   sudo apt-get install -y pkg-config libssl-dev
+   ```
+   - `pkg-config` — required by `openssl-sys`'s build script to locate OpenSSL.
+   - `libssl-dev` — OpenSSL headers + dev libs (the runtime `.so` alone is not enough).
+3. **Cargo config** — `.cargo/config` already pins a Linux linker flag for libsqlite3; no action needed.
+
+If a build fails with `Could not find directory of OpenSSL installation` or `Unable to locate package`, it means step 2 was skipped or apt lists are stale (`sudo apt-get update` first).
+
 ## Project Structure
 
 This is a Rust workspace with **two separate, independent programs**:
