@@ -11,6 +11,8 @@ mod knowledge;
 mod memory;
 mod cli;
 mod personality;
+mod agent;
+mod world_model;
 
 use bridge::app::App;
 use bridge::logging::init_logging;
