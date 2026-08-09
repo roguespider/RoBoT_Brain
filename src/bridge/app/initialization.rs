@@ -171,6 +171,12 @@ impl App {
         let mcp_checks = crate::bridge::mcp::types::self_check::run();
         tracing::info!("MCP types self-check completed ({} checks passed)", mcp_checks);
 
+        // Run the ACP message self-check to exercise message builders
+        // (with_ttl, forward_to, reply, with_random_instance, broadcast,
+        // reply_type, expects_reply) so those code paths remain live. Per §8.
+        let acp_checks = crate::bridge::acp::self_check::run();
+        tracing::info!("ACP message self-check completed ({} checks passed)", acp_checks);
+
         // Create the Learning Coordinator - the main orchestrator for the
         // learning pipeline (Architecture §9 / §4.04):
         // Experience → Reflection → Hypothesis → Validation → Knowledge → Reputation

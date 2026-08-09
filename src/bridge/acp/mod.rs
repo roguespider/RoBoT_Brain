@@ -32,6 +32,7 @@ pub mod error;
 pub mod message;
 pub mod registry;
 pub mod router;
+pub mod self_check;
 pub mod system_agent;
 
 // Re-export production types only
