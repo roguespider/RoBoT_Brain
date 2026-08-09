@@ -11,7 +11,6 @@
 //!
 //! OUTPUT: All test results are automatically saved to `test_suite_output.txt`
 
-use std::env;
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
@@ -27,6 +26,7 @@ pub mod output;
 mod code_analyzer;
 mod comprehensive_test;
 mod function_registry;
+mod paths;
 mod test_environment;
 mod test_results;
 mod tests;
@@ -75,41 +75,23 @@ impl TestStats {
     }
 }
 
-/// Find the actual server binary path, handling .exe on Windows.
+/// Resolve the server binary path at runtime (see `paths::server_binary`).
 fn find_server_binary(robot_brain_dir: &Path) -> Option<PathBuf> {
-    // Try the native extension first (Windows uses .exe)
-    #[cfg(windows)]
-    let native = "robot_brain.exe";
-    #[cfg(not(windows))]
-    let native = "robot_brain";
-
-    let with_ext = robot_brain_dir.join("target/release").join(native);
-    if with_ext.exists() {
-        return Some(with_ext);
+    let native = if cfg!(windows) { "robot_brain.exe" } else { "robot_brain" };
+    let primary = robot_brain_dir.join("target/release").join(native);
+    if primary.exists() {
+        return Some(primary);
     }
-
-    // Fallback: try the bare name (in case the build produced it)
-    let bare = robot_brain_dir.join("target/release/robot_brain");
-    if bare.exists() {
-        return Some(bare);
-    }
-
-    // Last resort: try .exe on non-Windows or bare on Windows
-    #[cfg(not(windows))]
-    {
-        let with_exe = robot_brain_dir.join("target/release/robot_brain.exe");
-        if with_exe.exists() {
-            return Some(with_exe);
+    // Cross-platform fallbacks for unusual build outputs.
+    let fallbacks = [
+        robot_brain_dir.join("target/release/robot_brain"),
+        robot_brain_dir.join("target/release/robot_brain.exe"),
+    ];
+    for path in fallbacks {
+        if path.exists() {
+            return Some(path);
         }
     }
-    #[cfg(windows)]
-    {
-        let bare = robot_brain_dir.join("target/release/robot_brain");
-        if bare.exists() {
-            return Some(bare);
-        }
-    }
-
     None
 }
 
@@ -123,7 +105,7 @@ async fn build_server() -> anyhow::Result<PathBuf> {
     teeprintln!("BUILDING ROBOT_BRAIN SERVER");
     teeprintln!("{}", "=".repeat(60));
 
-    let robot_brain_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("..");
+    let robot_brain_dir = paths::project_root();
 
     // Check for existing binary
     if let Some(path) = find_server_binary(&robot_brain_dir) {
@@ -766,7 +748,7 @@ impl TestMcpClient {
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
     // Initialize file output - all output will be written to both stdout and file
-    let output_file = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("test_suite_output.txt");
+    let output_file = paths::test_suite_dir().join("test_suite_output.txt");
     output::init(&output_file)
         .map_err(|e| anyhow::anyhow!("Failed to create output file: {}", e))?;
 
