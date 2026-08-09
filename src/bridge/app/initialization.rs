@@ -177,6 +177,13 @@ impl App {
         let acp_checks = crate::bridge::acp::self_check::run();
         tracing::info!("ACP message self-check completed ({} checks passed)", acp_checks);
 
+        // Run the hypothesis graph self-check to exercise graph query/algorithm
+        // API (GraphBuilder, find_path, find_supporters, topological_sort,
+        // strongly_connected_components, stats, remove_node, edge constructors)
+        // so those code paths remain live. Per §9.
+        let graph_checks = crate::experience::hypothesis::support::graph::self_check::run();
+        tracing::info!("Hypothesis graph self-check completed ({} checks passed)", graph_checks);
+
         // Create the Learning Coordinator - the main orchestrator for the
         // learning pipeline (Architecture §9 / §4.04):
         // Experience → Reflection → Hypothesis → Validation → Knowledge → Reputation
