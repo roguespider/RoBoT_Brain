@@ -303,11 +303,24 @@ ExperienceRecorded → Reflection → Hypothesis → Knowledge → Reputation
   `validate_hypothesis` (~line 216). No longer counter-only. Satisfies §4.04,
   §5.10.
 
-### P1 — Close the cognitive loop (Act → New Experience)
+### P1 — Close the cognitive loop (Act → New Experience) ✅ DONE
 
 - [x] **TASK-V2-04: Add a goal-driven agent loop.** ✅ DONE — new `src/agent/`
   module (`loop_runner.rs`, `safety_gate.rs`, `context.rs`, `types.rs`,
   `self_check.rs`) drives Planner → retrieval → confidence → action → record.
+  **MCP tool exposure added (2026-08-10):** the `run_agent_goal` MCP tool
+  (in `src/bridge/mcp/handlers/agent_handler.rs`) constructs an `AgentLoop`
+  from `McpContext` subsystems and runs the full cognitive loop for a given
+  goal. `McpContext` now carries `personality: Arc<Mutex<Personality>>` and
+  `safety_gate: Arc<SafetyGate>` fields so the handler can build `AgentDeps`
+  without accessing `App`'s private fields. **Planner goal decomposition:**
+  `Planner::decompose_goal()` (`src/planner/engine/planner.rs`) parses goal
+  text for action verbs (find/store/knowledge/analyze/plan) and generates
+  matching `PlanStep`s. Previously `create_plan` returned `steps: []` (empty),
+  so the `ActionSelector` always abstained. Verified end-to-end: `run_agent_goal`
+  with goal "Find and summarize the most important stored memory" returns
+  `status=Achieved`, `action=search_memory`, `confidence=0.507`,
+  `experience_id` recorded.
 - [ ] **TASK-V2-05: Record outcomes of MCP tool executions as experiences
   automatically.** ⚠️ PARTIAL — the **agent loop** auto-publishes
   `ExperienceRecorded` after each action (`loop_runner.rs:237,251`), closing the
@@ -398,10 +411,17 @@ audit), V2-11, V2-12.**
 ### Resume Here (next session)
 
 **Current verified state (2026-08-10):**
-- robot_brain: builds with **0 cargo warnings**, 96 MCP tools.
+- robot_brain: builds with **0 cargo warnings**, 97 MCP tools (added
+  `run_agent_goal`). Agent loop verified working via MCP: `status=Achieved`,
+  `action=search_memory`, `confidence=0.507`, experience recorded.
 - test_suite: **333 passed / 0 failed / 5 skipped**, 100% pass rate, 81.2%
   coverage (18 untested tools), **0 code-quality issues**, 0 cargo warnings.
   (83 clippy-style lints remain, tracked separately.)
+- **McpContext changes (P1):** added `personality: Arc<Mutex<Personality>>`
+  and `safety_gate: Arc<SafetyGate>` fields so the agent handler can build
+  `AgentDeps` on-the-fly without accessing `App`'s private fields.
+- **Planner changes (P1):** `decompose_goal()` now generates actionable
+  `PlanStep`s from goal text (was returning empty `steps` vector).
 - Large-file refactors done: `personality/personality.rs` (352→101 lines, split
   into `presets.rs`, `adaptation.rs`, `decision_making.rs`); `memory/handlers.rs`
   (400→ directory with `store.rs`, `search.rs`, `query.rs`, `mod.rs`).
