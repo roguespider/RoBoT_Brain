@@ -103,6 +103,9 @@ impl WorkflowEngine {
             experience_type: map_action_to_experience_type(action),
             outcome: outcome_kind,
             context: None,
+            confidence: None,
+            importance: None,
+            tags: None,
         };
 
         // Use the shared coordinator - events will flow to WorkerManager and EventSubscriber

@@ -52,6 +52,11 @@ impl WorkflowEngine {
                         params.get("outcome").map(|s| s.as_str()).unwrap_or("success"),
                     ),
                     context: context_value,
+                    confidence: params.get("confidence")
+                        .and_then(|v| v.parse::<f32>().ok()),
+                    importance: params.get("importance")
+                        .and_then(|v| v.parse::<f32>().ok()),
+                    tags: None,
                 };
 
                 if let Some(db) = &self.database {
