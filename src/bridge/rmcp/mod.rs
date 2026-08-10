@@ -77,10 +77,15 @@ impl ServerHandler for types::McpServerHandler {
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
                 self.record_tool_execution(tool_name, query).await;
-                
+
+                // Auto-record the tool outcome as an experience so the §4.04
+                // learning spine advances without the caller manually
+                // recording (Architecture §2.04, TASK-V2-05).
+                let was_successful = result.success;
+                self.emit_tool_experience(tool_name, was_successful, &arguments).await;
+
                 // Build the response content via the shared helper, which
                 // encodes both success and failure payloads consistently.
-                let was_successful = result.success;
                 let content = vec![crate::bridge::rmcp::helpers::tool_output_to_content(result)];
                 if was_successful {
                     Ok(CallToolResult::success(content))
@@ -89,6 +94,10 @@ impl ServerHandler for types::McpServerHandler {
                 }
             }
             Err(err) => {
+                // Auto-record the handler-level failure as an experience too
+                // (Architecture §2.04, TASK-V2-05).
+                self.emit_tool_experience(tool_name, false, &arguments).await;
+
                 // Return tool-level error (not protocol error)
                 let error_msg = match err {
                     HandlerError::ToolNotFound(name) => format!("Tool not found: {}", name),

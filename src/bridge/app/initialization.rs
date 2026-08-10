@@ -240,14 +240,22 @@ impl App {
 
         // Create event subscriber for the learning pipeline
         // Per Architecture §4.04: Experience → Reflection → Hypothesis → Knowledge → Reputation
-        let event_subscriber = Arc::new(EventSubscriber::with_coordinator(
-            coordinator.clone(),
+        //
+        // TASK-V2-01: wire the LearningCoordinator into the subscriber so that
+        // each ExperienceRecorded event drives the full learning pipeline
+        // (Score → Reflect → Hypothesize → Knowledge-promote) rather than being
+        // re-echoed. The coordinator is the §4.04 single driver. Use the
+        // learning-coordinator constructor so the subscriber drives the full
+        // pipeline from each ExperienceRecorded event.
+        let event_subscriber_inner = EventSubscriber::with_learning_coordinator(
+            learning_coordinator.clone(),
             metrics.clone(),
             reflection_engine.clone(),
             hypothesis_engine_for_subscriber.clone(),
             evolution_engine.clone(),
             knowledge_store.clone(),
-        ));
+        );
+        let event_subscriber = Arc::new(event_subscriber_inner);
 
         // Verify event subscriber reputation management works at startup
         // (Architecture §4.04). This exercises record_reputation and
@@ -618,6 +626,38 @@ impl App {
 
         tracing::info!("RoBoT initialized successfully");
 
+        // Goal-driven agent loop (Architecture §5.7, TASK-V2-04). Composes the
+        // already-initialized planner, memory retrieval, knowledge store,
+        // coordinator and database into a single cognitive loop that closes
+        // Goal → Plan → Retrieve → Decide → Act → Record.
+        let agent_safety_gate = Arc::new(crate::agent::SafetyGate::new());
+        let agent_deps = crate::agent::AgentDeps::new(
+            mcp_context.planner.clone(),
+            mcp_context.memory_retrieval.clone(),
+            mcp_context.knowledge.clone(),
+            mcp_context.coordinator.clone(),
+            mcp_context.database.clone(),
+            agent_safety_gate,
+            shared_personality.clone(),
+        );
+        let agent_loop = Arc::new(crate::agent::AgentLoop::new(agent_deps));
+
+        // Run the agent self-check so the loop path stays live (Architecture
+        // §5.7). This exercises goal → plan → retrieve → decide → record
+        // against an in-memory fixture at startup.
+        let agent_checks = crate::agent::self_check::run().await;
+        tracing::info!("Agent self-check completed ({} checks passed)", agent_checks);
+
+        // World Model (Architecture §14, TASK-V2-06): typed entity-relationship
+        // graph representing how the world works. Empty at startup; populated
+        // as the system observes entities and relationships.
+        let world_model = Arc::new(crate::world_model::WorldModel::new());
+        let world_model_checks = crate::world_model::self_check::run().await;
+        tracing::info!(
+            "World-model self-check completed ({} assertions passed)",
+            world_model_checks
+        );
+
         Ok(Self {
             database,
             bus,
@@ -631,6 +671,8 @@ impl App {
             mcp_context,
             personality: shared_personality,
             acp_router,
+            agent_loop,
+            world_model,
         })
     }
 

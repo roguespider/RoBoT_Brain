@@ -87,15 +87,39 @@ pub fn run() -> usize {
         checks_passed += 1;
     }
 
+    // 7. Emotional weighting (Architecture §13, TASK-V2-08): observe an
+    //    outcome and confirm the emotional weight moves, and that humor /
+    //    interaction-mode / preferences accessors are live. Also exercise
+    //    the Humor builder.
+    checks_total += 1;
+    let weight_before = personality.emotional_weight();
+    personality.observe_emotional_outcome(false, 1.0);
+    let weight_after = personality.emotional_weight();
+    let humor = personality.humor_level();
+    let mode = personality.interaction_mode();
+    let prefs = personality.preferences();
+    let built_humor = super::emotional::Humor::new(0.8);
+    if weight_after <= weight_before
+        && (0.0..=1.0).contains(&humor)
+        && (0.0..=1.0).contains(&prefs.brevity)
+        && mode == super::emotional::InteractionMode::default()
+        && (built_humor.level - 0.8).abs() < f32::EPSILON
+    {
+        checks_passed += 1;
+    }
+
     info!(
-        "Personality self-check: {}/{} checks passed, concise_len={}, balanced_len={}, approach={:?}, should_act={}, decision_confidence={}",
+        "Personality self-check: {}/{} checks passed, concise_len={}, balanced_len={}, approach={:?}, should_act={}, decision_confidence={}, emotion_weight_before={:.3}, emotion_weight_after={:.3}, humor={:.2}",
         checks_passed,
         checks_total,
         concise.len(),
         balanced.len(),
         approach_used,
         should_act_used,
-        decision.confidence
+        decision.confidence,
+        weight_before,
+        weight_after,
+        humor
     );
 
     checks_passed

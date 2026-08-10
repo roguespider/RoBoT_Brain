@@ -14,6 +14,8 @@ use crate::experience::integration::reflection_pipeline::ReflectionPipeline;
 use crate::experience::scheduler::Scheduler;
 use crate::memory::pipeline::MemoryPipeline;
 use crate::personality::Personality;
+use crate::agent::AgentLoop;
+use crate::world_model::WorldModel;
 
 /// Root application container.
 ///
@@ -54,4 +56,12 @@ pub struct App {
 
     /// ACP router for inter-agent communication.
     pub(crate) acp_router: Arc<AcpRouter>,
+
+    /// Goal-driven agent loop (Architecture §5.7, TASK-V2-04). Closes the
+    /// cognitive loop: Goal → Plan → Retrieve → Decide → Act → Record.
+    pub(crate) agent_loop: Arc<AgentLoop>,
+
+    /// World Model: typed entity-relationship graph (Architecture §14,
+    /// TASK-V2-06). "Memory stores facts. World Model stores understanding."
+    pub(crate) world_model: Arc<WorldModel>,
 }

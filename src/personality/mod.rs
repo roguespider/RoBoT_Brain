@@ -168,6 +168,20 @@ pub struct Personality {
     /// Experience history for learning
     experience_count: u32,
     success_count: u32,
+
+    /// Emotional state — feeds confidence/decision scoring (Architecture §13,
+    /// TASK-V2-08). Not just text style: emotion nudges confidence and the
+    /// action threshold.
+    emotional_state: emotional::EmotionalState,
+
+    /// Stable humor trait (output style).
+    humor: emotional::Humor,
+
+    /// Interaction policy: how the agent prefers to engage.
+    interaction_mode: emotional::InteractionMode,
+
+    /// Action-selection preferences.
+    preferences: emotional::Preferences,
 }
 
 impl Personality {
@@ -236,6 +250,10 @@ impl Personality {
             current_preset: "balanced".to_string(),
             experience_count: 0,
             success_count: 0,
+            emotional_state: emotional::EmotionalState::default(),
+            humor: emotional::Humor::default(),
+            interaction_mode: emotional::InteractionMode::default(),
+            preferences: emotional::Preferences::default(),
         }
     }
 
@@ -365,8 +383,28 @@ impl Personality {
         // choices (Architecture: Personality System).
         let time_pressure = context.time_available < 5;
         let should_explore = self.should_explore(context.confidence);
+
+        // Emotional weighting feeds the decision (Architecture §13,
+        // TASK-V2-08): adjust confidence by emotional weight, and bias the
+        // action threshold by frustration/engagement. Emotion nudges rather
+        // than overrides evidence-based confidence.
+        let emotional_weight = self.emotional_state.emotional_weight();
+        let emotion_adjusted_confidence =
+            (context.confidence + emotional_weight).clamp(0.0, 1.0);
+        let threshold_bias = self.emotional_state.action_threshold_bias();
+
+        // Raise the effective bar to act when frustration is high; lower it
+        // when engagement is high.
         let mut should_act =
             self.should_take_risk(context.potential_gain, context.potential_loss);
+        if threshold_bias > 0.0 {
+            // frustration-dominated: only act if the risk-adjusted gain
+            // comfortably exceeds the loss.
+            let gain_margin = context.potential_gain - context.potential_loss;
+            if gain_margin < threshold_bias {
+                should_act = false;
+            }
+        }
 
         // High uncertainty with limited time favors caution.
         if context.uncertainty > 0.7 && time_pressure {
@@ -374,13 +412,16 @@ impl Personality {
         }
 
         let reason = format!(
-            "Based on {} personality (curiosity={:.2}, caution={:.2}, risk={:.2}, uncertainty={:.2}, time={}s): {}",
+            "Based on {} personality (curiosity={:.2}, caution={:.2}, risk={:.2}, \
+             uncertainty={:.2}, time={}s, emotion_weight={:+.2}, interaction={:?}): {}",
             self.current_preset,
             self.traits.curiosity,
             self.traits.caution,
             self.traits.risk_tolerance,
             context.uncertainty,
             context.time_available,
+            emotional_weight,
+            self.interaction_mode,
             if should_act {
                 "choosing to act"
             } else if should_explore {
@@ -394,8 +435,35 @@ impl Personality {
             should_act,
             reason,
             approach,
-            confidence: context.confidence,
+            confidence: emotion_adjusted_confidence,
         }
+    }
+
+    /// Observe an outcome and update emotional state (Architecture §13).
+    /// `effort` (0.0–1.0) reflects how much the agent invested in the action.
+    pub fn observe_emotional_outcome(&mut self, success: bool, effort: f32) {
+        self.emotional_state.observe(success, effort);
+    }
+
+    /// Current emotional weight (Architecture §13). Exposed so the agent loop
+    /// can fold emotion into confidence scoring outside `decide()`.
+    pub fn emotional_weight(&self) -> f32 {
+        self.emotional_state.emotional_weight()
+    }
+
+    /// Current humor trait level (output style).
+    pub fn humor_level(&self) -> f32 {
+        self.humor.level
+    }
+
+    /// Current interaction mode.
+    pub fn interaction_mode(&self) -> emotional::InteractionMode {
+        self.interaction_mode
+    }
+
+    /// Current action-selection preferences.
+    pub fn preferences(&self) -> emotional::Preferences {
+        self.preferences
     }
 
     /// Determine processing approach based on thoroughness trait
@@ -431,6 +499,7 @@ impl Default for Personality {
 }
 
 pub mod self_check;
+pub mod emotional;
 
 #[cfg(test)]
 mod tests {

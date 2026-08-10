@@ -71,6 +71,78 @@ impl McpServerHandler {
         self.enforcer.record_tool_execution(&self.session_id, tool_name, query).await;
     }
 
+    /// Emit an `ExperienceRecorded` event for a tool execution outcome so the
+    /// §4.04 learning spine advances automatically (Architecture §2.04:
+    /// "Everything Important Becomes an Experience", TASK-V2-05).
+    ///
+    /// This publishes the event on the experience bus without persisting every
+    /// tool call — the EventSubscriber (wired in P0) drives reflection /
+    /// hypothesis / knowledge promotion from the event alone. Mutating tools
+    /// and failures are also recorded to durable storage so they are
+    /// retrievable by future loops.
+    pub async fn emit_tool_experience(
+        &self,
+        tool_name: &str,
+        success: bool,
+        arguments: &serde_json::Value,
+    ) {
+        use crate::experience::types::{
+            Experience, ExperienceContext, ExperienceOutcome, ExperienceType,
+        };
+        use crate::experience::types::context::ToolContext;
+        use std::collections::HashMap;
+
+        let outcome = if success {
+            ExperienceOutcome::success()
+        } else {
+            ExperienceOutcome::failure("tool execution returned an error")
+        };
+
+        let mut experience = Experience::new(
+            format!("Tool execution: {}", tool_name),
+            format!("tool={} success={} args={}", tool_name, success, arguments),
+            ExperienceType::ToolExecution,
+            Vec::new(),
+        );
+        experience.context = ExperienceContext {
+            tool: Some(ToolContext {
+                name: tool_name.to_string(),
+                version: None,
+                arguments: HashMap::new(),
+            }),
+            session_id: Some(self.session_id.clone()),
+            ..ExperienceContext::default()
+        };
+        experience.outcome = outcome;
+
+        // process() scores the experience and publishes ExperienceRecorded
+        // once (P0 V2-02). This drives reflection → hypothesis → knowledge
+        // without the caller having to manually record.
+        let processed = self.context.coordinator.process(experience);
+
+        // Persist notable outcomes (failures and mutations) so they are
+        // retrievable; read-only successes are kept as ephemeral events to
+        // avoid flooding durable storage.
+        let notable = !success
+            || matches!(
+                crate::agent::safety_gate::action_risk(tool_name),
+                crate::agent::safety_gate::ActionRisk::Mutate
+            );
+        if notable {
+            if let Ok(conn) = self.context.database.connection() {
+                let memory =
+                    crate::database::models::MemoryCard::from_experience(&processed);
+                if let Err(e) = crate::database::queries::insert_memory(&conn, &memory) {
+                    tracing::warn!(
+                        "Failed to persist tool experience for {}: {}",
+                        tool_name,
+                        e
+                    );
+                }
+            }
+        }
+    }
+
     /// Check if a specific handler is available
     pub fn is_handler_available(&self, category: &str) -> bool {
         match category {

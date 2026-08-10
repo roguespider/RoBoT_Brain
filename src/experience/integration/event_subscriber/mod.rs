@@ -18,21 +18,26 @@ pub use runner::start_event_subscriber;
 
 use std::sync::Arc;
 
-use crate::experience::coordinator::ExperienceCoordinator;
 use crate::experience::metrics::MetricsCollector;
 use crate::experience::reflection::ReflectionEngine;
 use crate::experience::hypothesis::HypothesisEngine;
 use crate::experience::evolution::EvolutionEngine;
 use crate::experience::reputation::reputation::Reputation;
+use crate::experience::integration::learning_coordinator::LearningCoordinator;
 use crate::knowledge::KnowledgeStore;
 
 /// Event subscriber that coordinates the learning pipeline
 ///
 /// This is the main coordinator that wires events to learning subsystems
 /// per Architecture §4.04: Experience → Reflection → Hypothesis → Knowledge → Reputation
+///
+/// Per TASK-V2-01: the subscriber holds an `Arc<LearningCoordinator>` and drives
+/// the full Score → Reflect → Hypothesize → Knowledge-promote path on each
+/// `ExperienceRecorded` event (the §4.04 single-driver intent), rather than
+/// merely re-echoing the event.
 pub struct EventSubscriber {
     config: EventSubscriberConfig,
-    coordinator: Option<Arc<ExperienceCoordinator>>,
+    learning_coordinator: Option<Arc<LearningCoordinator>>,
     metrics: Arc<MetricsCollector>,
     reflection_engine: Arc<ReflectionEngine>,
     hypothesis_engine: Arc<HypothesisEngine>,
@@ -52,7 +57,7 @@ impl EventSubscriber {
     ) -> Self {
         Self {
             config: EventSubscriberConfig::default(),
-            coordinator: None,
+            learning_coordinator: None,
             metrics,
             reflection_engine,
             hypothesis_engine,
@@ -62,9 +67,12 @@ impl EventSubscriber {
         }
     }
 
-    /// Create with coordinator for wiring to experience system
-    pub fn with_coordinator(
-        coordinator: Arc<ExperienceCoordinator>,
+    /// Create with the learning coordinator that drives the full §4.04 pipeline
+    /// (TASK-V2-01). This is the preferred constructor: the subscriber consumes
+    /// each `ExperienceRecorded` event once and runs the complete
+    /// Score → Reflect → Hypothesize → Knowledge-promote path.
+    pub fn with_learning_coordinator(
+        learning_coordinator: Arc<LearningCoordinator>,
         metrics: Arc<MetricsCollector>,
         reflection_engine: Arc<ReflectionEngine>,
         hypothesis_engine: Arc<HypothesisEngine>,
@@ -73,7 +81,7 @@ impl EventSubscriber {
     ) -> Self {
         Self {
             config: EventSubscriberConfig::default(),
-            coordinator: Some(coordinator),
+            learning_coordinator: Some(learning_coordinator),
             metrics,
             reflection_engine,
             hypothesis_engine,
@@ -94,7 +102,7 @@ impl EventSubscriber {
     ) -> Self {
         Self {
             config,
-            coordinator: None,
+            learning_coordinator: None,
             metrics,
             reflection_engine,
             hypothesis_engine,

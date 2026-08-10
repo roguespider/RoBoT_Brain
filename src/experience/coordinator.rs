@@ -79,45 +79,6 @@ impl ExperienceCoordinator {
         experience
     }
 
-    /// Record that an experience was created (legacy method - use process() instead)
-    ///
-    /// Note: This only emits an event with the ID, not the full experience.
-    /// The downstream handlers expect EventPayload::ExperienceRecord with the full experience.
-    /// Use process() which emits both Scored and ExperienceRecorded with full data.
-    pub fn record_experience(&self, id: Uuid) {
-        use crate::experience::metrics::metric_names;
-        let metrics = self.metrics.clone();
-        tokio::spawn(async move {
-            metrics.increment(metric_names::EXPERIENCES_RECORDED).await;
-        });
-        let event = ExperienceEvent::recorded(id);
-        let _ = self.bus.publish(event);
-    }
-
-    /// Record that reflection was completed
-    pub fn complete_reflection(&self, id: Uuid) {
-        use crate::experience::metrics::metric_names;
-        let metrics = self.metrics.clone();
-        tokio::spawn(async move {
-            metrics.increment(metric_names::REFLECTIONS_CREATED).await;
-        });
-        let reflection_id = Uuid::new_v4();
-        let event = ExperienceEvent::reflection_completed(id, reflection_id);
-        let _ = self.bus.publish(event);
-    }
-
-    /// Record that a hypothesis was generated
-    pub fn generate_hypothesis(&self, id: Uuid) {
-        use crate::experience::metrics::metric_names;
-        let metrics = self.metrics.clone();
-        tokio::spawn(async move {
-            metrics.increment(metric_names::HYPOTHESES_GENERATED).await;
-        });
-        let hypothesis_id = Uuid::new_v4();
-        let event = ExperienceEvent::hypothesis_generated(id, hypothesis_id);
-        let _ = self.bus.publish(event);
-    }
-
     /// Record that exploration was completed
     pub fn complete_exploration(&self, id: Uuid) {
         use crate::experience::metrics::metric_names;
