@@ -9,6 +9,7 @@ pub const LIST_TOOLS: &str = "list_tools";
 pub const GET_TOOL: &str = "get_tool";
 pub const CONNECT_MCP_SERVER: &str = "connect_mcp_server";
 pub const CALL_MCP_TOOL: &str = "call_tool";
+pub const RUN_AGENT_GOAL: &str = "run_agent_goal";
 
 /// Get all agent tool definitions
 pub fn all() -> Vec<McpTool> {
@@ -92,6 +93,24 @@ pub fn all() -> Vec<McpTool> {
                     }
                 },
                 "required": ["tool_name"]
+            }),
+        },
+        McpTool {
+            name: RUN_AGENT_GOAL.to_string(),
+            description: "Run the goal-driven agent loop (Architecture §5.7). Given a goal, the agent decomposes it into a plan, retrieves supporting memory/knowledge/experiences, evaluates action confidence, checks the safety gate, and records the outcome as a new experience. This closes the cognitive loop: Goal → Plan → Retrieve → Decide → Act → Record → Learn.".to_string(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "goal": {
+                        "type": "string",
+                        "description": "The goal for the agent to pursue"
+                    },
+                    "confidence_threshold": {
+                        "type": "number",
+                        "description": "Minimum confidence (0.0–1.0) required to act. Default 0.5."
+                    }
+                },
+                "required": ["goal"]
             }),
         },
     ]

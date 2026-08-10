@@ -52,6 +52,47 @@ impl AgentToolsHandler {
     pub async fn execute_call_mcp_tool(&self, input: CallMcpToolInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         execute_call_mcp_tool(input).await
     }
+
+    /// Run the goal-driven agent loop (Architecture §5.7, TASK-V2-04).
+    ///
+    /// Constructs an AgentLoop from the McpContext's subsystems and runs it
+    /// for the given goal. The loop plans, retrieves, decides, acts, and
+    /// records the outcome — closing the cognitive loop.
+    pub async fn execute_run_agent_goal(&self, input: RunAgentGoalInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        use crate::agent::{AgentLoop, AgentDeps, types::AgentGoal};
+        use uuid::Uuid;
+
+        let deps = AgentDeps::new(
+            self.context.planner.clone(),
+            self.context.memory_retrieval.clone(),
+            self.context.knowledge.clone(),
+            self.context.coordinator.clone(),
+            self.context.database.clone(),
+            self.context.safety_gate.clone(),
+            self.context.personality.clone(),
+        );
+        let agent_loop = AgentLoop::new(deps);
+
+        let goal = AgentGoal {
+            id: Uuid::new_v4().to_string(),
+            description: input.goal,
+            confidence_threshold: input.confidence_threshold.unwrap_or(0.5),
+            status: crate::agent::types::GoalStatus::Pending,
+            created_at: chrono::Utc::now(),
+            completed_at: None,
+        };
+
+        let outcome = agent_loop.run(goal).await?;
+
+        Ok(crate::bridge::tools::ToolOutput::success(serde_json::json!({
+            "goal_id": outcome.goal_id,
+            "status": format!("{:?}", outcome.status),
+            "action": outcome.action_description,
+            "confidence": outcome.confidence_value,
+            "abstain_reason": outcome.abstain_reason,
+            "experience_id": outcome.experience_id,
+        })))
+    }
 }
 
 impl ToolHandler for AgentToolsHandler {
@@ -66,6 +107,7 @@ impl ToolHandler for AgentToolsHandler {
             "get_tool".to_string(),
             "connect_mcp_server".to_string(),
             "call_tool".to_string(),
+            "run_agent_goal".to_string(),
         ]
     }
 
@@ -132,6 +174,18 @@ impl ToolHandler for AgentToolsHandler {
                     "required": ["tool_name"]
                 })),
             ).with_title("Call MCP Tool"),
+            rmcp::model::Tool::new(
+                "run_agent_goal",
+                "Run the goal-driven agent loop: plan, retrieve, decide, act, record. Closes the cognitive loop (Architecture §5.7).",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "goal": { "type": "string", "description": "The goal for the agent to pursue" },
+                        "confidence_threshold": { "type": "number", "description": "Minimum confidence to act (0.0–1.0, default 0.5)" }
+                    },
+                    "required": ["goal"]
+                })),
+            ).with_title("Run Agent Goal"),
         ]
     }
 
@@ -166,6 +220,12 @@ impl ToolHandler for AgentToolsHandler {
                     let input: crate::bridge::tools::agent::inputs::CallMcpToolInput = serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
                     self.execute_call_mcp_tool(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "run_agent_goal" => {
+                    let input: crate::bridge::tools::agent::inputs::RunAgentGoalInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_run_agent_goal(input).await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 _ => Err(HandlerError::ToolNotFound(name.to_string())),

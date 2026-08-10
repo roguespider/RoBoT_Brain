@@ -80,10 +80,13 @@ impl Planner {
     /// - Expected outcomes
     /// - Potential risks"
     pub async fn create_plan(&self, goal: impl Into<String>) -> Result<Plan> {
+        let goal_str = goal.into();
+        let steps = Self::decompose_goal(&goal_str);
+
         let plan = Plan {
             id: Uuid::new_v4().to_string(),
-            goal: goal.into(),
-            steps: Vec::new(),
+            goal: goal_str,
+            steps,
             status: PlanStatus::Pending,
             created_at: chrono::Utc::now(),
             completed_at: None,
@@ -98,6 +101,151 @@ impl Planner {
         self.metrics.increment("planner.plans.created").await;
 
         Ok(plan)
+    }
+
+    /// Decompose a goal into actionable plan steps.
+    ///
+    /// Per Architecture §2.8: "Planning depends on the accumulated knowledge
+    /// of the entire system." Without an LLM, we use rule-based decomposition:
+    /// parse the goal text for action verbs and generate steps accordingly.
+    /// This ensures plans have actionable steps the agent loop can select.
+    fn decompose_goal(goal: &str) -> Vec<super::types::PlanStep> {
+        let lower = goal.to_lowercase();
+        let mut steps = Vec::new();
+
+        // Detect intent from keywords and generate matching steps.
+        let wants_search = lower.contains("find")
+            || lower.contains("search")
+            || lower.contains("lookup")
+            || lower.contains("retrieve")
+            || lower.contains("get");
+        let wants_store = lower.contains("store")
+            || lower.contains("save")
+            || lower.contains("record")
+            || lower.contains("remember");
+        let wants_knowledge = lower.contains("knowledge")
+            || lower.contains("learn")
+            || lower.contains("understand")
+            || lower.contains("know");
+        let wants_analyze = lower.contains("analyze")
+            || lower.contains("summarize")
+            || lower.contains("evaluate")
+            || lower.contains("assess");
+        let wants_plan = lower.contains("plan")
+            || lower.contains("create")
+            || lower.contains("design")
+            || lower.contains("build");
+
+        let step_counter: std::sync::atomic::AtomicUsize =
+            std::sync::atomic::AtomicUsize::new(0);
+        let next_id = || {
+            format!(
+                "step-{}",
+                step_counter.fetch_add(1, std::sync::atomic::Ordering::Relaxed) + 1
+            )
+        };
+
+        if wants_search {
+            steps.push(super::types::PlanStep {
+                id: next_id(),
+                description: format!("Search memory and knowledge for: {}", goal),
+                action: "search_memory".to_string(),
+                dependencies: Vec::new(),
+                status: super::types::StepStatus::Ready,
+                result: None,
+                supporting_knowledge: Vec::new(),
+                past_experiences: Vec::new(),
+            });
+        }
+
+        if wants_knowledge {
+            steps.push(super::types::PlanStep {
+                id: next_id(),
+                description: format!("Query knowledge base for: {}", goal),
+                action: "query_knowledge".to_string(),
+                dependencies: steps.last().map(|s| vec![s.id.clone()]).unwrap_or_default(),
+                status: super::types::StepStatus::Ready,
+                result: None,
+                supporting_knowledge: Vec::new(),
+                past_experiences: Vec::new(),
+            });
+        }
+
+        if wants_analyze {
+            steps.push(super::types::PlanStep {
+                id: next_id(),
+                description: format!("Analyze and synthesize findings for: {}", goal),
+                action: "analyze_results".to_string(),
+                dependencies: steps.last().map(|s| vec![s.id.clone()]).unwrap_or_default(),
+                status: super::types::StepStatus::Ready,
+                result: None,
+                supporting_knowledge: Vec::new(),
+                past_experiences: Vec::new(),
+            });
+        }
+
+        if wants_plan {
+            steps.push(super::types::PlanStep {
+                id: next_id(),
+                description: format!("Create a structured plan for: {}", goal),
+                action: "create_plan".to_string(),
+                dependencies: steps.last().map(|s| vec![s.id.clone()]).unwrap_or_default(),
+                status: super::types::StepStatus::Ready,
+                result: None,
+                supporting_knowledge: Vec::new(),
+                past_experiences: Vec::new(),
+            });
+        }
+
+        if wants_store {
+            steps.push(super::types::PlanStep {
+                id: next_id(),
+                description: format!("Store the result for: {}", goal),
+                action: "store_memory".to_string(),
+                dependencies: steps.last().map(|s| vec![s.id.clone()]).unwrap_or_default(),
+                status: super::types::StepStatus::Ready,
+                result: None,
+                supporting_knowledge: Vec::new(),
+                past_experiences: Vec::new(),
+            });
+        }
+
+        // If no keywords matched, generate generic steps so the plan is
+        // always actionable.
+        if steps.is_empty() {
+            steps.push(super::types::PlanStep {
+                id: next_id(),
+                description: format!("Retrieve relevant context for: {}", goal),
+                action: "search_memory".to_string(),
+                dependencies: Vec::new(),
+                status: super::types::StepStatus::Ready,
+                result: None,
+                supporting_knowledge: Vec::new(),
+                past_experiences: Vec::new(),
+            });
+            steps.push(super::types::PlanStep {
+                id: next_id(),
+                description: format!("Query knowledge for: {}", goal),
+                action: "query_knowledge".to_string(),
+                dependencies: vec!["step-1".to_string()],
+                status: super::types::StepStatus::Ready,
+                result: None,
+                supporting_knowledge: Vec::new(),
+                past_experiences: Vec::new(),
+            });
+            steps.push(super::types::PlanStep {
+                id: next_id(),
+                description: format!("Execute the primary action for: {}", goal),
+                action: "execute_action".to_string(),
+                dependencies: vec!["step-2".to_string()],
+                status: super::types::StepStatus::Ready,
+                result: None,
+                supporting_knowledge: Vec::new(),
+                past_experiences: Vec::new(),
+            });
+        }
+
+        steps
     }
 
     /// Create a plan informed by knowledge and experiences

@@ -596,6 +596,8 @@ impl App {
             acp_router.clone(),
             acp_registry.clone(),
             memory_event_bus.clone(),
+            shared_personality.clone(),
+            Arc::new(crate::agent::SafetyGate::new()),
         ));
 
         // Register MCP tools
@@ -630,7 +632,7 @@ impl App {
         // already-initialized planner, memory retrieval, knowledge store,
         // coordinator and database into a single cognitive loop that closes
         // Goal → Plan → Retrieve → Decide → Act → Record.
-        let agent_safety_gate = Arc::new(crate::agent::SafetyGate::new());
+        let agent_safety_gate = mcp_context.safety_gate.clone();
         let agent_deps = crate::agent::AgentDeps::new(
             mcp_context.planner.clone(),
             mcp_context.memory_retrieval.clone(),
