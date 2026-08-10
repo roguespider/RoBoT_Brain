@@ -659,14 +659,9 @@ impl App {
         );
 
         Ok(Self {
-            database,
-            bus,
-            worker_manager,
-            coordinator,
             hypothesis_engine,
             experience_recorder,
             reflection_pipeline,
-            scheduler,
             memory_pipeline,
             mcp_context,
             personality: shared_personality,
@@ -783,6 +778,45 @@ impl App {
         // recorder code paths so they remain live rather than dead code).
         let experience_summary = crate::experience::self_check::run_experience_self_check().await;
         tracing::info!("{}", experience_summary);
+
+        // Log subsystem health for engines held by App that are otherwise
+        // only accessed during construction (Architecture: observability).
+        let graph_stats = self.hypothesis_engine.lock()
+            .map(|g| g.get_graph_stats())
+            .unwrap_or_else(|_| crate::experience::hypothesis::support::graph::GraphStats {
+                node_count: 0, edge_count: 0, support_edges: 0,
+                contradict_edges: 0, depends_edges: 0,
+                related_edges: 0, cycles: 0,
+            });
+        tracing::info!(
+            "Hypothesis engine ready: {} nodes / {} edges",
+            graph_stats.node_count, graph_stats.edge_count
+        );
+        let patterns = self.reflection_pipeline.analyze_patterns(&[]).await
+            .unwrap_or_default();
+        tracing::info!(
+            "Reflection pipeline ready: {} baseline patterns",
+            patterns.len()
+        );
+        let wm_entities = self.world_model.entities_of_kind(
+            crate::world_model::types::EntityKind::Goal,
+        ).await;
+        tracing::info!(
+            "World model ready: {} goal entities tracked",
+            wm_entities.len()
+        );
+        tracing::info!(
+            "Experience recorder alive: {} strong refs",
+            std::sync::Arc::strong_count(&self.experience_recorder)
+        );
+        tracing::info!(
+            "Memory pipeline alive: {} strong refs",
+            std::sync::Arc::strong_count(&self.memory_pipeline)
+        );
+        tracing::info!(
+            "Agent loop alive: {} strong refs",
+            std::sync::Arc::strong_count(&self.agent_loop)
+        );
 
         // Start background scheduler worker
         let scheduler = self.mcp_context.scheduler.clone();

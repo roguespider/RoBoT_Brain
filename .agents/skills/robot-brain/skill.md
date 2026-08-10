@@ -10,19 +10,32 @@ This skill configures the agent to use RoBoT Brain as an MCP tool server, giving
 
 ## MCP Configuration
 
+Build the binary first (`cargo build --release -p robot_brain`), then configure it as an MCP server. The binary speaks MCP over stdio automatically when it receives JSON-RPC on stdin (the `server` subcommand is optional — `robot_brain` and `robot_brain server` both work).
+
 ```python
 mcp_config = {
     "mcpServers": {
         "robot_brain": {
-            "command": "cargo run --release -p robot_brain",
+            "command": "target/release/robot_brain",
         }
     }
 }
 ```
 
+> **Prefer the live-test client for ad-hoc / verification calls.** This repo ships a dependency-free Python MCP client at `.agents/live_test/mcp_client.py` (a `RobotBrainClient` class that auto-detects the binary and auto-handles the workflow gate below) plus a comprehensive `live_test_all.py` (54/54 tools pass). Use those instead of hand-writing a client. See "Live Testing" below.
+
+## Workflow Gate (REQUIRED before any tool)
+
+The server enforces a mandatory two-step gate before it accepts substantive tool calls. Skip it and every tool returns an error:
+
+1. Call `get_workflow` with `{"purpose": "general"}` — otherwise tools return `{"code": "WORKFLOW_NOT_RETRIEVED"}`.
+2. Call `search_memory` with a relevant query — otherwise tools return `{"code": "MEMORY_NOT_SEARCHED"}`.
+
+After both, all tools work normally. The `RobotBrainClient.init()` method does this automatically; if you wire the SDK `mcp_config` above, the LLM agent must be instructed to call `get_workflow` then `search_memory` first.
+
 ## Available Tools
 
-RoBoT Brain exposes ~89 tools via MCP including:
+RoBoT Brain exposes **96 tools** via MCP including:
 
 ### Memory & Knowledge
 - `store_memory` - Store new memories
@@ -46,7 +59,7 @@ RoBoT Brain exposes ~89 tools via MCP including:
 - `get_plan` - Get plan details
 - `list_plans` - List all plans
 - `create_workflow` - Create workflow
-- `start_workflow` - Execute workflow
+- `start_workflow` - Execute workflow (⚠️ requires at least one `add_workflow_step` first; a fresh workflow returns `"Workflow ... is not valid"`)
 - `list_workflows` - List workflows
 
 ### Hypothesis Testing
@@ -71,9 +84,11 @@ RoBoT Brain exposes ~89 tools via MCP including:
 ### ACP Messaging
 - `route_acp_message` - Route ACP message
 - `register_agent` - Register agent
-- `list_agents` - List registered agents
+- `list_acp_agents` - List registered agents
 
 ## Usage Examples
+
+> All examples assume the workflow gate (`get_workflow` then `search_memory`) has already been satisfied. When driving an LLM agent via the SDK `mcp_config`, instruct the agent to call those two tools first.
 
 ### Search Memory
 ```
@@ -84,6 +99,7 @@ Use robot_brain's global_search to find information about Rust programming
 ```
 Record an experience that I successfully fixed a memory leak in the exploration module
 ```
+The `outcome` field is case-sensitive and must be a PascalCase enum variant: `Success`, `Failure`, `Partial`, `Timeout`, or `Interrupted` (lowercase `success` is rejected).
 
 ### Create Plan
 ```
@@ -116,3 +132,21 @@ See `examples/robot_brain_agent.py` for a complete integration example:
 export LLM_API_KEY="your-key"
 python examples/robot_brain_agent.py -m "Search memory for architecture patterns"
 ```
+
+## Live Testing
+
+The fastest, correct way to verify the server works after compiling is the bundled Python client — do not hand-write a new MCP client:
+
+```bash
+# Comprehensive live test of every tool category (54/54 pass, cleans DB first)
+python3 .agents/live_test/live_test_all.py
+
+# Ad-hoc tool calls via the reusable client:
+#   from mcp_client import RobotBrainClient
+#   with RobotBrainClient() as c:
+#       c.init()                       # handles initialize + workflow gate
+#       r = c.call("store_memory", {"content": "hi", "memory_type": "note"})
+#       print(r.text_json())
+```
+
+`mcp_client.py` is stdlib-only (no dependencies), auto-detects the binary via `ROBOT_BRAIN_PATH` or relative path, and runs the `get_workflow`→`search_memory` gate inside `init()`.

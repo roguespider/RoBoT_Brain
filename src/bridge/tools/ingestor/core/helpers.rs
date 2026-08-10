@@ -7,9 +7,6 @@ use crate::bridge::tools::ingestor::file_collector::{
     is_supported_extension, normalize_path, ARCHIVE_EXTENSIONS,
 };
 
-/// Default chunk size for text splitting
-pub const DEFAULT_CHUNK_SIZE: usize = 1000;
-
 /// Resolve a file path string to an actual PathBuf that can be used for file operations.
 /// This handles the Windows extended-length path prefix issue where:
 /// 1. canonicalize() returns \\?\E:\... style paths on Windows

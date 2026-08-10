@@ -63,19 +63,6 @@ pub struct HypothesisPipeline {
 }
 
 impl HypothesisPipeline {
-    /// Create a new hypothesis pipeline
-    pub fn new(engine: Arc<HypothesisEngine>, bus: Arc<ExperienceBus>) -> Self {
-        let generator = Arc::new(HypothesisGenerator::new());
-
-        Self {
-            config: HypothesisPipelineConfig::default(),
-            engine,
-            generator,
-            bus,
-            hypotheses: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
-        }
-    }
-
     /// Create with custom configuration
     pub fn with_config(
         config: HypothesisPipelineConfig,

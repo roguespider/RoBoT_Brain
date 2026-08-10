@@ -103,14 +103,6 @@ impl ServerHandler for types::McpServerHandler {
                     HandlerError::ToolNotFound(name) => format!("Tool not found: {}", name),
                     HandlerError::ExecutionFailed(msg) => msg,
                     HandlerError::InvalidParams(msg) => format!("Invalid parameters: {}", msg),
-                    HandlerError::HandlerNotFound(category) => {
-                        let available = self.is_handler_available(&category);
-                        format!(
-                            "Handler not found for category: {} (available: {})",
-                            category, available
-                        )
-                    },
-                    HandlerError::Internal(msg) => format!("Internal error: {}", msg),
                 };
                 let content = vec![ContentBlock::text(error_msg)];
                 Ok(CallToolResult::error(content))

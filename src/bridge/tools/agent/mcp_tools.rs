@@ -65,11 +65,20 @@ pub async fn execute_connect_mcp_server(
     let args: Vec<&str> = args_vec.iter().map(|s| s.as_str()).collect();
 
     match client.connect(&input.name, &input.command, &args).await {
-        Ok(()) => Ok(ToolOutput::success(serde_json::json!({
-            "success": true,
-            "server": input.name,
-            "tools": client.list_all_tools().await.len()
-        }))),
+        Ok(()) => {
+            let total = client.server_count().await;
+            let connected = client.has_connections().await;
+            let servers = client.list_servers().await;
+            let tool_count = client.list_all_tools().await.len();
+            Ok(ToolOutput::success(serde_json::json!({
+                "success": true,
+                "server": input.name,
+                "total_servers": total,
+                "connected": connected,
+                "all_servers": servers,
+                "tools": tool_count
+            })))
+        }
         Err(e) => Ok(ToolOutput::success(serde_json::json!({
             "success": false,
             "error": e.to_string()
@@ -106,13 +115,40 @@ pub async fn execute_call_mcp_tool(
     };
 
     match client.call_tool(&input.tool_name, arguments).await {
-        Ok(result) => Ok(ToolOutput::success(serde_json::json!({
-            "success": true,
-            "result": result
-        }))),
-        Err(e) => Ok(ToolOutput::success(serde_json::json!({
-            "success": false,
-            "error": e.to_string()
-        }))),
+        Ok(result) => {
+            let tool_info = client.get_tool(&input.tool_name).await
+                .map(|t| t.name.to_string());
+            let server = client.get_tool_server(&input.tool_name).await
+                .unwrap_or_default();
+            Ok(ToolOutput::success(serde_json::json!({
+                "success": true,
+                "result": result,
+                "tool_info": tool_info,
+                "server": server
+            })))
+        }
+        Err(e) => {
+            let server_hint = client.get_tool_server(&input.tool_name).await;
+            let all_tools = client.list_all_tools().await;
+            let available: Vec<String> = match &server_hint {
+                Some(srv) => {
+                    let mut filtered = Vec::new();
+                    for t in &all_tools {
+                        let tool_srv = client.get_tool_server(t.name.as_ref()).await
+                            .unwrap_or_default();
+                        if tool_srv == *srv {
+                            filtered.push(t.name.to_string());
+                        }
+                    }
+                    filtered
+                }
+                None => all_tools.iter().map(|t| t.name.to_string()).collect(),
+            };
+            Ok(ToolOutput::success(serde_json::json!({
+                "success": false,
+                "error": e.to_string(),
+                "available_tools": available
+            })))
+        }
     }
 }

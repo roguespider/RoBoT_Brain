@@ -51,24 +51,18 @@ impl HandlerInitError {
 pub enum HandlerError {
     /// Tool was not found
     ToolNotFound(String),
-    /// Handler for category not found
-    HandlerNotFound(String),
     /// Tool execution failed
     ExecutionFailed(String),
     /// Invalid parameters
     InvalidParams(String),
-    /// Internal handler error
-    Internal(String),
 }
 
 impl std::fmt::Display for HandlerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             HandlerError::ToolNotFound(name) => write!(f, "Tool not found: {}", name),
-            HandlerError::HandlerNotFound(cat) => write!(f, "Handler not found for category: {}", cat),
             HandlerError::ExecutionFailed(msg) => write!(f, "Execution failed: {}", msg),
             HandlerError::InvalidParams(msg) => write!(f, "Invalid parameters: {}", msg),
-            HandlerError::Internal(msg) => write!(f, "Internal error: {}", msg),
         }
     }
 }
@@ -443,72 +437,38 @@ impl ToolHandlerCollection {
         name: &str,
         args: serde_json::Value,
     ) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
-        // Try each handler in order
-        if let Some(ref h) = self.acp {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
+        // Try each handler in order. Each handler's category() identifies
+        // which subsystem processed the tool (useful for debugging).
+        macro_rules! try_handler {
+            ($handler:expr) => {
+                if let Some(ref h) = $handler {
+                    if h.tool_names().contains(&name.to_string()) {
+                        tracing::debug!(
+                            tool = name,
+                            category = h.category(),
+                            "Dispatching tool to handler"
+                        );
+                        return h.execute_tool(name, args).await;
+                    }
+                }
+            };
         }
-        if let Some(ref h) = self.agent {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.experience {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.exploration {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.hypothesis {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.ingestor {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.knowledge {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.memory {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.planner {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.reflection {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.search {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.skills {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.workflow {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
+
+        try_handler!(self.acp);
+        try_handler!(self.agent);
+        try_handler!(self.experience);
+        try_handler!(self.exploration);
+        try_handler!(self.hypothesis);
+        try_handler!(self.ingestor);
+        try_handler!(self.knowledge);
+        try_handler!(self.memory);
+        try_handler!(self.planner);
+        try_handler!(self.reflection);
+        try_handler!(self.search);
+        try_handler!(self.skills);
+        try_handler!(self.workflow);
+
+        tracing::warn!(tool = name, "Tool not found in any handler category");
         Err(HandlerError::ToolNotFound(name.to_string()))
     }
 }

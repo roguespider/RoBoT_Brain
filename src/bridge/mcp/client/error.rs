@@ -27,15 +27,6 @@ impl ToolError {
             tool: tool.to_string(),
         }
     }
-
-    /// Create an error for connection failure
-    pub fn connection_failed(server: &str, error: &str) -> Self {
-        Self {
-            message: format!("Failed to connect to server '{}': {}", server, error),
-            server: server.to_string(),
-            tool: String::new(),
-        }
-    }
 }
 
 impl std::fmt::Display for ToolError {

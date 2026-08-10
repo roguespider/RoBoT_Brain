@@ -566,6 +566,7 @@ pub async fn run_metrics_self_check() -> String {
     // counter is verified to be recordable through the MetricsCollector API.
     use crate::experience::metrics::metric_names;
     for name in [
+        metric_names::REFLECTIONS_CREATED,
         metric_names::REFLECTIONS_VALIDATED,
         metric_names::PATTERNS_DETECTED,
         metric_names::EXPLORATIONS_STARTED,

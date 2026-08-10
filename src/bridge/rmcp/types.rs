@@ -56,6 +56,19 @@ impl McpServerHandler {
         );
         self.handlers = handlers;
         self.handler_errors = errors;
+
+        // Log which handler categories are available for diagnostics.
+        for cat in [
+            "acp", "agent", "experience", "exploration", "hypothesis",
+            "ingestor", "knowledge", "memory", "planner", "reflection",
+            "search", "skills", "workflow",
+        ] {
+            if self.is_handler_available(cat) {
+                tracing::info!(category = cat, "Handler category available");
+            } else {
+                tracing::warn!(category = cat, "Handler category missing");
+            }
+        }
     }
 
     pub fn new_session(&self) -> String {
