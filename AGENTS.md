@@ -10,6 +10,28 @@
 - This makes each change independently reviewable and revertable.
 - If a later change breaks something, you know exactly which change caused it.
 
+## Plan for Future Work (v0.0.1 → v0.0.2) — READ THIS FIRST
+
+The full roadmap for transforming RoBoT Brain from v0.0.1 into the v0.0.2
+architecture blueprint lives at **`.agents/PLAN.md`**. This is the authoritative,
+step-by-step plan of what is expected next across three macro-stages:
+
+- **STAGE 1** — Finish v0.0.1: clear remaining self-check debt, `#[allow(...)]`
+  violations, and P4 performance items for a clean baseline.
+- **STAGE 2** — Upgrade existing systems to v0.0.2 (Memory, Knowledge, Experience,
+  Learning, Planner, Skills, Workflows, World Model, Personality), one per phase.
+- **STAGE 3** — Add new v0.0.2 subsystems in dependency order: Context Engine,
+  Conversation Engine, Observation/Reasoning/Execution engines, Security & Trust,
+  Cognitive Observability, AI Runtime (Candle), Multimodal, GUI, etc.
+
+**Before starting any architecture work, read `.agents/PLAN.md` in full** and
+work the next pending phase in the order it specifies. Each phase lists its
+reference chapter in `robot_architecture/RoBoT Architecture v0.0.2.md`, the
+files to change, and the verify-commit-push gate (`PB`/`LT`/`TS`). The legacy
+"Roadmap to v2.0" section further below in this file tracks the prior
+v0.0.1-conformance work (P0–P4) and is superseded by `.agents/PLAN.md` for
+forward planning.
+
 ## Prerequisites (install FIRST, before anything else)
 
 Before building or working on this project, the following must be installed.
@@ -172,21 +194,6 @@ responsibilities (verified 2026-08-10). The 320-line threshold is aggressive
 for Rust; many files above this size are cohesive single-purpose modules that
 don't need splitting.
 
-### Already Refactored
-- `src/experience/integration/learning_coordinator/` (1519 total → config.rs, results.rs, entry.rs, exploration.rs, hypothesis.rs, knowledge.rs, reinforcement.rs, reputation.rs, generalization.rs, mod.rs [274 lines])
-- `src/skills/registry/` (983 total → types.rs, skill.rs, registry.rs, context.rs, result.rs, metrics.rs, executor.rs, mod.rs)
-- `src/database/queries/` (934 total → helpers.rs, memory.rs, scheduled_tasks.rs, observations.rs, experiences.rs, embeddings.rs, relationships.rs, tests.rs, mod.rs)
-- `src/bridge/app/` (944 total → state.rs, initialization.rs, scheduler.rs, personality.rs, acp.rs, mod.rs)
-- `src/planner/engine/` (836 lines → planner.rs, types.rs, actions.rs, replanning.rs, mod.rs)
-- `test_suite/src/code_analyzer/` (1050 lines → types.rs, patterns.rs, analyzer.rs, lint.rs, mod.rs)
-- `src/bridge/acp/` (950 lines → message.rs, error.rs, channel.rs, agent.rs, registry.rs, router.rs, builder.rs, mod.rs)
-- `test_suite/src/tests/rmcp/` (650 lines → mod.rs, protocol.rs, tools.rs, sessions.rs)
-- `test_suite/src/tests/acp/` (750 lines → mod.rs, registry.rs, router.rs, agents.rs, messages.rs)
-- `test_suite/src/tests/agent_simulation/` (440 lines → mod.rs, workflows.rs, memory_agent.rs, decision_making.rs)
-- `src/personality/personality.rs` (352→101 lines → personality.rs + presets.rs [90] + adaptation.rs [56] + decision_making.rs [117])
-- `src/bridge/tools/memory/handlers.rs` (400 lines → handlers/ dir: store.rs [113], search.rs [110], query.rs [179], mod.rs [16])
-- `src/agent/safety_gate.rs` (122 lines → safety_gate/ dir: mod.rs [240], types.rs [95], sandbox.rs [115], rollback.rs [80], hallucination.rs [90])
-
 ## OpenHands MCP Integration
 
 RoBoT Brain can be used as an MCP server by **OpenHands agents** to access memory, knowledge, planning, and learning tools.
@@ -271,6 +278,28 @@ This allows OpenHands to use robot_brain alongside other tools, focusing on spec
 ---
 
 ## Roadmap to v2.0 (Architecture Conformance Work)
+
+> ⚠️ **STATUS MARKERS BELOW ARE STALE — VERIFY AGAINST CODE BEFORE TRUSTING.**
+> The completion markers in this section were found on 2026-08-10 to be rosier
+> than reality. Known inaccuracies (do not rely on the `✅ DONE` flags below
+> without re-checking):
+> - **V2-10a (✅ DONE / "0 cargo warnings / 0 code-quality issues") is
+>   INCOMPLETE.** 9 production files still carry `#![allow(dead_code)]` or
+>   `#![allow(clippy::module_inception)]`, which the repo's own coding standard
+>   forbids: `workflows/mod.rs`, `workflows/engine/mod.rs`, `knowledge/mod.rs`,
+>   `memory/mod.rs`, `experience/reputation/mod.rs`,
+>   `experience/exploration/mod.rs`, `experience/reflection/mod.rs`,
+>   `experience/reflection/services/mod.rs`, `database/models.rs`.
+> - **Self-check count is off.** This section says "13 files remain"; the actual
+>   count is 12 (`find src -name "self_check.rs"`).
+> - **V2-08 line reference is stale.** Claims `personality/mod.rs:388-393`, but
+>   that file is only 242 lines; the `emotional_weight` /
+>   `emotion_adjusted_confidence` logic is in `personality/decision_making.rs:49-51`.
+>
+> The forward roadmap at **`.agents/PLAN.md`** supersedes this section — its
+> STAGE 1 picks up exactly this `#![allow]` + self-check cleanup. Treat this
+> inline Roadmap as legacy/partially-stale; consult `.agents/PLAN.md` for what
+> to do next.
 
 This section records the gap between the current `robot_brain` implementation and
 `robot_architecture/v0.0.1/ARCHITECTURE.md`, derived from a wiring audit of the
