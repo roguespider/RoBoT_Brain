@@ -180,11 +180,6 @@ impl App {
         skills_registry.load_defaults().await;
         tracing::info!("Skills registry initialized with default skills");
 
-        // Run the skills self-check to exercise the skill executor metrics API
-        // and registry search so those code paths remain live. Per §15.
-        let skills_checks = crate::skills::self_check::run().await;
-        tracing::info!("Skills self-check completed ({} checks passed)", skills_checks);
-
         // Run the MCP types self-check to exercise protocol type builders and
         // predicates (is_request/is_response/is_notification, is_success,
         // with_data, with_tools, with_schema) so those code paths remain

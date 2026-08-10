@@ -18,7 +18,7 @@ use crate::memory::events::MemoryEventBus;
 use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory};
 use crate::personality::Personality;
 use crate::planner::{Planner, PolicyEngine};
-use crate::skills::registry::SkillRegistry;
+use crate::skills::registry::{SkillExecutor, SkillRegistry};
 use crate::workflows::engine::WorkflowEngine;
 use crate::agent::SafetyGate;
 
@@ -76,6 +76,10 @@ pub struct McpContext {
     /// Skill registry - manages reusable capabilities (per Architecture §15)
     pub skills: Arc<SkillRegistry>,
 
+    /// Skill executor - executes skills and tracks execution metrics
+    /// (per Architecture §15 "Skill::track_execution_metrics()")
+    pub skill_executor: Arc<SkillExecutor>,
+
     /// ACP router for inter-agent communication
     pub acp_router: Arc<AcpRouter>,
 
@@ -128,6 +132,7 @@ impl McpContext {
         safety_gate: Arc<SafetyGate>,
         world_model: Arc<crate::world_model::WorldModel>,
     ) -> Self {
+        let skill_executor = Arc::new(SkillExecutor::new(skills.clone()));
         Self {
             database,
             bus,
@@ -145,6 +150,7 @@ impl McpContext {
             memory_retrieval,
             workflow_engine,
             skills,
+            skill_executor,
             acp_router,
             acp_registry,
             memory_event_bus,
