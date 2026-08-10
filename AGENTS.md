@@ -361,12 +361,19 @@ ExperienceRecorded → Reflection → Hypothesis → Knowledge → Reputation
 
 ### P3 — Reduce reliance on self-check probes ❌ REMAINING
 
-- [ ] **TASK-V2-09: Audit each `self_check.rs`** (16 files remain). Either (a)
-  remove it because the path is now exercised by real wiring from P0/P1, or (b)
-  convert it to a real integration test in `test_suite/`. A self-check that
-  exists only to silence dead-code warnings is a smell; the goal is that every
-  public API is exercised by genuine runtime or test-suite traffic. Find them:
-  `find src -name "self_check.rs"`.
+- [ ] **TASK-V2-09: Audit each `self_check.rs`** (14 files remain, was 16).
+  Either (a) remove it because the path is now exercised by real wiring from
+  P0/P1, or (b) convert it to a real integration test in `test_suite/`. A
+  self-check that exists only to silence dead-code warnings is a smell; the
+  goal is that every public API is exercised by genuine runtime or test-suite
+  traffic. Find them: `find src -name "self_check.rs"`.
+  - **Progress (2026-08-10):** Removed `src/personality/self_check.rs` — the
+    personality APIs (`decide`, `traits_mut`, `format_response`, `Humor::new`)
+    are now exercised by 6 new MCP tools (`get_personality`,
+    `set_personality_traits`, `apply_personality_preset`,
+    `list_personality_presets`, `get_personality_decision`, `format_response`).
+    This is the pattern for future self_check removals: wire a real MCP tool
+    that calls the API, then delete the self_check.
 - [ ] **TASK-V2-10: Finish the remaining compiler warnings** (11 remain, down
   from 118). Apply the Dead Code Resolution Protocol: implement if the
   architecture describes the feature, delete if deprecated. Current warning
@@ -424,9 +431,17 @@ V2-12 (performance maturity).**
 ### Resume Here (next session)
 
 **Current verified state (2026-08-10):**
-- robot_brain: builds with **0 cargo warnings**, 97 MCP tools (added
-  `run_agent_goal`). Agent loop verified working via MCP: `status=Achieved`,
+- robot_brain: builds with **0 cargo warnings**, 103 MCP tools (added
+  `run_agent_goal` + 6 personality tools: `get_personality`,
+  `set_personality_traits`, `apply_personality_preset`,
+  `list_personality_presets`, `get_personality_decision`, `format_response`).
+  Agent loop verified working via MCP: `status=Achieved`,
   `action=search_memory`, `confidence=0.507`, experience recorded.
+- **Personality MCP tools (V2-09 progress):** Removed
+  `src/personality/self_check.rs` - the personality APIs (`decide`,
+  `traits_mut`, `format_response`, `Humor::new`) are now exercised by real
+  runtime MCP tool traffic. All 6 personality tools tested live via MCP,
+  all return correct results. Added `Personality::set_humor_level` method.
 - **Safety layer (V2-07 DONE):** `src/agent/safety_gate/` with 5 modules
   (mod, types, sandbox, rollback, hallucination). All 4 §16 checks composed
   via `evaluate_full()`: sandbox boundary, hallucination detection,
@@ -443,10 +458,16 @@ V2-12 (performance maturity).**
   into `presets.rs`, `adaptation.rs`, `decision_making.rs`); `memory/handlers.rs`
   (400→ directory with `store.rs`, `search.rs`, `query.rs`, `mod.rs`).
 - Roadmap: 7 tasks DONE (V2-01,02,03,04,06,07,08), 1 VERIFIED (V2-05),
-  2 DONE (V2-10a, V2-10b), 3 TODO (V2-09, V2-11, V2-12).
+  2 DONE (V2-10a, V2-10b), 1 IN PROGRESS (V2-09 - 14 self_checks remain),
+  2 TODO (V2-11, V2-12).
 
 **Next steps to finish v0.0.1 → v2.0 (in order):**
-1. **V2-09** — audit/convert the remaining `self_check.rs` files.
+1. **V2-09** — audit/convert the remaining 14 `self_check.rs` files. Pattern:
+   wire a real MCP tool that calls the API, then delete the self_check. Files
+   remaining: `find src -name "self_check.rs"` (14 files: acp, mcp/types,
+   database, experience/evolution, experience/hypothesis, experience/hypothesis/
+   services, experience/hypothesis/support/graph, experience/reflection,
+   experience, knowledge, learning, planner, skills, world_model).
 2. **V2-11, V2-12** — SQLite queue + loop-health metrics (P4).
 
 **Rebuild + verify after each change:**
@@ -567,7 +588,7 @@ jq '.issues | map(.kind) | group_by(.) | map({(.[0]): length})' test_suite_repor
 
 ### Still not tested (future work)
 
-- **Schema-validation matrix**: every tool × missing/extra/wrong-type fields.
+- **Schema-validation matrix**: every tool - missing/extra/wrong-type fields.
 - **Edge cases**: malformed JSON, boundary values, Unicode, empty strings,
   large payloads, concurrent calls, timeouts.
 - **End-to-end learning loop**: `record_experience` → `validate_hypothesis` →
