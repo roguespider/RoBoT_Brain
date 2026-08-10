@@ -16,9 +16,13 @@ use crate::experience::worker_manager::WorkerManager;
 use crate::knowledge::KnowledgeStore;
 use crate::memory::events::MemoryEventBus;
 use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory};
+use crate::personality::Personality;
 use crate::planner::{Planner, PolicyEngine};
-use crate::skills::registry::SkillRegistry;
+use crate::skills::registry::{SkillExecutor, SkillRegistry};
 use crate::workflows::engine::WorkflowEngine;
+use crate::agent::SafetyGate;
+
+use std::sync::Mutex;
 
 use super::types::{McpCapabilities, McpEmpty, McpResourcesCapability, McpServerInfo};
 
@@ -72,6 +76,10 @@ pub struct McpContext {
     /// Skill registry - manages reusable capabilities (per Architecture §15)
     pub skills: Arc<SkillRegistry>,
 
+    /// Skill executor - executes skills and tracks execution metrics
+    /// (per Architecture §15 "Skill::track_execution_metrics()")
+    pub skill_executor: Arc<SkillExecutor>,
+
     /// ACP router for inter-agent communication
     pub acp_router: Arc<AcpRouter>,
 
@@ -80,6 +88,17 @@ pub struct McpContext {
 
     /// Memory event bus - per Architecture §35 (short-term: in-memory event bus)
     pub memory_event_bus: Arc<MemoryEventBus>,
+
+    /// Personality — shared behavioral model (Architecture §13). Provides
+    /// emotional weighting for the agent loop and other subsystems.
+    pub personality: Arc<Mutex<Personality>>,
+
+    /// Safety gate for the agent loop (Architecture §16, TASK-V2-07).
+    pub safety_gate: Arc<SafetyGate>,
+
+    /// World Model — typed entity-relationship graph (Architecture §14,
+    /// TASK-V2-06). Stores understanding of how the world works.
+    pub world_model: Arc<crate::world_model::WorldModel>,
 
     /// Server info
     pub server_info: McpServerInfo,
@@ -109,7 +128,11 @@ impl McpContext {
         acp_router: Arc<AcpRouter>,
         acp_registry: Arc<AcpRegistry>,
         memory_event_bus: Arc<MemoryEventBus>,
+        personality: Arc<Mutex<Personality>>,
+        safety_gate: Arc<SafetyGate>,
+        world_model: Arc<crate::world_model::WorldModel>,
     ) -> Self {
+        let skill_executor = Arc::new(SkillExecutor::new(skills.clone()));
         Self {
             database,
             bus,
@@ -127,9 +150,13 @@ impl McpContext {
             memory_retrieval,
             workflow_engine,
             skills,
+            skill_executor,
             acp_router,
             acp_registry,
             memory_event_bus,
+            personality,
+            safety_gate,
+            world_model,
             server_info: McpServerInfo {
                 name: env!("CARGO_PKG_NAME").to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),

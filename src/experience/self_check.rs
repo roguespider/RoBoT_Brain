@@ -445,9 +445,10 @@ pub async fn run_experience_self_check() -> String {
     let observer = HypothesisObserver::new(Arc::new(std::sync::Mutex::new(
         HypothesisEngine::new(),
     )));
-    let priority = observer.priority();
+    let observer_ref: &dyn ExperienceObserver = &observer;
+    let priority = observer_ref.priority();
     let record_event = ExperienceEvent::experience_recorded(experience.clone());
-    let observes = observer.accepts(&record_event);
+    let observes = observer_ref.accepts(&record_event);
     checks_passed += 1;
 
     // 18. ImportanceLevel enum (Architecture §07 maturity).

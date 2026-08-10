@@ -293,13 +293,46 @@ impl AcpToolsHandler {
         let agent_count = self.context.acp_registry.count();
         let agents = self.context.acp_registry.list_agents()
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        
+
+        // Include subsystem diagnostics from McpContext fields that are
+        // owned but otherwise never read (Architecture: observability).
+        let all_counters = self.context.metrics.get_all_counters().await;
+        let all_gauges = self.context.metrics.get_all_gauges().await;
+        let behavior_count = self.context.evolution.list_behaviors().await.len();
+        let active_behaviors = self.context.evolution.list_active_behaviors().await.len();
+        let policy_rules = self.context.policy.list_rules().await.len();
+        let bus_subscribers = self.context.bus.subscriber_count();
+
         Ok(crate::bridge::tools::ToolOutput::success(serde_json::json!({
             "status": "running",
+            "server": {
+                "name": self.context.server_info.name,
+                "version": self.context.server_info.version,
+                "capabilities": {
+                    "tools": self.context.capabilities.tools.is_some(),
+                    "resources": self.context.capabilities.resources.is_some(),
+                    "prompts": self.context.capabilities.prompts.is_some(),
+                    "logging": self.context.capabilities.logging.is_some(),
+                }
+            },
             "agent_count": agent_count,
             "agents": agents.iter().map(|a| a.uri()).collect::<Vec<_>>(),
             "router_status": "active",
-            "registry_status": "active"
+            "registry_status": "active",
+            "metrics": {
+                "counters": all_counters,
+                "gauges": all_gauges,
+            },
+            "evolution": {
+                "total_behaviors": behavior_count,
+                "active_behaviors": active_behaviors,
+            },
+            "policy": {
+                "rules": policy_rules,
+            },
+            "event_bus": {
+                "subscribers": bus_subscribers,
+            }
         })))
     }
 

@@ -23,6 +23,12 @@ pub struct RecordExperienceInput {
     pub outcome: OutcomeKind,
     /// JSON-encoded context as a string (e.g., "{\"key\": \"value\"}")
     pub context: Option<String>,
+    /// Caller-provided confidence (0.0–1.0). Defaults to 0.5.
+    pub confidence: Option<f32>,
+    /// Caller-provided importance (0.0–1.0). Defaults to 0.5.
+    pub importance: Option<f32>,
+    /// Tags for categorization.
+    pub tags: Option<Vec<String>>,
 }
 
 /// Tool: Get experience statistics
@@ -223,6 +229,27 @@ pub async fn execute_record_experience(
 
     // Set outcome
     experience.outcome = outcome_kind_to_experience_outcome(input.outcome);
+
+    // Set caller-provided confidence and tags
+    if let Some(c) = input.confidence {
+        experience.confidence = c.clamp(0.0, 1.0);
+    }
+    if let Some(tags) = input.tags {
+        experience.tags = tags;
+    }
+    // Pre-score the experience so that knowledge promotion (which requires
+    // score >= 0.8) can fire for high-confidence successful experiences
+    // recorded via MCP. The coordinator's process() will re-score, but
+    // having the initial score set ensures the threshold check passes.
+    if let Some(importance) = input.importance {
+        let initial_score = crate::experience::types::ExperienceScore {
+            importance: importance.clamp(0.0, 1.0),
+            confidence: experience.confidence,
+            novelty: 0.0,
+            reliability: experience.confidence,
+        };
+        experience.score = Some(initial_score);
+    }
 
     // Process through coordinator for scoring and event emission
     // This publishes:

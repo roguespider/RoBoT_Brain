@@ -21,11 +21,13 @@ pub mod hypothesis_handler;
 pub mod ingestor_handler;
 pub mod knowledge_handler;
 pub mod memory_handler;
+pub mod personality_handler;
 pub mod planner_handler;
 pub mod reflection_handler;
 pub mod search_handler;
 pub mod skills_handler;
 pub mod workflow_handler;
+pub mod world_model_handler;
 
 /// Result of attempting to initialize a tool handler
 pub type HandlerInitResult<T> = Result<T, HandlerInitError>;
@@ -51,24 +53,18 @@ impl HandlerInitError {
 pub enum HandlerError {
     /// Tool was not found
     ToolNotFound(String),
-    /// Handler for category not found
-    HandlerNotFound(String),
     /// Tool execution failed
     ExecutionFailed(String),
     /// Invalid parameters
     InvalidParams(String),
-    /// Internal handler error
-    Internal(String),
 }
 
 impl std::fmt::Display for HandlerError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             HandlerError::ToolNotFound(name) => write!(f, "Tool not found: {}", name),
-            HandlerError::HandlerNotFound(cat) => write!(f, "Handler not found for category: {}", cat),
             HandlerError::ExecutionFailed(msg) => write!(f, "Execution failed: {}", msg),
             HandlerError::InvalidParams(msg) => write!(f, "Invalid parameters: {}", msg),
-            HandlerError::Internal(msg) => write!(f, "Internal error: {}", msg),
         }
     }
 }
@@ -126,11 +122,13 @@ pub use hypothesis_handler::HypothesisToolsHandler;
 pub use ingestor_handler::IngestorToolsHandler;
 pub use knowledge_handler::KnowledgeToolsHandler;
 pub use memory_handler::MemoryToolsHandler;
+pub use personality_handler::PersonalityToolsHandler;
 pub use planner_handler::PlannerToolsHandler;
 pub use reflection_handler::ReflectionToolsHandler;
 pub use search_handler::SearchToolsHandler;
 pub use skills_handler::SkillsToolsHandler;
 pub use workflow_handler::WorkflowToolsHandler;
+pub use world_model_handler::WorldModelToolsHandler;
 
 /// Collection of all tool handlers with graceful degradation
 #[derive(Clone)]
@@ -143,11 +141,13 @@ pub struct ToolHandlerCollection {
     pub ingestor: Option<IngestorToolsHandler>,
     pub knowledge: Option<KnowledgeToolsHandler>,
     pub memory: Option<MemoryToolsHandler>,
+    pub personality: Option<PersonalityToolsHandler>,
     pub planner: Option<PlannerToolsHandler>,
     pub reflection: Option<ReflectionToolsHandler>,
     pub search: Option<SearchToolsHandler>,
     pub skills: Option<SkillsToolsHandler>,
     pub workflow: Option<WorkflowToolsHandler>,
+    pub world_model: Option<WorldModelToolsHandler>,
 }
 
 impl Default for ToolHandlerCollection {
@@ -161,11 +161,13 @@ impl Default for ToolHandlerCollection {
             ingestor: None,
             knowledge: None,
             memory: None,
+            personality: None,
             planner: None,
             reflection: None,
             search: None,
             skills: None,
             workflow: None,
+            world_model: None,
         }
     }
 }
@@ -275,6 +277,17 @@ impl ToolHandlerCollection {
             }
         }
 
+        match PersonalityToolsHandler::new(context.clone()) {
+            Ok(handler) => {
+                tracing::info!("Personality tools handler initialized with {} tools", handler.tool_names().len());
+                collection.personality = Some(handler);
+            }
+            Err(e) => {
+                tracing::warn!("Failed to initialize personality tools handler: {}", e.message);
+                errors.push(e);
+            }
+        }
+
         match PlannerToolsHandler::new(context.clone()) {
             Ok(handler) => {
                 tracing::info!("Planner tools handler initialized with {} tools", handler.tool_names().len());
@@ -330,6 +343,17 @@ impl ToolHandlerCollection {
             }
         }
 
+        match WorldModelToolsHandler::new(context.clone()) {
+            Ok(handler) => {
+                tracing::info!("World-model tools handler initialized with {} tools", handler.tool_names().len());
+                collection.world_model = Some(handler);
+            }
+            Err(e) => {
+                tracing::warn!("Failed to initialize world-model tools handler: {}", e.message);
+                errors.push(e);
+            }
+        }
+
         let total_tools = collection.count_tools();
         tracing::info!("Tool handlers initialization complete: {} total tools loaded, {} errors", 
             total_tools, errors.len());
@@ -348,11 +372,13 @@ impl ToolHandlerCollection {
         if let Some(ref h) = self.ingestor { count += h.tool_names().len(); }
         if let Some(ref h) = self.knowledge { count += h.tool_names().len(); }
         if let Some(ref h) = self.memory { count += h.tool_names().len(); }
+        if let Some(ref h) = self.personality { count += h.tool_names().len(); }
         if let Some(ref h) = self.planner { count += h.tool_names().len(); }
         if let Some(ref h) = self.reflection { count += h.tool_names().len(); }
         if let Some(ref h) = self.search { count += h.tool_names().len(); }
         if let Some(ref h) = self.skills { count += h.tool_names().len(); }
         if let Some(ref h) = self.workflow { count += h.tool_names().len(); }
+        if let Some(ref h) = self.world_model { count += h.tool_names().len(); }
         count
     }
 
@@ -367,11 +393,13 @@ impl ToolHandlerCollection {
             || self.ingestor.as_ref().is_some_and(|h| h.is_healthy())
             || self.knowledge.as_ref().is_some_and(|h| h.is_healthy())
             || self.memory.as_ref().is_some_and(|h| h.is_healthy())
+            || self.personality.as_ref().is_some_and(|h| h.is_healthy())
             || self.planner.as_ref().is_some_and(|h| h.is_healthy())
             || self.reflection.as_ref().is_some_and(|h| h.is_healthy())
             || self.search.as_ref().is_some_and(|h| h.is_healthy())
             || self.skills.as_ref().is_some_and(|h| h.is_healthy())
             || self.workflow.as_ref().is_some_and(|h| h.is_healthy())
+            || self.world_model.as_ref().is_some_and(|h| h.is_healthy())
     }
 
     /// Get all tools from all handlers as MCP Tool definitions
@@ -385,11 +413,13 @@ impl ToolHandlerCollection {
         if let Some(ref h) = self.ingestor { tools.extend(h.get_tools()); }
         if let Some(ref h) = self.knowledge { tools.extend(h.get_tools()); }
         if let Some(ref h) = self.memory { tools.extend(h.get_tools()); }
+        if let Some(ref h) = self.personality { tools.extend(h.get_tools()); }
         if let Some(ref h) = self.planner { tools.extend(h.get_tools()); }
         if let Some(ref h) = self.reflection { tools.extend(h.get_tools()); }
         if let Some(ref h) = self.search { tools.extend(h.get_tools()); }
         if let Some(ref h) = self.skills { tools.extend(h.get_tools()); }
         if let Some(ref h) = self.workflow { tools.extend(h.get_tools()); }
+        if let Some(ref h) = self.world_model { tools.extend(h.get_tools()); }
         tools
     }
 
@@ -419,6 +449,9 @@ impl ToolHandlerCollection {
         if let Some(tool) = self.memory.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
             return Some(tool);
         }
+        if let Some(tool) = self.personality.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+            return Some(tool);
+        }
         if let Some(tool) = self.planner.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
             return Some(tool);
         }
@@ -434,6 +467,9 @@ impl ToolHandlerCollection {
         if let Some(tool) = self.workflow.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
             return Some(tool);
         }
+        if let Some(tool) = self.world_model.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+            return Some(tool);
+        }
         None
     }
 
@@ -443,72 +479,40 @@ impl ToolHandlerCollection {
         name: &str,
         args: serde_json::Value,
     ) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
-        // Try each handler in order
-        if let Some(ref h) = self.acp {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
+        // Try each handler in order. Each handler's category() identifies
+        // which subsystem processed the tool (useful for debugging).
+        macro_rules! try_handler {
+            ($handler:expr) => {
+                if let Some(ref h) = $handler {
+                    if h.tool_names().contains(&name.to_string()) {
+                        tracing::debug!(
+                            tool = name,
+                            category = h.category(),
+                            "Dispatching tool to handler"
+                        );
+                        return h.execute_tool(name, args).await;
+                    }
+                }
+            };
         }
-        if let Some(ref h) = self.agent {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.experience {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.exploration {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.hypothesis {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.ingestor {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.knowledge {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.memory {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.planner {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.reflection {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.search {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.skills {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
-        if let Some(ref h) = self.workflow {
-            if h.tool_names().contains(&name.to_string()) {
-                return h.execute_tool(name, args).await;
-            }
-        }
+
+        try_handler!(self.acp);
+        try_handler!(self.agent);
+        try_handler!(self.experience);
+        try_handler!(self.exploration);
+        try_handler!(self.hypothesis);
+        try_handler!(self.ingestor);
+        try_handler!(self.knowledge);
+        try_handler!(self.memory);
+        try_handler!(self.personality);
+        try_handler!(self.planner);
+        try_handler!(self.reflection);
+        try_handler!(self.search);
+        try_handler!(self.skills);
+        try_handler!(self.workflow);
+        try_handler!(self.world_model);
+
+        tracing::warn!(tool = name, "Tool not found in any handler category");
         Err(HandlerError::ToolNotFound(name.to_string()))
     }
 }

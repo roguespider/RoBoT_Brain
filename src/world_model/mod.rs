@@ -12,9 +12,8 @@
 //!
 //! This module is one of the pieces called out in the v2.0 roadmap
 //! (TASK-V2-06) as "one of the biggest missing pieces." It is wired into the
-//! App at startup and exercised by a self-check.
+//! App at startup and exercised by world-model MCP tools.
 
-pub mod self_check;
 pub mod store;
 pub mod types;
 

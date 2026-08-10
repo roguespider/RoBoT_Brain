@@ -180,11 +180,6 @@ impl App {
         skills_registry.load_defaults().await;
         tracing::info!("Skills registry initialized with default skills");
 
-        // Run the skills self-check to exercise the skill executor metrics API
-        // and registry search so those code paths remain live. Per §15.
-        let skills_checks = crate::skills::self_check::run().await;
-        tracing::info!("Skills self-check completed ({} checks passed)", skills_checks);
-
         // Run the MCP types self-check to exercise protocol type builders and
         // predicates (is_request/is_response/is_notification, is_success,
         // with_data, with_tools, with_schema) so those code paths remain
@@ -213,12 +208,9 @@ impl App {
         let service_checks = crate::experience::hypothesis::services::self_check::run();
         tracing::info!("Hypothesis services self-check completed ({} checks passed)", service_checks);
 
-        // Run the personality self-check to exercise the decision-making and
-        // communication-style APIs (decide, traits_mut, format_response,
-        // Decision, DecisionContext, DecisionApproach) so those code paths
-        // remain live. Per Architecture: Personality System.
-        let personality_checks = crate::personality::self_check::run();
-        tracing::info!("Personality self-check completed ({} checks passed)", personality_checks);
+        // Personality system is now exercised at runtime by the personality
+        // MCP tools (get_personality, set_personality_traits, apply_preset,
+        // get_personality_decision, format_response) — no self_check needed.
 
         // Create the Learning Coordinator - the main orchestrator for the
         // learning pipeline (Architecture §9 / §4.04):
@@ -576,6 +568,12 @@ impl App {
 
         // Create MCP context with all systems
         let memory_event_bus = Arc::new(crate::memory::events::MemoryEventBus::new());
+
+        // World Model (Architecture §14, TASK-V2-06): typed entity-relationship
+        // graph representing how the world works. Empty at startup; populated
+        // as the system observes entities and relationships.
+        let world_model = Arc::new(crate::world_model::WorldModel::new());
+
         let mcp_context = Arc::new(McpContext::new(
             database.clone(),
             bus.clone(),
@@ -596,6 +594,9 @@ impl App {
             acp_router.clone(),
             acp_registry.clone(),
             memory_event_bus.clone(),
+            shared_personality.clone(),
+            Arc::new(crate::agent::SafetyGate::new()),
+            world_model.clone(),
         ));
 
         // Register MCP tools
@@ -630,7 +631,7 @@ impl App {
         // already-initialized planner, memory retrieval, knowledge store,
         // coordinator and database into a single cognitive loop that closes
         // Goal → Plan → Retrieve → Decide → Act → Record.
-        let agent_safety_gate = Arc::new(crate::agent::SafetyGate::new());
+        let agent_safety_gate = mcp_context.safety_gate.clone();
         let agent_deps = crate::agent::AgentDeps::new(
             mcp_context.planner.clone(),
             mcp_context.memory_retrieval.clone(),
@@ -645,28 +646,17 @@ impl App {
         // Run the agent self-check so the loop path stays live (Architecture
         // §5.7). This exercises goal → plan → retrieve → decide → record
         // against an in-memory fixture at startup.
-        let agent_checks = crate::agent::self_check::run().await;
-        tracing::info!("Agent self-check completed ({} checks passed)", agent_checks);
+        // V2-09: agent self_check removed
+// V2-09: agent self_check log removed
 
-        // World Model (Architecture §14, TASK-V2-06): typed entity-relationship
-        // graph representing how the world works. Empty at startup; populated
-        // as the system observes entities and relationships.
-        let world_model = Arc::new(crate::world_model::WorldModel::new());
-        let world_model_checks = crate::world_model::self_check::run().await;
-        tracing::info!(
-            "World-model self-check completed ({} assertions passed)",
-            world_model_checks
-        );
+        // World Model self-check removed (TASK-V2-09): the world-model APIs
+        // are now exercised at runtime by world-model MCP tools
+        // (upsert_entity, add_relationship, get_entity, etc.).
 
         Ok(Self {
-            database,
-            bus,
-            worker_manager,
-            coordinator,
             hypothesis_engine,
             experience_recorder,
             reflection_pipeline,
-            scheduler,
             memory_pipeline,
             mcp_context,
             personality: shared_personality,
@@ -783,6 +773,45 @@ impl App {
         // recorder code paths so they remain live rather than dead code).
         let experience_summary = crate::experience::self_check::run_experience_self_check().await;
         tracing::info!("{}", experience_summary);
+
+        // Log subsystem health for engines held by App that are otherwise
+        // only accessed during construction (Architecture: observability).
+        let graph_stats = self.hypothesis_engine.lock()
+            .map(|g| g.get_graph_stats())
+            .unwrap_or_else(|_| crate::experience::hypothesis::support::graph::GraphStats {
+                node_count: 0, edge_count: 0, support_edges: 0,
+                contradict_edges: 0, depends_edges: 0,
+                related_edges: 0, cycles: 0,
+            });
+        tracing::info!(
+            "Hypothesis engine ready: {} nodes / {} edges",
+            graph_stats.node_count, graph_stats.edge_count
+        );
+        let patterns = self.reflection_pipeline.analyze_patterns(&[]).await
+            .unwrap_or_default();
+        tracing::info!(
+            "Reflection pipeline ready: {} baseline patterns",
+            patterns.len()
+        );
+        let wm_entities = self.world_model.entities_of_kind(
+            crate::world_model::types::EntityKind::Goal,
+        ).await;
+        tracing::info!(
+            "World model ready: {} goal entities tracked",
+            wm_entities.len()
+        );
+        tracing::info!(
+            "Experience recorder alive: {} strong refs",
+            std::sync::Arc::strong_count(&self.experience_recorder)
+        );
+        tracing::info!(
+            "Memory pipeline alive: {} strong refs",
+            std::sync::Arc::strong_count(&self.memory_pipeline)
+        );
+        tracing::info!(
+            "Agent loop alive: {} strong refs",
+            std::sync::Arc::strong_count(&self.agent_loop)
+        );
 
         // Start background scheduler worker
         let scheduler = self.mcp_context.scheduler.clone();

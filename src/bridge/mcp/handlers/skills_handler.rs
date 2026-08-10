@@ -107,6 +107,45 @@ impl SkillsToolsHandler {
     ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         skills::execute_search_skills(input, &self.context).await
     }
+
+    /// Get skill execution metrics
+    pub async fn execute_get_skill_metrics(
+        &self,
+        input: skills::GetSkillMetricsInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        skills::execute_get_skill_metrics(input, &self.context).await
+    }
+
+    /// Get unreliable skills
+    pub async fn execute_get_unreliable_skills(
+        &self,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        skills::execute_get_unreliable_skills(&self.context).await
+    }
+
+    /// Clear skill metrics
+    pub async fn execute_clear_skill_metrics(
+        &self,
+        input: skills::ClearSkillMetricsInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        skills::execute_clear_skill_metrics(input, &self.context).await
+    }
+
+    /// Search skills by tag
+    pub async fn execute_search_skills_by_tag(
+        &self,
+        input: skills::SearchSkillsByTagInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        skills::execute_search_skills_by_tag(input, &self.context).await
+    }
+
+    /// Unregister a skill
+    pub async fn execute_unregister_skill(
+        &self,
+        input: skills::UnregisterSkillInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        skills::execute_unregister_skill(input, &self.context).await
+    }
 }
 
 impl ToolHandler for SkillsToolsHandler {
@@ -127,6 +166,11 @@ impl ToolHandler for SkillsToolsHandler {
             "apply_skill_decay".to_string(),
             "enable_disable_skill".to_string(),
             "search_skills".to_string(),
+            "get_skill_metrics".to_string(),
+            "get_unreliable_skills".to_string(),
+            "clear_skill_metrics".to_string(),
+            "search_skills_by_tag".to_string(),
+            "unregister_skill".to_string(),
         ]
     }
 
@@ -260,6 +304,56 @@ impl ToolHandler for SkillsToolsHandler {
                     "required": ["query"]
                 })),
             ).with_title("Search Skills"),
+            rmcp::model::Tool::new(
+                "get_skill_metrics",
+                "Get execution metrics for a skill or all skills",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "skill_id": { "type": "string", "description": "Optional skill ID. If omitted, returns all metrics." }
+                    }
+                })),
+            ).with_title("Get Skill Metrics"),
+            rmcp::model::Tool::new(
+                "get_unreliable_skills",
+                "List skills marked as unreliable by execution metrics",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {}
+                })),
+            ).with_title("Get Unreliable Skills"),
+            rmcp::model::Tool::new(
+                "clear_skill_metrics",
+                "Clear execution metrics for a skill or all skills",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "skill_id": { "type": "string", "description": "Optional skill ID. If omitted, clears all." }
+                    }
+                })),
+            ).with_title("Clear Skill Metrics"),
+            rmcp::model::Tool::new(
+                "search_skills_by_tag",
+                "Search skills by tag",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "tag": { "type": "string", "description": "Tag to search for" }
+                    },
+                    "required": ["tag"]
+                })),
+            ).with_title("Search Skills By Tag"),
+            rmcp::model::Tool::new(
+                "unregister_skill",
+                "Unregister a skill from the registry",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "skill_id": { "type": "string", "description": "Skill ID to unregister" }
+                    },
+                    "required": ["skill_id"]
+                })),
+            ).with_title("Unregister Skill"),
         ]
     }
 
@@ -330,6 +424,34 @@ impl ToolHandler for SkillsToolsHandler {
                     let input: skills::SearchSkillsInput = serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
                     self.execute_search_skills(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "get_skill_metrics" => {
+                    let input: skills::GetSkillMetricsInput = serde_json::from_value(args)
+                        .unwrap_or_default();
+                    self.execute_get_skill_metrics(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "get_unreliable_skills" => {
+                    self.execute_get_unreliable_skills().await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "clear_skill_metrics" => {
+                    let input: skills::ClearSkillMetricsInput = serde_json::from_value(args)
+                        .unwrap_or_default();
+                    self.execute_clear_skill_metrics(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "search_skills_by_tag" => {
+                    let input: skills::SearchSkillsByTagInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_search_skills_by_tag(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "unregister_skill" => {
+                    let input: skills::UnregisterSkillInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_unregister_skill(input).await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 _ => Err(HandlerError::ToolNotFound(name.to_string()))

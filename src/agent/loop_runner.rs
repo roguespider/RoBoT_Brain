@@ -60,6 +60,10 @@ impl AgentLoop {
     pub async fn run(&self, mut goal: AgentGoal) -> Result<AgentLoopOutcome> {
         goal.status = GoalStatus::InProgress;
 
+        // Reset per-iteration safety counters (§16 sandbox budget + rollback
+        // journal).
+        self.deps.safety_gate.reset_iteration();
+
         // 1. Plan (§2.8). A planning failure is a learnable outcome.
         let plan = match self.deps.planner.create_plan(goal.description.clone()).await {
             Ok(plan) => plan,
@@ -160,29 +164,55 @@ impl AgentLoop {
         let mut selected = selected;
         selected.confidence.value = emotion_adjusted;
 
-        // 4. Safety gate (§16). The gate may block destructive actions or
-        //    sub-threshold confidence.
+        // 4. Safety gate (§16). The gate composes four checks: sandbox
+        //    boundary, hallucination detection (which may penalize
+        //    confidence), confidence thresholds, and action risk.
+        //    Use evaluate_full() so the hallucination check runs on the
+        //    SelectedAction's evidence diversity.
         match self
             .deps
             .safety_gate
-            .evaluate(&selected.step.action, &selected.confidence)
+            .evaluate_full(&mut selected)
         {
-            SafetyDecision::Block { reason } => {
+            SafetyDecision::Block { reason, report } => {
                 // Observe the abstention emotionally: a blocked action is a
                 // low-friction setback (no real failure), so record a mild
                 // failure with low effort.
                 self.observe_emotion(false, 0.3);
+                tracing::info!(
+                    "Safety gate blocked action '{}': {} \
+                     (hallucination={}, low_confidence={}, sandbox={}, evidence={})",
+                    selected.step.action,
+                    reason,
+                    report.hallucination_risk,
+                    report.low_confidence,
+                    report.sandbox_blocked,
+                    report.evidence_count
+                );
+
+                // If a mutation was recorded earlier this iteration (e.g. a
+                // plan was created), roll it back since the action it was
+                // supporting is blocked (§16 partial rollback).
+                let active = self.deps.safety_gate.active_mutations();
+                if active > 0 {
+                    for entry in self.deps.safety_gate.journal_entries() {
+                        if !entry.rolled_back {
+                            self.deps.safety_gate.rollback_target(&entry.target_id);
+                        }
+                    }
+                }
+
                 let experience_id = self.record_abstention(&goal, reason.clone()).await.ok();
                 goal.status = GoalStatus::Abstained;
                 goal.completed_at = Some(chrono::Utc::now());
-                return Ok(AgentLoopOutcome {
+                Ok(AgentLoopOutcome {
                     goal_id: goal.id,
                     status: goal.status,
                     action_description: Some(selected.step.action.clone()),
                     confidence_value: Some(selected.confidence.value),
                     abstain_reason: Some(reason),
                     experience_id,
-                });
+                })
             }
             SafetyDecision::Allow => {
                 // 5. Execute. RoBoT has no external actuators (TASK-V2-04
@@ -205,6 +235,24 @@ impl AgentLoop {
                     .record_success(&goal, outcome_summary.clone())
                     .await
                     .ok();
+
+                // Record the mutation in the safety gate's rollback journal
+                // (§16 rollback). If the experience ID is known, it becomes
+                // the rollback target.
+                if let Some(ref eid) = experience_id {
+                    self.deps
+                        .safety_gate
+                        .record_mutation(&selected.step.action, eid.clone());
+                }
+
+                // Audit: log the current journal state for traceability.
+                let journal = self.deps.safety_gate.journal_entries();
+                if !journal.is_empty() {
+                    tracing::debug!(
+                        "Safety gate journal: {} mutation(s) recorded this iteration",
+                        journal.len()
+                    );
+                }
 
                 // Observe the successful action emotionally (Architecture §13).
                 self.observe_emotion(true, 0.5);
@@ -282,7 +330,41 @@ impl AgentLoop {
     }
 
     /// Record a failure (e.g. planning error) as a failed experience.
+    ///
+    /// On failure, any mutations recorded in the safety gate's rollback
+    /// journal this iteration are rolled back (§16 rollback).
     async fn record_failure(&self, goal: &AgentGoal, reason: String) -> Result<String> {
+        // Roll back any mutations from this iteration (§16 rollback).
+        let rolled_back = self.deps.safety_gate.rollback_all();
+        if !rolled_back.is_empty() {
+            let targets: Vec<String> = rolled_back
+                .iter()
+                .map(|e| format!(
+                    "{}({}) at {} [id={}{}]",
+                    e.action,
+                    e.target_id,
+                    e.timestamp.format("%H:%M:%S"),
+                    e.id,
+                    if e.rolled_back { ", reversed" } else { "" }
+                ))
+                .collect();
+            tracing::info!(
+                "Safety gate rolled back {} mutation(s): {}",
+                rolled_back.len(),
+                targets.join("; ")
+            );
+        }
+
+        // Audit: log any remaining active mutations (should be 0 after
+        // rollback_all, but log for verification).
+        let active = self.deps.safety_gate.active_mutations();
+        if active > 0 {
+            tracing::warn!(
+                "Safety gate: {} mutation(s) still active after rollback",
+                active
+            );
+        }
+
         let mut experience = crate::experience::types::Experience::new(
             format!("Agent goal failed: {}", goal.description),
             reason.clone(),

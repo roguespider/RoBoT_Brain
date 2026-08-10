@@ -47,11 +47,13 @@ pub mod hypothesis;
 pub mod ingestor;
 pub mod knowledge;
 pub mod memory;
+pub mod personality;
 pub mod planner;
 pub mod reflection;
 pub mod search;
 pub mod skills;
 pub mod workflow;
+pub mod world_model;
 
 /// Global tool registry (lazily initialized, using Mutex since only written once at startup)
 static TOOL_REGISTRY: std::sync::OnceLock<Arc<Mutex<ToolRegistry>>> = std::sync::OnceLock::new();

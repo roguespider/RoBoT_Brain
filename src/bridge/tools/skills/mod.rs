@@ -85,6 +85,26 @@ pub struct SearchSkillsInput {
     pub min_mastery: Option<f32>,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
+pub struct GetSkillMetricsInput {
+    pub skill_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
+pub struct ClearSkillMetricsInput {
+    pub skill_id: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct SearchSkillsByTagInput {
+    pub tag: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
+pub struct UnregisterSkillInput {
+    pub skill_id: String,
+}
+
 /// Skill tool definitions
 pub mod definitions {
     use crate::bridge::mcp::McpTool;
@@ -100,6 +120,11 @@ pub mod definitions {
     pub const APPLY_SKILL_DECAY: &str = "apply_skill_decay";
     pub const ENABLE_DISABLE_SKILL: &str = "enable_disable_skill";
     pub const SEARCH_SKILLS: &str = "search_skills";
+    pub const GET_SKILL_METRICS: &str = "get_skill_metrics";
+    pub const GET_UNRELIABLE_SKILLS: &str = "get_unreliable_skills";
+    pub const CLEAR_SKILL_METRICS: &str = "clear_skill_metrics";
+    pub const SEARCH_SKILLS_BY_TAG: &str = "search_skills_by_tag";
+    pub const UNREGISTER_SKILL: &str = "unregister_skill";
 
     pub fn all() -> Vec<McpTool> {
         vec![
@@ -239,6 +264,56 @@ pub mod definitions {
                         "min_mastery": { "type": "number", "description": "Minimum mastery level" }
                     },
                     "required": ["query"]
+                }),
+            },
+            McpTool {
+                name: GET_SKILL_METRICS.to_string(),
+                description: "Get execution metrics for a specific skill or all skills. Returns success rate, avg duration, stability, and reliability.".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "skill_id": { "type": "string", "description": "Optional skill ID to get metrics for. If omitted, returns all skill metrics." }
+                    }
+                }),
+            },
+            McpTool {
+                name: GET_UNRELIABLE_SKILLS.to_string(),
+                description: "List skills that have been marked as unreliable based on execution metrics.".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {}
+                }),
+            },
+            McpTool {
+                name: CLEAR_SKILL_METRICS.to_string(),
+                description: "Clear execution metrics for a specific skill or all skills.".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "skill_id": { "type": "string", "description": "Optional skill ID. If omitted, clears all metrics." }
+                    }
+                }),
+            },
+            McpTool {
+                name: SEARCH_SKILLS_BY_TAG.to_string(),
+                description: "Search skills by tag. Returns all skills matching the given tag.".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "tag": { "type": "string", "description": "Tag to search for" }
+                    },
+                    "required": ["tag"]
+                }),
+            },
+            McpTool {
+                name: UNREGISTER_SKILL.to_string(),
+                description: "Unregister a skill from the registry by its ID.".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "skill_id": { "type": "string", "description": "ID of the skill to unregister" }
+                    },
+                    "required": ["skill_id"]
                 }),
             },
         ]
@@ -699,4 +774,136 @@ fn parse_category(category: &str) -> Result<SkillCategory> {
         "custom" => Ok(SkillCategory::Custom),
         _ => anyhow::bail!("Unknown skill category: {}", category),
     }
+}
+
+/// Execute get_skill_metrics tool
+/// Exercises SkillExecutor::get_execution_metrics, get_all_metrics,
+/// get_skills_by_success_rate (Architecture §15).
+pub async fn execute_get_skill_metrics(
+    input: GetSkillMetricsInput,
+    context: &McpContext,
+) -> Result<ToolOutput> {
+    if let Some(skill_id) = &input.skill_id {
+        match context.skill_executor.get_execution_metrics(skill_id) {
+            Some(m) => Ok(ToolOutput::success(serde_json::json!({
+                "skill_id": skill_id,
+                "metrics": {
+                    "total_executions": m.total_executions,
+                    "successful_executions": m.successful_executions,
+                    "failed_executions": m.failed_executions,
+                    "success_rate": m.success_rate(),
+                    "avg_duration_ms": m.avg_duration(),
+                    "is_stable": m.is_stable(),
+                    "is_unreliable": m.is_unreliable(),
+                }
+            }))),
+            None => Ok(ToolOutput::success(serde_json::json!({
+                "skill_id": skill_id,
+                "metrics": null,
+                "message": "No execution metrics recorded for this skill"
+            }))),
+        }
+    } else {
+        let all = context.skill_executor.get_all_metrics();
+        let by_rate = context.skill_executor.get_skills_by_success_rate();
+        let metrics: Vec<serde_json::Value> = all
+            .iter()
+            .map(|(id, m)| {
+                serde_json::json!({
+                    "skill_id": id,
+                    "total_executions": m.total_executions,
+                    "success_rate": m.success_rate(),
+                    "avg_duration_ms": m.avg_duration(),
+                    "is_stable": m.is_stable(),
+                    "is_unreliable": m.is_unreliable(),
+                })
+            })
+            .collect();
+        let ranked: Vec<serde_json::Value> = by_rate
+            .iter()
+            .map(|(id, rate)| {
+                serde_json::json!({"skill_id": id, "success_rate": rate})
+            })
+            .collect();
+        Ok(ToolOutput::success(serde_json::json!({
+            "metrics": metrics,
+            "count": metrics.len(),
+            "ranked_by_success_rate": ranked,
+        })))
+    }
+}
+
+/// Execute get_unreliable_skills tool
+/// Exercises SkillExecutor::get_unreliable_skills (Architecture §15).
+pub async fn execute_get_unreliable_skills(
+    context: &McpContext,
+) -> Result<ToolOutput> {
+    let unreliable = context.skill_executor.get_unreliable_skills();
+    Ok(ToolOutput::success(serde_json::json!({
+        "unreliable_skills": unreliable,
+        "count": unreliable.len()
+    })))
+}
+
+/// Execute clear_skill_metrics tool
+/// Exercises SkillExecutor::clear_metrics, clear_all_metrics (Architecture §15).
+pub async fn execute_clear_skill_metrics(
+    input: ClearSkillMetricsInput,
+    context: &McpContext,
+) -> Result<ToolOutput> {
+    if let Some(skill_id) = &input.skill_id {
+        context.skill_executor.clear_metrics(skill_id);
+        Ok(ToolOutput::success(serde_json::json!({
+            "status": "cleared",
+            "skill_id": skill_id
+        })))
+    } else {
+        context.skill_executor.clear_all_metrics();
+        Ok(ToolOutput::success(serde_json::json!({
+            "status": "all_cleared"
+        })))
+    }
+}
+
+/// Execute search_skills_by_tag tool
+/// Exercises SkillRegistry::search_by_tag (Architecture §15).
+pub async fn execute_search_skills_by_tag(
+    input: SearchSkillsByTagInput,
+    context: &McpContext,
+) -> Result<ToolOutput> {
+    let found = context.skills.search_by_tag(&input.tag).await;
+    let results: Vec<serde_json::Value> = found
+        .iter()
+        .map(|s| {
+            serde_json::json!({
+                "id": s.id,
+                "name": s.metadata.name,
+                "description": s.metadata.description,
+                "category": s.metadata.category.as_str(),
+                "mastery": s.mastery,
+                "tags": s.metadata.tags,
+            })
+        })
+        .collect();
+    Ok(ToolOutput::success(serde_json::json!({
+        "results": results,
+        "count": results.len()
+    })))
+}
+
+/// Execute unregister_skill tool
+/// Exercises SkillRegistry::unregister (Architecture §15).
+pub async fn execute_unregister_skill(
+    input: UnregisterSkillInput,
+    context: &McpContext,
+) -> Result<ToolOutput> {
+    context
+        .skills
+        .unregister(&input.skill_id)
+        .await
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
+    Ok(ToolOutput::success(serde_json::json!({
+        "status": "unregistered",
+        "skill_id": input.skill_id
+    })))
 }

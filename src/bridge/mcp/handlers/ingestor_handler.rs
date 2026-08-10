@@ -78,17 +78,6 @@ impl IngestorToolsHandler {
         )
         .await
     }
-
-    /// Stub for transcribe_audio when audio feature is disabled
-    pub async fn execute_transcribe_audio_disabled(
-        &self,
-        input: ingestor::TranscribeAudioInput,
-    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
-        Ok(crate::bridge::tools::ToolOutput::error(format!(
-            "Audio transcription is not available. Audio file not found: {}",
-            input.path
-        )))
-    }
 }
 
 impl ToolHandler for IngestorToolsHandler {

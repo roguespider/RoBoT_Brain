@@ -327,6 +327,11 @@ pub async fn ingest_json_file(
         }
     };
 
+    // Log any import warnings (Architecture: observability)
+    for warning in &result.warnings {
+        tracing::warn!(file = %filename, warning = %warning, "JSON import warning");
+    }
+
     // Even if items is empty, we try to read the raw file content as fallback
     let items_to_store = if result.items.is_empty() {
         // Try to read raw JSON content as a single fallback item
