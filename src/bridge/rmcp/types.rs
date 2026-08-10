@@ -60,7 +60,7 @@ impl McpServerHandler {
         // Log which handler categories are available for diagnostics.
         for cat in [
             "acp", "agent", "experience", "exploration", "hypothesis",
-            "ingestor", "knowledge", "memory", "planner", "reflection",
+            "ingestor", "knowledge", "memory", "personality", "planner", "reflection",
             "search", "skills", "workflow",
         ] {
             if self.is_handler_available(cat) {
@@ -166,6 +166,7 @@ impl McpServerHandler {
             "ingestor" => self.handlers.ingestor.is_some(),
             "knowledge" => self.handlers.knowledge.is_some(),
             "memory" => self.handlers.memory.is_some(),
+            "personality" => self.handlers.personality.is_some(),
             "planner" => self.handlers.planner.is_some(),
             "reflection" => self.handlers.reflection.is_some(),
             "search" => self.handlers.search.is_some(),

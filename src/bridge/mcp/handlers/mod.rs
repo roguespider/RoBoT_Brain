@@ -21,6 +21,7 @@ pub mod hypothesis_handler;
 pub mod ingestor_handler;
 pub mod knowledge_handler;
 pub mod memory_handler;
+pub mod personality_handler;
 pub mod planner_handler;
 pub mod reflection_handler;
 pub mod search_handler;
@@ -120,6 +121,7 @@ pub use hypothesis_handler::HypothesisToolsHandler;
 pub use ingestor_handler::IngestorToolsHandler;
 pub use knowledge_handler::KnowledgeToolsHandler;
 pub use memory_handler::MemoryToolsHandler;
+pub use personality_handler::PersonalityToolsHandler;
 pub use planner_handler::PlannerToolsHandler;
 pub use reflection_handler::ReflectionToolsHandler;
 pub use search_handler::SearchToolsHandler;
@@ -137,6 +139,7 @@ pub struct ToolHandlerCollection {
     pub ingestor: Option<IngestorToolsHandler>,
     pub knowledge: Option<KnowledgeToolsHandler>,
     pub memory: Option<MemoryToolsHandler>,
+    pub personality: Option<PersonalityToolsHandler>,
     pub planner: Option<PlannerToolsHandler>,
     pub reflection: Option<ReflectionToolsHandler>,
     pub search: Option<SearchToolsHandler>,
@@ -155,6 +158,7 @@ impl Default for ToolHandlerCollection {
             ingestor: None,
             knowledge: None,
             memory: None,
+            personality: None,
             planner: None,
             reflection: None,
             search: None,
@@ -269,6 +273,17 @@ impl ToolHandlerCollection {
             }
         }
 
+        match PersonalityToolsHandler::new(context.clone()) {
+            Ok(handler) => {
+                tracing::info!("Personality tools handler initialized with {} tools", handler.tool_names().len());
+                collection.personality = Some(handler);
+            }
+            Err(e) => {
+                tracing::warn!("Failed to initialize personality tools handler: {}", e.message);
+                errors.push(e);
+            }
+        }
+
         match PlannerToolsHandler::new(context.clone()) {
             Ok(handler) => {
                 tracing::info!("Planner tools handler initialized with {} tools", handler.tool_names().len());
@@ -342,6 +357,7 @@ impl ToolHandlerCollection {
         if let Some(ref h) = self.ingestor { count += h.tool_names().len(); }
         if let Some(ref h) = self.knowledge { count += h.tool_names().len(); }
         if let Some(ref h) = self.memory { count += h.tool_names().len(); }
+        if let Some(ref h) = self.personality { count += h.tool_names().len(); }
         if let Some(ref h) = self.planner { count += h.tool_names().len(); }
         if let Some(ref h) = self.reflection { count += h.tool_names().len(); }
         if let Some(ref h) = self.search { count += h.tool_names().len(); }
@@ -361,6 +377,7 @@ impl ToolHandlerCollection {
             || self.ingestor.as_ref().is_some_and(|h| h.is_healthy())
             || self.knowledge.as_ref().is_some_and(|h| h.is_healthy())
             || self.memory.as_ref().is_some_and(|h| h.is_healthy())
+            || self.personality.as_ref().is_some_and(|h| h.is_healthy())
             || self.planner.as_ref().is_some_and(|h| h.is_healthy())
             || self.reflection.as_ref().is_some_and(|h| h.is_healthy())
             || self.search.as_ref().is_some_and(|h| h.is_healthy())
@@ -379,6 +396,7 @@ impl ToolHandlerCollection {
         if let Some(ref h) = self.ingestor { tools.extend(h.get_tools()); }
         if let Some(ref h) = self.knowledge { tools.extend(h.get_tools()); }
         if let Some(ref h) = self.memory { tools.extend(h.get_tools()); }
+        if let Some(ref h) = self.personality { tools.extend(h.get_tools()); }
         if let Some(ref h) = self.planner { tools.extend(h.get_tools()); }
         if let Some(ref h) = self.reflection { tools.extend(h.get_tools()); }
         if let Some(ref h) = self.search { tools.extend(h.get_tools()); }
@@ -411,6 +429,9 @@ impl ToolHandlerCollection {
             return Some(tool);
         }
         if let Some(tool) = self.memory.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+            return Some(tool);
+        }
+        if let Some(tool) = self.personality.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
             return Some(tool);
         }
         if let Some(tool) = self.planner.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
@@ -462,6 +483,7 @@ impl ToolHandlerCollection {
         try_handler!(self.ingestor);
         try_handler!(self.knowledge);
         try_handler!(self.memory);
+        try_handler!(self.personality);
         try_handler!(self.planner);
         try_handler!(self.reflection);
         try_handler!(self.search);

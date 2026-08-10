@@ -47,6 +47,7 @@ pub mod hypothesis;
 pub mod ingestor;
 pub mod knowledge;
 pub mod memory;
+pub mod personality;
 pub mod planner;
 pub mod reflection;
 pub mod search;

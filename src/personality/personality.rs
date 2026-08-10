@@ -83,6 +83,11 @@ impl Personality {
         self.humor.level
     }
 
+    /// Set the humor trait level (0.0 = serious, 1.0 = playful).
+    pub fn set_humor_level(&mut self, level: f32) {
+        self.humor = emotional::Humor::new(level);
+    }
+
     /// Current interaction mode.
     pub fn interaction_mode(&self) -> emotional::InteractionMode {
         self.interaction_mode

@@ -213,12 +213,9 @@ impl App {
         let service_checks = crate::experience::hypothesis::services::self_check::run();
         tracing::info!("Hypothesis services self-check completed ({} checks passed)", service_checks);
 
-        // Run the personality self-check to exercise the decision-making and
-        // communication-style APIs (decide, traits_mut, format_response,
-        // Decision, DecisionContext, DecisionApproach) so those code paths
-        // remain live. Per Architecture: Personality System.
-        let personality_checks = crate::personality::self_check::run();
-        tracing::info!("Personality self-check completed ({} checks passed)", personality_checks);
+        // Personality system is now exercised at runtime by the personality
+        // MCP tools (get_personality, set_personality_traits, apply_preset,
+        // get_personality_decision, format_response) — no self_check needed.
 
         // Create the Learning Coordinator - the main orchestrator for the
         // learning pipeline (Architecture §9 / §4.04):

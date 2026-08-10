@@ -38,7 +38,6 @@ pub mod decision_making;
 pub mod emotional;
 pub mod personality;
 pub mod presets;
-pub mod self_check;
 pub mod traits;
 
 pub use communication::CommunicationStyle;
