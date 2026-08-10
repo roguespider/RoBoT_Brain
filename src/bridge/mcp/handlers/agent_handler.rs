@@ -59,8 +59,7 @@ impl AgentToolsHandler {
     /// for the given goal. The loop plans, retrieves, decides, acts, and
     /// records the outcome — closing the cognitive loop.
     pub async fn execute_run_agent_goal(&self, input: RunAgentGoalInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
-        use crate::agent::{AgentLoop, AgentDeps, types::AgentGoal};
-        use uuid::Uuid;
+        use crate::agent::{AgentLoop, AgentDeps};
 
         let deps = AgentDeps::new(
             self.context.planner.clone(),
@@ -73,14 +72,8 @@ impl AgentToolsHandler {
         );
         let agent_loop = AgentLoop::new(deps);
 
-        let goal = AgentGoal {
-            id: Uuid::new_v4().to_string(),
-            description: input.goal,
-            confidence_threshold: input.confidence_threshold.unwrap_or(0.5),
-            status: crate::agent::types::GoalStatus::Pending,
-            created_at: chrono::Utc::now(),
-            completed_at: None,
-        };
+        let goal = crate::agent::types::AgentGoal::new(&input.goal)
+            .with_threshold(input.confidence_threshold.unwrap_or(0.5));
 
         let outcome = agent_loop.run(goal).await?;
 

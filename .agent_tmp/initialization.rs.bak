@@ -647,8 +647,8 @@ impl App {
         // Run the agent self-check so the loop path stays live (Architecture
         // §5.7). This exercises goal → plan → retrieve → decide → record
         // against an in-memory fixture at startup.
-        // V2-09: agent self_check removed
-// V2-09: agent self_check log removed
+        let agent_checks = crate::agent::self_check::run().await;
+        tracing::info!("Agent self-check completed ({} checks passed)", agent_checks);
 
         // World Model (Architecture §14, TASK-V2-06): typed entity-relationship
         // graph representing how the world works. Empty at startup; populated

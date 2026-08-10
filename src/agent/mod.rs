@@ -18,7 +18,7 @@ pub mod context;
 pub mod decision;
 pub mod loop_runner;
 pub mod safety_gate;
-pub mod self_check;
+// V2-09: self_check removed (code now exercised by run_agent_goal MCP tool)
 pub mod types;
 
 // Re-export the types that are consumed via the `crate::agent::` path by the
