@@ -335,13 +335,17 @@ ExperienceRecorded → Reflection → Hypothesis → Knowledge → Reputation
 
 - [x] **TASK-V2-06: World Model (Chapter 14).** ✅ DONE — `src/world_model/`
   module exists.
-- [ ] **TASK-V2-07: Safety layer (Chapter 16).** ⚠️ PARTIAL —
-  `src/agent/safety_gate.rs` provides a basic `SafetyGate::evaluate()` that
-  blocks `Destructive` actions and applies confidence thresholds. The file's own
-  comments state: "Fuller sandboxing, permission checks and rollback are future
-  work" and "everything else is blocked pending a permission model." Missing:
-  sandboxing, rollback, hallucination handling, uncertainty reporting. Required
-  before the autonomous loop (V2-04) is safe to run unsupervised.
+- [x] **TASK-V2-07: Safety layer (Chapter 16).** ✅ DONE (2026-08-10,
+  commit 40df7ed) — `src/agent/safety_gate/` module directory with 5 files:
+  `mod.rs` (SafetyGate composing all checks), `types.rs` (SafetyDecision with
+  UncertaintyReport, RollbackEntry), `sandbox.rs` (resource boundary +
+  mutation budget), `rollback.rs` (RollbackJournal for mutation tracking +
+  reversal), `hallucination.rs` (evidence-channel hallucination detection +
+  confidence penalty). Wired into `loop_runner.rs`: `reset_iteration()` at
+  loop start, `evaluate_full()` runs 4 composed checks (sandbox, hallucination,
+  confidence threshold, uncertainty reporting), `record_mutation()` after
+  action execution, `rollback_all()` on failure, `rollback_target()` for
+  partial rollback, `journal_entries()` for audit. 0 cargo warnings.
 - [x] **TASK-V2-08: Expand Personality beyond style (Chapter 13).** ✅ DONE —
   `src/personality/mod.rs:388-393` computes `emotional_weight` and feeds it
   into `emotion_adjusted_confidence` (confidence scoring, not just text).
@@ -414,9 +418,13 @@ audit), V2-11, V2-12.**
 - robot_brain: builds with **0 cargo warnings**, 97 MCP tools (added
   `run_agent_goal`). Agent loop verified working via MCP: `status=Achieved`,
   `action=search_memory`, `confidence=0.507`, experience recorded.
-- test_suite: **333 passed / 0 failed / 5 skipped**, 100% pass rate, 81.2%
-  coverage (18 untested tools), **0 code-quality issues**, 0 cargo warnings.
-  (83 clippy-style lints remain, tracked separately.)
+- **Safety layer (V2-07 DONE):** `src/agent/safety_gate/` with 5 modules
+  (mod, types, sandbox, rollback, hallucination). All 4 §16 checks composed
+  via `evaluate_full()`: sandbox boundary, hallucination detection,
+  confidence threshold, uncertainty reporting. Rollback journal wired into
+  agent loop (record_mutation, rollback_all, rollback_target).
+- test_suite: **333 passed / 0 failed / 5 skipped**, 100% pass rate, 82 clippy
+  lints (down from 84), **0 code-quality issues**, 0 cargo warnings.
 - **McpContext changes (P1):** added `personality: Arc<Mutex<Personality>>`
   and `safety_gate: Arc<SafetyGate>` fields so the agent handler can build
   `AgentDeps` on-the-fly without accessing `App`'s private fields.
@@ -425,15 +433,12 @@ audit), V2-11, V2-12.**
 - Large-file refactors done: `personality/personality.rs` (352→101 lines, split
   into `presets.rs`, `adaptation.rs`, `decision_making.rs`); `memory/handlers.rs`
   (400→ directory with `store.rs`, `search.rs`, `query.rs`, `mod.rs`).
-- Roadmap: 6 tasks DONE (V2-01,02,03,04,06,08), 2 PARTIAL (V2-05, V2-07),
+- Roadmap: 7 tasks DONE (V2-01,02,03,04,06,07,08), 1 VERIFIED (V2-05),
   2 DONE (V2-10a, V2-10b), 3 TODO (V2-09, V2-11, V2-12).
 
 **Next steps to finish v0.0.1 → v2.0 (in order):**
 1. **V2-09** — audit/convert the remaining `self_check.rs` files.
-2. **V2-07** — expand `safety_gate.rs` to full Chapter 16 (sandboxing, rollback,
-   hallucination handling).
-3. **V2-05** — wire auto-emit into the generic MCP tool-execution path.
-4. **V2-11, V2-12** — SQLite queue + loop-health metrics (P4).
+2. **V2-11, V2-12** — SQLite queue + loop-health metrics (P4).
 
 **Rebuild + verify after each change:**
 ```bash
