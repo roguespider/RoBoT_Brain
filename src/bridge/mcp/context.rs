@@ -92,6 +92,10 @@ pub struct McpContext {
     /// Safety gate for the agent loop (Architecture §16, TASK-V2-07).
     pub safety_gate: Arc<SafetyGate>,
 
+    /// World Model — typed entity-relationship graph (Architecture §14,
+    /// TASK-V2-06). Stores understanding of how the world works.
+    pub world_model: Arc<crate::world_model::WorldModel>,
+
     /// Server info
     pub server_info: McpServerInfo,
 
@@ -122,6 +126,7 @@ impl McpContext {
         memory_event_bus: Arc<MemoryEventBus>,
         personality: Arc<Mutex<Personality>>,
         safety_gate: Arc<SafetyGate>,
+        world_model: Arc<crate::world_model::WorldModel>,
     ) -> Self {
         Self {
             database,
@@ -145,6 +150,7 @@ impl McpContext {
             memory_event_bus,
             personality,
             safety_gate,
+            world_model,
             server_info: McpServerInfo {
                 name: env!("CARGO_PKG_NAME").to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),

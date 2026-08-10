@@ -61,7 +61,7 @@ impl McpServerHandler {
         for cat in [
             "acp", "agent", "experience", "exploration", "hypothesis",
             "ingestor", "knowledge", "memory", "personality", "planner", "reflection",
-            "search", "skills", "workflow",
+            "search", "skills", "workflow", "world_model",
         ] {
             if self.is_handler_available(cat) {
                 tracing::info!(category = cat, "Handler category available");
@@ -172,6 +172,7 @@ impl McpServerHandler {
             "search" => self.handlers.search.is_some(),
             "skills" => self.handlers.skills.is_some(),
             "workflow" => self.handlers.workflow.is_some(),
+            "world_model" => self.handlers.world_model.is_some(),
             _ => false,
         }
     }

@@ -18,9 +18,6 @@ use serde::{Deserialize, Serialize};
 // INPUT TYPES
 // =============================================================================
 
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
-pub struct GetPersonalityInput {}
-
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct SetPersonalityTraitsInput {
     pub curiosity: Option<f32>,
@@ -37,9 +34,6 @@ pub struct SetPersonalityTraitsInput {
 pub struct ApplyPersonalityPresetInput {
     pub preset: String,
 }
-
-#[derive(Debug, Clone, Serialize, Deserialize, JsonSchema, Default)]
-pub struct ListPersonalityPresetsInput {}
 
 #[derive(Debug, Clone, Serialize, Deserialize, JsonSchema)]
 pub struct GetPersonalityDecisionInput {
@@ -63,7 +57,6 @@ pub struct FormatResponseInput {
 /// get_personality: returns current traits, preset, communication style,
 /// emotional state, humor, interaction mode, and preferences.
 pub async fn execute_get_personality(
-    _input: GetPersonalityInput,
     context: &McpContext,
 ) -> Result<ToolOutput> {
     let personality = context.personality.lock();
@@ -175,7 +168,6 @@ pub async fn execute_apply_personality_preset(
 
 /// list_personality_presets: lists all available presets.
 pub async fn execute_list_personality_presets(
-    _input: ListPersonalityPresetsInput,
     context: &McpContext,
 ) -> Result<ToolOutput> {
     let (presets, current) = match context.personality.lock() {

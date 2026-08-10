@@ -27,6 +27,7 @@ pub mod reflection_handler;
 pub mod search_handler;
 pub mod skills_handler;
 pub mod workflow_handler;
+pub mod world_model_handler;
 
 /// Result of attempting to initialize a tool handler
 pub type HandlerInitResult<T> = Result<T, HandlerInitError>;
@@ -127,6 +128,7 @@ pub use reflection_handler::ReflectionToolsHandler;
 pub use search_handler::SearchToolsHandler;
 pub use skills_handler::SkillsToolsHandler;
 pub use workflow_handler::WorkflowToolsHandler;
+pub use world_model_handler::WorldModelToolsHandler;
 
 /// Collection of all tool handlers with graceful degradation
 #[derive(Clone)]
@@ -145,6 +147,7 @@ pub struct ToolHandlerCollection {
     pub search: Option<SearchToolsHandler>,
     pub skills: Option<SkillsToolsHandler>,
     pub workflow: Option<WorkflowToolsHandler>,
+    pub world_model: Option<WorldModelToolsHandler>,
 }
 
 impl Default for ToolHandlerCollection {
@@ -164,6 +167,7 @@ impl Default for ToolHandlerCollection {
             search: None,
             skills: None,
             workflow: None,
+            world_model: None,
         }
     }
 }
@@ -339,6 +343,17 @@ impl ToolHandlerCollection {
             }
         }
 
+        match WorldModelToolsHandler::new(context.clone()) {
+            Ok(handler) => {
+                tracing::info!("World-model tools handler initialized with {} tools", handler.tool_names().len());
+                collection.world_model = Some(handler);
+            }
+            Err(e) => {
+                tracing::warn!("Failed to initialize world-model tools handler: {}", e.message);
+                errors.push(e);
+            }
+        }
+
         let total_tools = collection.count_tools();
         tracing::info!("Tool handlers initialization complete: {} total tools loaded, {} errors", 
             total_tools, errors.len());
@@ -363,6 +378,7 @@ impl ToolHandlerCollection {
         if let Some(ref h) = self.search { count += h.tool_names().len(); }
         if let Some(ref h) = self.skills { count += h.tool_names().len(); }
         if let Some(ref h) = self.workflow { count += h.tool_names().len(); }
+        if let Some(ref h) = self.world_model { count += h.tool_names().len(); }
         count
     }
 
@@ -383,6 +399,7 @@ impl ToolHandlerCollection {
             || self.search.as_ref().is_some_and(|h| h.is_healthy())
             || self.skills.as_ref().is_some_and(|h| h.is_healthy())
             || self.workflow.as_ref().is_some_and(|h| h.is_healthy())
+            || self.world_model.as_ref().is_some_and(|h| h.is_healthy())
     }
 
     /// Get all tools from all handlers as MCP Tool definitions
@@ -402,6 +419,7 @@ impl ToolHandlerCollection {
         if let Some(ref h) = self.search { tools.extend(h.get_tools()); }
         if let Some(ref h) = self.skills { tools.extend(h.get_tools()); }
         if let Some(ref h) = self.workflow { tools.extend(h.get_tools()); }
+        if let Some(ref h) = self.world_model { tools.extend(h.get_tools()); }
         tools
     }
 
@@ -449,6 +467,9 @@ impl ToolHandlerCollection {
         if let Some(tool) = self.workflow.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
             return Some(tool);
         }
+        if let Some(tool) = self.world_model.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+            return Some(tool);
+        }
         None
     }
 
@@ -489,6 +510,7 @@ impl ToolHandlerCollection {
         try_handler!(self.search);
         try_handler!(self.skills);
         try_handler!(self.workflow);
+        try_handler!(self.world_model);
 
         tracing::warn!(tool = name, "Tool not found in any handler category");
         Err(HandlerError::ToolNotFound(name.to_string()))

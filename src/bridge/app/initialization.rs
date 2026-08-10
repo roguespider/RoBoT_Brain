@@ -573,6 +573,12 @@ impl App {
 
         // Create MCP context with all systems
         let memory_event_bus = Arc::new(crate::memory::events::MemoryEventBus::new());
+
+        // World Model (Architecture §14, TASK-V2-06): typed entity-relationship
+        // graph representing how the world works. Empty at startup; populated
+        // as the system observes entities and relationships.
+        let world_model = Arc::new(crate::world_model::WorldModel::new());
+
         let mcp_context = Arc::new(McpContext::new(
             database.clone(),
             bus.clone(),
@@ -595,6 +601,7 @@ impl App {
             memory_event_bus.clone(),
             shared_personality.clone(),
             Arc::new(crate::agent::SafetyGate::new()),
+            world_model.clone(),
         ));
 
         // Register MCP tools
@@ -647,15 +654,9 @@ impl App {
         // V2-09: agent self_check removed
 // V2-09: agent self_check log removed
 
-        // World Model (Architecture §14, TASK-V2-06): typed entity-relationship
-        // graph representing how the world works. Empty at startup; populated
-        // as the system observes entities and relationships.
-        let world_model = Arc::new(crate::world_model::WorldModel::new());
-        let world_model_checks = crate::world_model::self_check::run().await;
-        tracing::info!(
-            "World-model self-check completed ({} assertions passed)",
-            world_model_checks
-        );
+        // World Model self-check removed (TASK-V2-09): the world-model APIs
+        // are now exercised at runtime by world-model MCP tools
+        // (upsert_entity, add_relationship, get_entity, etc.).
 
         Ok(Self {
             hypothesis_engine,

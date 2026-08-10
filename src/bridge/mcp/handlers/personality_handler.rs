@@ -10,7 +10,7 @@ use crate::bridge::mcp::handlers::{
 use crate::bridge::mcp::McpContext;
 use crate::bridge::tools::personality::{
     ApplyPersonalityPresetInput, FormatResponseInput, GetPersonalityDecisionInput,
-    GetPersonalityInput, ListPersonalityPresetsInput, SetPersonalityTraitsInput,
+    SetPersonalityTraitsInput,
     execute_apply_personality_preset, execute_format_response, execute_get_personality,
     execute_get_personality_decision, execute_list_personality_presets,
     execute_set_personality_traits,
@@ -29,8 +29,8 @@ impl PersonalityToolsHandler {
         Ok(Self { context })
     }
 
-    pub async fn execute_get_personality(&self, input: GetPersonalityInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
-        execute_get_personality(input, &self.context).await
+    pub async fn execute_get_personality(&self) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        execute_get_personality(&self.context).await
     }
 
     pub async fn execute_set_personality_traits(&self, input: SetPersonalityTraitsInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
@@ -41,8 +41,8 @@ impl PersonalityToolsHandler {
         execute_apply_personality_preset(input, &self.context).await
     }
 
-    pub async fn execute_list_personality_presets(&self, input: ListPersonalityPresetsInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
-        execute_list_personality_presets(input, &self.context).await
+    pub async fn execute_list_personality_presets(&self) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        execute_list_personality_presets(&self.context).await
     }
 
     pub async fn execute_get_personality_decision(&self, input: GetPersonalityDecisionInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
@@ -155,9 +155,7 @@ impl ToolHandler for PersonalityToolsHandler {
         async move {
             match name {
                 "get_personality" => {
-                    let input: GetPersonalityInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_get_personality(input).await
+                    self.execute_get_personality().await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "set_personality_traits" => {
@@ -173,9 +171,7 @@ impl ToolHandler for PersonalityToolsHandler {
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "list_personality_presets" => {
-                    let input: ListPersonalityPresetsInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_list_personality_presets(input).await
+                    self.execute_list_personality_presets().await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "get_personality_decision" => {
