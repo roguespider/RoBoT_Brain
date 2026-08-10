@@ -361,7 +361,7 @@ ExperienceRecorded → Reflection → Hypothesis → Knowledge → Reputation
 
 ### P3 — Reduce reliance on self-check probes ❌ REMAINING
 
-- [ ] **TASK-V2-09: Audit each `self_check.rs`** (14 files remain, was 16).
+- [ ] **TASK-V2-09: Audit each `self_check.rs`** (13 files remain, was 16).
   Either (a) remove it because the path is now exercised by real wiring from
   P0/P1, or (b) convert it to a real integration test in `test_suite/`. A
   self-check that exists only to silence dead-code warnings is a smell; the
@@ -374,6 +374,17 @@ ExperienceRecorded → Reflection → Hypothesis → Knowledge → Reputation
     `list_personality_presets`, `get_personality_decision`, `format_response`).
     This is the pattern for future self_check removals: wire a real MCP tool
     that calls the API, then delete the self_check.
+  - **Progress (2026-08-10):** Removed `src/world_model/self_check.rs` — the
+    WorldModel APIs (`upsert_entity`, `add_relationship`, `get_entity`,
+    `find_by_name`, `entities_of_kind`, `relationships_for`, `blockers`,
+    `dependencies`, `resources`, `entity_count`, `relationship_count`) are now
+    exercised by 10 new MCP tools (`upsert_world_entity`,
+    `add_world_relationship`, `get_world_entity`, `find_world_entity`,
+    `list_world_entities`, `get_world_relationships`, `get_world_blockers`,
+    `get_world_dependencies`, `get_consumed_resources`, `get_world_model_stats`).
+    Also fixed 2 code-quality issues (underscore-prefixed `_input` params in
+    personality tools) by removing the unused input types entirely.
+    MCP tool count: 103 → 113.
 - [ ] **TASK-V2-10: Finish the remaining compiler warnings** (11 remain, down
   from 118). Apply the Dead Code Resolution Protocol: implement if the
   architecture describes the feature, delete if deprecated. Current warning
@@ -422,8 +433,9 @@ ExperienceRecorded → Reflection → Hypothesis → Knowledge → Reputation
   (`src/agent/safety_gate/` with sandbox, rollback, hallucination, uncertainty).
 - [ ] No self-check exists purely to silence dead-code warnings (P3). ❌
 - [x] The test suite passes with 0 code-quality issues and 0 cargo dead-code
-  warnings (P3/P4). ✅ (333/333 tests pass, 0 cargo build warnings. The 82
-  remaining test_suite "warnings" are clippy-style lints, not dead-code.)
+  warnings (P3/P4). ✅ (333/333 tests pass, 0 cargo build warnings, 0
+  code-quality issues. The 92 remaining test_suite "warnings" are clippy-style
+  lints, not dead-code.)
 
 **4 of 5 DoD criteria met. Remaining: V2-09 (self-check audit), V2-11,
 V2-12 (performance maturity).**
@@ -431,10 +443,14 @@ V2-12 (performance maturity).**
 ### Resume Here (next session)
 
 **Current verified state (2026-08-10):**
-- robot_brain: builds with **0 cargo warnings**, 103 MCP tools (added
+- robot_brain: builds with **0 cargo warnings**, 113 MCP tools (added
   `run_agent_goal` + 6 personality tools: `get_personality`,
   `set_personality_traits`, `apply_personality_preset`,
-  `list_personality_presets`, `get_personality_decision`, `format_response`).
+  `list_personality_presets`, `get_personality_decision`, `format_response`
+  + 10 world_model tools: `upsert_world_entity`, `add_world_relationship`,
+  `get_world_entity`, `find_world_entity`, `list_world_entities`,
+  `get_world_relationships`, `get_world_blockers`, `get_world_dependencies`,
+  `get_consumed_resources`, `get_world_model_stats`).
   Agent loop verified working via MCP: `status=Achieved`,
   `action=search_memory`, `confidence=0.507`, experience recorded.
 - **Personality MCP tools (V2-09 progress):** Removed
@@ -442,32 +458,41 @@ V2-12 (performance maturity).**
   `traits_mut`, `format_response`, `Humor::new`) are now exercised by real
   runtime MCP tool traffic. All 6 personality tools tested live via MCP,
   all return correct results. Added `Personality::set_humor_level` method.
+- **World Model MCP tools (V2-09 progress):** Removed
+  `src/world_model/self_check.rs` - the WorldModel graph APIs are now
+  exercised by 10 real runtime MCP tools. All tested live via MCP: create
+  entities (goal, resource, event, person), add relationships (depends_on,
+  blocks, participates_in, consumes), query blockers/dependencies/resources,
+  lookup by id/name, list by kind, stats. Also fixed 2 code-quality issues
+  (underscore-prefixed `_input` params on get_personality and
+  list_personality_presets) by removing unused input types entirely.
 - **Safety layer (V2-07 DONE):** `src/agent/safety_gate/` with 5 modules
   (mod, types, sandbox, rollback, hallucination). All 4 §16 checks composed
   via `evaluate_full()`: sandbox boundary, hallucination detection,
   confidence threshold, uncertainty reporting. Rollback journal wired into
   agent loop (record_mutation, rollback_all, rollback_target).
-- test_suite: **333 passed / 0 failed / 5 skipped**, 100% pass rate, 82 clippy
-  lints (down from 84), **0 code-quality issues**, 0 cargo warnings.
-- **McpContext changes (P1):** added `personality: Arc<Mutex<Personality>>`
-  and `safety_gate: Arc<SafetyGate>` fields so the agent handler can build
-  `AgentDeps` on-the-fly without accessing `App`'s private fields.
+- test_suite: **333 passed / 0 failed / 5 skipped**, 100% pass rate, 92 clippy
+  lints, **0 code-quality issues**, 0 cargo warnings.
+- **McpContext changes (P1/P2):** added `personality: Arc<Mutex<Personality>>`,
+  `safety_gate: Arc<SafetyGate>`, and `world_model: Arc<WorldModel>` fields so
+  the agent handler can build `AgentDeps` on-the-fly without accessing `App`'s
+  private fields.
 - **Planner changes (P1):** `decompose_goal()` now generates actionable
   `PlanStep`s from goal text (was returning empty `steps` vector).
 - Large-file refactors done: `personality/personality.rs` (352→101 lines, split
   into `presets.rs`, `adaptation.rs`, `decision_making.rs`); `memory/handlers.rs`
   (400→ directory with `store.rs`, `search.rs`, `query.rs`, `mod.rs`).
 - Roadmap: 7 tasks DONE (V2-01,02,03,04,06,07,08), 1 VERIFIED (V2-05),
-  2 DONE (V2-10a, V2-10b), 1 IN PROGRESS (V2-09 - 14 self_checks remain),
+  2 DONE (V2-10a, V2-10b), 1 IN PROGRESS (V2-09 - 13 self_checks remain),
   2 TODO (V2-11, V2-12).
 
 **Next steps to finish v0.0.1 → v2.0 (in order):**
-1. **V2-09** — audit/convert the remaining 14 `self_check.rs` files. Pattern:
+1. **V2-09** — audit/convert the remaining 13 `self_check.rs` files. Pattern:
    wire a real MCP tool that calls the API, then delete the self_check. Files
-   remaining: `find src -name "self_check.rs"` (14 files: acp, mcp/types,
+   remaining: `find src -name "self_check.rs"` (13 files: acp, mcp/types,
    database, experience/evolution, experience/hypothesis, experience/hypothesis/
    services, experience/hypothesis/support/graph, experience/reflection,
-   experience, knowledge, learning, planner, skills, world_model).
+   experience, knowledge, learning, planner, skills).
 2. **V2-11, V2-12** — SQLite queue + loop-health metrics (P4).
 
 **Rebuild + verify after each change:**
