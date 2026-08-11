@@ -60,11 +60,6 @@ impl KnowledgeResult {
         }
     }
 
-    /// Check if any results found
-    pub fn is_empty(&self) -> bool {
-        self.items.is_empty()
-    }
-
     /// Get the best (highest confidence) result
     pub fn best(&self) -> Option<&KnowledgeItem> {
         self.items.first()

@@ -12,7 +12,6 @@
 //!
 //! Knowledge is not static - it changes as new evidence appears.
 
-#![allow(dead_code)]
 
 pub mod types;
 pub mod store;
