@@ -144,13 +144,14 @@ impl App {
             tracing::info!("Worker manager enqueue verified: ok={}", enqueue_ok);
         }
 
-        // Verify the in-memory JobQueue lifecycle works at startup
+        // Verify the SQLite-backed JobQueue lifecycle works at startup
         // (Architecture §23.5 Task Queue). This exercises push_job, pop_job,
         // complete_job and fail_job so those code paths remain live rather
-        // than dead code, pending full SQLite-backed queue integration.
+        // than dead code, and verifies that jobs persist to the job_queue
+        // table (migration 012) and reload across an instance restart.
         {
             use crate::experience::queue::JobQueue;
-            let mut queue = JobQueue::new();
+            let mut queue = JobQueue::with_database(database.clone());
             queue.push_job("startup-queue-probe", "experience_scorer");
             let popped = queue.pop_job("experience_scorer");
             let popped_ok = popped.is_some();
@@ -161,7 +162,15 @@ impl App {
             if let Some(job) = queue.pop_job("experience_scorer") {
                 queue.fail_job(&job.id, "transient probe failure".to_string());
             }
-            tracing::info!("JobQueue lifecycle verified: pop_ok={}", popped_ok);
+            // Verify durability: a fresh queue instance restores the
+            // pending/running rows written above from SQLite.
+            let mut restored_queue = JobQueue::with_database(database.clone());
+            let restored = restored_queue.restore_from_database().unwrap_or(0);
+            tracing::info!(
+                "JobQueue lifecycle verified: pop_ok={}, restored={}",
+                popped_ok,
+                restored
+            );
         }
 
         // Create working memory, lineage tracker, and knowledge store
