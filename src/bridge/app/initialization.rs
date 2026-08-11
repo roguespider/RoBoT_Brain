@@ -172,13 +172,6 @@ impl App {
         skills_registry.load_defaults().await;
         tracing::info!("Skills registry initialized with default skills");
 
-        // Run the hypothesis graph self-check to exercise graph query/algorithm
-        // API (GraphBuilder, find_path, find_supporters, topological_sort,
-        // strongly_connected_components, stats, remove_node, edge constructors)
-        // so those code paths remain live. Per §9.
-        let graph_checks = crate::experience::hypothesis::support::graph::self_check::run();
-        tracing::info!("Hypothesis graph self-check completed ({} checks passed)", graph_checks);
-
         // Run the hypothesis services self-check to exercise the service-layer
         // API (generator generate/generate_from_pattern, matcher
         // match_text/match_experience, analytics analyze/stability_score,

@@ -13,7 +13,6 @@
 mod graph_algorithms;
 pub mod graph_builder;
 mod graph_types;
-pub mod self_check;
 
 use std::collections::HashMap;
 
@@ -129,6 +128,7 @@ impl HypothesisGraph {
     }
 
     /// Clear all nodes and edges
+    #[cfg(test)]
     pub fn clear(&mut self) {
         self.nodes.clear();
         self.edges.clear();
