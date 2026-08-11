@@ -6,7 +6,6 @@
 //! Input → Observation → Memory → Experience → Knowledge → Planning → Decision → Action → Reflection
 
 pub mod working_memory;
-#[cfg(test)]
 pub mod hypothesis;
 pub mod candidates;
 pub mod lineage;
