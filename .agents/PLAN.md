@@ -176,13 +176,21 @@ double-emit from the agent loop; gate green.
 
 ### 1E.1 — Fix the phantom embedding tools (a real wiring defect)
 
-- [ ] **T1-19** Investigate the 6 phantom embedding tools (`store_embedding`,
+- [x] **T1-19** Fix the 6 phantom embedding tools (`store_embedding`,
       `get_embedding`, `search_similar`, `list_embeddings`, `delete_embedding`,
-      `get_embedding_stats`). They're in the FunctionRegistry but NOT in the
-      server's `tools/list`. Decide: (a) wire their registration in
-      `robot_brain` so they're exposed, OR (b) if the embedding subsystem is
-      not real yet, drop them from the FunctionRegistry. Pick ONE path,
-      implement, verify `phantom_tools` is empty in the report.
+      `get_embedding_stats`). **DONE (commit b9b43ff).** Root cause: the memory
+      handler maintained three separate tool lists that drifted — `tool_names()`
+      listed all 13, `execute_tool()` dispatched all 13, but `get_tools()` (which
+      feeds the RMCP `tools/list` response) only built 7 `Tool::new` entries and
+      omitted the 6 embedding tools. They were callable but not advertised, so
+      the coverage cross-check flagged them as phantom. Fix: added the 6
+      embedding `Tool::new` entries to `get_tools()`, mirroring the schemas in
+      `definitions.rs`. Verified 200%: all 6 appear in `tools/list`, all 6
+      live-callable, full round-trip (store→get→search→list→stats→delete→
+      post-delete confirms gone), build 0 warnings, live 54/54, `phantom_tools`
+      6→0. **Lesson:** the `tool_names()` / `get_tools()` / `execute_tool()` triad
+      in each handler is a drift hazard — three lists that must stay in sync.
+      Watch for the same pattern in other handlers.
 
 ### 1E.2 — Add FunctionRegistry tests for untested tool groups
 
@@ -539,16 +547,19 @@ gate green.
 ## P4 — performance maturity — REMAINING (→ T1-09..T1-16)
 - V2-11: in-memory JobQueue (→ SQLite). V2-12: no loop-health metrics.
 
-## GATE (coverage) — REMAINING (→ T1-19..T1-29)
-- The test_suite exits non-zero (1) despite 91/91 tests passing and 0 code
-  issues. Root cause: coverage cross-check flags 50 untested server tools and
-  6 phantom embedding tools. This is the "gate problem" — the gate is red on
-  coverage, not on test failures. TIER 1 section 1E closes it.
+## GATE (coverage) — REMAINING (→ T1-19 done, T1-20..T1-29)
+- T1-19 DONE: the 6 phantom embedding tools are fixed (commit b9b43ff).
+  `phantom_tools` is now 0.
+- The test_suite still exits non-zero (1) — 91/91 tests pass, 0 code issues,
+  but 50 server tools are untested (coverage 62.7%). T1-20..T1-29 add the
+  FunctionRegistry tests to close this.
 
 ## Verified state (2026-08-11)
-- 0 cargo warnings; 128 MCP tools; 91/91 FunctionRegistry tests pass
-  (333/333 traditional); 0 code-quality issues.
-- test_suite exits 1 (coverage: 50 untested + 6 phantom; 60.9% coverage).
+- 0 cargo warnings; 134 MCP tools (was 128 — T1-19 exposed 6 embedding tools);
+  91/91 FunctionRegistry tests pass (333/333 traditional); 0 code-quality
+  issues.
+- test_suite exits 1 (coverage: 50 untested, 0 phantom; 62.7% coverage).
+  T1-19 closed the phantom defect; T1-20..T1-29 close the untested gap.
 - 8 self_check.rs files remain (→ T1-01..08).
 - Large-file refactors done: `personality/personality.rs` (352→101, split into
   presets/adaptation/decision_making); `memory/handlers.rs` (400→ directory).
