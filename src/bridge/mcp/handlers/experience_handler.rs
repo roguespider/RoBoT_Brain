@@ -33,17 +33,12 @@ impl ExperienceToolsHandler {
         &self,
         input: experience::RecordExperienceInput,
     ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
-        let outcome_str = format!("{:?}", input.outcome);
         let result = experience::execute_record_experience(
             input,
             &self.context.coordinator,
             &self.context.database,
         )
         .await?;
-        self.context.memory_event_bus.emit_experience_recorded(
-            uuid::Uuid::new_v4(),
-            &outcome_str,
-        );
         Ok(result)
     }
 

@@ -156,23 +156,10 @@ impl MemoryItem {
         self.accessed_at = Utc::now();
     }
 
-    /// Update confidence
-    pub fn update_confidence(&mut self, confidence: f32) {
-        self.confidence = confidence.clamp(0.0, 1.0);
-        self.modified_at = Utc::now();
-    }
-
     /// Archive this memory
     pub fn archive(&mut self) {
         self.status = MemoryStatus::Archived;
         self.modified_at = Utc::now();
-    }
-
-    /// Add a related memory
-    pub fn add_related(&mut self, related_id: Uuid) {
-        if !self.related_ids.contains(&related_id) {
-            self.related_ids.push(related_id);
-        }
     }
 
     /// Add a tag

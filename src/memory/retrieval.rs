@@ -13,7 +13,7 @@ use chrono::Utc;
 use crate::database::sqlite::SqliteDatabase;
 
 use super::permanent::PermanentMemory;
-use super::types::{MemoryItem, MemoryLayer, MemoryType};
+use super::types::{MemoryItem, MemoryLayer};
 use super::working::WorkingMemory;
 
 /// Memory retrieval result with source information
@@ -21,29 +21,6 @@ use super::working::WorkingMemory;
 pub struct RetrievalResult {
     pub item: MemoryItem,
     pub relevance_score: f32,
-    pub source_layer: MemoryLayer,
-}
-
-/// Query parameters for memory retrieval
-#[derive(Debug, Clone)]
-pub struct RetrievalQuery {
-    pub query: String,
-    pub memory_types: Vec<MemoryType>,
-    pub min_confidence: Option<f32>,
-    pub tags: Vec<String>,
-    pub limit: usize,
-}
-
-impl Default for RetrievalQuery {
-    fn default() -> Self {
-        Self {
-            query: String::new(),
-            memory_types: Vec::new(),
-            min_confidence: None,
-            tags: Vec::new(),
-            limit: 10,
-        }
-    }
 }
 
 /// Memory retrieval service - Per Architecture §6.3
@@ -67,9 +44,7 @@ impl MemoryRetrieval {
             .into_iter()
             .map(|item| RetrievalResult {
                 relevance_score: self.calculate_relevance(&item, query),
-                item,
-                source_layer: MemoryLayer::Working,
-            })
+                item,            })
             .collect()
     }
 
@@ -80,9 +55,7 @@ impl MemoryRetrieval {
             .into_iter()
             .map(|item| RetrievalResult {
                 relevance_score: self.calculate_relevance(&item, query),
-                item,
-                source_layer: MemoryLayer::Permanent,
-            })
+                item,            })
             .collect()
     }
 
@@ -108,47 +81,12 @@ impl MemoryRetrieval {
         results
     }
 
-    /// Retrieve with full query parameters
-    pub async fn retrieve_with_query(&self, query: &RetrievalQuery) -> Vec<RetrievalResult> {
-        let mut results = self.retrieve(&query.query).await;
-
-        // Filter by type
-        if !query.memory_types.is_empty() {
-            results.retain(|r| query.memory_types.contains(&r.item.memory_type));
-        }
-
-        // Filter by confidence
-        if let Some(min_conf) = query.min_confidence {
-            results.retain(|r| r.item.confidence >= min_conf);
-        }
-
-        // Filter by tags
-        if !query.tags.is_empty() {
-            results.retain(|r| r.item.tags.iter().any(|t| query.tags.contains(t)));
-        }
-
-        // Limit results
-        results.truncate(query.limit);
-
-        results
-    }
-
     /// Get context from memory (recent working items)
     pub async fn get_context(&self, limit: usize) -> Vec<MemoryItem> {
         let mut items = self.working.get_all().await;
         items.sort_by_key(|b| std::cmp::Reverse(b.accessed_at));
         items.truncate(limit);
         items
-    }
-
-    /// Get related memories
-    pub async fn get_related(&self, memory_id: &uuid::Uuid) -> Vec<MemoryItem> {
-        self.permanent.get_related(memory_id).await
-    }
-
-    /// Get related memories with graph traversal
-    pub async fn get_related_graph(&self, memory_id: &uuid::Uuid, depth: usize) -> Vec<(uuid::Uuid, MemoryItem)> {
-        self.permanent.get_related_graph(memory_id, depth).await
     }
 
     /// Calculate relevance score for a memory item
@@ -199,20 +137,6 @@ impl MemoryRetrieval {
             + (confidence_score * 0.2)
             + (importance_score * 0.15)
             + (recency_score * 0.15)
-    }
-
-    /// Get statistics from both memory layers
-    pub async fn stats(&self) -> MemoryRetrievalStats {
-        let working_stats = self.working.stats().await;
-        let permanent_stats = self.permanent.stats().await;
-
-        MemoryRetrievalStats {
-            working_items: working_stats.total_items,
-            permanent_items: permanent_stats.total_items,
-            total_items: working_stats.total_items + permanent_stats.total_items,
-            working_active: working_stats.active_items,
-            permanent_avg_confidence: permanent_stats.avg_confidence,
-        }
     }
 
     /// Get reference to working memory
@@ -294,16 +218,6 @@ impl MemoryRetrieval {
         
         Ok(())
     }
-}
-
-/// Statistics for the retrieval system
-#[derive(Debug, Clone)]
-pub struct MemoryRetrievalStats {
-    pub working_items: usize,
-    pub permanent_items: usize,
-    pub total_items: usize,
-    pub working_active: usize,
-    pub permanent_avg_confidence: f32,
 }
 
 /// Statistics for memory consolidation

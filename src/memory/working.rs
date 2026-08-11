@@ -7,21 +7,11 @@ use std::collections::HashMap;
 use std::sync::Arc;
 
 use anyhow::Result;
-use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use super::types::{MemoryItem, MemoryLayer, MemoryStatus};
 use crate::database::queries;
-
-/// Working memory statistics
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct WorkingMemoryStats {
-    pub total_items: usize,
-    pub active_items: usize,
-    pub archived_items: usize,
-    pub avg_access_count: f32,
-}
 
 /// Working memory - Per Architecture §6.3
 pub struct WorkingMemory {
@@ -93,32 +83,6 @@ impl WorkingMemory {
     pub async fn remove(&self, id: &Uuid) -> bool {
         let mut items = self.items.write().await;
         items.remove(id).is_some()
-    }
-
-    /// Get statistics
-    pub async fn stats(&self) -> WorkingMemoryStats {
-        let items = self.items.read().await;
-        let total = items.len();
-        let active = items
-            .values()
-            .filter(|i| i.status == MemoryStatus::Active)
-            .count();
-        let archived = items
-            .values()
-            .filter(|i| i.status == MemoryStatus::Archived)
-            .count();
-        let avg_access = if total > 0 {
-            items.values().map(|i| i.access_count as f32).sum::<f32>() / total as f32
-        } else {
-            0.0
-        };
-
-        WorkingMemoryStats {
-            total_items: total,
-            active_items: active,
-            archived_items: archived,
-            avg_access_count: avg_access,
-        }
     }
 
     /// Evict least recently used items

@@ -14,15 +14,3 @@ mod store;
 mod tests;
 
 pub use store::PermanentMemory;
-
-use std::collections::HashMap;
-use serde::{Deserialize, Serialize};
-
-/// Permanent memory statistics
-#[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PermanentMemoryStats {
-    pub total_items: usize,
-    pub by_type: HashMap<String, usize>,
-    pub avg_confidence: f32,
-    pub avg_importance: f32,
-}

@@ -42,9 +42,6 @@ impl ReflectionToolsHandler {
         input: reflection::AnalyzePatternsInput,
     ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         let result = reflection::execute_analyze_patterns(input, &self.context.reflection).await;
-        self.context
-            .memory_event_bus
-            .emit_pattern_detected("reflection_analysis", Vec::new());
         result
     }
 

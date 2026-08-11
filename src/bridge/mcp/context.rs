@@ -14,7 +14,6 @@ use crate::experience::reflection::ReflectionEngine;
 use crate::experience::scheduler::Scheduler;
 use crate::experience::worker_manager::WorkerManager;
 use crate::knowledge::KnowledgeStore;
-use crate::memory::events::MemoryEventBus;
 use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory};
 use crate::personality::Personality;
 use crate::planner::{Planner, PolicyEngine};
@@ -87,7 +86,6 @@ pub struct McpContext {
     pub acp_registry: Arc<AcpRegistry>,
 
     /// Memory event bus - per Architecture §35 (short-term: in-memory event bus)
-    pub memory_event_bus: Arc<MemoryEventBus>,
 
     /// Personality — shared behavioral model (Architecture §13). Provides
     /// emotional weighting for the agent loop and other subsystems.
@@ -127,7 +125,6 @@ impl McpContext {
         skills: Arc<SkillRegistry>,
         acp_router: Arc<AcpRouter>,
         acp_registry: Arc<AcpRegistry>,
-        memory_event_bus: Arc<MemoryEventBus>,
         personality: Arc<Mutex<Personality>>,
         safety_gate: Arc<SafetyGate>,
         world_model: Arc<crate::world_model::WorldModel>,
@@ -153,7 +150,6 @@ impl McpContext {
             skill_executor,
             acp_router,
             acp_registry,
-            memory_event_bus,
             personality,
             safety_gate,
             world_model,

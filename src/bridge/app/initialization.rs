@@ -567,7 +567,6 @@ impl App {
         tracing::info!("ACP system agents registered (system:main, worker:1)");
 
         // Create MCP context with all systems
-        let memory_event_bus = Arc::new(crate::memory::events::MemoryEventBus::new());
 
         // World Model (Architecture §14, TASK-V2-06): typed entity-relationship
         // graph representing how the world works. Empty at startup; populated
@@ -593,7 +592,6 @@ impl App {
             skills_registry.clone(),
             acp_router.clone(),
             acp_registry.clone(),
-            memory_event_bus.clone(),
             shared_personality.clone(),
             Arc::new(crate::agent::SafetyGate::new()),
             world_model.clone(),
