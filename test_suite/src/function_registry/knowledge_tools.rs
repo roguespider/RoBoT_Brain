@@ -82,5 +82,64 @@ pub fn knowledge_tools() -> Vec<TestRequirement> {
             }],
             priority: 2,
         },
+        TestRequirement {
+            id: "knowledge_set_status".to_string(),
+            function_name: "set_knowledge_status".to_string(),
+            category: "Knowledge".to_string(),
+            requires_workflow: true,
+            requires_data: None,
+            expected_behavior: "Sets knowledge status (idempotent on fake UUID)".to_string(),
+            validation: vec![ValidationCheck {
+                check_type: CheckType::HasField,
+                field: "status".to_string(),
+                expected_value: None,
+            }],
+            priority: 2,
+        },
+        TestRequirement {
+            id: "knowledge_manage_dependency".to_string(),
+            function_name: "manage_knowledge_dependency".to_string(),
+            category: "Knowledge".to_string(),
+            requires_workflow: true,
+            requires_data: None,
+            expected_behavior: "Manages knowledge dependencies (idempotent on fake UUID)"
+                .to_string(),
+            validation: vec![ValidationCheck {
+                check_type: CheckType::HasField,
+                field: "dependencies".to_string(),
+                expected_value: None,
+            }],
+            priority: 2,
+        },
+        TestRequirement {
+            id: "knowledge_add_relation".to_string(),
+            function_name: "add_knowledge_relation".to_string(),
+            category: "Knowledge".to_string(),
+            requires_workflow: true,
+            requires_data: None,
+            expected_behavior: "Adds a relation between knowledge items (idempotent on fake UUID)"
+                .to_string(),
+            validation: vec![ValidationCheck {
+                check_type: CheckType::HasField,
+                field: "status".to_string(),
+                expected_value: None,
+            }],
+            priority: 2,
+        },
+        TestRequirement {
+            id: "knowledge_search_by_tag".to_string(),
+            function_name: "search_knowledge_by_tag".to_string(),
+            category: "Knowledge".to_string(),
+            requires_workflow: true,
+            requires_data: None,
+            expected_behavior: "Searches knowledge by tag or returns items needing review"
+                .to_string(),
+            validation: vec![ValidationCheck {
+                check_type: CheckType::HasField,
+                field: "items".to_string(),
+                expected_value: None,
+            }],
+            priority: 2,
+        },
     ]
 }
