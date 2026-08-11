@@ -9,7 +9,6 @@
 pub mod working_memory;
 #[cfg(test)]
 pub mod hypothesis;
-#[cfg(test)]
 pub mod candidates;
 #[cfg(test)]
 pub mod lineage;
