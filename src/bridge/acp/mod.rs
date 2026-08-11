@@ -26,14 +26,17 @@
 //! ```
 
 pub mod agent;
-pub mod builder;
-pub mod channel;
-pub mod error;
 pub mod message;
 pub mod registry;
 pub mod router;
-pub mod self_check;
 pub mod system_agent;
+
+#[cfg(test)]
+pub mod builder;
+#[cfg(test)]
+pub mod channel;
+#[cfg(test)]
+pub mod error;
 
 // Re-export production types only
 pub use agent::AcpAgent;
@@ -47,12 +50,16 @@ pub use router::AcpRouter;
 
 #[cfg(test)]
 mod tests {
-    // Re-export test types
-    pub use super::agent::test_types::{AcpCapability, SimpleAgent};
-    pub use super::builder::AcpMessageBuilder;
-    pub use super::channel::InMemoryChannel;
-    pub use super::error::{AcpError, AcpErrorCode};
-    pub use super::message::AcpMessageType;
+    // Import test types
+    use super::agent::AcpAgent;
+    use super::agent::test_types::{AcpCapability, SimpleAgent};
+    use super::builder::AcpMessageBuilder;
+    use super::channel::InMemoryChannel;
+    use super::error::{AcpError, AcpErrorCode};
+    use super::message::{AcpAgentId, AcpMessage, AcpMessageType};
+    use super::registry::AcpRegistry;
+    use super::router::AcpRouter;
+    use std::sync::Arc;
 
     #[test]
     fn test_agent_id() {
@@ -401,5 +408,53 @@ mod tests {
         assert_eq!(error.message, "Resource not found");
         assert!(error.details.is_some());
         assert_eq!(error.code.to_code(), 1004);
+    }
+
+    #[test]
+    fn test_message_with_ttl() {
+        let sender = AcpAgentId::new("sender", "1");
+        let receiver = AcpAgentId::new("receiver", "2");
+        let msg = AcpMessage::with_ttl(
+            sender,
+            receiver,
+            AcpMessageType::Inform,
+            serde_json::json!({"status": "ok"}),
+            10,
+        );
+        assert_eq!(msg.ttl, 10);
+    }
+
+    #[test]
+    fn test_message_forward_to() {
+        let sender = AcpAgentId::new("sender", "1");
+        let receiver = AcpAgentId::new("receiver", "2");
+        let msg = AcpMessage::new(
+            sender,
+            receiver,
+            AcpMessageType::Inform,
+            serde_json::json!({}),
+        );
+        let new_receiver = AcpAgentId::with_random_instance("worker");
+        let forwarded = msg.forward_to(new_receiver.clone());
+        assert_eq!(forwarded.reply_to, Some(msg.id.clone()));
+        assert_eq!(forwarded.receiver, new_receiver);
+    }
+
+    #[test]
+    fn test_agent_id_with_random_instance() {
+        let id = AcpAgentId::with_random_instance("worker");
+        assert_eq!(id.agent_type, "worker");
+        assert!(!id.instance_id.is_empty());
+    }
+
+    #[test]
+    fn test_router_register_handler() {
+        let registry = Arc::new(AcpRegistry::new());
+        let router = AcpRouter::new(registry);
+
+        let install_result = router.register_handler(AcpMessageType::Inform, |msg| {
+            Ok(Some(msg))
+        });
+        assert!(install_result.is_ok());
     }
 }

@@ -6,7 +6,9 @@ use std::sync::Arc;
 
 use anyhow::{anyhow, Result};
 
-use super::message::{AcpMessage, AcpMessageType};
+use super::message::AcpMessage;
+#[cfg(test)]
+use super::message::AcpMessageType;
 use super::registry::AcpRegistry;
 
 /// ACP router for routing messages between agents
@@ -45,6 +47,7 @@ impl AcpRouter {
     }
 
     /// Register a custom message handler for a message type
+    #[cfg(test)]
     pub fn register_handler(
         &self,
         message_type: AcpMessageType,

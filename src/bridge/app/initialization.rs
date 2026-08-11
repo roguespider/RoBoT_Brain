@@ -180,12 +180,6 @@ impl App {
         skills_registry.load_defaults().await;
         tracing::info!("Skills registry initialized with default skills");
 
-        // Run the ACP message self-check to exercise message builders
-        // (with_ttl, forward_to, reply, with_random_instance, broadcast,
-        // reply_type, expects_reply) so those code paths remain live. Per §8.
-        let acp_checks = crate::bridge::acp::self_check::run();
-        tracing::info!("ACP message self-check completed ({} checks passed)", acp_checks);
-
         // Run the hypothesis graph self-check to exercise graph query/algorithm
         // API (GraphBuilder, find_path, find_supporters, topological_sort,
         // strongly_connected_components, stats, remove_node, edge constructors)

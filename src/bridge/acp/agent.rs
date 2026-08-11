@@ -10,12 +10,17 @@ pub trait AcpAgent: Send + Sync {
     /// Get the agent's ID
     fn id(&self) -> &AcpAgentId;
 
+    /// Get the agent's capability descriptions
+    fn capabilities(&self) -> Vec<(String, String)> {
+        Vec::new()
+    }
+
     /// Handle an incoming ACP message
     fn handle(&self, message: AcpMessage) -> Result<Option<AcpMessage>>;
 }
 
 #[cfg(test)]
-mod test_types {
+pub(crate) mod test_types {
     use super::*;
     use serde::{Deserialize, Serialize};
 
@@ -60,6 +65,14 @@ mod test_types {
                 capabilities,
                 handler: Box::new(handler),
             }
+        }
+
+        pub fn description(&self) -> &str {
+            &self.description
+        }
+
+        pub fn capabilities(&self) -> &[AcpCapability] {
+            &self.capabilities
         }
     }
 

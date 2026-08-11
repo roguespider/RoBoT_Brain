@@ -274,11 +274,18 @@ impl AcpToolsHandler {
         if let Some(agent) = self.context.acp_registry.get(&agent_id)
             .map_err(|e| anyhow::anyhow!("{}", e))? 
         {
+            let caps: Vec<serde_json::Value> = agent
+                .capabilities()
+                .into_iter()
+                .map(|(name, description)| {
+                    serde_json::json!({"name": name, "description": description})
+                })
+                .collect();
             Ok(crate::bridge::tools::ToolOutput::success(serde_json::json!({
                 "agent_id": agent.id().uri(),
                 "agent_type": agent.id().agent_type,
                 "instance_id": agent.id().instance_id,
-                "capabilities": ["message_handling", "query", "broadcast", "task_processing"]
+                "capabilities": caps
             })))
         } else {
             Ok(crate::bridge::tools::ToolOutput::success(serde_json::json!({
