@@ -570,8 +570,10 @@ gate green.
 - 0 cargo warnings; 134 MCP tools (T1-19 exposed 6 embedding tools);
   141/141 FunctionRegistry tests pass (333/333 traditional); 0 code-quality
   issues.
-- ✅ **test_suite exits 0 — GATE GREEN.** coverage: untested 0, phantom 0
-  (all 134 server tools tested). Closes TIER 1 section 1E.
+- ✅ **Coverage gate GREEN** (section 1E done): test_suite exits 0, untested 0,
+  phantom 0 (all 134 server tools tested).
+- ⚠️ **TIER 1 NOT fully done — 10 tasks remain** (1B SQLite queue, 1C metrics,
+  1D MCP→experience hook). See sections 1B/1C/1D above. Next: T1-09.
 - 8 self_check.rs files remain (→ TIER 2).
 - Large-file refactors done: `personality/personality.rs` (352→101, split into
   presets/adaptation/decision_making); `memory/handlers.rs` (400→ directory).

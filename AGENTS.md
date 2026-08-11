@@ -170,6 +170,39 @@ server has moved to **`.agents/OPENHANDS_INTEGRATION.md`**. Consult it when
 integrating with the OpenHands SDK; it is not needed for normal build/test/work
 sessions.
 
+## Test Suite Coverage (FunctionRegistry)
+
+The coverage gate cross-checks the server's `tools/list` against the test
+suite's `FunctionRegistry` (in `test_suite/src/function_registry/`). Key facts
+every session should know:
+
+- **Adding a tool to the server's `tools/list` is NOT enough to close
+  coverage.** The tool must ALSO have a `TestRequirement` entry in
+  `function_registry/` (with a matching `id` case in
+  `comprehensive_test/argument_builder.rs`). The cross-check diffs server tool
+  names vs the registry's `function_name` fields. Standalone tests in
+  `test_suite/src/tests/` do NOT count toward coverage.
+- **Tool-list drift hazard:** each MCP handler maintains `tool_names()` /
+  `get_tools()` / `execute_tool()` as THREE separate lists that must stay in
+  sync. `get_tools()` feeds the RMCP `tools/list` response; if it omits an
+  entry that the other two include, the tool is callable-but-unadvertised →
+  flagged as a **phantom tool** by the cross-check (T1-19 root cause).
+- **Validation choice for new registry tests:** use `IsSuccess(None)` for tools
+  that succeed on a default/fake call, and `IsSuccess(Some("false"))` for tools
+  that return an MCP error on a fake id. To pick correctly, probe the tool with
+  a fake id via `RobotBrainClient` and check `is_error`.
+- **Probing tip:** extract all tool schemas at once from the live server:
+  ```python
+  from mcp_client import RobotBrainClient
+  with RobotBrainClient() as c:
+      c.init()
+      for t in c.list_tools():
+          print(t['name'], t.get('inputSchema',{}).get('required',[]))
+  ```
+- **Current gate state (2026-08-11):** GREEN — 141/141 tests pass, 0 code
+  issues, 0 warnings, 0 untested, 0 phantom. All 134 server tools covered. See
+  `.agents/PLAN.md` "Verified state" for the live snapshot.
+
 ---
 
 > **The sections below have moved out of this file to reduce noise:**

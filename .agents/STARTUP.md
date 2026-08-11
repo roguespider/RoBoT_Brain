@@ -30,15 +30,21 @@ Open `.agents/PLAN.md`. Find the FIRST unchecked `- [ ]` increment. Work tiers
 in order: TIER 1 (finish v0.0.1) → TIER 2 (reach v0.0.2) → TIER 3 (reach
 v0.0.2.1). Each increment is one ~10-15 min change.
 
-- **TIER 1 IS COMPLETE — GATE IS GREEN.** test_suite exits 0 (141/141 tests
+- **Coverage gate is GREEN** (section 1E done). test_suite exits 0 (141/141 tests
   pass, 0 code issues, 0 warnings, 0 untested, 0 phantom). All 134 server tools
-  are covered. Tag: `v0.0.1-clean`.
-- **Next work: TIER 2** — upgrade existing systems to v0.0.2 (Memory, Knowledge,
-  Experience, Learning, Planner, Skills, Workflows, World Model, Personality),
-  one phase at a time. Open `.agents/PLAN.md` section 5 (TIER 2) and find the
-  FIRST unchecked `- [ ]` increment. Self_check removal happens during each
-  system's TIER 2 upgrade (wire APIs into real MCP tools, then delete the
-  self_check). 8 self_check.rs files remain.
+  are covered. Commits: b9b43ff (phantom fix), 6b7d036 (ACP tests), 7775ca1
+  (remaining 41 tools).
+- **TIER 1 is NOT fully done — 10 tasks remain** (sections 1B, 1C, 1D):
+  - **1B. SQLite JobQueue (T1-09..T1-12):** add job_queue table+migration, wire
+    enqueue/dequeue to SQLite, handle Lagged events, update startup verification.
+  - **1C. Loop-health metrics (T1-13..T1-16):** add loop_latency,
+    confidence_drift, promotion_throughput metrics, expose via get_system_status.
+  - **1D. MCP→experience hook (T1-17..T1-18):** hook emit_experience_recorded
+    into post-tool-execution dispatch, ensure idempotency.
+  - Do these in order. Start with T1-09 (SQLite JobQueue migration).
+- **Self_check removal is TIER 2 work** (the APIs they exercise have no other
+  callers; deleting them in TIER 1 creates dead-code warnings). Do it during
+  each system's TIER 2 upgrade. 8 self_check.rs files remain.
 
 ## 4. Execute ONE change, then the gate, then stop
 
