@@ -172,14 +172,6 @@ impl App {
         skills_registry.load_defaults().await;
         tracing::info!("Skills registry initialized with default skills");
 
-        // Run the hypothesis services self-check to exercise the service-layer
-        // API (generator generate/generate_from_pattern, matcher
-        // match_text/match_experience, analytics analyze/stability_score,
-        // validator check_conflict, statistics reset) so those code paths
-        // remain live. Per §9.
-        let service_checks = crate::experience::hypothesis::services::self_check::run();
-        tracing::info!("Hypothesis services self-check completed ({} checks passed)", service_checks);
-
         // Personality system is now exercised at runtime by the personality
         // MCP tools (get_personality, set_personality_traits, apply_preset,
         // get_personality_decision, format_response) — no self_check needed.

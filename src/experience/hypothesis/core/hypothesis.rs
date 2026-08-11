@@ -233,6 +233,7 @@ impl Hypothesis {
     }
 
     /// Add a tag.
+    #[cfg(test)]
     pub fn add_tag(&mut self, tag: impl Into<String>) {
         self.tags.push(tag.into());
     }
