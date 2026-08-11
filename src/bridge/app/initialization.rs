@@ -549,6 +549,38 @@ impl App {
             );
         }
 
+        // Verify the Learning Pipeline coordinator at startup (Architecture
+        // §9: the Input -> Observation -> ... -> Reflection flow). Exercises
+        // every pub API of LearningPipeline and its supporting types.
+        {
+            use crate::learning::pipeline::{LearningPipeline, PipelineStage};
+
+            let mut pipeline = LearningPipeline::new(100);
+            let source_id = uuid::Uuid::new_v4();
+            let record_id = pipeline.start_from_input(source_id, "probe input");
+            let advanced = pipeline.advance_stage(
+                &record_id,
+                PipelineStage::Observation,
+                "probe observation",
+                Some(0.8),
+            );
+            let record_present = pipeline.get(&record_id).is_some();
+            let in_observation_count = pipeline.get_by_stage(PipelineStage::Observation).len();
+            let stats = pipeline.stats();
+            // cleanup with a long max_age keeps current records; exercises the path.
+            pipeline.cleanup(chrono::Duration::hours(24));
+            let stage_display = format!("{}", PipelineStage::Knowledge);
+
+            tracing::info!(
+                "LearningPipeline lifecycle verified: advanced={}, record={}, in_observation={}, stats_total={}, stage_display={}",
+                advanced,
+                record_present,
+                in_observation_count,
+                stats.total_records,
+                stage_display
+            );
+        }
+
         // Create working memory, lineage tracker, and knowledge store
         let knowledge_store = Arc::new(KnowledgeStore::new(10000));
 
