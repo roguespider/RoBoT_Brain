@@ -1,5 +1,9 @@
 # Appendix A. Directory Structure
 
+**Architecture Version:** v0.0.2.1  
+**Document Role:** Supporting architectural material  
+**v0.0.2.1 Focus:** directory ownership, module boundaries, deployment layout, and source-of-truth locations  
+
 ## Purpose
 
 This appendix defines the recommended directory structure for the RoBoT project. The structure is designed to reflect the cognitive architecture described throughout this document while keeping implementation modular, maintainable, and scalable.
@@ -784,3 +788,24 @@ The directory structure serves as the physical manifestation of the RoBoT Archit
 
 |==========|==========|==========|==========|==========|==========||==========|==========|==========|==========|==========|==========|
 
+## Final v0.0.2.1 Integration Contract
+
+This appendix is supporting material for the final v0.0.2.1 architecture. It cannot silently redefine a normative chapter.
+
+It must preserve:
+
+- explicit ownership
+- lifecycle and retention semantics
+- identity and correlation
+- provenance
+- confidence and uncertainty
+- failure visibility
+- model/runtime independence
+- controlled external effects
+- observability
+- versioned evolution
+- human control
+
+**Supporting focus:** physical project layout, source-of-truth locations, module ownership and deployment separation.
+
+When an appendix conflicts with a normative chapter, the conflict is a documentation defect that must be resolved. The appendix must be updated rather than allowing two competing definitions to survive.

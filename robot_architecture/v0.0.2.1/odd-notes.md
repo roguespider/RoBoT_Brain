@@ -1,3 +1,7 @@
+
+**Architecture Version:** v0.0.2.1  
+**Document Role:** Supporting architectural material  
+**v0.0.2.1 Focus:** quarantine for unresolved design material so speculative notes cannot silently become normative architecture  
 |==========|==========|==========|==========|==========| Odd Notes |==========|==========|==========|==========|==========|
 |==========|==========|==========|==========|==========|==========||==========|==========|==========|==========|==========|==========|
 
@@ -2268,3 +2272,34 @@ Treating every interaction as equal is what eventually causes memory systems to 
 Overall, I think you're no longer designing "memory retrieval." You're designing a Context Engine, and I would absolutely make it its own major chapter in ARCHITECTURE.md, right alongside the Memory Engine and Experience Engine. In fact, I could see it becoming one of the defining features of RoBoT because it shifts the focus from "How much context can we fit?" to "How little context do we actually need?" That's a much more scalable philosophy for a long-running Rust agent.
 
 |==========|==========|==========|==========|==========|==========||==========|==========|==========|==========|==========|==========|
+
+## v0.0.2.1 Architectural Invariants
+
+This supporting document must remain subordinate to the normative chapter architecture.
+
+1. It must not silently redefine subsystem ownership.
+2. It must identify versioned changes to structures or decisions.
+3. It must preserve identity, lifecycle, provenance, and compatibility information where applicable.
+4. Experimental or unresolved material must be clearly distinguished from normative requirements.
+5. Changes affecting implementation must remain traceable to the architectural contract.
+
+**Supporting focus:** quarantine for unresolved design material so speculative notes cannot silently become normative architecture.
+
+
+
+# Final v0.0.2.1 Quarantine Rules
+
+`odd-notes.md` is non-normative.
+
+Material in this file may contain:
+
+- unresolved ideas
+- rejected approaches
+- research questions
+- speculative capabilities
+- implementation experiments
+- notes requiring architectural review
+
+Nothing in this file becomes an architectural requirement until it is promoted into the appropriate normative chapter and recorded through the design-decision process.
+
+Speculative material must never be treated by an implementation agent as an instruction to modify production architecture.
