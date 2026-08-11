@@ -38,16 +38,6 @@ pub struct McpCapabilities {
 }
 
 impl McpCapabilities {
-    /// Create capabilities with tools enabled
-    pub fn with_tools() -> Self {
-        Self {
-            tools: Some(McpEmpty),
-            resources: None,
-            prompts: None,
-            logging: None,
-        }
-    }
-
     /// Create capabilities with all features enabled
     pub fn all() -> Self {
         Self {

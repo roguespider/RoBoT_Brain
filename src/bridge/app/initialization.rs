@@ -180,13 +180,6 @@ impl App {
         skills_registry.load_defaults().await;
         tracing::info!("Skills registry initialized with default skills");
 
-        // Run the MCP types self-check to exercise protocol type builders and
-        // predicates (is_request/is_response/is_notification, is_success,
-        // with_data, with_tools, with_schema) so those code paths remain
-        // live. Per §8.
-        let mcp_checks = crate::bridge::mcp::types::self_check::run();
-        tracing::info!("MCP types self-check completed ({} checks passed)", mcp_checks);
-
         // Run the ACP message self-check to exercise message builders
         // (with_ttl, forward_to, reply, with_random_instance, broadcast,
         // reply_type, expects_reply) so those code paths remain live. Per §8.

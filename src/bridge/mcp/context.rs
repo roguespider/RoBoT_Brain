@@ -24,7 +24,7 @@ use crate::agent::SafetyGate;
 
 use std::sync::Mutex;
 
-use super::types::{McpCapabilities, McpEmpty, McpResourcesCapability, McpServerInfo};
+use super::types::{McpCapabilities, McpServerInfo};
 
 /// McpBridge context shared across handlers
 pub struct McpContext {
@@ -159,19 +159,11 @@ impl McpContext {
             safety_gate,
             world_model,
             enforcer,
-            server_info: McpServerInfo {
-                name: env!("CARGO_PKG_NAME").to_string(),
-                version: env!("CARGO_PKG_VERSION").to_string(),
-            },
-            capabilities: McpCapabilities {
-                tools: Some(McpEmpty),
-                resources: Some(McpResourcesCapability {
-                    subscribe: Some(true),
-                    list_changed: Some(true),
-                }),
-                prompts: Some(McpEmpty),
-                logging: Some(McpEmpty),
-            },
+            server_info: McpServerInfo::from_name_version(
+                env!("CARGO_PKG_NAME"),
+                env!("CARGO_PKG_VERSION"),
+            ),
+            capabilities: McpCapabilities::all(),
         }
     }
 }
