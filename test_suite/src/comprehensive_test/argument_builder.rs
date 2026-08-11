@@ -341,6 +341,36 @@ pub fn build_test_arguments(
             "query": "test"
         }),
 
+        // ACP tools
+        "acp_list_agents" => serde_json::json!({}),
+        "acp_agent_count" => serde_json::json!({}),
+        "acp_router" => serde_json::json!({}),
+        "acp_registry" => serde_json::json!({}),
+        "acp_register_agent" => serde_json::json!({
+            "agent_type": "test_agent",
+            "instance_id": "registry_test_1",
+            "capabilities": ["test_capability"]
+        }),
+        "acp_unregister_agent" => serde_json::json!({
+            "agent_type": "test_agent",
+            "instance_id": "registry_test_1"
+        }),
+        "acp_create_message" => serde_json::json!({
+            "sender": {"agent_type": "test_sender", "instance_id": "sender_1"},
+            "receiver": {"agent_type": "test_receiver", "instance_id": "receiver_1"},
+            "message_type": "Inform",
+            "payload": {"text": "test message"}
+        }),
+        "acp_route_message" => serde_json::json!({
+            "sender": {"agent_type": "test_sender", "instance_id": "sender_1"},
+            "receiver": {"agent_type": "nonexistent_agent", "instance_id": "unknown_1"},
+            "message_type": "Query",
+            "payload": {"text": "test query"}
+        }),
+        "acp_get_agent_capabilities" => serde_json::json!({
+            "agent_id": "00000000-0000-0000-0000-000000000000"
+        }),
+
         // Default: empty arguments
         _ => serde_json::json!({}),
     }
