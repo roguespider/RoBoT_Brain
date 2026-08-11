@@ -1,0 +1,6 @@
+{
+  "compiler_warnings": 0,
+  "code_issues": 0,
+  "untested_tools": 0,
+  "_comment": "Hard AGENTS.md baseline: 0 warnings, 0 code-issues, 0 untested tools. No ratcheting around violations. Any deviation from 0/0/0 blocks the commit until the underlying violation is fixed (wire the dead-code pub API into a real caller, do not #[allow] it, do not prefix it with _)."
+}
