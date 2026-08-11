@@ -142,11 +142,30 @@ impl ReflectionEngine {
         let result = self.validator.validate(reflection);
         let quality = self.analyzer.analyze_reflection(reflection);
 
+        let quality_indicators = vec![
+            format!("has_description: {}", quality.indicators.has_description),
+            format!("has_summary: {}", quality.indicators.has_summary),
+            format!("experience_count: {}", quality.indicators.experience_count),
+            format!("confidence_score: {:.2}", quality.indicators.confidence_score),
+            format!("is_actionable: {}", quality.indicators.is_actionable),
+        ];
+
         Ok(ValidationReport {
             is_valid: result.is_valid,
-            score: result.score,
-            issues: result.issues.iter().map(|i| i.message.clone()).collect(),
+            score: self.validator.score(reflection),
+            issues: result.issues.iter().map(|i| {
+                let mut msg = i.message.clone();
+                if !i.code.is_empty() {
+                    msg = format!("[{}] {}", i.code, msg);
+                }
+                if let Some(ref field) = i.field {
+                    msg = format!("{} (field: {})", msg, field);
+                }
+                msg
+            }).collect(),
+            warnings: result.warnings.clone(),
             quality_score: quality.overall_score,
+            quality_indicators,
             suggestions: quality.suggestions,
         })
     }
@@ -265,6 +284,16 @@ impl ReflectionEngine {
         self.repository
             .list_validated(self.config.min_confidence)
             .unwrap_or_default()
+    }
+
+    /// List reflections by status
+    pub async fn list_by_status(&self, status: ReflectionStatus) -> Vec<Reflection> {
+        self.repository.list_by_status(status).unwrap_or_default()
+    }
+
+    /// Update a stored reflection
+    pub async fn update_reflection(&self, reflection: &Reflection) -> Result<()> {
+        self.repository.update(reflection)
     }
 
     /// Search reflections

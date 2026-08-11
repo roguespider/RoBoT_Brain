@@ -85,6 +85,11 @@ impl ReflectionAnalyzer {
             confidence_sum / experiences.len() as f32
         };
 
+        // Filter patterns below the minimum confidence threshold
+        if avg_confidence < self.min_confidence_threshold {
+            patterns.push(format!("low_confidence: avg {:.2} below threshold {:.2}", avg_confidence, self.min_confidence_threshold));
+        }
+
         AnalysisResult {
             patterns,
             themes,

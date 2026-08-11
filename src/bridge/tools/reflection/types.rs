@@ -31,3 +31,24 @@ pub struct GetPatternsInput {
     pub min_confidence: Option<f32>,
     pub pattern_type: Option<String>,
 }
+
+/// Tool: Validate a reflection
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct ValidateReflectionInput {
+    pub reflection_id: String,
+}
+
+/// Tool: List reflections by status
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct ListReflectionsByStatusInput {
+    pub status: String,
+}
+
+/// Tool: Update a reflection
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct UpdateReflectionInput {
+    pub reflection_id: String,
+    pub title: Option<String>,
+    pub description: Option<String>,
+    pub summary: Option<String>,
+}

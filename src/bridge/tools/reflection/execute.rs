@@ -9,7 +9,7 @@ use uuid::Uuid;
 use crate::experience::reflection::ReflectionEngine;
 use crate::bridge::tools::ToolOutput;
 
-use super::types::{AnalyzePatternsInput, CreateReflectionInput, GetInsightsInput, GetPatternsInput};
+use super::types::{AnalyzePatternsInput, CreateReflectionInput, GetInsightsInput, GetPatternsInput, ValidateReflectionInput, ListReflectionsByStatusInput, UpdateReflectionInput};
 
 /// Execute get insights tool
 pub async fn execute_get_insights(
@@ -229,5 +229,87 @@ pub async fn execute_get_patterns(
     Ok(ToolOutput::success(serde_json::json!({
         "patterns": filtered,
         "count": filtered.len()
+    })))
+}
+
+/// Execute validate reflection tool
+pub async fn execute_validate_reflection(
+    input: ValidateReflectionInput,
+    reflection_engine: &Arc<ReflectionEngine>,
+) -> Result<ToolOutput> {
+    let reflection = reflection_engine
+        .get_reflection(&input.reflection_id)
+        .await
+        .ok_or_else(|| anyhow::anyhow!("Reflection not found: {}", input.reflection_id))?;
+
+    let report = reflection_engine.validate_reflection(&reflection).await?;
+
+    Ok(ToolOutput::success(serde_json::json!({
+        "is_valid": report.is_valid,
+        "score": report.score,
+        "issues": report.issues,
+        "warnings": report.warnings,
+        "quality_score": report.quality_score,
+        "quality_indicators": report.quality_indicators,
+        "suggestions": report.suggestions
+    })))
+}
+
+/// Execute list reflections by status tool
+pub async fn execute_list_reflections_by_status(
+    input: ListReflectionsByStatusInput,
+    reflection_engine: &Arc<ReflectionEngine>,
+) -> Result<ToolOutput> {
+    let status = match input.status.to_lowercase().as_str() {
+        "draft" => crate::experience::reflection::ReflectionStatus::Draft,
+        "active" => crate::experience::reflection::ReflectionStatus::Active,
+        "validated" => crate::experience::reflection::ReflectionStatus::Validated,
+        "archived" => crate::experience::reflection::ReflectionStatus::Archived,
+        other => return Err(anyhow::anyhow!("Invalid status '{}': expected draft, active, validated, or archived", other)),
+    };
+
+    let reflections = reflection_engine.list_by_status(status).await;
+
+    let results: Vec<serde_json::Value> = reflections
+        .iter()
+        .map(|r| serde_json::json!({
+            "id": r.id,
+            "title": r.title,
+            "confidence": r.confidence.score,
+            "status": format!("{:?}", r.status)
+        }))
+        .collect();
+
+    Ok(ToolOutput::success(serde_json::json!({
+        "reflections": results,
+        "count": results.len()
+    })))
+}
+
+/// Execute update reflection tool
+pub async fn execute_update_reflection(
+    input: UpdateReflectionInput,
+    reflection_engine: &Arc<ReflectionEngine>,
+) -> Result<ToolOutput> {
+    let mut reflection = reflection_engine
+        .get_reflection(&input.reflection_id)
+        .await
+        .ok_or_else(|| anyhow::anyhow!("Reflection not found: {}", input.reflection_id))?;
+
+    if let Some(title) = input.title {
+        reflection.title = title;
+    }
+    if let Some(description) = input.description {
+        reflection.description = description;
+    }
+    if let Some(summary) = input.summary {
+        reflection.summary = summary;
+    }
+
+    reflection_engine.update_reflection(&reflection).await?;
+
+    Ok(ToolOutput::success(serde_json::json!({
+        "updated": true,
+        "reflection_id": input.reflection_id
     })))
 }

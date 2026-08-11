@@ -339,7 +339,9 @@ pub async fn run_experience_self_check() -> String {
         is_valid: true,
         score: 0.9,
         issues: vec!["issue".to_string()],
+        warnings: vec!["warning".to_string()],
         quality_score: 0.85,
+        quality_indicators: vec!["has_description: true".to_string()],
         suggestions: vec!["s".to_string()],
     };
     let engine_stats = reflection_engine.get_stats().await;

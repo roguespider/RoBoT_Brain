@@ -6,6 +6,9 @@ pub const GET_INSIGHTS: &str = "get_insights";
 pub const CREATE_REFLECTION: &str = "create_reflection";
 pub const ANALYZE_PATTERNS: &str = "analyze_patterns";
 pub const GET_PATTERNS: &str = "get_patterns";
+pub const VALIDATE_REFLECTION: &str = "validate_reflection";
+pub const LIST_REFLECTIONS_BY_STATUS: &str = "list_reflections_by_status";
+pub const UPDATE_REFLECTION: &str = "update_reflection";
 
 /// Get all reflection tools
 pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
@@ -88,6 +91,61 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
                         "description": "Filter by pattern type"
                     }
                 }
+            }),
+        },
+        crate::bridge::mcp::McpTool {
+            name: VALIDATE_REFLECTION.to_string(),
+            description: "Validate a reflection for quality and consistency".to_string(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "reflection_id": {
+                        "type": "string",
+                        "description": "ID of the reflection to validate"
+                    }
+                },
+                "required": ["reflection_id"]
+            }),
+        },
+        crate::bridge::mcp::McpTool {
+            name: LIST_REFLECTIONS_BY_STATUS.to_string(),
+            description: "List reflections filtered by status".to_string(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "status": {
+                        "type": "string",
+                        "description": "Reflection status to filter by",
+                        "enum": ["draft", "active", "validated", "archived"]
+                    }
+                },
+                "required": ["status"]
+            }),
+        },
+        crate::bridge::mcp::McpTool {
+            name: UPDATE_REFLECTION.to_string(),
+            description: "Update an existing reflection".to_string(),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "reflection_id": {
+                        "type": "string",
+                        "description": "ID of the reflection to update"
+                    },
+                    "title": {
+                        "type": "string",
+                        "description": "New title"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "New description"
+                    },
+                    "summary": {
+                        "type": "string",
+                        "description": "New summary"
+                    }
+                },
+                "required": ["reflection_id"]
             }),
         },
     ]
