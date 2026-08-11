@@ -721,11 +721,6 @@ impl App {
         tracing::info!("{}", metrics_summary);
 
 
-        // Experience integration self-check (exercises pipelines, coordinator
-        // helpers, repository, scorer, scheduler, reputation, observer, and
-        // recorder code paths so they remain live rather than dead code).
-        let experience_summary = crate::experience::self_check::run_experience_self_check().await;
-        tracing::info!("{}", experience_summary);
 
         // Log subsystem health for engines held by App that are otherwise
         // only accessed during construction (Architecture: observability).

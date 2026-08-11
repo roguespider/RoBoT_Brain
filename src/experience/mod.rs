@@ -32,4 +32,3 @@ pub mod types;
 pub mod worker;
 pub mod worker_manager;
 
-pub mod self_check;
