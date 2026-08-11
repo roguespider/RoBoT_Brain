@@ -105,6 +105,8 @@ impl KnowledgeItem {
     pub fn record_success(&mut self) {
         self.success_count += 1;
         self.confidence.adjust_source_reliability(0.01);
+        self.confidence.adjust_frequency(0.02);
+        self.confidence.update_recency(self.updated_at);
         self.updated_at = Utc::now();
     }
 
@@ -113,6 +115,7 @@ impl KnowledgeItem {
         self.failure_count += 1;
         self.confidence.adjust_source_reliability(-0.02);
         self.confidence.adjust_historical_accuracy(-0.02);
+        self.confidence.update_recency(self.updated_at);
         self.updated_at = Utc::now();
     }
 }
@@ -213,13 +216,11 @@ impl KnowledgeConfidence {
     }
 
     /// Adjust frequency (e.g., from repeated confirmation)
-    #[cfg(test)]
     pub fn adjust_frequency(&mut self, delta: f32) {
         self.dimensions.frequency = (self.dimensions.frequency + delta).clamp(0.0, 1.0);
     }
 
     /// Update recency based on time since last update
-    #[cfg(test)]
     pub fn update_recency(&mut self, last_update: DateTime<Utc>) {
         let age_hours = (Utc::now() - last_update).num_hours() as f32;
         // Decay over 30 days
@@ -330,7 +331,6 @@ impl KnowledgeDependency {
         }
     }
 
-    #[cfg(test)]
     pub fn with_version(mut self, version: impl Into<String>) -> Self {
         self.version_constraint = Some(version.into());
         self

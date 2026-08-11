@@ -235,6 +235,22 @@ pub fn build_test_arguments(
             "knowledge_id": "00000000-0000-0000-0000-000000000000",
             "success": true
         }),
+        "knowledge_set_status" => serde_json::json!({
+            "knowledge_id": "00000000-0000-0000-0000-000000000000",
+            "action": "activate"
+        }),
+        "knowledge_manage_dependency" => serde_json::json!({
+            "knowledge_id": "00000000-0000-0000-0000-000000000000",
+            "action": "get"
+        }),
+        "knowledge_add_relation" => serde_json::json!({
+            "knowledge_id": "00000000-0000-0000-0000-000000000000",
+            "related_id": "00000000-0000-0000-0000-000000000001",
+            "relation_type": "related"
+        }),
+        "knowledge_search_by_tag" => serde_json::json!({
+            "tag": "test"
+        }),
 
         // Planner tools
         "planner_create" => serde_json::json!({

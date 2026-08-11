@@ -22,7 +22,6 @@ pub mod promotion;
 
 pub use memory_state::{MemoryState, StateTransition, StateTransitionRecord};
 pub use promotion::PromotionPolicy;
-#[cfg(test)]
 pub use store::WorkingMemory;
 
 use chrono::{DateTime, Utc};
@@ -94,28 +93,36 @@ impl WorkingMemoryItem {
     pub fn record_access(&mut self) {
         self.accessed_at = Utc::now();
         self.access_count += 1;
-        
+
         if self.state == MemoryState::Active {
             self.repeated_count += 1;
             if self.repeated_count > 1 {
-                let _ = self.transition(StateTransition::Observe, Some("Repeated access".to_string()));
+                if !self.transition(StateTransition::Observe, Some("Repeated access".to_string())) {
+                    tracing::trace!("WorkingMemoryItem observe transition rejected");
+                }
             }
         } else if self.state == MemoryState::Dormant {
-            let _ = self.transition(StateTransition::Access, Some("Revived by access".to_string()));
+            if !self.transition(StateTransition::Access, Some("Revived by access".to_string())) {
+                tracing::trace!("WorkingMemoryItem access transition rejected");
+            }
         }
     }
-    
+
     pub fn record_confirmation(&mut self) {
         self.confirmation_count += 1;
         if self.state == MemoryState::Repeated {
-            let _ = self.transition(StateTransition::Confirm, Some("Confirmed".to_string()));
+            if !self.transition(StateTransition::Confirm, Some("Confirmed".to_string())) {
+                tracing::trace!("WorkingMemoryItem confirm transition rejected");
+            }
         }
     }
-    
+
     pub fn record_contradiction(&mut self) {
         self.contradicted = true;
         if matches!(self.state, MemoryState::Active | MemoryState::Repeated | MemoryState::Confirmed) {
-            let _ = self.transition(StateTransition::Contradict, Some("Contradicted".to_string()));
+            if !self.transition(StateTransition::Contradict, Some("Contradicted".to_string())) {
+                tracing::trace!("WorkingMemoryItem contradict transition rejected");
+            }
         }
     }
     

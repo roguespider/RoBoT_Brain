@@ -12,8 +12,28 @@
 
 ## 2. Run the verify gate (must be green BEFORE any code change)
 
+> **The wall (use it):** `make gate` runs all three checks below in order and
+> aborts on the first failure. It is installed as a pre-commit hook
+> (`.githooks/pre-commit`) so **no commit lands unless the gate is green** —
+> including the live connect-to-robot_brain step, which cannot be skipped.
+> One-time clone setup: `make hooks` (sets `core.hooksPath = .githooks`).
+>
+> AGENTS.md is enforced as a **HARD wall**: 0 compiler warnings, 0 code-issues
+> (no `#[allow]`, no `PublicNeverCalled`, no stubs), 0 untested tools. There is
+> no ratchet and no baseline to ratchet against. A non-zero count blocks the
+> commit; fix it by wiring the dead-code pub API into a real caller — never by
+> `#[allow]` or `_`. `git commit --no-verify` is ONLY for the one-time
+> bootstrap of the wall files themselves (scripts/, .githooks/, Makefile) and
+> trivial doc-only edits; never for `src/` changes.
+
 If the toolchain is not installed, install it first (see AGENTS.md
-"Prerequisites"). Then:
+"Prerequisites"). Then either run the wall:
+
+```bash
+make gate
+```
+
+…or run the three steps by hand (the wall does exactly this):
 
 ```bash
 cargo build --release -p robot_brain          # must finish 0 warnings

@@ -16,6 +16,7 @@ pub mod tracking;
 pub mod scheduling;
 pub mod advanced_features;
 pub mod hierarchical_memory;
+pub mod job_queue;
 
 /// Run all pending migrations.
 pub fn run(database: &SqliteDatabase) -> Result<()> {
@@ -31,7 +32,7 @@ fn run_migrations(conn: &Connection) -> Result<()> {
     let mut version = current_version(conn)?;
 
     // Run all pending migrations sequentially
-    while version < 11 {
+    while version < 12 {
         match version {
             0..=2 => {
                 core_data_storage::run(conn)?;
@@ -49,6 +50,10 @@ fn run_migrations(conn: &Connection) -> Result<()> {
             9 | 10 => {
                 hierarchical_memory::run(conn)?;
                 version = 11;
+            }
+            11 => {
+                job_queue::run(conn)?;
+                version = 12;
             }
             _ => break,
         }

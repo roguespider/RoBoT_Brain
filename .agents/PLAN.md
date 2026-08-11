@@ -129,7 +129,8 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 
 ## 1B. SQLite-backed JobQueue (V2-11)
 
-- [ ] **T1-09** Add `job_queue` table + migration in `src/database/migrations/`.
+- [x] **T1-09** Add `job_queue` table + migration in `src/database/migrations/`.
+      (commit d1ee096; migration 012 + registered in run loop)
 - [ ] **T1-10** Wire enqueue/dequeue through `src/experience/queue.rs` to SQLite.
 - [ ] **T1-11** Handle broadcast `Lagged` events explicitly (skip+log or drain)
       in the worker path.

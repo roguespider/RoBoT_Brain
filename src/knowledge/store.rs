@@ -346,6 +346,7 @@ impl KnowledgeStore {
         knowledge_id: Uuid,
         depends_on_id: Uuid,
         dependency_type: DependencyType,
+        version_constraint: Option<String>,
     ) -> bool {
         // Verify both items exist
         {
@@ -354,8 +355,12 @@ impl KnowledgeStore {
                 return false;
             }
         }
-        
-        let dependency = KnowledgeDependency::new(knowledge_id, depends_on_id, dependency_type);
+
+        let dependency = match version_constraint {
+            Some(v) => KnowledgeDependency::new(knowledge_id, depends_on_id, dependency_type)
+                .with_version(v),
+            None => KnowledgeDependency::new(knowledge_id, depends_on_id, dependency_type),
+        };
         
         // Add to dependency index
         {

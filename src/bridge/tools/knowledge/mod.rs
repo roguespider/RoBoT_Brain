@@ -125,6 +125,8 @@ pub struct ManageKnowledgeDependencyInput {
     pub depends_on_id: Option<String>,
     /// Dependency type for add: required, optional, conflict, or replaces
     pub dependency_type: Option<String>,
+    /// Optional version constraint for add (e.g. ">=1.0.0")
+    pub version_constraint: Option<String>,
 }
 
 /// Tool: Add a relation between two knowledge items
@@ -746,7 +748,9 @@ pub async fn execute_manage_knowledge_dependency(
                 "replaces" => crate::knowledge::types::DependencyType::Replaces,
                 _ => crate::knowledge::types::DependencyType::Required,
             };
-            let ok = knowledge.add_dependency(id, dep_id, dep_type).await;
+            let ok = knowledge
+                .add_dependency(id, dep_id, dep_type, input.version_constraint.clone())
+                .await;
             ToolOutput::success(serde_json::json!({
                 "status": if ok { "added" } else { "failed" },
                 "knowledge_id": id.to_string(),
