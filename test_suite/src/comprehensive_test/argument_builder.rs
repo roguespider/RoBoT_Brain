@@ -341,6 +341,145 @@ pub fn build_test_arguments(
             "query": "test"
         }),
 
+        // ACP tools
+        "acp_list_agents" => serde_json::json!({}),
+        "acp_agent_count" => serde_json::json!({}),
+        "acp_router" => serde_json::json!({}),
+        "acp_registry" => serde_json::json!({}),
+        "acp_register_agent" => serde_json::json!({
+            "agent_type": "test_agent",
+            "instance_id": "registry_test_1",
+            "capabilities": ["test_capability"]
+        }),
+        "acp_unregister_agent" => serde_json::json!({
+            "agent_type": "test_agent",
+            "instance_id": "registry_test_1"
+        }),
+        "acp_create_message" => serde_json::json!({
+            "sender": {"agent_type": "test_sender", "instance_id": "sender_1"},
+            "receiver": {"agent_type": "test_receiver", "instance_id": "receiver_1"},
+            "message_type": "Inform",
+            "payload": {"text": "test message"}
+        }),
+        "acp_route_message" => serde_json::json!({
+            "sender": {"agent_type": "test_sender", "instance_id": "sender_1"},
+            "receiver": {"agent_type": "nonexistent_agent", "instance_id": "unknown_1"},
+            "message_type": "Query",
+            "payload": {"text": "test query"}
+        }),
+        "acp_get_agent_capabilities" => serde_json::json!({
+            "agent_id": "00000000-0000-0000-0000-000000000000"
+        }),
+
+        // Coverage tools (remaining uncovered server tools)
+        "cov_get_system_status" => serde_json::json!({}),
+        "cov_cleanup_sessions" => serde_json::json!({}),
+        "cov_get_session_state" => serde_json::json!({}),
+        "cov_archive_memory" => serde_json::json!({
+            "memory_id": "00000000-0000-0000-0000-000000000000"
+        }),
+        "cov_link_memories" => serde_json::json!({
+            "from_id": "00000000-0000-0000-0000-000000000001",
+            "to_id": "00000000-0000-0000-0000-000000000002"
+        }),
+        "cov_ranked_search" => serde_json::json!({
+            "query": "test"
+        }),
+        "cov_get_knowledge" => serde_json::json!({}),
+        "cov_delete_knowledge" => serde_json::json!({
+            "knowledge_id": "00000000-0000-0000-0000-000000000000"
+        }),
+        "cov_update_knowledge" => serde_json::json!({
+            "knowledge_id": "00000000-0000-0000-0000-000000000000",
+            "statement": "test statement"
+        }),
+        "cov_get_related_knowledge" => serde_json::json!({
+            "knowledge_id": "00000000-0000-0000-0000-000000000000"
+        }),
+        "cov_validate_knowledge_deps" => serde_json::json!({}),
+        "cov_bump_knowledge_version" => serde_json::json!({
+            "knowledge_id": "00000000-0000-0000-0000-000000000000"
+        }),
+        "cov_get_evidence" => serde_json::json!({
+            "evidence_id": "00000000-0000-0000-0000-000000000000"
+        }),
+        "cov_list_evidence" => serde_json::json!({}),
+        "cov_list_observations" => serde_json::json!({}),
+        "cov_list_reflections_by_status" => serde_json::json!({
+            "status": "draft"
+        }),
+        "cov_update_reflection" => serde_json::json!({
+            "reflection_id": "00000000-0000-0000-0000-000000000000"
+        }),
+        "cov_validate_reflection" => serde_json::json!({
+            "reflection_id": "00000000-0000-0000-0000-000000000000"
+        }),
+        "cov_get_skill_metrics" => serde_json::json!({}),
+        "cov_clear_skill_metrics" => serde_json::json!({}),
+        "cov_get_unreliable_skills" => serde_json::json!({}),
+        "cov_search_skills_by_tag" => serde_json::json!({
+            "tag": "test"
+        }),
+        "cov_unregister_skill" => serde_json::json!({
+            "skill_id": "00000000-0000-0000-0000-000000000000"
+        }),
+        "cov_get_personality" => serde_json::json!({}),
+        "cov_set_personality_traits" => serde_json::json!({
+            "verbosity": 0.5
+        }),
+        "cov_apply_personality_preset" => serde_json::json!({
+            "preset": "analytical"
+        }),
+        "cov_list_personality_presets" => serde_json::json!({}),
+        "cov_get_personality_decision" => serde_json::json!({
+            "confidence": 0.5,
+            "potential_gain": 0.5,
+            "potential_loss": 0.3,
+            "uncertainty": 0.4
+        }),
+        "cov_format_response" => serde_json::json!({
+            "content": "test content"
+        }),
+        "cov_upsert_world_entity" => serde_json::json!({
+            "name": "test_entity",
+            "kind": "concept"
+        }),
+        "cov_get_world_entity" => serde_json::json!({
+            "id": "00000000-0000-0000-0000-000000000000"
+        }),
+        "cov_find_world_entity" => serde_json::json!({
+            "name": "nonexistent"
+        }),
+        "cov_list_world_entities" => serde_json::json!({
+            "kind": "concept"
+        }),
+        "cov_add_world_relationship" => serde_json::json!({
+            "source_id": "00000000-0000-0000-0000-000000000001",
+            "target_id": "00000000-0000-0000-0000-000000000002",
+            "kind": "depends_on"
+        }),
+        "cov_get_world_relationships" => serde_json::json!({
+            "id": "00000000-0000-0000-0000-000000000000"
+        }),
+        "cov_get_world_blockers" => serde_json::json!({
+            "id": "00000000-0000-0000-0000-000000000000"
+        }),
+        "cov_get_world_dependencies" => serde_json::json!({
+            "id": "00000000-0000-0000-0000-000000000000"
+        }),
+        "cov_get_world_model_stats" => serde_json::json!({}),
+        "cov_get_consumed_resources" => serde_json::json!({
+            "id": "00000000-0000-0000-0000-000000000000"
+        }),
+        "cov_run_agent_goal" => serde_json::json!({
+            "goal": "list available memories"
+        }),
+        "cov_set_workflow_variable" => serde_json::json!({
+            "workflow_id": "00000000-0000-0000-0000-000000000001",
+            "key": "test",
+            "value": "val"
+        }),
+
         // Default: empty arguments
         _ => serde_json::json!({}),
     }

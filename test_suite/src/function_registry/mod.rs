@@ -17,8 +17,10 @@
 //! 11. Ingestor (file ingestion)
 //! 12. BackgroundWorkers (async workers)
 
+pub mod acp_tools;
 pub mod agent_tools;
 pub mod background_workers_tools;
+pub mod coverage_tools;
 pub mod experience_tools;
 pub mod exploration_tools;
 pub mod hypothesis_tools;
@@ -86,6 +88,12 @@ impl FunctionRegistry {
         
         // Phase 12: Background Workers
         functions.extend(background_workers_tools::background_workers_tools()); // get_worker_stats, get_worker_count
+
+        // Phase 13: ACP (Agent Communication Protocol)
+        functions.extend(acp_tools::acp_tools()); // route_acp_message, register_agent, list_acp_agents, etc.
+
+        // Phase 14: Coverage (remaining uncovered server tools)
+        functions.extend(coverage_tools::coverage_tools()); // world model, personality, skills, knowledge lifecycle, etc.
 
         functions
     }
