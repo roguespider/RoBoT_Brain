@@ -100,6 +100,38 @@ impl KnowledgeToolsHandler {
     ) -> crate::bridge::tools::ToolOutput {
         knowledge::execute_bump_knowledge_version(input, &self.context.knowledge).await
     }
+
+    /// Set knowledge status (activate, suspend, disprove)
+    pub async fn execute_set_knowledge_status(
+        &self,
+        input: knowledge::SetKnowledgeStatusInput,
+    ) -> crate::bridge::tools::ToolOutput {
+        knowledge::execute_set_knowledge_status(input, &self.context.knowledge).await
+    }
+
+    /// Manage knowledge dependencies
+    pub async fn execute_manage_knowledge_dependency(
+        &self,
+        input: knowledge::ManageKnowledgeDependencyInput,
+    ) -> crate::bridge::tools::ToolOutput {
+        knowledge::execute_manage_knowledge_dependency(input, &self.context.knowledge).await
+    }
+
+    /// Add a relation between knowledge items
+    pub async fn execute_add_knowledge_relation(
+        &self,
+        input: knowledge::AddKnowledgeRelationInput,
+    ) -> crate::bridge::tools::ToolOutput {
+        knowledge::execute_add_knowledge_relation(input, &self.context.knowledge).await
+    }
+
+    /// Search knowledge by tag or get items needing review
+    pub async fn execute_search_knowledge_by_tag(
+        &self,
+        input: knowledge::SearchKnowledgeByTagInput,
+    ) -> crate::bridge::tools::ToolOutput {
+        knowledge::execute_search_knowledge_by_tag(input, &self.context.knowledge).await
+    }
 }
 
 impl ToolHandler for KnowledgeToolsHandler {
@@ -119,6 +151,10 @@ impl ToolHandler for KnowledgeToolsHandler {
             "get_related_knowledge".to_string(),
             "validate_knowledge_dependencies".to_string(),
             "bump_knowledge_version".to_string(),
+            "set_knowledge_status".to_string(),
+            "manage_knowledge_dependency".to_string(),
+            "add_knowledge_relation".to_string(),
+            "search_knowledge_by_tag".to_string(),
         ]
     }
 
@@ -245,6 +281,56 @@ impl ToolHandler for KnowledgeToolsHandler {
                     "required": ["knowledge_id"]
                 })),
             ).with_title("Bump Knowledge Version"),
+            rmcp::model::Tool::new(
+                "set_knowledge_status",
+                "Set knowledge status: activate, suspend, or disprove",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "knowledge_id": { "type": "string", "description": "Knowledge ID" },
+                        "action": { "type": "string", "enum": ["activate", "suspend", "disprove"], "description": "Status action" }
+                    },
+                    "required": ["knowledge_id", "action"]
+                })),
+            ).with_title("Set Knowledge Status"),
+            rmcp::model::Tool::new(
+                "manage_knowledge_dependency",
+                "Manage knowledge dependencies: add, remove, get dependencies, or get impact set",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "knowledge_id": { "type": "string", "description": "Knowledge ID" },
+                        "action": { "type": "string", "enum": ["add", "remove", "get", "impact"], "description": "Dependency action" },
+                        "depends_on_id": { "type": "string", "description": "ID of the dependency target (for add/remove)" },
+                        "dependency_type": { "type": "string", "enum": ["required", "optional", "conflict", "replaces"], "description": "Dependency type (for add)" }
+                    },
+                    "required": ["knowledge_id", "action"]
+                })),
+            ).with_title("Manage Knowledge Dependency"),
+            rmcp::model::Tool::new(
+                "add_knowledge_relation",
+                "Add a relation between two knowledge items",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "knowledge_id": { "type": "string", "description": "ID of the source knowledge item" },
+                        "related_id": { "type": "string", "description": "ID of the target knowledge item" },
+                        "relation_type": { "type": "string", "enum": ["related", "supports", "contradicts", "specializes", "generalizes", "prerequisite"], "description": "Relation type (default: related)" },
+                        "confidence": { "type": "number", "description": "Confidence in the relation (0.0-1.0, default: 0.5)" }
+                    },
+                    "required": ["knowledge_id", "related_id"]
+                })),
+            ).with_title("Add Knowledge Relation"),
+            rmcp::model::Tool::new(
+                "search_knowledge_by_tag",
+                "Search knowledge by tag or get items needing review",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "tag": { "type": "string", "description": "Tag to search for (if omitted, returns items needing review)" }
+                    }
+                })),
+            ).with_title("Search Knowledge By Tag"),
         ]
     }
 
@@ -300,6 +386,26 @@ impl ToolHandler for KnowledgeToolsHandler {
                     let input: knowledge::BumpKnowledgeVersionInput = serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
                     Ok(self.execute_bump_knowledge_version(input).await)
+                }
+                "set_knowledge_status" => {
+                    let input: knowledge::SetKnowledgeStatusInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_set_knowledge_status(input).await)
+                }
+                "manage_knowledge_dependency" => {
+                    let input: knowledge::ManageKnowledgeDependencyInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_manage_knowledge_dependency(input).await)
+                }
+                "add_knowledge_relation" => {
+                    let input: knowledge::AddKnowledgeRelationInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    Ok(self.execute_add_knowledge_relation(input).await)
+                }
+                "search_knowledge_by_tag" => {
+                    let input: knowledge::SearchKnowledgeByTagInput = serde_json::from_value(args)
+                        .unwrap_or_default();
+                    Ok(self.execute_search_knowledge_by_tag(input).await)
                 }
                 _ => Err(HandlerError::ToolNotFound(name.to_string()))
             }

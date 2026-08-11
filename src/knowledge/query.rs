@@ -61,6 +61,7 @@ impl KnowledgeResult {
     }
 
     /// Get the best (highest confidence) result
+    #[cfg(test)]
     pub fn best(&self) -> Option<&KnowledgeItem> {
         self.items.first()
     }
