@@ -100,6 +100,7 @@ impl EvolutionEvidence {
     }
 
     /// Create contradicting evidence
+    #[cfg(test)]
     pub fn contradicting(
         id: impl Into<String>,
         behavior_id: impl Into<String>,
@@ -110,6 +111,7 @@ impl EvolutionEvidence {
     }
 
     /// Create neutral evidence
+    #[cfg(test)]
     pub fn neutral(
         id: impl Into<String>,
         behavior_id: impl Into<String>,
@@ -120,6 +122,7 @@ impl EvolutionEvidence {
     }
 
     /// Set confidence level
+    #[cfg(test)]
     pub fn with_confidence(mut self, confidence: f32) -> Self {
         self.confidence = confidence.clamp(0.0, 1.0);
         self

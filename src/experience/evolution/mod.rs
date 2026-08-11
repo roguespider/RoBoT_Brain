@@ -21,7 +21,6 @@
 pub mod behavior;
 pub mod engine;
 pub mod evidence;
-pub mod self_check;
 
 // Re-exports
 pub use engine::EvolutionEngine;
