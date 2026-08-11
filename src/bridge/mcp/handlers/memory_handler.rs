@@ -277,6 +277,72 @@ impl ToolHandler for MemoryToolsHandler {
                     "required": ["query"]
                 })),
             ).with_title("Ranked Search"),
+            rmcp::model::Tool::new(
+                "store_embedding",
+                "Store a vector embedding for semantic memory search",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "memory_id": { "type": "string", "description": "The memory UUID to associate with this embedding" },
+                        "embedding": { "type": "array", "items": { "type": "number" }, "description": "The vector embedding as an array of floats" },
+                        "model": { "type": "string", "description": "The model used to generate the embedding", "default": "default" }
+                    },
+                    "required": ["memory_id", "embedding"]
+                })),
+            ).with_title("Store Embedding"),
+            rmcp::model::Tool::new(
+                "get_embedding",
+                "Get an embedding by memory ID",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "memory_id": { "type": "string", "description": "The memory UUID" }
+                    },
+                    "required": ["memory_id"]
+                })),
+            ).with_title("Get Embedding"),
+            rmcp::model::Tool::new(
+                "search_similar",
+                "Search for similar memories using vector similarity",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "query_embedding": { "type": "array", "items": { "type": "number" }, "description": "The query vector as an array of floats" },
+                        "limit": { "type": "number", "description": "Maximum number of results", "default": 5 },
+                        "min_similarity": { "type": "number", "description": "Minimum cosine similarity threshold (0.0 - 1.0)", "minimum": 0.0, "maximum": 1.0, "default": 0.5 }
+                    },
+                    "required": ["query_embedding"]
+                })),
+            ).with_title("Search Similar"),
+            rmcp::model::Tool::new(
+                "list_embeddings",
+                "List all memory embeddings",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "limit": { "type": "number", "description": "Maximum number of results", "default": 100 }
+                    }
+                })),
+            ).with_title("List Embeddings"),
+            rmcp::model::Tool::new(
+                "delete_embedding",
+                "Delete an embedding by memory ID",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "memory_id": { "type": "string", "description": "The memory UUID" }
+                    },
+                    "required": ["memory_id"]
+                })),
+            ).with_title("Delete Embedding"),
+            rmcp::model::Tool::new(
+                "get_embedding_stats",
+                "Get vector index statistics",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {}
+                })),
+            ).with_title("Get Embedding Stats"),
         ]
     }
     
