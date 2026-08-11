@@ -39,6 +39,7 @@ impl SqliteMemoryRepository {
     }
 
     /// Create from database path
+    #[cfg(test)]
     pub fn from_path(path: &std::path::Path) -> Result<Self> {
         let db = SqliteDatabase::initialize_at(path)?;
         Ok(Self::new(db))
@@ -96,6 +97,27 @@ fn memory_type_to_string(mt: &MemoryType) -> String {
     mt.to_string()
 }
 
+#[cfg(test)]
+mod tests {
+    use super::*;
 
-
-
+    #[test]
+    fn test_from_path_creates_repository() {
+        let temp_dir = std::env::temp_dir();
+        let db_path = temp_dir.join(format!(
+            "robot_brain_repo_test_{}.db",
+            uuid::Uuid::new_v4()
+        ));
+        let repo = SqliteMemoryRepository::from_path(&db_path).expect("create repository");
+        let item = MemoryItem::new(
+            crate::memory::types::MemoryLayer::Working,
+            MemoryType::Knowledge,
+            "test item".to_string(),
+            "test source".to_string(),
+        );
+        assert!(MemoryRepository::store(&repo, &item).is_ok());
+        drop(repo);
+        let removed = std::fs::remove_file(&db_path);
+        assert!(removed.is_ok());
+    }
+}

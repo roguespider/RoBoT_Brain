@@ -48,14 +48,6 @@ impl App {
     pub async fn new() -> Result<Self> {
         // Initialize database
         let database = Arc::new(SqliteDatabase::initialize()?);
-
-        // Run the database self-check to exercise CRUD query functions that
-        // have no direct tool surface yet (get_embedding, delete_embedding,
-        // delete_memories_by_string_ids, link_observation_to_experience,
-        // SqliteMemoryRepository::from_path) on transient rows. Per §7.
-        let db_checks = crate::database::self_check::run(&*database);
-        tracing::info!("Database self-check completed ({} checks passed)", db_checks);
-
         // Create shared personality instance (used by both App and planner)
         let shared_personality = Arc::new(std::sync::Mutex::new(Personality::new()));
 

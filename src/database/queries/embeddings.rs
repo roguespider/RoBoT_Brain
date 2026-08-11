@@ -27,6 +27,7 @@ pub fn insert_embedding(conn: &Connection, embedding: &MemoryEmbedding) -> Resul
 }
 
 /// Get an embedding by ID
+#[cfg(test)]
 pub fn get_embedding(conn: &Connection, id: Uuid) -> Result<Option<MemoryEmbedding>> {
     let mut stmt = conn.prepare(
         "SELECT id, memory_id, embedding, model FROM memory_embeddings WHERE id = ?1"
@@ -110,6 +111,7 @@ pub fn list_embeddings(conn: &Connection, limit: usize) -> Result<Vec<MemoryEmbe
 }
 
 /// Delete an embedding by ID
+#[cfg(test)]
 pub fn delete_embedding(conn: &Connection, id: Uuid) -> Result<bool> {
     let deleted = conn.execute(
         "DELETE FROM memory_embeddings WHERE id = ?1",
@@ -135,4 +137,43 @@ pub fn count_embeddings(conn: &Connection) -> Result<usize> {
         |row| row.get(0),
     )?;
     Ok(count as usize)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_get_and_delete_embedding_by_id() {
+        let conn = Connection::open_in_memory()
+            .or_else(|_| Connection::open(":memory:"))
+            .expect("open in-memory db");
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS memory_embeddings (
+                id TEXT PRIMARY KEY,
+                memory_id TEXT NOT NULL,
+                embedding BLOB,
+                model TEXT
+            )",
+            [],
+        )
+        .expect("create table");
+
+        let memory_id = Uuid::new_v4();
+        let embedding_id = Uuid::new_v4();
+        let embedding = MemoryEmbedding {
+            id: embedding_id,
+            memory_id,
+            embedding: vec![0.1, 0.2],
+            model: "test".to_string(),
+        };
+        assert!(insert_embedding(&conn, &embedding).is_ok());
+        let fetched = get_embedding(&conn, embedding_id).expect("get embedding");
+        assert!(fetched.is_some());
+        let deleted = delete_embedding(&conn, embedding_id).expect("delete embedding");
+        assert!(deleted);
+        assert!(get_embedding(&conn, embedding_id)
+            .expect("get after delete")
+            .is_none());
+    }
 }

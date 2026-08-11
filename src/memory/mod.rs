@@ -17,7 +17,7 @@ pub mod working;
 pub mod permanent;
 pub mod retrieval;
 pub mod pipeline;
-pub mod repository;
+#[cfg(test)] pub mod repository;
 
 pub use working::WorkingMemory;
 pub use permanent::PermanentMemory;
