@@ -10,4 +10,3 @@ pub mod hypothesis;
 pub mod candidates;
 pub mod lineage;
 pub mod pipeline;
-pub mod self_check;

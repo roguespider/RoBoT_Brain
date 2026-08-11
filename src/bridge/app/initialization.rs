@@ -713,8 +713,6 @@ impl App {
         );
 
         // Learning subsystem self-check (Architecture §9 - Learning Pipeline)
-        let learning_summary = crate::learning::self_check::run_self_check().await;
-        tracing::info!("{}", learning_summary);
 
         // Metrics subsystem self-check
         let metrics_summary = crate::experience::metrics::run_metrics_self_check().await;

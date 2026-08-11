@@ -22,6 +22,7 @@ pub mod promotion;
 
 pub use memory_state::{MemoryState, StateTransition, StateTransitionRecord};
 pub use promotion::PromotionPolicy;
+#[cfg(test)]
 pub use store::WorkingMemory;
 
 use chrono::{DateTime, Utc};
