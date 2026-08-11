@@ -103,40 +103,29 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 
 # 4. TIER 1 — Finish v0.0.1 (clean baseline)
 
-> Goal: green gate (exit 0), zero self_check.rs, SQLite-backed queue, loop-health
-> metrics, generic MCP dispatch emits experiences. End state = a clean v0.0.1
-> baseline. Tick `[x]` when an increment is committed with a green gate.
+> Goal: green gate (test_suite exit 0). End state = a clean v0.0.1 baseline.
+> Tick `[x]` when an increment is committed with a green gate.
 >
-> **Recommended work order:** 1A (self_check) → **1E (coverage gate)** → 1B
-> (queue) → 1C (metrics) → 1D (MCP→experience). Do 1E right after 1A so the gate
-> goes green and STAYS green for the rest of TIER 1. The gate is currently red
-> ONLY because of coverage gaps (91/91 tests pass, 0 code issues) — 50 untested
-> tools + 6 phantom embedding tools. Fixing 1E makes every later increment's
-> verify step honest.
+> **Work order:** 1E (coverage gate) FIRST — it's the actual gate problem and
+> the user's priority. Then 1B (queue), 1C (metrics), 1D (MCP→experience).
+>
+> **NOTE on self_check removal (moved to TIER 2):** the 8 `self_check.rs` files
+> exercise APIs that have NO other callers (informed plans, replanning, action
+> selection, policy engine, etc.). This is a binary crate, so removing a
+> self_check surfaces dead-code warnings on those pub APIs (24 warnings for
+> planner alone). Per the Dead Code Resolution Protocol, these APIs ARE
+> described in v0.0.2.1 Chapter 11 (Planning) / Chapter 19 (Confidence), so
+> they're incomplete stubs that must be WIRED into real MCP tools, not deleted.
+> That wiring is TIER 2 work (T2-32..T2-36 for planner, similar for others).
+> So: self_check removal happens DURING each system's TIER 2 upgrade, not as
+> standalone TIER 1 cleanup. TIER 1 focuses on the gate + queue + metrics.
 
-## 1A. Remove remaining self_check.rs files (V2-09)
+## 1A. (Moved to TIER 2) Remove self_check.rs files
 
-The proven pattern: wire a real MCP tool that calls the API, then delete the
-self_check. One file per increment.
-
-- [ ] **T1-01** Remove `src/planner/self_check.rs` — wire a planner API into an
-      MCP tool (or a `test_suite/` integration test), then delete.
-- [ ] **T1-02** Remove `src/learning/self_check.rs` — wire a learning API into an
-      MCP tool, then delete.
-- [ ] **T1-03** Remove `src/knowledge/self_check.rs` — wire a knowledge API into
-      an MCP tool, then delete.
-- [ ] **T1-04** Remove `src/experience/self_check.rs` — wire an experience API
-      into an MCP tool, then delete.
-- [ ] **T1-05** Remove `src/experience/reflection/self_check.rs` — wire a
-      reflection API into an MCP tool, then delete.
-- [ ] **T1-06** Remove `src/experience/hypothesis/self_check.rs` — wire a
-      hypothesis API into an MCP tool, then delete.
-- [ ] **T1-07** Remove `src/experience/hypothesis/support/graph/self_check.rs` —
-      wire a graph API into an MCP tool, then delete.
-- [ ] **T1-08** Remove `src/experience/hypothesis/services/self_check.rs` — wire
-      a hypothesis-service API into an MCP tool, then delete.
-
-**Done when:** `find src -name "self_check.rs"` returns empty; gate green.
+> Moved: each self_check is removed as part of its system's TIER 2 upgrade,
+> after the APIs it exercises are wired into real MCP tools. See T2-32..T2-42.
+> Attempting standalone removal in TIER 1 creates dead-code warnings (binary
+> crate flags unreached pub APIs), violating the 0-warnings gate.
 
 ## 1B. SQLite-backed JobQueue (V2-11)
 

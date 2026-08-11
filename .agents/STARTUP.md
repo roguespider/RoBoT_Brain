@@ -26,18 +26,19 @@ Do not "remember" a prior pass — actually run them this session.
 
 ## 3. Pick the next task (in order, do not skip ahead)
 
-Open `.agents/PLAN.md`. Find the FIRST unchecked `- [ ]` increment starting from
-TIER 1 (T1-01 ...). Work tiers in order: TIER 1 (finish v0.0.1) → TIER 2 (reach
-v0.0.2) → TIER 3 (reach v0.0.2.1). Each increment is one ~10-15 min change.
+Open `.agents/PLAN.md`. Find the FIRST unchecked `- [ ]` increment. Work tiers
+in order: TIER 1 (finish v0.0.1) → TIER 2 (reach v0.0.2) → TIER 3 (reach
+v0.0.2.1). Each increment is one ~10-15 min change.
 
-- **Next increment right now:** `T1-01` — remove `src/planner/self_check.rs`
-  (wire a planner API into an MCP tool, then delete the self_check). See
-  `.agents/PLAN.md` section 4 (1A).
-- **Right after self_check removal (T1-01..08): do 1E (T1-19..29) to close the
-  coverage gate.** The gate is currently red ONLY because of coverage gaps
-  (91/91 tests pass, 0 code issues) — 50 untested tools + 6 phantom embedding
-  tools. Closing 1E makes the suite exit 0, so every later increment's verify
-  step is honest.
+- **Next increment right now:** `T1-19` — fix the 6 phantom embedding tools
+  (the actual gate defect). See `.agents/PLAN.md` section 1E.1.
+- **Then T1-20..T1-29** — add FunctionRegistry tests for the 50 untested tools,
+  one group per increment. Closes the coverage gate (suite exit 1 → 0).
+- The gate is currently red ONLY because of coverage gaps (91/91 tests pass,
+  0 code issues) — 50 untested tools + 6 phantom embedding tools.
+- **Self_check removal is TIER 2 work** (the APIs they exercise have no other
+  callers; deleting them in TIER 1 creates dead-code warnings). Do it during
+  each system's TIER 2 upgrade.
 - Do not start TIER 2 until TIER 1 is fully checked off.
 
 ## 4. Execute ONE change, then the gate, then stop
