@@ -30,18 +30,15 @@ Open `.agents/PLAN.md`. Find the FIRST unchecked `- [ ]` increment. Work tiers
 in order: TIER 1 (finish v0.0.1) → TIER 2 (reach v0.0.2) → TIER 3 (reach
 v0.0.2.1). Each increment is one ~10-15 min change.
 
-- **Next increment right now:** `T1-20` — add FunctionRegistry tests for the
-  9 ACP tools. See `.agents/PLAN.md` section 1E.2.
-- **T1-19 DONE** (commit b9b43ff): fixed the 6 phantom embedding tools —
-  `phantom_tools` is now 0. Server exposes 134 tools.
-- **T1-21..T1-29** — add FunctionRegistry tests for the remaining ~41 untested
-  tools, one group per increment. Closes the coverage gate (suite exit 1 → 0).
-- The gate is currently red ONLY because of untested-tool coverage (91/91 tests
-  pass, 0 code issues, 0 phantom) — 50 tools untested, coverage 62.7%.
-- **Self_check removal is TIER 2 work** (the APIs they exercise have no other
-  callers; deleting them in TIER 1 creates dead-code warnings). Do it during
-  each system's TIER 2 upgrade.
-- Do not start TIER 2 until TIER 1 is fully checked off.
+- **TIER 1 IS COMPLETE — GATE IS GREEN.** test_suite exits 0 (141/141 tests
+  pass, 0 code issues, 0 warnings, 0 untested, 0 phantom). All 134 server tools
+  are covered. Tag: `v0.0.1-clean`.
+- **Next work: TIER 2** — upgrade existing systems to v0.0.2 (Memory, Knowledge,
+  Experience, Learning, Planner, Skills, Workflows, World Model, Personality),
+  one phase at a time. Open `.agents/PLAN.md` section 5 (TIER 2) and find the
+  FIRST unchecked `- [ ]` increment. Self_check removal happens during each
+  system's TIER 2 upgrade (wire APIs into real MCP tools, then delete the
+  self_check). 8 self_check.rs files remain.
 
 ## 4. Execute ONE change, then the gate, then stop
 
