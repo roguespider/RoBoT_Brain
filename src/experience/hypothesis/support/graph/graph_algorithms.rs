@@ -4,8 +4,9 @@
 //! Graph algorithm implementations for hypothesis graphs.
 
 #[cfg(test)]
-use std::collections::{HashMap, VecDeque};
+use std::collections::HashMap;
 use std::collections::HashSet;
+use std::collections::VecDeque;
 
 #[cfg(test)]
 use super::graph_types::HypothesisEdge;
@@ -15,7 +16,6 @@ use crate::experience::hypothesis::support::graph::HypothesisGraph;
 
 impl HypothesisGraph {
     /// Find all connected hypotheses
-    #[cfg(test)]
     pub fn find_connected(&self, hypothesis_id: &HypothesisId) -> Vec<HypothesisId> {
         let mut visited = HashSet::new();
         let mut queue = VecDeque::new();
