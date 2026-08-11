@@ -724,10 +724,6 @@ impl App {
         let reflection_summary = crate::experience::reflection::self_check::run_reflection_self_check().await;
         tracing::info!("{}", reflection_summary);
 
-        // Hypothesis subsystem self-check
-        let hypothesis_summary = crate::experience::hypothesis::self_check::run_hypothesis_self_check().await;
-        tracing::info!("{}", hypothesis_summary);
-
         // Experience integration self-check (exercises pipelines, coordinator
         // helpers, repository, scorer, scheduler, reputation, observer, and
         // recorder code paths so they remain live rather than dead code).
