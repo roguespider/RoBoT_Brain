@@ -33,8 +33,12 @@ v0.0.2) → TIER 3 (reach v0.0.2.1). Each increment is one ~10-15 min change.
 - **Next increment right now:** `T1-01` — remove `src/planner/self_check.rs`
   (wire a planner API into an MCP tool, then delete the self_check). See
   `.agents/PLAN.md` section 4 (1A).
-- Do not start TIER 2 until TIER 1 is fully checked off (self_check = 0,
-  queue SQLite-backed, metrics exist, MCP→experience closed).
+- **Right after self_check removal (T1-01..08): do 1E (T1-19..29) to close the
+  coverage gate.** The gate is currently red ONLY because of coverage gaps
+  (91/91 tests pass, 0 code issues) — 50 untested tools + 6 phantom embedding
+  tools. Closing 1E makes the suite exit 0, so every later increment's verify
+  step is honest.
+- Do not start TIER 2 until TIER 1 is fully checked off.
 
 ## 4. Execute ONE change, then the gate, then stop
 

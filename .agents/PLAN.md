@@ -103,9 +103,16 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 
 # 4. TIER 1 — Finish v0.0.1 (clean baseline)
 
-> Goal: zero self_check.rs, SQLite-backed queue, loop-health metrics, generic
-> MCP dispatch emits experiences. End state = a clean v0.0.1 baseline.
-> Tick `[x]` when an increment is committed with a green gate.
+> Goal: green gate (exit 0), zero self_check.rs, SQLite-backed queue, loop-health
+> metrics, generic MCP dispatch emits experiences. End state = a clean v0.0.1
+> baseline. Tick `[x]` when an increment is committed with a green gate.
+>
+> **Recommended work order:** 1A (self_check) → **1E (coverage gate)** → 1B
+> (queue) → 1C (metrics) → 1D (MCP→experience). Do 1E right after 1A so the gate
+> goes green and STAYS green for the rest of TIER 1. The gate is currently red
+> ONLY because of coverage gaps (91/91 tests pass, 0 code issues) — 50 untested
+> tools + 6 phantom embedding tools. Fixing 1E makes every later increment's
+> verify step honest.
 
 ## 1A. Remove remaining self_check.rs files (V2-09)
 
@@ -165,6 +172,66 @@ promotion_throughput; gate green.
 
 **Done when:** calling `store_memory` directly records an experience; no
 double-emit from the agent loop; gate green.
+
+## 1E. Close the coverage gate (make test_suite exit 0)
+
+> The gate is red ONLY because of coverage gaps: 91/91 tests pass, 0 code
+> issues, 0 warnings, but 50 server tools have no FunctionRegistry test and 6
+> "phantom" embedding tools are tested but not exposed by the server. Each
+> increment below adds a FunctionRegistry test entry for one tool group (in
+> `test_suite/src/function_registry.rs` or the relevant `tests/<group>/` file).
+> The suite exit code flips from 1 → 0 as coverage closes. Source of truth for
+> the live untested/phantom lists:
+> `test_suite/test_suite_report.json` → `coverage.untested_tools` /
+> `coverage.phantom_tools`.
+
+### 1E.1 — Fix the phantom embedding tools (a real wiring defect)
+
+- [ ] **T1-19** Investigate the 6 phantom embedding tools (`store_embedding`,
+      `get_embedding`, `search_similar`, `list_embeddings`, `delete_embedding`,
+      `get_embedding_stats`). They're in the FunctionRegistry but NOT in the
+      server's `tools/list`. Decide: (a) wire their registration in
+      `robot_brain` so they're exposed, OR (b) if the embedding subsystem is
+      not real yet, drop them from the FunctionRegistry. Pick ONE path,
+      implement, verify `phantom_tools` is empty in the report.
+
+### 1E.2 — Add FunctionRegistry tests for untested tool groups
+
+One increment per group. Each adds test entries that call the tool via MCP and
+assert a sane response. Pattern is in `function_registry.rs` — copy an existing
+entry, change the tool name + expected fields.
+
+- [ ] **T1-20** ACP tools (9): `route_acp_message`, `register_agent`,
+      `unregister_agent`, `list_acp_agents`, `acp_agent_count`, `acp_registry`,
+      `acp_router`, `create_acp_message`, `get_agent_capabilities`.
+      (These are tested in `tests/acp/` already — wire them into the
+      FunctionRegistry pipeline so the cross-check counts them.)
+- [ ] **T1-21** System/session tools (4): `get_system_status`,
+      `get_session_state`, `cleanup_sessions`, `get_consumed_resources`.
+- [ ] **T1-22** Memory/search extras (3): `archive_memory`, `link_memories`,
+      `ranked_search`.
+- [ ] **T1-23** Knowledge lifecycle (6): `get_knowledge`, `delete_knowledge`,
+      `update_knowledge`, `get_related_knowledge`,
+      `validate_knowledge_dependencies`, `bump_knowledge_version`.
+- [ ] **T1-24** Evidence/observation (3): `get_evidence`, `list_evidence`,
+      `list_observations`.
+- [ ] **T1-25** Reflection extras (3): `update_reflection`,
+      `validate_reflection`, `list_reflections_by_status`.
+- [ ] **T1-26** Skills extras (5): `get_skill_metrics`, `clear_skill_metrics`,
+      `get_unreliable_skills`, `unregister_skill`, `search_skills_by_tag`.
+- [ ] **T1-27** Personality (6): `get_personality`, `set_personality_traits`,
+      `apply_personality_preset`, `list_personality_presets`,
+      `get_personality_decision`, `format_response`.
+- [ ] **T1-28** World model (10): `list_world_entities`, `get_world_entity`,
+      `upsert_world_entity`, `find_world_entity`, `get_world_model_stats`,
+      `get_world_relationships`, `add_world_relationship`,
+      `get_world_dependencies`, `get_world_blockers`.
+- [ ] **T1-29** Agent/workflow extras (2): `run_agent_goal`,
+      `set_workflow_variable`.
+
+**Done when:** `test_suite_report.json` → `coverage.untested_tools` is empty,
+`phantom_tools` is empty, suite exits 0. This is the **green-gate milestone** —
+every increment after this has an honest verify step.
 
 **End of TIER 1 = finished v0.0.1. Tag: `v0.0.1-clean`.**
 
@@ -410,11 +477,13 @@ gate green.
 ## v0.0.1-clean (end of TIER 1)
 - `find src -name "self_check.rs"` returns empty.
 - `grep -rn 'allow(' src/` returns nothing (already true).
+- **test_suite exits 0** — `coverage.untested_tools` empty,
+  `coverage.phantom_tools` empty (the 1E green-gate milestone).
 - Queue is SQLite-backed and survives a process restart.
 - `get_system_status` shows loop_latency / confidence_drift /
   promotion_throughput.
 - Generic MCP tool execution emits an experience (no double-emit).
-- Gate green: 0 build warnings, 54/54 live, 333/333 suite.
+- Gate green: 0 build warnings, 54/54 live, 333/333 suite, suite exit 0.
 
 ## v0.0.2 (end of TIER 2)
 - Data-contract types round-trip through serde.
@@ -481,8 +550,16 @@ gate green.
 ## P4 — performance maturity — REMAINING (→ T1-09..T1-16)
 - V2-11: in-memory JobQueue (→ SQLite). V2-12: no loop-health metrics.
 
+## GATE (coverage) — REMAINING (→ T1-19..T1-29)
+- The test_suite exits non-zero (1) despite 91/91 tests passing and 0 code
+  issues. Root cause: coverage cross-check flags 50 untested server tools and
+  6 phantom embedding tools. This is the "gate problem" — the gate is red on
+  coverage, not on test failures. TIER 1 section 1E closes it.
+
 ## Verified state (2026-08-11)
-- 0 cargo warnings; 128 MCP tools; 333/333 tests; 0 code-quality issues.
-- Coverage gap: 50 server tools untested (60.9%) — suite exits non-zero.
+- 0 cargo warnings; 128 MCP tools; 91/91 FunctionRegistry tests pass
+  (333/333 traditional); 0 code-quality issues.
+- test_suite exits 1 (coverage: 50 untested + 6 phantom; 60.9% coverage).
+- 8 self_check.rs files remain (→ T1-01..08).
 - Large-file refactors done: `personality/personality.rs` (352→101, split into
   presets/adaptation/decision_making); `memory/handlers.rs` (400→ directory).
