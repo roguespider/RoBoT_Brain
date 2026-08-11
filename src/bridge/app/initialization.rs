@@ -720,9 +720,6 @@ impl App {
         let metrics_summary = crate::experience::metrics::run_metrics_self_check().await;
         tracing::info!("{}", metrics_summary);
 
-        // Reflection subsystem self-check
-        let reflection_summary = crate::experience::reflection::self_check::run_reflection_self_check().await;
-        tracing::info!("{}", reflection_summary);
 
         // Experience integration self-check (exercises pipelines, coordinator
         // helpers, repository, scorer, scheduler, reputation, observer, and
