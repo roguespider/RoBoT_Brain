@@ -97,6 +97,14 @@ impl WorkflowToolsHandler {
     ) -> crate::bridge::tools::ToolOutput {
         workflow::execute_set_workflow_variable(input, &self.context.workflow_engine).await
     }
+
+    pub async fn execute_get_session_state(&self) -> crate::bridge::tools::ToolOutput {
+        workflow::execute_get_session_state(&self.context.enforcer).await
+    }
+
+    pub async fn execute_cleanup_sessions(&self) -> crate::bridge::tools::ToolOutput {
+        workflow::execute_cleanup_sessions(&self.context.enforcer).await
+    }
 }
 
 impl ToolHandler for WorkflowToolsHandler {
@@ -116,6 +124,8 @@ impl ToolHandler for WorkflowToolsHandler {
             "cancel_workflow".to_string(),
             "delete_workflow".to_string(),
             "set_workflow_variable".to_string(),
+            "get_session_state".to_string(),
+            "cleanup_sessions".to_string(),
         ]
     }
 
@@ -238,6 +248,22 @@ impl ToolHandler for WorkflowToolsHandler {
                     "required": ["workflow_id", "key", "value"]
                 })),
             ).with_title("Set Workflow Variable"),
+            rmcp::model::Tool::new(
+                "get_session_state",
+                "Get the current workflow enforcement session state (debugging/admin)",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {}
+                })),
+            ).with_title("Get Session State"),
+            rmcp::model::Tool::new(
+                "cleanup_sessions",
+                "Clean up expired workflow enforcement sessions and return the count removed",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {}
+                })),
+            ).with_title("Cleanup Sessions"),
         ]
     }
 
@@ -294,6 +320,12 @@ impl ToolHandler for WorkflowToolsHandler {
                     let input: workflow::SetWorkflowVariableInput = serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
                     Ok(self.execute_set_workflow_variable(input).await)
+                }
+                "get_session_state" => {
+                    Ok(self.execute_get_session_state().await)
+                }
+                "cleanup_sessions" => {
+                    Ok(self.execute_cleanup_sessions().await)
                 }
                 other => Err(HandlerError::ToolNotFound(other.to_string())),
             }

@@ -96,6 +96,30 @@ impl WorkflowEnforcer {
         }
     }
 
+    /// Check enforcement for multiple tools at once, returning a combined
+    /// error listing all blocked tools if any fail.
+    pub async fn check_multiple_tools(
+        &self,
+        session_id: &str,
+        tool_names: &[String],
+    ) -> Result<(), WorkflowEnforcementError> {
+        let mut blocked: Vec<String> = Vec::new();
+        for tool_name in tool_names {
+            if Self::is_exempt(tool_name) {
+                continue;
+            }
+            let session = self.get_session(session_id).await;
+            if !session.workflow_retrieved || (!Self::is_memory_search(tool_name) && !session.memory_searched) {
+                blocked.push(tool_name.clone());
+            }
+        }
+        if blocked.is_empty() {
+            Ok(())
+        } else {
+            Err(WorkflowEnforcementError::tools_blocked(blocked))
+        }
+    }
+
     /// Check if a tool is exempt from enforcement
     pub fn is_exempt(tool_name: &str) -> bool {
         EXEMPT_TOOLS.contains(&tool_name)

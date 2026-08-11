@@ -21,7 +21,6 @@
 
 //! ```
 
-#![allow(clippy::module_inception)]
 
 pub mod attempt;
 

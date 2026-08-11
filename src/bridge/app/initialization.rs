@@ -573,6 +573,11 @@ impl App {
         // as the system observes entities and relationships.
         let world_model = Arc::new(crate::world_model::WorldModel::new());
 
+        // Workflow enforcement engine (Architecture §22 workflow gate).
+        // Shared between McpContext (for admin tools) and McpServerHandler
+        // (for per-request enforcement checks).
+        let enforcer = Arc::new(crate::workflows::enforcement::WorkflowEnforcer::new());
+
         let mcp_context = Arc::new(McpContext::new(
             database.clone(),
             bus.clone(),
@@ -595,6 +600,7 @@ impl App {
             shared_personality.clone(),
             Arc::new(crate::agent::SafetyGate::new()),
             world_model.clone(),
+            enforcer.clone(),
         ));
 
         // Register MCP tools

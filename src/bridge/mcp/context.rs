@@ -19,6 +19,7 @@ use crate::personality::Personality;
 use crate::planner::{Planner, PolicyEngine};
 use crate::skills::registry::{SkillExecutor, SkillRegistry};
 use crate::workflows::engine::WorkflowEngine;
+use crate::workflows::enforcement::WorkflowEnforcer;
 use crate::agent::SafetyGate;
 
 use std::sync::Mutex;
@@ -98,6 +99,9 @@ pub struct McpContext {
     /// TASK-V2-06). Stores understanding of how the world works.
     pub world_model: Arc<crate::world_model::WorldModel>,
 
+    /// Workflow enforcement engine (Architecture §22 workflow gate).
+    pub enforcer: Arc<WorkflowEnforcer>,
+
     /// Server info
     pub server_info: McpServerInfo,
 
@@ -128,6 +132,7 @@ impl McpContext {
         personality: Arc<Mutex<Personality>>,
         safety_gate: Arc<SafetyGate>,
         world_model: Arc<crate::world_model::WorldModel>,
+        enforcer: Arc<WorkflowEnforcer>,
     ) -> Self {
         let skill_executor = Arc::new(SkillExecutor::new(skills.clone()));
         Self {
@@ -153,6 +158,7 @@ impl McpContext {
             personality,
             safety_gate,
             world_model,
+            enforcer,
             server_info: McpServerInfo {
                 name: env!("CARGO_PKG_NAME").to_string(),
                 version: env!("CARGO_PKG_VERSION").to_string(),

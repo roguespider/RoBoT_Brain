@@ -24,31 +24,6 @@ pub const SKIP_MEMORY_READ: &[&str] = &[
 ];
 
 impl WorkflowEngine {
-    /// Create a new workflow engine
-    pub fn new(metrics: Arc<MetricsCollector>) -> Self {
-        Self {
-            metrics,
-            workflows: Arc::new(RwLock::new(HashMap::new())),
-            executing: Arc::new(RwLock::new(HashSet::new())),
-            database: None,
-            coordinator: None,
-        }
-    }
-
-    /// Create a new workflow engine with database access
-    pub fn with_database(
-        metrics: Arc<MetricsCollector>,
-        database: Arc<crate::database::sqlite::SqliteDatabase>,
-    ) -> Self {
-        Self {
-            metrics,
-            workflows: Arc::new(RwLock::new(HashMap::new())),
-            executing: Arc::new(RwLock::new(HashSet::new())),
-            database: Some(database),
-            coordinator: None,
-        }
-    }
-
     /// Create a new workflow engine with database and coordinator
     pub fn with_database_and_coordinator(
         metrics: Arc<MetricsCollector>,

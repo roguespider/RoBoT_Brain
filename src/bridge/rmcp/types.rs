@@ -35,10 +35,10 @@ pub struct McpServerHandler {
 impl McpServerHandler {
     pub fn new(context: Arc<McpContext>, name: String, version: String) -> Self {
         Self {
-            context,
+            context: context.clone(),
             name,
             version,
-            enforcer: Arc::new(WorkflowEnforcer::new()),
+            enforcer: context.enforcer.clone(),
             session_counter: Arc::new(AtomicU64::new(1)),
             session_id: "default".to_string(),
             handlers: ToolHandlerCollection::new(),
@@ -82,6 +82,31 @@ impl McpServerHandler {
 
     pub async fn record_tool_execution(&self, tool_name: &str, query: Option<String>) {
         self.enforcer.record_tool_execution(&self.session_id, tool_name, query).await;
+    }
+
+    /// Record explicit memory search milestone (Architecture §22 workflow gate)
+    pub async fn record_memory_searched(&self, query: Option<String>) {
+        self.enforcer.record_memory_searched(&self.session_id, query).await;
+    }
+
+    /// Record explicit patterns-reviewed milestone
+    pub async fn record_patterns_reviewed(&self) {
+        self.enforcer.record_patterns_reviewed(&self.session_id).await;
+    }
+
+    /// Get the current session's enforcement state for debugging/admin
+    pub async fn get_session_state(&self) -> Option<crate::workflows::enforcement::SessionState> {
+        self.enforcer.get_session_state(&self.session_id).await
+    }
+
+    /// Clean up expired enforcement sessions and return how many were removed
+    pub async fn cleanup_expired_sessions(&self) -> usize {
+        self.enforcer.cleanup_expired_sessions().await
+    }
+
+    /// Update the workflow purpose for the current session
+    pub async fn update_workflow_purpose(&self, purpose: String) {
+        self.enforcer.update_workflow_purpose(&self.session_id, purpose).await;
     }
 
     /// Emit an `ExperienceRecorded` event for a tool execution outcome so the
