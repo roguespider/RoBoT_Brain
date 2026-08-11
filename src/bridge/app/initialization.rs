@@ -172,21 +172,6 @@ impl App {
         skills_registry.load_defaults().await;
         tracing::info!("Skills registry initialized with default skills");
 
-        // Run the hypothesis graph self-check to exercise graph query/algorithm
-        // API (GraphBuilder, find_path, find_supporters, topological_sort,
-        // strongly_connected_components, stats, remove_node, edge constructors)
-        // so those code paths remain live. Per §9.
-        let graph_checks = crate::experience::hypothesis::support::graph::self_check::run();
-        tracing::info!("Hypothesis graph self-check completed ({} checks passed)", graph_checks);
-
-        // Run the hypothesis services self-check to exercise the service-layer
-        // API (generator generate/generate_from_pattern, matcher
-        // match_text/match_experience, analytics analyze/stability_score,
-        // validator check_conflict, statistics reset) so those code paths
-        // remain live. Per §9.
-        let service_checks = crate::experience::hypothesis::services::self_check::run();
-        tracing::info!("Hypothesis services self-check completed ({} checks passed)", service_checks);
-
         // Personality system is now exercised at runtime by the personality
         // MCP tools (get_personality, set_personality_traits, apply_preset,
         // get_personality_decision, format_response) — no self_check needed.
@@ -499,11 +484,6 @@ impl App {
             );
         }
 
-        // Run the policy engine self-check to exercise the evaluation API
-        // (PolicyContext, evaluate, PolicyResult) and the named-policy
-        // container. Per Architecture §4.03.5.
-        let policy_ok = crate::planner::self_check::run_policy(&policy_engine).await;
-        tracing::info!("Policy self-check completed (ok={})", policy_ok);
 
         // Wire personality creativity into planner for decision-making
         let shared_personality_clone = shared_personality.clone();
@@ -518,12 +498,6 @@ impl App {
         });
         let planner = Arc::new(planner);
 
-        // Run planner self-check to exercise the advanced planning API
-        // (informed plans, action selection, replanning, retry, adaptation,
-        // failure analysis, cleanup, policy management) so those code paths
-        // remain live. Per Architecture §4.03.5, §10, §5.7.
-        let planner_checks = crate::planner::self_check::run(&planner).await;
-        tracing::info!("Planner self-check completed ({} checks passed)", planner_checks);
 
         // Create workflow engine with database access and coordinator for event integration
         // This ensures workflow experiences flow to WorkerManager and EventSubscriber
@@ -728,30 +702,12 @@ impl App {
         );
 
         // Learning subsystem self-check (Architecture §9 - Learning Pipeline)
-        let learning_summary = crate::learning::self_check::run_self_check().await;
-        tracing::info!("{}", learning_summary);
 
         // Metrics subsystem self-check
         let metrics_summary = crate::experience::metrics::run_metrics_self_check().await;
         tracing::info!("{}", metrics_summary);
 
-        // Knowledge subsystem self-check
-        let knowledge_summary = crate::knowledge::self_check::run_knowledge_self_check().await;
-        tracing::info!("{}", knowledge_summary);
 
-        // Reflection subsystem self-check
-        let reflection_summary = crate::experience::reflection::self_check::run_reflection_self_check().await;
-        tracing::info!("{}", reflection_summary);
-
-        // Hypothesis subsystem self-check
-        let hypothesis_summary = crate::experience::hypothesis::self_check::run_hypothesis_self_check().await;
-        tracing::info!("{}", hypothesis_summary);
-
-        // Experience integration self-check (exercises pipelines, coordinator
-        // helpers, repository, scorer, scheduler, reputation, observer, and
-        // recorder code paths so they remain live rather than dead code).
-        let experience_summary = crate::experience::self_check::run_experience_self_check().await;
-        tracing::info!("{}", experience_summary);
 
         // Log subsystem health for engines held by App that are otherwise
         // only accessed during construction (Architecture: observability).

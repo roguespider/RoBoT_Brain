@@ -10,14 +10,17 @@ use uuid::Uuid;
 
 use crate::experience::metrics::MetricsCollector;
 
+#[cfg(test)]
 use super::actions::{score_action, select_best_scored};
+#[cfg(test)]
 use super::replanning::{
     analyze_plan_failure, carry_forward_completed_steps, collect_completed_step_ids,
     create_replan, estimate_problem_complexity, reset_failed_steps,
 };
+use super::types::{Plan, PlanStatus, PlanStep, StepStatus};
+#[cfg(test)]
 use super::types::{
-    ActionCandidate, Plan, PlanFailureAnalysis, PlanStatus, PlanStep, PlannerPolicy,
-    PlannerStats, ReplanReason, StepStatus,
+    ActionCandidate, PlanFailureAnalysis, PlannerStats, ReplanReason,
 };
 
 /// Core planning engine
@@ -27,6 +30,7 @@ use super::types::{
 pub struct Planner {
     metrics: Arc<MetricsCollector>,
     active_plans: Arc<RwLock<HashMap<String, Plan>>>,
+    #[cfg(test)]
     policy: Arc<tokio::sync::RwLock<PlannerPolicy>>,
     creativity_check: Option<Arc<dyn Fn(f32) -> bool + Send + Sync>>,
 }
@@ -37,6 +41,7 @@ impl Planner {
         Self {
             metrics,
             active_plans: Arc::new(RwLock::new(HashMap::new())),
+            #[cfg(test)]
             policy: Arc::new(tokio::sync::RwLock::new(PlannerPolicy::default())),
             creativity_check: None,
         }
@@ -52,6 +57,7 @@ impl Planner {
     /// Check if a creative approach should be used for replanning.
     /// Returns true when the personality system determines creativity is warranted
     /// given the problem complexity.
+    #[cfg(test)]
     fn should_use_creativity(&self, problem_complexity: f32) -> bool {
         self.creativity_check
             .as_ref()
@@ -60,12 +66,14 @@ impl Planner {
     }
 
     /// Update planning policy
+    #[cfg(test)]
     pub async fn update_policy(&self, policy: PlannerPolicy) {
         let mut current = self.policy.write().await;
         *current = policy;
     }
 
     /// Get current planning policy
+    #[cfg(test)]
     pub async fn get_policy(&self) -> PlannerPolicy {
         self.policy.read().await.clone()
     }
@@ -252,6 +260,7 @@ impl Planner {
     ///
     /// Per Architecture §2.8:
     /// "Planning depends on the accumulated knowledge of the entire system"
+    #[cfg(test)]
     pub async fn create_informed_plan(
         &self,
         goal: impl Into<String>,
@@ -280,6 +289,7 @@ impl Planner {
     }
 
     /// Calculate confidence for a plan based on supporting knowledge and experiences
+    #[cfg(test)]
     async fn calculate_plan_confidence(&self, plan: &Plan) -> f32 {
         let policy = self.policy.read().await;
 
@@ -329,6 +339,7 @@ impl Planner {
     }
 
     /// Add a step informed by knowledge and experiences
+    #[cfg(test)]
     pub async fn add_informed_step(
         &self,
         plan_id: &str,
@@ -441,6 +452,7 @@ impl Planner {
     }
 
     /// List plans by status
+    #[cfg(test)]
     pub async fn list_plans_by_status(&self, status: PlanStatus) -> Vec<Plan> {
         let plans = self.active_plans.read().await;
         plans
@@ -460,6 +472,7 @@ impl Planner {
     }
 
     /// Clean up completed/failed plans older than a duration
+    #[cfg(test)]
     pub async fn cleanup_old_plans(&self, max_age: chrono::Duration) -> Result<usize> {
         let cutoff = chrono::Utc::now() - max_age;
         let mut plans = self.active_plans.write().await;
@@ -480,6 +493,7 @@ impl Planner {
     ///
     /// Per Architecture §5.7:
     /// "Action Selection"
+    #[cfg(test)]
     pub async fn select_best_action(
         &self,
         actions: Vec<ActionCandidate>,
@@ -502,6 +516,7 @@ impl Planner {
     }
 
     /// Get plan statistics
+    #[cfg(test)]
     pub async fn get_stats(&self) -> PlannerStats {
         let plans = self.active_plans.read().await;
 
@@ -543,6 +558,7 @@ impl Planner {
     /// - New knowledge becomes available
     /// - Context changes significantly
     /// - A better approach is discovered
+    #[cfg(test)]
     pub async fn replan(&self, plan_id: &str, reason: ReplanReason) -> Result<Option<Plan>> {
         let plans = self.active_plans.read().await;
 
@@ -603,6 +619,7 @@ impl Planner {
     /// Retry failed steps in a plan
     ///
     /// Per Architecture: After a step fails, retry with different approach
+    #[cfg(test)]
     pub async fn retry_failed_steps(&self, plan_id: &str) -> Result<usize> {
         let mut plans = self.active_plans.write().await;
 
@@ -625,6 +642,7 @@ impl Planner {
     /// Adapt a plan based on new knowledge or experience
     ///
     /// Per Architecture: Plans should adapt when new information becomes available
+    #[cfg(test)]
     pub async fn adapt_plan(
         &self,
         plan_id: &str,
@@ -666,6 +684,7 @@ impl Planner {
     }
 
     /// Analyze a failed plan to understand what went wrong
+    #[cfg(test)]
     pub async fn analyze_failure(&self, plan_id: &str) -> Result<PlanFailureAnalysis> {
         let plans = self.active_plans.read().await;
 
@@ -680,6 +699,7 @@ impl Planner {
     }
 }
 
+#[cfg(test)]
 impl Default for Planner {
     fn default() -> Self {
         Self {

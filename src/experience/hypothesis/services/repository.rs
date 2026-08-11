@@ -18,10 +18,13 @@
 //! - distributed storage
 //! - file persistence
 
+#[cfg(test)]
 use std::collections::HashMap;
 
+#[cfg(test)]
 use anyhow::Result;
 
+#[cfg(test)]
 use crate::experience::hypothesis::core::hypothesis::{
     Hypothesis,
     HypothesisId,
@@ -32,11 +35,13 @@ use crate::experience::hypothesis::core::hypothesis::{
 /// REPOSITORY
 /// ============================================================================
 #[derive(Debug, Default)]
+#[cfg(test)]
 pub struct HypothesisRepository {
     hypotheses: HashMap<String, Hypothesis>,
 }
 
 
+#[cfg(test)]
 impl HypothesisRepository {
 
     /// Create a new repository.

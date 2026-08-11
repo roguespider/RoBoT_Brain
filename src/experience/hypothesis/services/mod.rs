@@ -17,10 +17,12 @@
 //! Core domain models live in the `core` module.
 //! Services operate on those models.
 
+#[cfg(test)]
 pub mod analytics;
 pub mod generator;
+#[cfg(test)]
 pub mod matcher;
 pub mod repository;
-pub mod self_check;
+#[cfg(test)]
 pub mod validator;
 

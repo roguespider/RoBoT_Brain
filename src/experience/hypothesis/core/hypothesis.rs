@@ -233,6 +233,7 @@ impl Hypothesis {
     }
 
     /// Add a tag.
+    #[cfg(test)]
     pub fn add_tag(&mut self, tag: impl Into<String>) {
         self.tags.push(tag.into());
     }
@@ -250,11 +251,13 @@ impl Hypothesis {
     }
 
     /// Total evidence count.
+    #[cfg(test)]
     pub fn evidence_count(&self) -> usize {
         self.supporting_evidence.len() + self.contradicting_evidence.len()
     }
 
     /// Whether this hypothesis has any evidence.
+    #[cfg(test)]
     pub fn has_evidence(&self) -> bool {
         self.evidence_count() > 0
     }

@@ -49,6 +49,7 @@ pub enum PolicyAction {
 
 /// Context for policy evaluation
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg(test)]
 pub struct PolicyContext {
     pub task_type: Option<String>,
     pub task_description: Option<String>,
@@ -102,6 +103,7 @@ impl PolicyEngine {
     }
 
     /// Evaluate context against all rules
+    #[cfg(test)]
     pub async fn evaluate(&self, context: &PolicyContext) -> PolicyResult {
         let rules = self.rules.read().await;
 
@@ -123,6 +125,7 @@ impl PolicyEngine {
     }
 
     /// Check if a condition matches the context
+    #[cfg(test)]
     async fn matches_condition(&self, condition: &PolicyCondition, context: &PolicyContext) -> bool {
         match condition {
             PolicyCondition::Always => true,
@@ -199,6 +202,7 @@ impl Default for PolicyEngine {
 
 /// Result of policy evaluation
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg(test)]
 pub enum PolicyResult {
     Decision {
         action: PolicyAction,
@@ -210,6 +214,7 @@ pub enum PolicyResult {
 
 /// Policy container with metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg(test)]
 pub struct Policy {
     pub id: String,
     pub name: String,
@@ -218,6 +223,7 @@ pub struct Policy {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
+#[cfg(test)]
 impl Policy {
     /// Create a new empty policy
     pub fn new(name: impl Into<String>) -> Self {

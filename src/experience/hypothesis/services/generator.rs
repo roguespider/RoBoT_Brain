@@ -12,6 +12,8 @@
 //! It only creates possible beliefs that can later be evaluated.
 
 use anyhow::Result;
+
+#[cfg(test)]
 use serde::{Deserialize, Serialize};
 
 use crate::experience::hypothesis::core::hypothesis::{Hypothesis, HypothesisCategory, HypothesisPriority};
@@ -23,14 +25,11 @@ use crate::experience::types::Experience;
 /// ============================================================================
 #[derive(Debug, Clone)]
 pub struct HypothesisGenerator {
-    /// Minimum confidence required before generating.
-    pub generation_threshold: f32,
 }
 
 impl HypothesisGenerator {
     pub fn new() -> Self {
         Self {
-            generation_threshold: 0.60,
         }
     }
 
@@ -65,6 +64,7 @@ impl HypothesisGenerator {
     /// Generate a hypothesis from repeated observations.
     ///
     /// Placeholder for future pattern detection.
+    #[cfg(test)]
     pub fn generate_from_pattern(&self, pattern: &str) -> Result<Option<Hypothesis>> {
         if pattern.trim().is_empty() {
             return Ok(None);
@@ -92,6 +92,7 @@ impl Default for HypothesisGenerator {
 /// GENERATION RESULT
 /// ============================================================================
 #[derive(Debug, Clone, Serialize, Deserialize)]
+#[cfg(test)]
 pub struct GenerationResult {
     pub generated: bool,
 

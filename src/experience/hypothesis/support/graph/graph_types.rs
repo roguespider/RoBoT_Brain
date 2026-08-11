@@ -50,11 +50,13 @@ pub struct NodeMetadata {
 }
 
 impl NodeMetadata {
+    #[cfg(test)]
     pub fn with_position(mut self, x: f32, y: f32) -> Self {
         self.position = Some((x, y));
         self
     }
 
+    #[cfg(test)]
     pub fn with_label(mut self, label: impl Into<String>) -> Self {
         self.labels.push(label.into());
         self
@@ -74,6 +76,7 @@ pub struct HypothesisEdge {
 }
 
 impl HypothesisEdge {
+    #[cfg(test)]
     pub fn supports(from: HypothesisId, to: HypothesisId) -> Self {
         Self {
             id: EdgeId::new(),
@@ -84,6 +87,7 @@ impl HypothesisEdge {
         }
     }
 
+    #[cfg(test)]
     pub fn contradicts(from: HypothesisId, to: HypothesisId) -> Self {
         Self {
             id: EdgeId::new(),
@@ -94,6 +98,7 @@ impl HypothesisEdge {
         }
     }
 
+    #[cfg(test)]
     pub fn depends_on(from: HypothesisId, to: HypothesisId) -> Self {
         Self {
             id: EdgeId::new(),
@@ -104,6 +109,7 @@ impl HypothesisEdge {
         }
     }
 
+    #[cfg(test)]
     pub fn related(from: HypothesisId, to: HypothesisId) -> Self {
         Self {
             id: EdgeId::new(),
@@ -150,14 +156,17 @@ pub enum HypothesisRelationship {
 }
 
 impl HypothesisRelationship {
+    #[cfg(test)]
     pub fn is_supporting(&self) -> bool {
         matches!(self, HypothesisRelationship::Supports)
     }
 
+    #[cfg(test)]
     pub fn is_contradicting(&self) -> bool {
         matches!(self, HypothesisRelationship::Contradicts)
     }
 
+    #[cfg(test)]
     pub fn inverse(&self) -> Self {
         match self {
             HypothesisRelationship::Supports => HypothesisRelationship::Contradicts,

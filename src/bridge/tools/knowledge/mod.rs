@@ -105,6 +105,48 @@ pub struct BumpKnowledgeVersionInput {
     pub initial_version: Option<String>,
 }
 
+/// Tool: Set knowledge status (activate, suspend, disprove)
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct SetKnowledgeStatusInput {
+    /// ID of the knowledge item
+    pub knowledge_id: String,
+    /// Action: activate, suspend, or disprove
+    pub action: String,
+}
+
+/// Tool: Manage knowledge dependencies
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct ManageKnowledgeDependencyInput {
+    /// ID of the knowledge item
+    pub knowledge_id: String,
+    /// Action: add, remove, get, or impact
+    pub action: String,
+    /// ID of the dependency target (for add/remove)
+    pub depends_on_id: Option<String>,
+    /// Dependency type for add: required, optional, conflict, or replaces
+    pub dependency_type: Option<String>,
+}
+
+/// Tool: Add a relation between two knowledge items
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct AddKnowledgeRelationInput {
+    /// ID of the source knowledge item
+    pub knowledge_id: String,
+    /// ID of the target knowledge item
+    pub related_id: String,
+    /// Relation type: related, supports, contradicts, specializes, generalizes, prerequisite
+    pub relation_type: Option<String>,
+    /// Confidence in the relation (0.0-1.0)
+    pub confidence: Option<f32>,
+}
+
+/// Tool: Search knowledge by tag or get items needing review
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema, Default)]
+pub struct SearchKnowledgeByTagInput {
+    /// Tag to search for (if omitted, returns items needing review)
+    pub tag: Option<String>,
+}
+
 /// Knowledge tool definitions
 pub mod definitions {
     pub const ADD_KNOWLEDGE: &str = "add_knowledge";
@@ -117,6 +159,10 @@ pub mod definitions {
     pub const GET_RELATED_KNOWLEDGE: &str = "get_related_knowledge";
     pub const VALIDATE_KNOWLEDGE_DEPENDENCIES: &str = "validate_knowledge_dependencies";
     pub const BUMP_KNOWLEDGE_VERSION: &str = "bump_knowledge_version";
+    pub const SET_KNOWLEDGE_STATUS: &str = "set_knowledge_status";
+    pub const MANAGE_KNOWLEDGE_DEPENDENCY: &str = "manage_knowledge_dependency";
+    pub const ADD_KNOWLEDGE_RELATION: &str = "add_knowledge_relation";
+    pub const SEARCH_KNOWLEDGE_BY_TAG: &str = "search_knowledge_by_tag";
 
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         vec![
@@ -276,6 +322,56 @@ pub mod definitions {
                         "initial_version": { "type": "string", "description": "Initial version if version tracking not yet initialized (e.g. 1.0.0)" }
                     },
                     "required": ["knowledge_id"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: SET_KNOWLEDGE_STATUS.to_string(),
+                description: "Set knowledge status: activate, suspend, or disprove".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "knowledge_id": { "type": "string", "description": "ID of the knowledge item" },
+                        "action": { "type": "string", "enum": ["activate", "suspend", "disprove"], "description": "Status action" }
+                    },
+                    "required": ["knowledge_id", "action"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: MANAGE_KNOWLEDGE_DEPENDENCY.to_string(),
+                description: "Manage knowledge dependencies: add, remove, get dependencies, or get impact set".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "knowledge_id": { "type": "string", "description": "ID of the knowledge item" },
+                        "action": { "type": "string", "enum": ["add", "remove", "get", "impact"], "description": "Dependency action" },
+                        "depends_on_id": { "type": "string", "description": "ID of the dependency target (for add/remove)" },
+                        "dependency_type": { "type": "string", "enum": ["required", "optional", "conflict", "replaces"], "description": "Dependency type (for add)" }
+                    },
+                    "required": ["knowledge_id", "action"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: ADD_KNOWLEDGE_RELATION.to_string(),
+                description: "Add a relation between two knowledge items".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "knowledge_id": { "type": "string", "description": "ID of the source knowledge item" },
+                        "related_id": { "type": "string", "description": "ID of the target knowledge item" },
+                        "relation_type": { "type": "string", "enum": ["related", "supports", "contradicts", "specializes", "generalizes", "prerequisite"], "description": "Relation type (default: related)" },
+                        "confidence": { "type": "number", "description": "Confidence in the relation (0.0-1.0, default: 0.5)" }
+                    },
+                    "required": ["knowledge_id", "related_id"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: SEARCH_KNOWLEDGE_BY_TAG.to_string(),
+                description: "Search knowledge by tag or get items needing review".to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "tag": { "type": "string", "description": "Tag to search for (if omitted, returns items needing review)" }
+                    }
                 }),
             },
         ]
@@ -600,5 +696,166 @@ pub async fn execute_bump_knowledge_version(
         "status": if ok { "bumped" } else { "failed" },
         "knowledge_id": id.to_string(),
         "current_version": new_version.map(|v| v.current_version).unwrap_or_default(),
+    }))
+}
+
+/// Execute set knowledge status tool
+pub async fn execute_set_knowledge_status(
+    input: SetKnowledgeStatusInput,
+    knowledge: &Arc<KnowledgeStore>,
+) -> ToolOutput {
+    let id = match Uuid::parse_str(&input.knowledge_id) {
+        Ok(u) => u,
+        Err(e) => return ToolOutput::error(format!("Invalid knowledge_id: {e}")),
+    };
+    let ok = match input.action.as_str() {
+        "activate" => knowledge.activate(id).await,
+        "suspend" => knowledge.suspend(id).await,
+        "disprove" => knowledge.disprove(id).await,
+        other => return ToolOutput::error(format!("Unknown action: {other}")),
+    };
+    ToolOutput::success(serde_json::json!({
+        "status": if ok { "ok" } else { "failed" },
+        "knowledge_id": id.to_string(),
+        "action": input.action,
+    }))
+}
+
+/// Execute manage knowledge dependency tool
+pub async fn execute_manage_knowledge_dependency(
+    input: ManageKnowledgeDependencyInput,
+    knowledge: &Arc<KnowledgeStore>,
+) -> ToolOutput {
+    let id = match Uuid::parse_str(&input.knowledge_id) {
+        Ok(u) => u,
+        Err(e) => return ToolOutput::error(format!("Invalid knowledge_id: {e}")),
+    };
+    match input.action.as_str() {
+        "add" => {
+            let dep_id_str = match input.depends_on_id.as_deref() {
+                Some(s) => s,
+                None => return ToolOutput::error("depends_on_id is required for add action".to_string()),
+            };
+            let dep_id = match Uuid::parse_str(dep_id_str) {
+                Ok(u) => u,
+                Err(e) => return ToolOutput::error(format!("Invalid depends_on_id: {e}")),
+            };
+            let dep_type = match input.dependency_type.as_deref().unwrap_or("required") {
+                "optional" => crate::knowledge::types::DependencyType::Optional,
+                "conflict" => crate::knowledge::types::DependencyType::Conflict,
+                "replaces" => crate::knowledge::types::DependencyType::Replaces,
+                _ => crate::knowledge::types::DependencyType::Required,
+            };
+            let ok = knowledge.add_dependency(id, dep_id, dep_type).await;
+            ToolOutput::success(serde_json::json!({
+                "status": if ok { "added" } else { "failed" },
+                "knowledge_id": id.to_string(),
+                "depends_on_id": input.depends_on_id,
+            }))
+        }
+        "remove" => {
+            let dep_id_str = match input.depends_on_id.as_deref() {
+                Some(s) => s,
+                None => return ToolOutput::error("depends_on_id is required for remove action".to_string()),
+            };
+            let dep_id = match Uuid::parse_str(dep_id_str) {
+                Ok(u) => u,
+                Err(e) => return ToolOutput::error(format!("Invalid depends_on_id: {e}")),
+            };
+            let ok = knowledge.remove_dependency(&id, &dep_id).await;
+            ToolOutput::success(serde_json::json!({
+                "status": if ok { "removed" } else { "failed" },
+                "knowledge_id": id.to_string(),
+                "depends_on_id": input.depends_on_id,
+            }))
+        }
+        "get" => {
+            let deps = knowledge.get_dependencies(&id).await;
+            let deps_json: Vec<serde_json::Value> = deps
+                .iter()
+                .map(|d| serde_json::json!({
+                    "depends_on_id": d.depends_on_id.to_string(),
+                    "dependency_type": format!("{:?}", d.dependency_type),
+                    "version_constraint": d.version_constraint,
+                }))
+                .collect();
+            ToolOutput::success(serde_json::json!({
+                "knowledge_id": id.to_string(),
+                "dependencies": deps_json,
+                "count": deps_json.len(),
+            }))
+        }
+        "impact" => {
+            let impact = knowledge.get_impact_set(&id).await;
+            let impact_ids: Vec<String> = impact.iter().map(|u| u.to_string()).collect();
+            ToolOutput::success(serde_json::json!({
+                "knowledge_id": id.to_string(),
+                "impact_set": impact_ids,
+                "count": impact_ids.len(),
+            }))
+        }
+        other => ToolOutput::error(format!("Unknown action: {other}")),
+    }
+}
+
+/// Execute add knowledge relation tool
+pub async fn execute_add_knowledge_relation(
+    input: AddKnowledgeRelationInput,
+    knowledge: &Arc<KnowledgeStore>,
+) -> ToolOutput {
+    let id = match Uuid::parse_str(&input.knowledge_id) {
+        Ok(u) => u,
+        Err(e) => return ToolOutput::error(format!("Invalid knowledge_id: {e}")),
+    };
+    let related_id = match Uuid::parse_str(&input.related_id) {
+        Ok(u) => u,
+        Err(e) => return ToolOutput::error(format!("Invalid related_id: {e}")),
+    };
+    let relation_type = match input.relation_type.as_deref().unwrap_or("related") {
+        "supports" => crate::knowledge::types::RelationType::Supports,
+        "contradicts" => crate::knowledge::types::RelationType::Contradicts,
+        "specializes" => crate::knowledge::types::RelationType::Specializes,
+        "generalizes" => crate::knowledge::types::RelationType::Generalizes,
+        "prerequisite" => crate::knowledge::types::RelationType::Prerequisite,
+        _ => crate::knowledge::types::RelationType::Related,
+    };
+    let confidence = input.confidence.unwrap_or(0.5);
+    let ok = knowledge.add_relation(id, related_id, relation_type, confidence).await;
+    ToolOutput::success(serde_json::json!({
+        "status": if ok { "added" } else { "failed" },
+        "knowledge_id": id.to_string(),
+        "related_id": related_id.to_string(),
+        "relation_type": input.relation_type.unwrap_or_else(|| "related".to_string()),
+        "confidence": confidence,
+    }))
+}
+
+/// Execute search knowledge by tag tool
+pub async fn execute_search_knowledge_by_tag(
+    input: SearchKnowledgeByTagInput,
+    knowledge: &Arc<KnowledgeStore>,
+) -> ToolOutput {
+    let items = match input.tag.as_deref() {
+        Some(tag) => knowledge.get_by_tag(tag).await,
+        None => knowledge.get_needing_review().await,
+    };
+    let items_json: Vec<serde_json::Value> = items
+        .iter()
+        .map(|item| {
+            serde_json::json!({
+                "id": item.id.to_string(),
+                "statement": item.statement,
+                "type": format!("{:?}", item.knowledge_type),
+                "confidence": item.overall_confidence(),
+                "status": format!("{:?}", item.status),
+                "tags": item.tags,
+            })
+        })
+        .collect();
+    let mode = if input.tag.is_some() { "by_tag" } else { "needing_review" };
+    ToolOutput::success(serde_json::json!({
+        "mode": mode,
+        "items": items_json,
+        "count": items_json.len(),
     }))
 }

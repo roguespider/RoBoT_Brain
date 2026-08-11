@@ -18,7 +18,6 @@
 pub mod core;
 pub mod services;
 pub mod support;
-pub mod self_check;
 
 pub use core::evaluator::HypothesisEvaluator;
 
