@@ -1,5 +1,9 @@
 # Appendix C. Event Definitions
 
+**Architecture Version:** v0.0.2.1  
+**Document Role:** Supporting architectural material  
+**v0.0.2.1 Focus:** event identity, versioning, payload contracts, lifecycle, correlation and compatibility  
+
 ## Purpose
 
 This appendix defines the event architecture used throughout RoBoT.
@@ -1071,3 +1075,24 @@ Events become the nervous system of the RoBoT architecture: a structured record 
 
 |==========|==========|==========|==========|==========|==========||==========|==========|==========|==========|==========|==========|
 
+## Final v0.0.2.1 Integration Contract
+
+This appendix is supporting material for the final v0.0.2.1 architecture. It cannot silently redefine a normative chapter.
+
+It must preserve:
+
+- explicit ownership
+- lifecycle and retention semantics
+- identity and correlation
+- provenance
+- confidence and uncertainty
+- failure visibility
+- model/runtime independence
+- controlled external effects
+- observability
+- versioned evolution
+- human control
+
+**Supporting focus:** event identity, causation/correlation, payload contracts, versions, reliability and replay.
+
+When an appendix conflicts with a normative chapter, the conflict is a documentation defect that must be resolved. The appendix must be updated rather than allowing two competing definitions to survive.

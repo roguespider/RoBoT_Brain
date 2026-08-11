@@ -1,5 +1,9 @@
 # Appendix D. Design Decisions
 
+**Architecture Version:** v0.0.2.1  
+**Document Role:** Supporting architectural material  
+**v0.0.2.1 Focus:** explicit architectural decisions, rationale, consequences, status and supersession  
+
 ## Purpose
 
 This appendix documents the major architectural decisions that define RoBoT.
@@ -727,3 +731,24 @@ The foundation should remain.
 
 |==========|==========|==========|==========|==========|==========||==========|==========|==========|==========|==========|==========|
 
+## Final v0.0.2.1 Integration Contract
+
+This appendix is supporting material for the final v0.0.2.1 architecture. It cannot silently redefine a normative chapter.
+
+It must preserve:
+
+- explicit ownership
+- lifecycle and retention semantics
+- identity and correlation
+- provenance
+- confidence and uncertainty
+- failure visibility
+- model/runtime independence
+- controlled external effects
+- observability
+- versioned evolution
+- human control
+
+**Supporting focus:** architectural decisions, status, rationale, consequences, supersession and change control.
+
+When an appendix conflicts with a normative chapter, the conflict is a documentation defect that must be resolved. The appendix must be updated rather than allowing two competing definitions to survive.

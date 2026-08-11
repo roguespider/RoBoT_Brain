@@ -1,5 +1,9 @@
 # Appendix E. Development Guidelines
 
+**Architecture Version:** v0.0.2.1  
+**Document Role:** Supporting architectural material  
+**v0.0.2.1 Focus:** implementation discipline, testing, review, AI contribution controls and architecture preservation  
+
 ## Purpose
 
 This appendix defines the development standards and engineering practices for building, maintaining, and expanding RoBoT.
@@ -2503,7 +2507,7 @@ Versioning and Migration Strategy How RoBoT evolves without breaking memory
 
 |==========|==========|==========|==========|==========|==========||==========|==========|==========|==========|==========|==========|
 
-\# AI Agent Instructions
+# AI Agent Instructions
 
 This document is the authoritative architecture for this repository.
 
@@ -2528,10 +2532,10 @@ Before making any changes:
 7\. Keep the architecture internally consistent.
 8\. When finished, summarize:
 
-&#x20; - files modified
-&#x20; - architectural improvements
-&#x20; - remaining work
-&#x20; - assumptions made
+  - files modified
+  - architectural improvements
+  - remaining work
+  - assumptions made
 
 now summarize ARCHITECTURE.md in your own words.
 
@@ -2680,3 +2684,25 @@ Optimize for completing the entire project, not minimizing code changes.
 Think like the project's CTO, not a code assistant.
 
 |==========|==========|==========|==========|==========|==========||==========|==========|==========|==========|==========|==========|
+
+## Final v0.0.2.1 Integration Contract
+
+This appendix is supporting material for the final v0.0.2.1 architecture. It cannot silently redefine a normative chapter.
+
+It must preserve:
+
+- explicit ownership
+- lifecycle and retention semantics
+- identity and correlation
+- provenance
+- confidence and uncertainty
+- failure visibility
+- model/runtime independence
+- controlled external effects
+- observability
+- versioned evolution
+- human control
+
+**Supporting focus:** implementation discipline, Rust boundaries, tests, review, AI contributors and architecture preservation.
+
+When an appendix conflicts with a normative chapter, the conflict is a documentation defect that must be resolved. The appendix must be updated rather than allowing two competing definitions to survive.
