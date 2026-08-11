@@ -21,8 +21,6 @@ pub mod types;
 // Re-export types for convenience
 pub use context::ExecutionContext;
 pub use executor::SkillExecutor;
-pub use metrics::ExecutionMetrics;
 pub use registry::SkillRegistry;
-pub use result::ExecutionResult;
 pub use skill::Skill;
-pub use types::{SkillCategory, SkillDiscoveryStats, SkillMetadata, SkillSource};
+pub use types::{SkillCategory, SkillMetadata, SkillSource};

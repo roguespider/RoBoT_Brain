@@ -578,48 +578,23 @@ pub async fn execute_execute_skill(
         exec_context = exec_context.with_time_limit(secs);
     }
 
-    // Execute skill based on category (simulated for now - real execution would be external)
-    let result = match skill.metadata.category {
-        SkillCategory::FileOperation => {
-            serde_json::json!({
-                "status": "executed",
-                "category": "file_operation",
-                "task": exec_context.task,
-                "output": "Simulated file operation execution"
-            })
-        }
-        SkillCategory::Search => {
-            serde_json::json!({
-                "status": "executed",
-                "category": "search",
-                "task": exec_context.task,
-                "output": "Simulated search execution"
-            })
-        }
-        SkillCategory::CodeAnalysis => {
-            serde_json::json!({
-                "status": "executed",
-                "category": "code_analysis",
-                "task": exec_context.task,
-                "output": "Simulated code analysis execution"
-            })
-        }
-        _ => {
-            serde_json::json!({
-                "status": "executed",
-                "category": skill.metadata.category.as_str(),
-                "task": exec_context.task,
-                "output": "Skill execution simulated"
-            })
-        }
-    };
+    // Delegate execution to SkillExecutor (Architecture §15) so the
+    // executor, ExecutionResult, and ExecutionMetrics code paths are live
+    // rather than dead code. The executor records usage + metrics and
+    // returns a structured ExecutionResult.
+    let exec_result = context
+        .skill_executor
+        .execute_skill(&input.skill_id, exec_context)
+        .await?;
 
-    // Record successful execution
-    context
-        .skills
-        .record_usage(&input.skill_id, true)
-        .await
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
+    let result = serde_json::json!({
+        "status": if exec_result.success { "executed" } else { "failed" },
+        "category": skill.metadata.category.as_str(),
+        "success": exec_result.success,
+        "output": exec_result.output,
+        "error": exec_result.error,
+        "duration_ms": exec_result.duration_ms,
+    });
 
     let updated_skill = context.skills.get(&input.skill_id).await
         .ok_or_else(|| anyhow::anyhow!("Skill {} not found after execution", input.skill_id))?;
