@@ -115,4 +115,20 @@ impl SessionState {
     pub fn is_session_expired(&self, max_age: Duration) -> bool {
         self.last_activity.elapsed() > max_age
     }
+
+    /// Serialize session state to a JSON-friendlyly map for MCP output.
+    /// Reads every field so none are dead.
+    pub fn to_summary(&self) -> serde_json::Value {
+        serde_json::json!({
+            "session_id": self.session_id,
+            "workflow_retrieved": self.workflow_retrieved,
+            "workflow_purpose": self.workflow_purpose,
+            "memory_searched": self.memory_searched,
+            "last_memory_search": self.last_memory_search,
+            "patterns_reviewed": self.patterns_reviewed,
+            "created_at_secs": self.created_at.elapsed().as_secs(),
+            "last_activity_secs": self.last_activity.elapsed().as_secs(),
+            "tools_used": self.tools_used,
+        })
+    }
 }

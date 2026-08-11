@@ -89,6 +89,8 @@ pub mod definitions {
     pub const CANCEL_WORKFLOW: &str = "cancel_workflow";
     pub const DELETE_WORKFLOW: &str = "delete_workflow";
     pub const SET_WORKFLOW_VARIABLE: &str = "set_workflow_variable";
+    pub const GET_SESSION_STATE: &str = "get_session_state";
+    pub const CLEANUP_SESSIONS: &str = "cleanup_sessions";
 
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         vec![
@@ -258,6 +260,24 @@ pub mod definitions {
                         }
                     },
                     "required": ["workflow_id", "key", "value"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: GET_SESSION_STATE.to_string(),
+                description: "Get the current workflow enforcement session state (debugging/admin)"
+                    .to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {}
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: CLEANUP_SESSIONS.to_string(),
+                description: "Clean up expired workflow enforcement sessions and return the count removed"
+                    .to_string(),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {}
                 }),
             },
         ]
@@ -525,4 +545,28 @@ pub async fn execute_set_workflow_variable(
         })),
         Err(e) => ToolOutput::error(format!("Failed to set variable: {}", e)),
     }
+}
+
+/// Execute get session state tool
+pub async fn execute_get_session_state(
+    enforcer: &Arc<crate::workflows::enforcement::WorkflowEnforcer>,
+) -> ToolOutput {
+    match enforcer.get_session_state("default").await {
+        Some(state) => ToolOutput::success(state.to_summary()),
+        None => ToolOutput::success(serde_json::json!({
+            "session_id": "default",
+            "exists": false,
+        })),
+    }
+}
+
+/// Execute cleanup sessions tool
+pub async fn execute_cleanup_sessions(
+    enforcer: &Arc<crate::workflows::enforcement::WorkflowEnforcer>,
+) -> ToolOutput {
+    let removed = enforcer.cleanup_expired_sessions().await;
+    ToolOutput::success(serde_json::json!({
+        "sessions_removed": removed,
+        "message": format!("Cleaned up {removed} expired session(s)"),
+    }))
 }

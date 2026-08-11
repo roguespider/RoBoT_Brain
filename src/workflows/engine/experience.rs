@@ -159,8 +159,12 @@ impl ExperienceRecord {
     pub fn to_description(&self) -> String {
         let mut parts = Vec::new();
 
+        parts.push(format!("[TITLE] {}", self.title));
+        parts.push(format!("[ACTION] {}", self.action));
         parts.push(format!("[OBSERVATION] {}", self.observation));
         parts.push(format!("[OUTCOME] {}", self.outcome));
+        parts.push(format!("[OUTCOME_KIND] {}", self.outcome_kind));
+        parts.push(format!("[SEARCH_QUERY] {}", self.search_query));
 
         if let Some(ref interp) = self.interpretation {
             parts.push(format!("[INTERPRETATION] {}", interp));

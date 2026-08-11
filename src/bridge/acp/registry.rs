@@ -42,6 +42,7 @@ impl AcpRegistry {
     }
 
     /// Get all agents of a specific type
+    #[cfg(test)]
     pub fn get_by_type(&self, agent_type: &str) -> Result<Vec<Arc<dyn AcpAgent>>> {
         let agents = self.agents.read().map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         Ok(agents

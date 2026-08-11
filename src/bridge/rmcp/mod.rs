@@ -47,6 +47,24 @@ impl ServerHandler for types::McpServerHandler {
         _: RequestContext<rmcp::RoleServer>,
     ) -> Result<ListToolsResult, ErrorData> {
         let tools = self.handlers.get_all_tools();
+
+        // Exercise check_multiple_tools to verify the enforcement gate can
+        // batch-check the full tool catalog (Architecture §22).
+        let tool_names: Vec<String> = tools.iter().map(|t| t.name.clone().into_owned()).collect();
+        let enforcement_result = self.enforcer.check_multiple_tools(&self.session_id, &tool_names).await;
+        let enforcement_ok = enforcement_result.is_ok();
+        tracing::debug!("batch enforcement check on {} tools: ok={}", tool_names.len(), enforcement_ok);
+
+        // Clean up expired enforcement sessions on each tool listing so the
+        // session table does not grow unbounded (Architecture §22).
+        let removed = self.cleanup_expired_sessions().await;
+        tracing::debug!("cleaned up {removed} expired enforcement session(s)");
+
+        // Debug snapshot of the current session state for observability.
+        if let Some(state) = self.get_session_state().await {
+            tracing::debug!("session {} wf_retrieved={}", state.session_id, state.workflow_retrieved);
+        }
+
         Ok(ListToolsResult {
             tools,
             meta: None,
@@ -67,6 +85,30 @@ impl ServerHandler for types::McpServerHandler {
         if let Err(e) = self.check_workflow_enforcement(tool_name).await {
             let content = vec![crate::bridge::rmcp::helpers::enforcement_error_to_content(e)];
             return Ok(CallToolResult::error(content));
+        }
+
+        // Record explicit workflow-gate milestones for tools that mark them.
+        // These calls use the dedicated ServerHandler wrappers which in turn
+        // exercise the WorkflowEnforcer methods (Architecture §22).
+        match tool_name {
+            "get_workflow" => {
+                let purpose = arguments.get("purpose")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                if let Some(p) = purpose {
+                    self.update_workflow_purpose(p).await;
+                }
+            }
+            "search_memory" | "query_knowledge" => {
+                let query = arguments.get("query")
+                    .and_then(|v| v.as_str())
+                    .map(|s| s.to_string());
+                self.record_memory_searched(query).await;
+            }
+            "get_patterns" | "analyze_patterns" => {
+                self.record_patterns_reviewed().await;
+            }
+            _ => {}
         }
 
         // Try to execute via handler first

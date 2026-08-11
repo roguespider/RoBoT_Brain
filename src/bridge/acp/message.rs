@@ -41,6 +41,7 @@ impl AcpMessage {
     }
 
     /// Create a new message with custom TTL
+    #[cfg(test)]
     pub fn with_ttl(
         sender: AcpAgentId,
         receiver: AcpAgentId,
@@ -70,11 +71,13 @@ impl AcpMessage {
     }
 
     /// Check if message has expired
+    #[cfg(test)]
     pub fn is_expired(&self) -> bool {
         self.ttl == 0
     }
 
     /// Decrement TTL and return whether message is still valid
+    #[cfg(test)]
     pub fn decrement_ttl(&mut self) -> bool {
         if self.ttl > 0 {
             self.ttl -= 1;
@@ -83,6 +86,7 @@ impl AcpMessage {
     }
 
     /// Forward this message to a new receiver
+    #[cfg(test)]
     pub fn forward_to(&self, new_receiver: AcpAgentId) -> AcpMessage {
         let mut forwarded = Self::new(
             self.sender.clone(),
@@ -113,6 +117,7 @@ impl AcpAgentId {
     }
 
     /// Create a new agent ID with a random instance
+    #[cfg(test)]
     pub fn with_random_instance(agent_type: &str) -> Self {
         Self {
             agent_type: agent_type.to_string(),
@@ -126,6 +131,7 @@ impl AcpAgentId {
     }
 
     /// Get broadcast address for this agent type
+    #[cfg(test)]
     pub fn broadcast(agent_type: &str) -> Self {
         Self {
             agent_type: agent_type.to_string(),
@@ -134,6 +140,7 @@ impl AcpAgentId {
     }
 
     /// Check if this is a broadcast ID
+    #[cfg(test)]
     pub fn is_broadcast(&self) -> bool {
         self.instance_id == "*"
     }
@@ -183,6 +190,7 @@ impl AcpMessageType {
     }
 
     /// Check if this message type expects a reply
+    #[cfg(test)]
     pub fn expects_reply(&self) -> bool {
         matches!(self, Self::Request | Self::Query | Self::Subscribe)
     }

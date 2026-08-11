@@ -22,10 +22,6 @@ pub struct ExecutionMetrics {
 }
 
 impl ExecutionMetrics {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
     /// Record a successful execution
     pub fn record_success(&mut self, duration_ms: u64) {
         self.total_executions += 1;

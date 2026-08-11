@@ -139,6 +139,19 @@ impl ReflectionValidator {
             warnings.push("No tags specified - consider adding relevant tags".to_string());
         }
 
+        // Informational: high experience count
+        if reflection.experience_ids.len() >= 10 {
+            issues.push(ValidationIssue {
+                severity: IssueSeverity::Info,
+                code: "HIGH_EXPERIENCE_COUNT".to_string(),
+                message: format!(
+                    "Reflection references {} experiences - strong evidence base",
+                    reflection.experience_ids.len()
+                ),
+                field: None,
+            });
+        }
+
         ValidationResult {
             is_valid: !issues.iter().any(|i| i.severity == IssueSeverity::Error),
             issues,

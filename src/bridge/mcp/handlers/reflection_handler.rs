@@ -42,9 +42,6 @@ impl ReflectionToolsHandler {
         input: reflection::AnalyzePatternsInput,
     ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         let result = reflection::execute_analyze_patterns(input, &self.context.reflection).await;
-        self.context
-            .memory_event_bus
-            .emit_pattern_detected("reflection_analysis", Vec::new());
         result
     }
 
@@ -54,6 +51,30 @@ impl ReflectionToolsHandler {
         input: reflection::GetPatternsInput,
     ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         reflection::execute_get_patterns(input, &self.context.reflection).await
+    }
+
+    /// Validate a reflection
+    pub async fn execute_validate_reflection(
+        &self,
+        input: reflection::ValidateReflectionInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        reflection::execute_validate_reflection(input, &self.context.reflection).await
+    }
+
+    /// List reflections by status
+    pub async fn execute_list_reflections_by_status(
+        &self,
+        input: reflection::ListReflectionsByStatusInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        reflection::execute_list_reflections_by_status(input, &self.context.reflection).await
+    }
+
+    /// Update a reflection
+    pub async fn execute_update_reflection(
+        &self,
+        input: reflection::UpdateReflectionInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        reflection::execute_update_reflection(input, &self.context.reflection).await
     }
 }
 
@@ -68,6 +89,9 @@ impl ToolHandler for ReflectionToolsHandler {
             "create_reflection".to_string(),
             "analyze_patterns".to_string(),
             "get_patterns".to_string(),
+            "validate_reflection".to_string(),
+            "list_reflections_by_status".to_string(),
+            "update_reflection".to_string(),
         ]
     }
 
@@ -122,6 +146,42 @@ impl ToolHandler for ReflectionToolsHandler {
                     }
                 })),
             ).with_title("Get Patterns"),
+            rmcp::model::Tool::new(
+                "validate_reflection",
+                "Validate a reflection for quality and consistency",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "reflection_id": { "type": "string", "description": "ID of the reflection to validate" }
+                    },
+                    "required": ["reflection_id"]
+                })),
+            ).with_title("Validate Reflection"),
+            rmcp::model::Tool::new(
+                "list_reflections_by_status",
+                "List reflections filtered by status",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "status": { "type": "string", "description": "Status: draft, validated, contradicted, or archived", "enum": ["draft", "active", "validated", "archived"] }
+                    },
+                    "required": ["status"]
+                })),
+            ).with_title("List Reflections By Status"),
+            rmcp::model::Tool::new(
+                "update_reflection",
+                "Update an existing reflection's title, description, or summary",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "reflection_id": { "type": "string", "description": "ID of the reflection to update" },
+                        "title": { "type": "string", "description": "New title" },
+                        "description": { "type": "string", "description": "New description" },
+                        "summary": { "type": "string", "description": "New summary" }
+                    },
+                    "required": ["reflection_id"]
+                })),
+            ).with_title("Update Reflection"),
         ]
     }
 
@@ -150,6 +210,24 @@ impl ToolHandler for ReflectionToolsHandler {
                     let input: reflection::GetPatternsInput = serde_json::from_value(args)
                         .unwrap_or_default();
                     self.execute_get_patterns(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "validate_reflection" => {
+                    let input: reflection::ValidateReflectionInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_validate_reflection(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "list_reflections_by_status" => {
+                    let input: reflection::ListReflectionsByStatusInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_list_reflections_by_status(input).await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "update_reflection" => {
+                    let input: reflection::UpdateReflectionInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_update_reflection(input).await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 _ => Err(HandlerError::ToolNotFound(name.to_string()))

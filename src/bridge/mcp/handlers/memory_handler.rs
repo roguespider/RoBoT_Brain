@@ -134,11 +134,6 @@ impl MemoryToolsHandler {
         let memory_id: Uuid = input.memory_id.parse()
             .map_err(|e| anyhow::anyhow!("Invalid memory UUID: {}", e))?;
         let archived = self.context.permanent_memory.archive(&memory_id).await;
-        if archived {
-            self.context
-                .memory_event_bus
-                .emit_archived(memory_id, "manual_archive");
-        }
         memory::execute_archive_memory(input, archived).await
     }
 
@@ -155,9 +150,6 @@ impl MemoryToolsHandler {
             .permanent_memory
             .add_relationship(&from_id, &to_id)
             .await;
-        self.context
-            .memory_event_bus
-            .emit_relationship_added(from_id, to_id, "related");
         memory::execute_link_memories(input).await
     }
 

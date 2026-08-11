@@ -158,17 +158,6 @@ impl KnowledgeStore {
             .unwrap_or_default()
     }
 
-    /// Get active knowledge items (ready for use)
-    pub async fn get_active(&self) -> Vec<KnowledgeItem> {
-        self.items
-            .read()
-            .await
-            .values()
-            .filter(|item| item.status == KnowledgeStatus::Active)
-            .cloned()
-            .collect()
-    }
-
     /// Get mature knowledge items (high confidence)
     pub async fn get_mature(&self) -> Vec<KnowledgeItem> {
         self.items
@@ -530,39 +519,6 @@ impl KnowledgeStore {
         versions.insert(knowledge_id, version_info);
         
         tracing::debug!("Initialized version {} for knowledge {}", initial_version, knowledge_id);
-        true
-    }
-    
-    /// Create a new version of a knowledge item
-    pub async fn create_version(
-        &self,
-        knowledge_id: Uuid,
-        version: &str,
-        changelog: &str,
-        new_confidence: f32,
-    ) -> bool {
-        // Update version info
-        {
-            let mut versions = self.versions.write().await;
-            if let Some(info) = versions.get_mut(&knowledge_id) {
-                info.create_version(version, changelog, new_confidence);
-            } else {
-                // Initialize if not exists
-                let mut info = KnowledgeVersionInfo::new(version);
-                info.create_version(version, changelog, new_confidence);
-                versions.insert(knowledge_id, info);
-            }
-        }
-        
-        // Update the knowledge item's confidence
-        {
-            let mut items = self.items.write().await;
-            if let Some(item) = items.get_mut(&knowledge_id) {
-                item.confidence.adjust_source_reliability(new_confidence - item.overall_confidence());
-            }
-        }
-        
-        tracing::info!("Created version {} for knowledge {}", version, knowledge_id);
         true
     }
     

@@ -48,14 +48,6 @@ impl App {
     pub async fn new() -> Result<Self> {
         // Initialize database
         let database = Arc::new(SqliteDatabase::initialize()?);
-
-        // Run the database self-check to exercise CRUD query functions that
-        // have no direct tool surface yet (get_embedding, delete_embedding,
-        // delete_memories_by_string_ids, link_observation_to_experience,
-        // SqliteMemoryRepository::from_path) on transient rows. Per §7.
-        let db_checks = crate::database::self_check::run(&*database);
-        tracing::info!("Database self-check completed ({} checks passed)", db_checks);
-
         // Create shared personality instance (used by both App and planner)
         let shared_personality = Arc::new(std::sync::Mutex::new(Personality::new()));
 
@@ -179,19 +171,6 @@ impl App {
         let skills_registry = Arc::new(SkillRegistry::new());
         skills_registry.load_defaults().await;
         tracing::info!("Skills registry initialized with default skills");
-
-        // Run the MCP types self-check to exercise protocol type builders and
-        // predicates (is_request/is_response/is_notification, is_success,
-        // with_data, with_tools, with_schema) so those code paths remain
-        // live. Per §8.
-        let mcp_checks = crate::bridge::mcp::types::self_check::run();
-        tracing::info!("MCP types self-check completed ({} checks passed)", mcp_checks);
-
-        // Run the ACP message self-check to exercise message builders
-        // (with_ttl, forward_to, reply, with_random_instance, broadcast,
-        // reply_type, expects_reply) so those code paths remain live. Per §8.
-        let acp_checks = crate::bridge::acp::self_check::run();
-        tracing::info!("ACP message self-check completed ({} checks passed)", acp_checks);
 
         // Run the hypothesis graph self-check to exercise graph query/algorithm
         // API (GraphBuilder, find_path, find_supporters, topological_sort,
@@ -567,12 +546,16 @@ impl App {
         tracing::info!("ACP system agents registered (system:main, worker:1)");
 
         // Create MCP context with all systems
-        let memory_event_bus = Arc::new(crate::memory::events::MemoryEventBus::new());
 
         // World Model (Architecture §14, TASK-V2-06): typed entity-relationship
         // graph representing how the world works. Empty at startup; populated
         // as the system observes entities and relationships.
         let world_model = Arc::new(crate::world_model::WorldModel::new());
+
+        // Workflow enforcement engine (Architecture §22 workflow gate).
+        // Shared between McpContext (for admin tools) and McpServerHandler
+        // (for per-request enforcement checks).
+        let enforcer = Arc::new(crate::workflows::enforcement::WorkflowEnforcer::new());
 
         let mcp_context = Arc::new(McpContext::new(
             database.clone(),
@@ -593,10 +576,10 @@ impl App {
             skills_registry.clone(),
             acp_router.clone(),
             acp_registry.clone(),
-            memory_event_bus.clone(),
             shared_personality.clone(),
             Arc::new(crate::agent::SafetyGate::new()),
             world_model.clone(),
+            enforcer.clone(),
         ));
 
         // Register MCP tools
@@ -751,10 +734,6 @@ impl App {
         // Metrics subsystem self-check
         let metrics_summary = crate::experience::metrics::run_metrics_self_check().await;
         tracing::info!("{}", metrics_summary);
-
-        // Evolution subsystem self-check
-        let evolution_summary = crate::experience::evolution::self_check::run_evolution_self_check().await;
-        tracing::info!("{}", evolution_summary);
 
         // Knowledge subsystem self-check
         let knowledge_summary = crate::knowledge::self_check::run_knowledge_self_check().await;

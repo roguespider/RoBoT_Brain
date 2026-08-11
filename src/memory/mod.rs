@@ -1,7 +1,6 @@
 
 // src/memory/mod.rs
 
-#![allow(dead_code)]
 //! Memory System - Per Architecture §6.3
 //!
 //! Memory provides storage and retrieval capabilities.
@@ -18,8 +17,7 @@ pub mod working;
 pub mod permanent;
 pub mod retrieval;
 pub mod pipeline;
-pub mod events;
-pub mod repository;
+#[cfg(test)] pub mod repository;
 
 pub use working::WorkingMemory;
 pub use permanent::PermanentMemory;

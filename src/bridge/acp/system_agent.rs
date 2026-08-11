@@ -47,11 +47,13 @@ impl SystemAgent {
         
         Self { id, capabilities }
     }
+    #[cfg(test)]
     
     pub fn agent_id(&self) -> &AcpAgentId {
         &self.id
     }
     
+    #[cfg(test)]
     pub fn get_capabilities(&self) -> &[SystemCapability] {
         &self.capabilities
     }
@@ -66,6 +68,13 @@ impl Default for SystemAgent {
 impl AcpAgent for SystemAgent {
     fn id(&self) -> &AcpAgentId {
         &self.id
+    }
+
+    fn capabilities(&self) -> Vec<(String, String)> {
+        self.capabilities
+            .iter()
+            .map(|c| (c.name.clone(), c.description.clone()))
+            .collect()
     }
 
     fn handle(&self, message: AcpMessage) -> Result<Option<AcpMessage>> {
@@ -101,10 +110,12 @@ impl WorkerAgent {
         
         Self { id, capabilities }
     }
+    #[cfg(test)]
     
     pub fn agent_id(&self) -> &AcpAgentId {
         &self.id
     }
+    #[cfg(test)]
     
     pub fn get_capabilities(&self) -> &[SystemCapability] {
         &self.capabilities
@@ -120,6 +131,13 @@ impl Default for WorkerAgent {
 impl AcpAgent for WorkerAgent {
     fn id(&self) -> &AcpAgentId {
         &self.id
+    }
+
+    fn capabilities(&self) -> Vec<(String, String)> {
+        self.capabilities
+            .iter()
+            .map(|c| (c.name.clone(), c.description.clone()))
+            .collect()
     }
 
     fn handle(&self, message: AcpMessage) -> Result<Option<AcpMessage>> {

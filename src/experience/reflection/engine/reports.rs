@@ -16,7 +16,9 @@ pub struct ValidationReport {
     pub is_valid: bool,
     pub score: f32,
     pub issues: Vec<String>,
+    pub warnings: Vec<String>,
     pub quality_score: f32,
+    pub quality_indicators: Vec<String>,
     pub suggestions: Vec<String>,
 }
 

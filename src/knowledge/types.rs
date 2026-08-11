@@ -187,20 +187,6 @@ impl KnowledgeConfidence {
         }
     }
 
-    /// Create from reflection with evidence strength
-    pub fn from_reflection(evidence_strength: f32) -> Self {
-        Self {
-            dimensions: ConfidenceDimensions {
-                source_reliability: evidence_strength,
-                evidence_strength,
-                recency: 1.0,
-                frequency: 0.5,
-                context_relevance: 0.7,
-                historical_accuracy: evidence_strength,
-            },
-        }
-    }
-
     /// Calculate weighted overall confidence
     /// Weights based on importance per architecture
     pub fn overall(&self) -> f32 {
@@ -442,17 +428,6 @@ impl KnowledgeVersion {
             "=" => (s_major, s_minor, s_patch) == (o_major, o_minor, o_patch),
             _ => false,
         }
-    }
-
-    /// Compare two versions
-    pub fn compare(&self, other: &str) -> std::cmp::Ordering {
-        let (Some((s_maj, s_min, s_pat)), Some((o_maj, o_min, o_pat))) =
-            (Self::parse(&self.version), Self::parse(other))
-        else {
-            return std::cmp::Ordering::Equal;
-        };
-
-        (s_maj, s_min, s_pat).cmp(&(o_maj, o_min, o_pat))
     }
 }
 
