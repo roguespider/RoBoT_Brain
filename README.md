@@ -5,8 +5,7 @@
 A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with persistent memory, experience-based learning, and structured knowledge storage.
 
 > **Status:** v0.0.1 (release) — Automated release workflow for Linux, Windows, and macOS. Memory System implemented per Architecture §4.08, §6.3 with Working Memory, Permanent Memory, and Memory Retrieval.
-> Full event catalog per Architecture §4.04. Learning Pipeline per Architecture §9. Database layer with 8 migrations. All 54 unit tests and 103 integration
-> tests passing. 0 errors, 0 warnings.
+> Full event catalog per Architecture §4.04. Learning Pipeline per Architecture §9. Database layer with 8 migrations. Integration test suite: 145 tests passing, 0 errors, 0 code issues, 0 untested tools.
 >
 > **Automated Releases:** GitHub Actions CI/CD builds binaries for Linux (x86_64, aarch64), Windows (x86_64), and macOS (x86_64, aarch64).
 ---
@@ -2627,34 +2626,60 @@ cargo build --release
 
 ### Testing
 
-This project includes a comprehensive test suite with 54 unit tests and a full integration test binary.
+The project has two separate, independent programs:
+
+| Program | Location | Binary | Purpose |
+|---------|----------|--------|---------|
+| **robot_brain** | `/` (root) | `robot_brain` | Main MCP server (AI agent with tool plugins) |
+| **test_suite** | `/test_suite/` | `test_suite` | Unified test suite + quality gate (spawns robot_brain via MCP) |
+
+These programs do **not** depend on each other's source code. `test_suite` tests `robot_brain` by spawning it as a subprocess via the MCP protocol. **`test_suite` auto-builds `robot_brain`** — there is no need to build `robot_brain` separately when running the test suite.
 
 ```bash
-# Run unit tests
-cargo test
+# Build and run the unified test suite (this also builds robot_brain)
+cd test_suite && cargo build --release && ./target/release/test_suite
 
-# Build and run the unified integration test suite
-cd brain_tester && cargo build && ./target/debug/brain_tester
+# Run only the quality gate (returns non-zero if any metric fails)
+cd test_suite && ./target/release/test_suite --gate
+
+# List all server tools (smoke check)
+cd test_suite && ./target/release/test_suite --list
+
+# Introspect a single tool's live inputSchema
+cd test_suite && ./target/release/test_suite --probe <TOOL_NAME>
 ```
 
-**Test Results:**
-- **Unit Tests:** 54 tests passing (0 failed, 0 skipped)
-- **Integration Tests:** 103 tests passing (0 failed, 2 skipped)
-- **Build:** 0 errors, 0 warnings
-- **Both binaries compile and run successfully**
+#### Quality Gate
 
-The test suite covers:
-- Memory tools (14 tests)
-- Experience tools (11 tests)
-- Knowledge tools (9 tests)
-- Workflow tools (14 tests)
-- Planner tools (13 tests)
-- Hypothesis tools (14 tests)
-- Reflection tools (6 tests)
-- Search tools (6 tests)
-- Ingestor tools (6 tests)
-- Agent tools (6 tests)
-- Error handling tests (3 tests)
+The test suite enforces a quality gate with four metrics, all of which must pass:
+
+| Metric | Requirement | How to verify |
+|--------|-------------|----------------|
+| `tests` | All tests pass (no failures/errors) | `summary.passed` / `summary.failed` in the JSON report |
+| `compiler_warnings` | **0** compiler warnings | `summary.compiler_warnings` in the JSON report |
+| `code_issues` | **0** code-quality issues (dead code, `#[allow]`, `todo!()`, `unwrap`, `_` vars) | `summary.code_issues` in the JSON report |
+| `untested_tools` | **0** MCP tools without a test | `summary.untested_tools` in the JSON report |
+
+A structured JSON report is written to `test_suite/test_suite_report.json` after every run. Each entry in the `issues[]` array has `kind`, `category`, `file`, `line`, `message`, and `suggested_action` fields — useful for triaging warnings programmatically:
+
+```bash
+# Group warnings by message to triage:
+cd test_suite && python3 -c "
+import json
+from collections import Counter
+d = json.load(open('test_suite_report.json'))
+for msg, cnt in Counter(i['message'][:80] for i in d['issues']).most_common(20):
+    print(f'{cnt:4d}  {msg}')
+"
+```
+
+**Test Results (current):**
+- Integration Tests: 145 passing (0 failed)
+- Build: 0 errors
+- Code issues: 0
+- Untested tools: 0
+
+The test suite covers memory, experience, knowledge, workflow, planner, hypothesis, reflection, search, ingestor, and ACP/agent tools, plus error handling.
 
 ---
 

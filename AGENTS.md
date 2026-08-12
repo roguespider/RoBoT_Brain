@@ -44,6 +44,18 @@ separately.**
 - Running a separate `cargo build -p robot_brain` wastes time and can mask
   discrepancies between what you built and what test_suite built.
 
+### Quality Gate (MANDATORY before any commit)
+
+Run `cd test_suite && cargo build --release && ./target/release/test_suite --gate`.
+All four metrics must pass: `tests` (100%), `compiler_warnings` (0),
+`code_issues` (0), `untested_tools` (0). See README "Quality Gate" section
+for the full table and the JSON-report triage recipe.
+
+The structured report at `test_suite/test_suite_report.json` has an `issues[]`
+array; each entry has `kind`/`category`/`file`/`line`/`message`/`suggested_action`.
+Use `python3 -c` + `collections.Counter` to group warnings by message/file for
+triage. Fix dead-code first (highest signal), then mechanical clippy lints.
+
 ## Startup (do this every session — see `.agents/STARTUP.md` for the full call to action)
 
 1. Read `.agents/STARTUP.md`, then this file, then `.agents/PLAN.md` — in full.
