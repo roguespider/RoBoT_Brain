@@ -193,8 +193,17 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             get_supported_extensions are pure helpers.
       - [ ] **T1-10B-08** `experience/exploration/hypothesis.rs` (2) —
             add_hypothesis / evaluate_exploration_hypothesis.
-      - [ ] **T1-10B-09** `experience/exploration/attempt.rs` (2) —
-            record_attempt.
+      - [x] **T1-10B-09** `experience/exploration/attempt.rs` (2 tests) — DONE
+            2026-08-12. Migrated test_attempt_builder + test_attempt_failure to
+            test_suite/src/tests/exploration_attempt.rs via MCP flow
+            (start_exploration -> record_attempt [expected==actual] ->
+            record_attempt [expected!=actual] -> get_exploration_status ->
+            assert attempt[0].success=true, attempt[1].success=false).
+            record_attempt calls ExplorationAttempt::new + with_expected_result
+            + with_actual_result (the exact builder methods under test).
+            Deleted #[cfg(test)] block from src/. Builders still used by
+            record_attempt handler (no new dead-code). Gate: 145/145, 0 issues,
+            0 untested, 67 warnings.
       - [x] **T1-10B-10** `experience/exploration/finding.rs` (1 test) — DONE
             2026-08-12. Migrated test_finding_new_and_promote to
             test_suite/src/tests/exploration_finding.rs via MCP flow

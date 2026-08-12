@@ -61,28 +61,3 @@ impl ExplorationAttempt {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_attempt_builder() {
-        // Test new(), with_expected_result(), and with_actual_result()
-        let attempt = ExplorationAttempt::new("attempt-1".to_string(), "Try solution A".to_string())
-            .with_expected_result("Problem solved".to_string())
-            .with_actual_result("Problem solved".to_string());
-        
-        assert!(attempt.success);
-        assert_eq!(attempt.expected_result, Some("Problem solved".to_string()));
-        assert_eq!(attempt.actual_result, Some("Problem solved".to_string()));
-    }
-
-    #[test]
-    fn test_attempt_failure() {
-        let attempt = ExplorationAttempt::new("attempt-2".to_string(), "Try solution B".to_string())
-            .with_expected_result("Problem solved".to_string())
-            .with_actual_result("Still broken".to_string());
-        
-        assert!(!attempt.success);
-    }
-}

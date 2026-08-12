@@ -1110,6 +1110,9 @@ async fn main() -> anyhow::Result<()> {
     // T1-10B-11: migrated observations record+list unit test (MCP-based).
     tests::observations::run_observations_tests(&mut client, &mut stats).await?;
 
+    // T1-10B-09: migrated attempt builder+success/failure unit test (MCP-based).
+    tests::exploration_attempt::run_exploration_attempt_tests(&mut client, &mut stats).await?;
+
     // Run CLI-based tool tests (tests robot_brain CLI subcommands)
     teeprintln!(
         "
