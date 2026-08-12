@@ -314,8 +314,19 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             wrapped in #[cfg(test)]). The archive_memory MCP tool uses
             delete_memories (by Uuid), not delete_memories_by_string_ids.
             Cannot be exercised via MCP.
-      - [ ] **T1-10B-20** `database/queries/embeddings.rs` (1) —
-            get/delete embedding by id DB query.
+      - [x] **T1-10B-20** `database/queries/embeddings.rs` (1) DONE 2026-08-12.
+            Migrated test_get_and_delete_embedding_by_id to
+            test_suite/src/tests/embeddings.rs via MCP flow. The src/ unit test
+            tested get_embedding + delete_embedding (the by-embedding-id
+            variants, which were #[cfg(test)] test-only functions). The MCP
+            tools (store_embedding, get_embedding, delete_embedding) use the
+            by-memory-id variants (get_embedding_by_memory_id +
+            delete_embedding_by_memory_id, production code). Migration tests
+            the same lifecycle via the production by-memory-id path:
+            store_embedding -> get_embedding (found) -> delete_embedding ->
+            get_embedding (not found). Removed the 2 #[cfg(test)] functions
+            (get_embedding, delete_embedding) + the test block from src/.
+            Gate: 145/145, 0 warnings, 0 issues, 0 untested.
 
       ### Group C — empty cfg-test blocks (delete, trivial)
       - [ ] **T1-10B-Z** Remove 20 EMPTY `#[cfg(test)] mod tests{}` blocks

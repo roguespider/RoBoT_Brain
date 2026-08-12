@@ -1128,6 +1128,9 @@ async fn main() -> anyhow::Result<()> {
     // T1-10B-07: migrated audio transcriber is_audio_file + extensions test (MCP-based).
     tests::audio_transcriber::run_audio_transcriber_tests(&mut client, &mut stats).await?;
 
+    // T1-10B-20: migrated embeddings get+delete by memory_id test (MCP-based).
+    tests::embeddings::run_embeddings_tests(&mut client, &mut stats).await?;
+
     // Run CLI-based tool tests (tests robot_brain CLI subcommands)
     teeprintln!(
         "
