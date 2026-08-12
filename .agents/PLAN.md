@@ -192,8 +192,17 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             get_mature's is_mature >= 0.7 threshold). Deleted #[cfg(test)]
             block from src/. add/get/get_mature still used by handlers.
             Gate: 145/145, 0 issues, 0 untested, 67 warnings.
-      - [ ] **T1-10B-05** `knowledge/query.rs` (3) — query_knowledge (text /
-            confidence / status filtering).
+      - [x] **T1-10B-05** `knowledge/query.rs` (3 tests) DONE 2026-08-12.
+            Migrated test_text_filter + test_confidence_filter + test_ranking
+            to test_suite/src/tests/knowledge_query.rs via MCP flow. query_knowledge
+            calls apply_query (text + min_confidence filters) + rank_items
+            (relevance sort). test_text_filter: add 2 items, query for one
+            text -> only it in items[]. test_confidence_filter: add high(0.9)+
+            low(0.3), query min_confidence=0.7 -> only high in items[].
+            test_ranking: add 2 matching items, verify high-conf is best_match.
+            Deleted #[cfg(test)] block from src/. apply_query/rank_items still
+            used by query_knowledge handler. Gate: 145/145, 0 issues, 0
+            untested, 67 warnings.
       - [ ] **T1-10B-06** `memory/retrieval.rs` (4) — search_memory / get_memory
             / ranked_search / global_search.
       - [ ] **T1-10B-07** `bridge/tools/ingestor/audio_transcriber.rs` (3) —

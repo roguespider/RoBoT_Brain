@@ -1119,6 +1119,9 @@ async fn main() -> anyhow::Result<()> {
     // T1-10B-04: migrated knowledge store add+get+mature unit test (MCP-based).
     tests::knowledge_store::run_knowledge_store_tests(&mut client, &mut stats).await?;
 
+    // T1-10B-05: migrated knowledge query text/confidence/ranking unit test (MCP-based).
+    tests::knowledge_query::run_knowledge_query_tests(&mut client, &mut stats).await?;
+
     // Run CLI-based tool tests (tests robot_brain CLI subcommands)
     teeprintln!(
         "
