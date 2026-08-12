@@ -26,6 +26,7 @@ pub mod exploration_finding;
 pub mod observations;
 pub mod exploration_attempt;
 pub mod exploration_hypothesis;
+pub mod knowledge_store;
 
 pub use memory::run_memory_tests;
 pub use experience::run_experience_tests;

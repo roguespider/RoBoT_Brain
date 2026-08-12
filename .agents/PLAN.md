@@ -182,8 +182,16 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             (emotional_state field).
       - [ ] **T1-10B-03** `experience/reflection/services/generator.rs` (3) —
             create_reflection / get_insights / validate_reflection.
-      - [ ] **T1-10B-04** `knowledge/store.rs` (2) — add_knowledge /
-            query_knowledge / get_knowledge.
+      - [x] **T1-10B-04** `knowledge/store.rs` (2 tests) DONE 2026-08-12.
+            Migrated test_add_and_get + test_get_mature to test_suite/src/
+            tests/knowledge_store.rs via MCP flow. test_add_and_get: add_knowledge
+            (calls KnowledgeStore::add) -> query_knowledge (retrieves via
+            get_all, verify statement in items[]). test_get_mature: add
+            low-conf(0.3) + high-conf(0.8) items, query_knowledge with
+            min_confidence=0.7 -> high included, low excluded (mirrors
+            get_mature's is_mature >= 0.7 threshold). Deleted #[cfg(test)]
+            block from src/. add/get/get_mature still used by handlers.
+            Gate: 145/145, 0 issues, 0 untested, 67 warnings.
       - [ ] **T1-10B-05** `knowledge/query.rs` (3) — query_knowledge (text /
             confidence / status filtering).
       - [ ] **T1-10B-06** `memory/retrieval.rs` (4) — search_memory / get_memory

@@ -1116,6 +1116,9 @@ async fn main() -> anyhow::Result<()> {
     // T1-10B-08: migrated hypothesis lifecycle+clamp unit test (MCP-based).
     tests::exploration_hypothesis::run_exploration_hypothesis_tests(&mut client, &mut stats).await?;
 
+    // T1-10B-04: migrated knowledge store add+get+mature unit test (MCP-based).
+    tests::knowledge_store::run_knowledge_store_tests(&mut client, &mut stats).await?;
+
     // Run CLI-based tool tests (tests robot_brain CLI subcommands)
     teeprintln!(
         "
