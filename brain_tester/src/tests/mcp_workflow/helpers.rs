@@ -331,7 +331,7 @@ pub fn print_mcp_workflow_results(results: &super::results::McpWorkflowTestResul
         crate::teeprintln!("└{:─<78}┘", "");
         
         crate::teeprintln!("\n📚 See rmcp crate documentation for ListToolsResult and CallToolResult types.");
-        crate::teeprintln!("   The test_suite will pass once these methods return proper values.");
+        crate::teeprintln!("   The brain_tester will pass once these methods return proper values.");
     }
 
     crate::teeprintln!("{}", "=".repeat(80));

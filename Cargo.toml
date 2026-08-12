@@ -7,7 +7,7 @@
 #   src/ - Main application including MCP server
 #   src/bridge/ - Bridge layer including tools
 #
-# NOTE: test_suite/ is a fully independent project (separate Cargo.toml +
+# NOTE: brain_tester/ is a fully independent project (separate Cargo.toml +
 # Cargo.lock). It is intentionally NOT part of a workspace here so the two
 # projects do not cross-link. Build it directly from its own directory.
 

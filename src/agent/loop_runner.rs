@@ -169,6 +169,11 @@ impl AgentLoop {
         };
         let emotion_adjusted = (selected.confidence.value + emotional_weight).clamp(0.0, 1.0);
         let mut selected = selected;
+        // Record confidence drift: how far emotion nudged the evidence-based
+        // confidence (T1-14). A persistent large drift signals that emotion is
+        // dominating evidence rather than biasing it.
+        let drift = (emotion_adjusted - selected.confidence.value).abs();
+        self.deps.metrics.record_confidence_drift(drift as f64).await;
         selected.confidence.value = emotion_adjusted;
 
         // 4. Safety gate (§16). The gate composes four checks: sandbox
@@ -209,9 +214,7 @@ impl AgentLoop {
                 goal.status = GoalStatus::Abstained;
                 goal.completed_at = Some(chrono::Utc::now());
                 let latency_ms = start.elapsed().as_secs_f64() * 1000.0;
-                if let Some(metrics) = &self.deps.metrics {
-                    metrics.record_loop_latency(latency_ms).await;
-                }
+                self.deps.metrics.record_loop_latency(latency_ms).await;
                 Ok(AgentLoopOutcome {
                     goal_id: goal.id,
                     status: goal.status,
@@ -270,9 +273,18 @@ impl AgentLoop {
                 goal.status = GoalStatus::Achieved;
                 goal.completed_at = Some(chrono::Utc::now());
                 let latency_ms = start.elapsed().as_secs_f64() * 1000.0;
-                if let Some(metrics) = &self.deps.metrics {
-                    metrics.record_loop_latency(latency_ms).await;
-                }
+                self.deps.metrics.record_loop_latency(latency_ms).await;
+                // Record promotion throughput (T1-15): hypotheses confirmed
+                // per loop iteration is a proxy for the knowledge-promotion
+                // rate. A sustained non-zero value means the learning pipeline
+                // is promoting reflections → hypotheses → knowledge.
+                let confirmed = self
+                    .deps
+                    .metrics
+                    .collector()
+                    .get_counter(crate::experience::metrics::metric_names::HYPOTHESES_CONFIRMED)
+                    .await;
+                self.deps.metrics.record_promotion_throughput(confirmed as f64).await;
                 Ok(AgentLoopOutcome {
                     goal_id: goal.id,
                     status: goal.status,

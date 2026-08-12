@@ -5,8 +5,8 @@
 target/
 
 LLModel/
-test_suite_output.txt
-test_suite_report.json
+brain_tester_output.txt
+brain_tester_report.json
 
 # Python live-test cache
 __pycache__/

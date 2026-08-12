@@ -9,7 +9,7 @@
 //! - Table-based reporting showing pass/fail for every function
 //! - Detection of partial implementations and incomplete sub-functions
 //!
-//! OUTPUT: All test results are automatically saved to `test_suite_output.txt`
+//! OUTPUT: All test results are automatically saved to `brain_tester_output.txt`
 
 use std::fs;
 use std::io::Write;
@@ -186,7 +186,7 @@ fn setup_test_environment(server_path: &Path) -> anyhow::Result<TestEnvironment>
 
     let test_dir = server_path.parent()
         .ok_or_else(|| anyhow::anyhow!("Server path has no parent directory"))?
-        .join("test_suite_env");
+        .join("brain_tester_env");
 
     if test_dir.exists() {
         fs::remove_dir_all(&test_dir)?;
@@ -577,7 +577,7 @@ impl TestMcpClient {
                 serde_json::json!({
                     "protocolVersion": "2025-03-26",
                     "capabilities": { "tools": {} },
-                    "clientInfo": { "name": "test_suite", "version": "1.0.0" }
+                    "clientInfo": { "name": "brain_tester", "version": "1.0.0" }
                 }),
             )
             .await?;
@@ -841,7 +841,7 @@ fn spawn_stderr_reader(mut stderr: tokio::process::ChildStderr, buffer: ServerLo
                     if buf.len() >= SERVER_LOG_BUFFER_CAPACITY {
                         buf.pop_front();
                     }
-                    buf.push_back(format!("[test_suite stderr reader error: {}]", e));
+                    buf.push_back(format!("[brain_tester stderr reader error: {}]", e));
                     break;
                 }
             }
@@ -849,10 +849,135 @@ fn spawn_stderr_reader(mut stderr: tokio::process::ChildStderr, buffer: ServerLo
     });
 }
 
+/// `brain_tester --list`: quick smoke check. Connects to the live server,
+/// lists every advertised tool, and prints the count. This is the fastest
+/// way to confirm the server is alive and discoverable.
+async fn run_list(server_path: &Path) -> anyhow::Result<()> {
+    let mut client = TestMcpClient::new(server_path).await?;
+    let tools = client.list_tools().await?;
+    println!("=== robot_brain tool list ({}) ===", tools.len());
+    for t in &tools {
+        let name = t.get("name").and_then(|v| v.as_str()).unwrap_or("?");
+        let desc = t
+            .get("description")
+            .and_then(|v| v.as_str())
+            .unwrap_or("")
+            .lines()
+            .next()
+            .unwrap_or("");
+        let required = t
+            .get("inputSchema")
+            .and_then(|s| s.get("required"))
+            .and_then(|r| r.as_array())
+            .map(|arr| {
+                arr.iter()
+                    .filter_map(|v| v.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            })
+            .unwrap_or_default();
+        println!("  {:40} {}", name, desc);
+        if !required.is_empty() {
+            println!("    required: {required}");
+        }
+    }
+    println!("=== {} tools ===", tools.len());
+    Ok(())
+}
+
+/// `brain_tester --probe TOOL`: introspect a single tool's live inputSchema.
+///
+/// Connects to the running server, fetches the tool's JSON schema, and prints
+/// its required and optional fields with types. This is the live equivalent of
+/// the Python `RobotBrainClient.list_tools()` introspection — it lets you
+/// discover the exact parameters a tool expects without guessing.
+async fn run_probe(server_path: &Path, tool_name: &str) -> anyhow::Result<()> {
+    let mut client = TestMcpClient::new(server_path).await?;
+    let tools = client.list_tools().await?;
+    let tool = tools
+        .iter()
+        .find(|t| t.get("name").and_then(|v| v.as_str()) == Some(tool_name))
+        .ok_or_else(|| {
+            anyhow::anyhow!(
+                "Tool '{}' not found. Server advertises {} tools. Use `brain_tester --list` to see them.",
+                tool_name,
+                tools.len()
+            )
+        })?;
+
+    println!("=== probe: {} ===", tool_name);
+    if let Some(desc) = tool.get("description").and_then(|v| v.as_str()) {
+        println!("description: {desc}");
+    }
+
+    let schema = tool.get("inputSchema").cloned().unwrap_or(serde_json::json!({}));
+    let required: Vec<String> = schema
+        .get("required")
+        .and_then(|r| r.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|v| v.as_str().map(String::from))
+                .collect()
+        })
+        .unwrap_or_default();
+    let properties = schema
+        .get("properties")
+        .and_then(|p| p.as_object())
+        .cloned()
+        .unwrap_or_default();
+
+    println!("\nparameters ({}):", properties.len());
+    let mut entries: Vec<(&String, &serde_json::Value)> = properties.iter().collect();
+    entries.sort_by(|a, b| {
+        let ar = required.contains(a.0);
+        let br = required.contains(b.0);
+        br.cmp(&ar).then(a.0.cmp(b.0))
+    });
+    for (name, spec) in entries {
+        let is_required = required.contains(name);
+        let typ = spec
+            .get("type")
+            .and_then(|v| v.as_str())
+            .unwrap_or("unknown");
+        let marker = if is_required { "*" } else { " " };
+        let mut line = format!("  {marker} {name}: {typ}");
+        if let Some(items) = spec.get("items").and_then(|i| i.get("type")).and_then(|v| v.as_str()) {
+            line.push_str(&format!("<{items}>"));
+        }
+        if let Some(desc) = spec.get("description").and_then(|v| v.as_str()) {
+            let short = desc.lines().next().unwrap_or(desc);
+            if !short.is_empty() {
+                line.push_str(&format!(" — {short}"));
+            }
+        }
+        println!("{line}");
+    }
+    if !required.is_empty() {
+        println!("\n(* = required)");
+    }
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // CLI: `brain_tester`            → full suite (default)
+    //      `brain_tester --probe TOOL` → introspect one tool's live inputSchema
+    //      `brain_tester --list`       → list all server tools (quick smoke check)
+    let args: Vec<String> = std::env::args().collect();
+    let server_path = build_server().await?;
+
+    if let Some(idx) = args.iter().position(|a| a == "--probe") {
+        let tool = args.get(idx + 1).ok_or_else(|| {
+            anyhow::anyhow!("--probe requires a tool name, e.g. `brain_tester --probe register_agent`")
+        })?;
+        return run_probe(&server_path, tool).await;
+    }
+    if args.iter().any(|a| a == "--list") {
+        return run_list(&server_path).await;
+    }
+
     // Initialize file output - all output will be written to both stdout and file
-    let output_file = paths::test_suite_dir().join("test_suite_output.txt");
+    let output_file = paths::test_suite_dir().join("brain_tester_output.txt");
     output::init(&output_file)
         .map_err(|e| anyhow::anyhow!("Failed to create output file: {}", e))?;
 
@@ -927,7 +1052,7 @@ async fn main() -> anyhow::Result<()> {
 
     // Write machine-readable JSON report alongside the text output.
     // Enables run-to-run diffing and CI tooling.
-    let json_path = paths::test_suite_dir().join("test_suite_report.json");
+    let json_path = paths::test_suite_dir().join("brain_tester_report.json");
     match report.write_json(&json_path) {
         Ok(()) => {
             teeprintln!("\n✅ JSON report saved to: {}", json_path.display());

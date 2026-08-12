@@ -3,12 +3,10 @@
 
 //! Graph algorithm implementations for hypothesis graphs.
 
-#[cfg(test)]
 use std::collections::HashMap;
 use std::collections::HashSet;
 use std::collections::VecDeque;
 
-#[cfg(test)]
 use super::graph_types::HypothesisEdge;
 use super::graph_types::{GraphStats, HypothesisRelationship};
 use crate::experience::hypothesis::core::hypothesis::HypothesisId;
@@ -44,7 +42,6 @@ impl HypothesisGraph {
     }
 
     /// Find path between two hypotheses using BFS
-    #[cfg(test)]
     pub fn find_path(&self, from: &HypothesisId, to: &HypothesisId) -> Option<Vec<HypothesisId>> {
         if !self.node_index.contains_key(&from.0) || !self.node_index.contains_key(&to.0) {
             return None;
@@ -142,7 +139,6 @@ impl HypothesisGraph {
     }
 
     /// Find all supporting edges for a hypothesis
-    #[cfg(test)]
     pub fn find_supporters(&self, hypothesis_id: &HypothesisId) -> Vec<&HypothesisEdge> {
         self.edges.iter()
             .filter(|e| e.to.0 == hypothesis_id.0 && e.relationship == HypothesisRelationship::Supports)
@@ -150,7 +146,6 @@ impl HypothesisGraph {
     }
 
     /// Find all contradicting edges for a hypothesis
-    #[cfg(test)]
     pub fn find_contradictions(&self, hypothesis_id: &HypothesisId) -> Vec<&HypothesisEdge> {
         self.edges.iter()
             .filter(|e| e.to.0 == hypothesis_id.0 && e.relationship == HypothesisRelationship::Contradicts)
@@ -158,7 +153,6 @@ impl HypothesisGraph {
     }
 
     /// Find all dependencies for a hypothesis
-    #[cfg(test)]
     pub fn find_dependencies(&self, hypothesis_id: &HypothesisId) -> Vec<&HypothesisEdge> {
         self.edges.iter()
             .filter(|e| e.from.0 == hypothesis_id.0 && e.relationship == HypothesisRelationship::DependsOn)
@@ -166,7 +160,6 @@ impl HypothesisGraph {
     }
 
     /// Get strongly connected components
-    #[cfg(test)]
     pub fn strongly_connected_components(&self) -> Vec<Vec<HypothesisId>> {
         let mut visited = HashSet::new();
         let mut finish_order = Vec::new();
@@ -193,7 +186,6 @@ impl HypothesisGraph {
         components
     }
 
-    #[cfg(test)]
     fn dfs_fill_order(&self, hypothesis_id: &HypothesisId, visited: &mut HashSet<String>, finish_order: &mut Vec<String>) {
         visited.insert(hypothesis_id.0.clone());
 
@@ -206,7 +198,6 @@ impl HypothesisGraph {
         finish_order.push(hypothesis_id.0.clone());
     }
 
-    #[cfg(test)]
     fn dfs_collect(&self, hypothesis_id: &HypothesisId, visited: &mut HashSet<String>, result: &mut Vec<HypothesisId>) {
         visited.insert(hypothesis_id.0.clone());
         result.push(hypothesis_id.clone());
@@ -218,7 +209,6 @@ impl HypothesisGraph {
         }
     }
 
-    #[cfg(test)]
     fn transpose(&self) -> Self {
         let mut transposed = Self::new();
 
@@ -238,7 +228,6 @@ impl HypothesisGraph {
     }
 
     /// Get the topological order of hypotheses
-    #[cfg(test)]
     pub fn topological_sort(&self) -> Option<Vec<HypothesisId>> {
         let mut in_degree: HashMap<String, usize> = HashMap::new();
         let mut adjacency: HashMap<String, Vec<String>> = HashMap::new();

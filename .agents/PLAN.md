@@ -34,7 +34,7 @@ milestone on the way there.
 ## Current codebase state (verified 2026-08-11)
 
 - Workspace: two independent programs — `robot_brain` (root, MCP server) and
-  `test_suite/` (E2E tests via MCP protocol).
+  `brain_tester/` (E2E tests via MCP protocol).
 - Builds with **0 cargo warnings**, **128 MCP tools**, **333/333 tests pass**,
   0 code-quality issues. Coverage gap: 50 server tools untested (60.9%).
 - `#![allow]` / `#[allow]` in `src/`: **0** (clean).
@@ -64,8 +64,8 @@ Knowledge → Reputation`; `run_agent_goal` agent loop works.
 
 ```bash
 cargo build --release -p robot_brain          # 0 warnings
-python3 .agents/live_test/live_test_all.py     # 54/54
-cd test_suite && cargo build --release && ./target/release/test_suite  # 333/333, 0 code-quality
+python3 brain_tester     # 54/54
+cd brain_tester && cargo build --release && ./target/release/brain_tester  # 333/333, 0 code-quality
 ```
 
 All three must pass. If any is red, the increment is NOT done. Fix it before
@@ -105,7 +105,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 
 # 4. TIER 1 — Finish v0.0.1 (clean baseline)
 
-> Goal: green gate (test_suite exit 0). End state = a clean v0.0.1 baseline.
+> Goal: green gate (brain_tester exit 0). End state = a clean v0.0.1 baseline.
 > Tick `[x]` when an increment is committed with a green gate.
 >
 > **Work order:** 1E (coverage gate) FIRST — it's the actual gate problem and
@@ -172,16 +172,16 @@ promotion_throughput; gate green.
 **Done when:** calling `store_memory` directly records an experience; no
 double-emit from the agent loop; gate green.
 
-## 1E. Close the coverage gate (make test_suite exit 0)
+## 1E. Close the coverage gate (make brain_tester exit 0)
 
 > The gate is red ONLY because of coverage gaps: 91/91 tests pass, 0 code
 > issues, 0 warnings, but 50 server tools have no FunctionRegistry test and 6
 > "phantom" embedding tools are tested but not exposed by the server. Each
 > increment below adds a FunctionRegistry test entry for one tool group (in
-> `test_suite/src/function_registry.rs` or the relevant `tests/<group>/` file).
+> `brain_tester/src/function_registry.rs` or the relevant `tests/<group>/` file).
 > The suite exit code flips from 1 → 0 as coverage closes. Source of truth for
 > the live untested/phantom lists:
-> `test_suite/test_suite_report.json` → `coverage.untested_tools` /
+> `brain_tester/brain_tester_report.json` → `coverage.untested_tools` /
 > `coverage.phantom_tools`.
 
 ### 1E.1 — Fix the phantom embedding tools (a real wiring defect)
@@ -247,7 +247,7 @@ entry, change the tool name + expected fields.
   pick the right validation for a future tool, call it with a fake id via
   `RobotBrainClient` and check `is_error`.
 
-**Done when:** `test_suite_report.json` → `coverage.untested_tools` is empty,
+**Done when:** `brain_tester_report.json` → `coverage.untested_tools` is empty,
 `phantom_tools` is empty, suite exits 0. ✅ **DONE (commit 7775ca1):** untested
 0, phantom 0, 141/141 tests pass, exit 0. This is the **green-gate milestone** —
 every increment after this has an honest verify step.
@@ -448,7 +448,7 @@ gate green.
 - [ ] **T3-28** Testing: unit/contract/integration/persistence/event/security/
       failure-injection/recovery/migration/adapter/GUI/e2e-cognitive/regression/
       property layers (Chapter 30).
-- [ ] **T3-29** Expand `test_suite/`: schema-validation matrix, edge cases,
+- [ ] **T3-29** Expand `brain_tester/`: schema-validation matrix, edge cases,
       e2e learning loop, performance baselines (the gaps from
       `.agents/TEST_SUITE_NOTES.md`).
 - [ ] **T3-30** Deployment: reproducible + versioned, validation + rollback,
@@ -497,7 +497,7 @@ gate green.
 
 - `find src -name "self_check.rs"` returns empty.
 - `grep -rn 'allow(' src/` returns nothing (already true).
-- **test_suite exits 0** — `coverage.untested_tools` empty,
+- **brain_tester exits 0** — `coverage.untested_tools` empty,
   `coverage.phantom_tools` empty (the 1E green-gate milestone).
 - Queue is SQLite-backed and survives a process restart.
 - `get_system_status` shows loop_latency / confidence_drift /
@@ -533,7 +533,7 @@ gate green.
 - Self-improvement: a hypothesis lifecycle runs confirmed/rejected end-to-end.
 - Workers: supervised workers restart on failure; durable queue survives
   restart.
-- Config/Migration: fresh-DB migration runs clean; test_suite expanded with
+- Config/Migration: fresh-DB migration runs clean; brain_tester expanded with
   schema-validation + edge-case + e2e-learning + perf-baseline coverage.
 - 0 cargo warnings, 0 code-quality issues, all MCP tools pass live, test-suite
   green and expanded.
@@ -580,7 +580,7 @@ Reputation` wired in `src/experience/integration/event_subscriber/handlers.rs`.
 
 ## GATE (coverage) — ✅ GREEN (T1-19..T1-29 all DONE)
 
-- The test_suite now exits 0. 141/141 tests pass, 0 code issues, 0 warnings.
+- Brain_tester now exits 0. 141/141 tests pass, 0 code issues, 0 warnings.
 - coverage: untested 0, phantom 0. All 134 server tools are tested.
 - T1-19 fixed the 6 phantom embedding tools (commit b9b43ff).
 - T1-20 added 9 ACP tool tests (commit 6b7d036).
@@ -591,7 +591,7 @@ Reputation` wired in `src/experience/integration/event_subscriber/handlers.rs`.
 - 0 cargo warnings; 134 MCP tools (T1-19 exposed 6 embedding tools);
   141/141 FunctionRegistry tests pass (333/333 traditional); 0 code-quality
   issues.
-- ✅ **Coverage gate GREEN** (section 1E done): test_suite exits 0, untested 0,
+- ✅ **Coverage gate GREEN** (section 1E done): brain_tester exits 0, untested 0,
   phantom 0 (all 134 server tools tested).
 - ⚠️ **TIER 1 NOT fully done — 10 tasks remain** (1B SQLite queue, 1C metrics,
   1D MCP→experience hook). See sections 1B/1C/1D above.

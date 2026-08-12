@@ -495,11 +495,18 @@ pub async fn execute_query_knowledge(
         })
         .collect();
 
+    let best_match = result.best().map(|item| serde_json::json!({
+        "id": item.id.to_string(),
+        "statement": item.statement,
+        "confidence": item.overall_confidence(),
+    }));
+
     ToolOutput::success(serde_json::json!({
         "items": items_json,
         "total_matches": result.total_matches,
         "returned": result.items.len(),
         "query": query_text,
+        "best_match": best_match,
     }))
 }
 

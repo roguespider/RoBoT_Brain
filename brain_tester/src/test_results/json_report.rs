@@ -1,6 +1,6 @@
 //! Machine-readable JSON report output.
 //!
-//! Serializes the full `TestReport` to `test_suite_report.json` alongside the
+//! Serializes the full `TestReport` to `brain_tester_report.json` alongside the
 //! text report. JSON enables: run-to-run diffing, CI gating, and tooling to
 //! filter/group results (e.g. "show only newly failing tests", "new warnings
 //! since last run").
@@ -128,7 +128,7 @@ impl TestReport {
                 severity: Severity::High,
                 category: "Coverage".to_string(),
                 tool: Some(tool.clone()),
-                file: Some("test_suite/src/function_registry/".to_string()),
+                file: Some("brain_tester/src/function_registry/".to_string()),
                 line: None,
                 message: format!("Server exposes '{}' but no test requirement exercises it", tool),
                 suggested_action: format!(
@@ -146,7 +146,7 @@ impl TestReport {
                 severity: Severity::Low,
                 category: "Coverage".to_string(),
                 tool: Some(tool.clone()),
-                file: Some("test_suite/src/function_registry/".to_string()),
+                file: Some("brain_tester/src/function_registry/".to_string()),
                 line: None,
                 message: format!(
                     "Registry tests '{}' but the server does not expose it",

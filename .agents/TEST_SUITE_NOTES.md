@@ -1,7 +1,7 @@
 # Test Suite Improvements (Diagnosability & Coverage)
 
 > Moved here from AGENTS.md on 2026-08-11. Reference material on how the
-> test_suite reports work. Consult when diagnosing test failures or coverage
+> brain_tester reports work. Consult when diagnosing test failures or coverage
 > gaps; not needed at session start.
 
 The test suite was upgraded to surface previously-invisible problems and make
@@ -14,17 +14,17 @@ failure diagnosis faster. All improvements are implemented and verified.
 
 ### Build + run (the gotcha)
 
-`test_suite/` is a SEPARATE independent project (own `Cargo.toml`/`Cargo.lock`),
-NOT a workspace member. `cargo build -p test_suite` / `cargo run --package
-test_suite` from the repo root FAILS with "package ID did not match". Build and
+`brain_tester/` is a SEPARATE independent project (own `Cargo.toml`/`Cargo.lock`),
+NOT a workspace member. `cargo build -p brain_tester` / `cargo run --package
+brain_tester` from the repo root FAILS with "package ID did not match". Build and
 run it from its own directory:
 
 ```bash
-cd test_suite && cargo build --release && ./target/release/test_suite
+cd brain_tester && cargo build --release && ./target/release/brain_tester
 ```
 
-Outputs: `test_suite/test_suite_output.txt` (text) and
-`test_suite/test_suite_report.json` (machine-readable).
+Outputs: `brain_tester/brain_tester_output.txt` (text) and
+`brain_tester/brain_tester_report.json` (machine-readable).
 
 ### Exit-code semantics
 
@@ -98,7 +98,7 @@ passing. Closing coverage gaps is part of upgrade work (see PLAN.md T3-29).
      "81.2% coverage - 18 server tools untested".
 
 3. **Machine-readable JSON report** (`src/test_results/json_report.rs`)
-   - Full report serialized to `test_suite_report.json` alongside the text
+   - Full report serialized to `brain_tester_report.json` alongside the text
      output: summary, coverage, consolidated issues, all results, lint/code
      issues.
    - Enables run-to-run diffing, CI gating, and tooling to filter/group
@@ -121,7 +121,7 @@ passing. Closing coverage gaps is part of upgrade work (see PLAN.md T3-29).
 ## Current coverage gaps surfaced by the cross-check
 
 These are tools the server exposes but the `FunctionRegistry` does not test
-(see `test_suite_report.json` -> `coverage.untested_tools` for the live list):
+(see `brain_tester_report.json` -> `coverage.untested_tools` for the live list):
 
 - **ACP tools**: `route_acp_message`, `register_agent`, `unregister_agent`,
   `list_acp_agents`, `acp_agent_count`, `acp_registry`, `acp_router`,
@@ -145,21 +145,21 @@ a registration wiring gap in robot_brain.
 ## How to use the new outputs
 
 ```bash
-# Run (from test_suite/ or repo root; paths resolve at runtime)
-./target/release/test_suite
+# Run (from brain_tester/ or repo root; paths resolve at runtime)
+./target/release/brain_tester
 
 # Text report (human-readable, unchanged location)
-test_suite/test_suite_output.txt
+brain_tester/brain_tester_output.txt
 
 # JSON report (machine-readable, for diffing/CI)
-test_suite/test_suite_report.json
+brain_tester/brain_tester_report.json
 
 # CI gating: exit code is non-zero on any issue
-./target/release/test_suite && echo "clean" || echo "issues found"
+./target/release/brain_tester && echo "clean" || echo "issues found"
 
 # Diff two runs (example)
-jq '.summary' test_suite_report.json
-jq '.issues | map(.kind) | group_by(.) | map({(.[0]): length})' test_suite_report.json
+jq '.summary' brain_tester_report.json
+jq '.issues | map(.kind) | group_by(.) | map({(.[0]): length})' brain_tester_report.json
 ```
 
 ## Still not tested (future work)

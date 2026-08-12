@@ -64,7 +64,6 @@ impl HypothesisGenerator {
     /// Generate a hypothesis from repeated observations.
     ///
     /// Placeholder for future pattern detection.
-    #[cfg(test)]
     pub fn generate_from_pattern(&self, pattern: &str) -> Result<Option<Hypothesis>> {
         if pattern.trim().is_empty() {
             return Ok(None);

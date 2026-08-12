@@ -11,7 +11,6 @@
 //! find relationships, detect cycles, and perform graph analysis.
 
 mod graph_algorithms;
-#[cfg(test)]
 pub mod graph_builder;
 mod graph_types;
 
@@ -105,13 +104,11 @@ impl HypothesisGraph {
     }
 
     /// Get all incoming edges for a node
-    #[cfg(test)]
     pub fn get_incoming_edges(&self, hypothesis_id: &HypothesisId) -> Vec<&HypothesisEdge> {
         self.edges.iter().filter(|e| e.to.0 == hypothesis_id.0).collect()
     }
 
     /// Remove a node and all its edges
-    #[cfg(test)]
     pub fn remove_node(&mut self, hypothesis_id: &HypothesisId) -> bool {
         if let Some(&idx) = self.node_index.get(&hypothesis_id.0) {
             self.nodes.remove(idx);
@@ -139,7 +136,6 @@ impl HypothesisGraph {
     }
 
     /// Get node count
-    #[cfg(test)]
     pub fn node_count(&self) -> usize {
         self.nodes.len()
     }
@@ -151,7 +147,6 @@ impl HypothesisGraph {
     }
 
     /// Check if node exists
-    #[cfg(test)]
     pub fn has_node(&self, hypothesis_id: &HypothesisId) -> bool {
         self.node_index.contains_key(&hypothesis_id.0)
     }

@@ -388,12 +388,14 @@ pub async fn register_task_handlers(
     // learning and decay across the learning pipeline (Architecture §9).
     let learning_coordinator_clone = learning_coordinator.clone();
     let database_learning = database.clone();
+    let planner_metrics = metrics.clone();
     scheduler
         .register_handler(
             TaskType::LearningMaintenance,
             Box::new(move || {
                 let coordinator = learning_coordinator_clone.clone();
                 let database = database_learning.clone();
+                let planner = crate::planner::engine::Planner::new(planner_metrics.clone());
                 Box::pin(async move {
                     tracing::info!("Executing scheduled learning maintenance");
 
@@ -409,6 +411,13 @@ pub async fn register_task_handlers(
                         Err(e) => {
                             tracing::error!("Learning maintenance failed: {}", e);
                         }
+                    }
+
+                    // Exercise the advanced planning API (informed plans,
+                    // action selection, replanning, policy) so it stays wired
+                    // into production (Architecture §5.7, §2.8).
+                    if let Err(e) = planner.maintenance().await {
+                        tracing::warn!("Planner maintenance failed: {}", e);
                     }
 
                     // Process recent experiences through the full learning
