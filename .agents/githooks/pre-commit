@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+#
+# .agents/githooks/pre-commit — brick wall.
+#
+# Runs the full verify gate before any commit is allowed. test_suite
+# auto-builds robot_brain, connects via MCP, runs all tests + code analysis.
+# If any test fails or the quality wall is violated, the commit is aborted.
+#
+# Install once per clone:
+#   git config core.hooksPath .agents/githooks
+#
+# Bypass (ONLY for trivial doc-only edits, never for src/ changes):
+#   git commit --no-verify   (but then you own the consequences)
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+exec "$REPO_ROOT/.agents/scripts/gate.sh"

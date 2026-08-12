@@ -49,6 +49,6 @@ above this size are cohesive single-purpose modules that don't need splitting.
 
 ```bash
 cargo build --release -p robot_brain          # 0 warnings
-python3 brain_tester     # 54/54
-cd brain_tester && cargo build --release && ./target/release/brain_tester  # 333/333
+python3 test_suite     # 54/54
+cd test_suite && cargo build --release && ./target/release/test_suite  # 333/333
 ```
