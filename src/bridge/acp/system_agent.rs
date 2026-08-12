@@ -1,7 +1,6 @@
 // src/bridge/acp/system_agent.rs
 //! System agent implementation for handling ACP messages
 
-use std::sync::Arc;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
@@ -53,10 +52,6 @@ impl SystemAgent {
         &self.id
     }
     
-    #[cfg(test)]
-    pub fn get_capabilities(&self) -> &[SystemCapability] {
-        &self.capabilities
-    }
 }
 
 impl Default for SystemAgent {
@@ -115,51 +110,4 @@ impl WorkerAgent {
     pub fn agent_id(&self) -> &AcpAgentId {
         &self.id
     }
-    #[cfg(test)]
-    
-    pub fn get_capabilities(&self) -> &[SystemCapability] {
-        &self.capabilities
-    }
-}
 
-impl Default for WorkerAgent {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl AcpAgent for WorkerAgent {
-    fn id(&self) -> &AcpAgentId {
-        &self.id
-    }
-
-    fn capabilities(&self) -> Vec<(String, String)> {
-        self.capabilities
-            .iter()
-            .map(|c| (c.name.clone(), c.description.clone()))
-            .collect()
-    }
-
-    fn handle(&self, message: AcpMessage) -> Result<Option<AcpMessage>> {
-        // Create a response message
-        let response_payload = serde_json::json!({
-            "status": "processed",
-            "original_action": message.payload.get("action"),
-            "message_type": format!("{:?}", message.message_type),
-            "worker": "worker:1",
-        });
-        
-        let response = message.reply(response_payload);
-        Ok(Some(response))
-    }
-}
-
-/// Create a boxed system agent
-pub fn create_system_agent() -> Arc<SystemAgent> {
-    Arc::new(SystemAgent::new())
-}
-
-/// Create a boxed worker agent
-pub fn create_worker_agent() -> Arc<WorkerAgent> {
-    Arc::new(WorkerAgent::new())
-}

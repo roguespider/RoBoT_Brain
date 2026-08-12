@@ -128,31 +128,4 @@ impl HypothesisGraph {
     }
 
     /// Clear all nodes and edges
-    #[cfg(test)]
-    pub fn clear(&mut self) {
-        self.nodes.clear();
-        self.edges.clear();
-        self.node_index.clear();
-    }
 
-    /// Get node count
-    pub fn node_count(&self) -> usize {
-        self.nodes.len()
-    }
-
-    /// Get edge count
-    pub fn edge_count(&self) -> usize {
-        self.edges.len()
-    }
-
-    /// Check if node exists
-    pub fn has_node(&self, hypothesis_id: &HypothesisId) -> bool {
-        self.node_index.contains_key(&hypothesis_id.0)
-    }
-
-    /// Get node by ID
-    pub fn get_node(&self, hypothesis_id: &HypothesisId) -> Option<&HypothesisNode> {
-        self.node_index.get(&hypothesis_id.0)
-            .and_then(|&idx| self.nodes.get(idx))
-    }
-}

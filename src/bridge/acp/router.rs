@@ -8,7 +8,7 @@ use anyhow::{anyhow, Result};
 
 use super::message::AcpMessage;
 #[cfg(test)]
-use super::message::AcpMessageType;
+
 use super::registry::AcpRegistry;
 
 /// ACP router for routing messages between agents
@@ -47,23 +47,4 @@ impl AcpRouter {
     }
 
     /// Register a custom message handler for a message type
-    #[cfg(test)]
-    pub fn register_handler(
-        &self,
-        message_type: AcpMessageType,
-        handler: impl Fn(AcpMessage) -> Result<Option<AcpMessage>> + Send + Sync + 'static,
-    ) -> Result<()> {
-        let type_name = format!("{:?}", message_type);
-        let mut handlers = self
-            .handlers
-            .write()
-            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
-        handlers.insert(type_name, Box::new(handler));
-        Ok(())
-    }
 
-    /// Get the registry
-    pub fn registry(&self) -> Arc<AcpRegistry> {
-        Arc::clone(&self.registry)
-    }
-}

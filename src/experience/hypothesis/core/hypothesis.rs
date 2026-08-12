@@ -233,35 +233,4 @@ impl Hypothesis {
     }
 
     /// Add a tag.
-    #[cfg(test)]
-    pub fn add_tag(&mut self, tag: impl Into<String>) {
-        self.tags.push(tag.into());
-    }
 
-    /// Record supporting evidence.
-    pub fn add_supporting_evidence(&mut self, evidence_id: impl Into<String>) {
-        self.supporting_evidence.push(evidence_id.into());
-        self.updated_at = Utc::now();
-    }
-
-    /// Record contradicting evidence.
-    pub fn add_contradicting_evidence(&mut self, evidence_id: impl Into<String>) {
-        self.contradicting_evidence.push(evidence_id.into());
-        self.updated_at = Utc::now();
-    }
-
-    /// Total evidence count.
-    pub fn evidence_count(&self) -> usize {
-        self.supporting_evidence.len() + self.contradicting_evidence.len()
-    }
-
-    /// Whether this hypothesis has any evidence.
-    pub fn has_evidence(&self) -> bool {
-        self.evidence_count() > 0
-    }
-
-    /// Mark the hypothesis as updated.
-    pub fn touch(&mut self) {
-        self.updated_at = Utc::now();
-    }
-}

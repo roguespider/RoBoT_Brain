@@ -42,30 +42,4 @@ impl AcpRegistry {
     }
 
     /// Get all agents of a specific type
-    #[cfg(test)]
-    pub fn get_by_type(&self, agent_type: &str) -> Result<Vec<Arc<dyn AcpAgent>>> {
-        let agents = self.agents.read().map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
-        Ok(agents
-            .values()
-            .filter(|a| a.id().agent_type == agent_type)
-            .cloned()
-            .collect())
-    }
 
-    /// List all registered agent IDs
-    pub fn list_agents(&self) -> Result<Vec<AcpAgentId>> {
-        let agents = self.agents.read().map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
-        Ok(agents.keys().cloned().collect())
-    }
-
-    /// Count registered agents
-    pub fn count(&self) -> usize {
-        self.agents.read().map(|g| g.len()).unwrap_or(0)
-    }
-}
-
-impl Default for AcpRegistry {
-    fn default() -> Self {
-        Self::new()
-    }
-}
