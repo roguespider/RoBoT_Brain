@@ -300,7 +300,13 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             EvolutionEngine.
       - [ ] **T1-10B-17** `bridge/tools/ingestor/semantic_chunker.rs` (3) —
             markdown/sentence/code chunking.
-      - [ ] **T1-10B-18** `memory/repository.rs` (1) — from_path constructor.
+      - [~] **T1-10B-18** `memory/repository.rs` (1) —
+      RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
+      Reason: SqliteMemoryRepository and the MemoryRepository trait have ZERO
+      callers outside repository.rs — they're unused dead code. The
+      store_memory MCP tool uses queries::insert_memory directly, not the
+      repository abstraction. from_path is a constructor for a custom DB path
+      that no MCP tool invokes. Cannot be exercised via MCP.
       - [ ] **T1-10B-19** `database/queries/memory.rs` (1) —
             delete_memories_by_string_ids DB query.
       - [ ] **T1-10B-20** `database/queries/embeddings.rs` (1) —
