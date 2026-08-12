@@ -191,8 +191,19 @@ first; AI Runtime (Candle) comes last as the local provider behind the
       - [ ] **T1-10B-07** `bridge/tools/ingestor/audio_transcriber.rs` (3) —
             PARTIAL: transcribe_audio tool exists, but is_audio_file /
             get_supported_extensions are pure helpers.
-      - [ ] **T1-10B-08** `experience/exploration/hypothesis.rs` (2) —
-            add_hypothesis / evaluate_exploration_hypothesis.
+      - [x] **T1-10B-08** `experience/exploration/hypothesis.rs` (2 tests) DONE
+            2026-08-12. Migrated test_hypothesis_lifecycle +
+            test_confidence_clamping to test_suite/src/tests/
+            exploration_hypothesis.rs via MCP flow. Constructor confidence
+            clamp (1.5->1.0, -0.5->0.0) tested via add_hypothesis
+            initial_confidence + get_exploration_status readback. Lifecycle
+            (new -> set_result -> update_confidence) tested via add_hypothesis
+            -> evaluate_exploration_hypothesis (confidence 0.5->0.9 for
+            supported). Caveat: update_confidence clamp branch (1.5->1.0) is
+            NOT MCP-reachable (tool hardcodes in-range values); only the
+            constructor clamp is tested. Both use the same .clamp(0.0,1.0).
+            Deleted #[cfg(test)] block from src/. Methods still used by
+            handlers. Gate: 145/145, 0 issues, 0 untested, 67 warnings.
       - [x] **T1-10B-09** `experience/exploration/attempt.rs` (2 tests) — DONE
             2026-08-12. Migrated test_attempt_builder + test_attempt_failure to
             test_suite/src/tests/exploration_attempt.rs via MCP flow

@@ -25,6 +25,7 @@ pub mod queue_durability;
 pub mod exploration_finding;
 pub mod observations;
 pub mod exploration_attempt;
+pub mod exploration_hypothesis;
 
 pub use memory::run_memory_tests;
 pub use experience::run_experience_tests;
