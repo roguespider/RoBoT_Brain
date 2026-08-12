@@ -141,7 +141,6 @@ impl HypothesisGraph {
     }
 
     /// Get edge count
-    #[cfg(test)]
     pub fn edge_count(&self) -> usize {
         self.edges.len()
     }

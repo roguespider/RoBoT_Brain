@@ -127,7 +127,6 @@ impl HypothesisStatistics {
 /// SNAPSHOT
 /// ============================================================================
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg(test)]
 pub struct StatisticsSnapshot {
     pub total_hypotheses: u64,
 
@@ -138,7 +137,6 @@ pub struct StatisticsSnapshot {
     pub confirmation_rate: f32,
 }
 
-#[cfg(test)]
 impl From<&HypothesisStatistics> for StatisticsSnapshot {
     fn from(stats: &HypothesisStatistics) -> Self {
         Self {

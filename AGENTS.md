@@ -10,6 +10,40 @@
 - This makes each change independently reviewable and revertable.
 - If a later change breaks something, you know exactly which change caused it.
 
+### Verify, Don't Trust (MANDATORY)
+
+**Never rely on a "done" message — yours, a prior session's, or a commit
+description. Verify each step by inspecting the actual codebase state.**
+
+- A commit that says "fixes all warnings" may be lying. Run the gate and read
+  the actual output.
+- A PLAN.md checkbox marked `[x]` only means someone claimed it was done. Open
+  the file, read the code, confirm the change is actually there and actually
+  works.
+- A task marked `[in]` (in progress) may have been abandoned mid-step. Check
+  whether the described changes actually exist in the source and whether they
+  compile.
+- Before claiming a task is done: run the gate, read the JSON report, confirm
+  the relevant metric is actually 0 (not just "I think I fixed it").
+- "It compiles on my machine" is not verification. The gate is the verifier.
+
+### Never Separately Build robot_brain (MANDATORY)
+
+**test_suite auto-builds robot_brain. Never run
+`cargo build -p robot_brain` or `cargo build --release -p robot_brain`
+separately.**
+
+- test_suite and robot_brain are two separate, independent projects.
+  test_suite does NOT import or link robot_brain's source. It spawns
+  robot_brain as a subprocess via MCP.
+- When working on test_suite, NEVER touch `src/` (robot_brain's source). When
+  working on robot_brain, NEVER touch `test_suite/src/`.
+- To build + test robot_brain: `cd test_suite && cargo build --release &&
+  ./target/release/test_suite`. That's it. test_suite rebuilds robot_brain
+  automatically.
+- Running a separate `cargo build -p robot_brain` wastes time and can mask
+  discrepancies between what you built and what test_suite built.
+
 ## Startup (do this every session — see `.agents/STARTUP.md` for the full call to action)
 
 1. Read `.agents/STARTUP.md`, then this file, then `.agents/PLAN.md` — in full.
