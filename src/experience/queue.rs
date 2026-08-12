@@ -170,6 +170,54 @@ impl JobQueue {
         }
     }
 
+    /// Mark a job as completed (updates in-memory cache and SQLite).
+    pub fn mark_complete(&mut self, job_id: &str) -> Result<()> {
+        let db = self.database.as_ref();
+        if let Some(job) = self.jobs.get_mut(job_id) {
+            job.status = JobStatus::Completed;
+        }
+        if let Some(db) = db {
+            if let Err(e) = persist_update(
+                db,
+                &Job {
+                    id: job_id.to_string(),
+                    observer_name: String::new(),
+                    status: JobStatus::Completed,
+                    last_error: None,
+                    attempts: 0,
+                },
+            ) {
+                tracing::warn!("JobQueue mark_complete persist failed: {}", e);
+            }
+        }
+        Ok(())
+    }
+
+    /// Mark a job as failed with an error message (updates in-memory cache and SQLite).
+    pub fn mark_failed(&mut self, job_id: &str, error: String) -> Result<()> {
+        let db = self.database.as_ref();
+        if let Some(job) = self.jobs.get_mut(job_id) {
+            job.status = JobStatus::Failed;
+            job.last_error = Some(error.clone());
+            job.attempts += 1;
+        }
+        if let Some(db) = db {
+            if let Err(e) = persist_update(
+                db,
+                &Job {
+                    id: job_id.to_string(),
+                    observer_name: String::new(),
+                    status: JobStatus::Failed,
+                    last_error: Some(error),
+                    attempts: 1,
+                },
+            ) {
+                tracing::warn!("JobQueue mark_failed persist failed: {}", e);
+            }
+        }
+        Ok(())
+    }
+
     /// Reload pending/running jobs from SQLite into the in-memory cache.
     ///
     /// Called at startup so a durable queue resumes work that was in flight

@@ -17,7 +17,7 @@ use crate::experience::encounter_recorder::ExperienceRecorder;
 use crate::experience::event_handler::EventHandler;
 use crate::experience::evolution::EvolutionEngine;
 use crate::experience::hypothesis::HypothesisEngine;
-use crate::experience::integration::event_subscriber::{start_event_subscriber, EventSubscriber};
+use crate::experience::integration::event_subscriber::{EventSubscriber, start_event_subscriber};
 use crate::experience::integration::learning_coordinator::LearningCoordinator;
 
 use super::{
@@ -28,7 +28,7 @@ use super::{
     should_use_creativity,
 };
 use crate::experience::integration::reflection_pipeline::ReflectionPipeline;
-use crate::experience::metrics::MetricsCollector;
+use crate::experience::metrics::{Metrics, MetricsCollector};
 use crate::experience::observer::{HypothesisObserver, MetricsObserver, ReputationObserver};
 use crate::experience::reflection::ReflectionEngine;
 use crate::experience::scorer::ExperienceScorer;
@@ -40,8 +40,8 @@ use crate::planner::{Planner, PolicyEngine};
 use crate::skills::registry::SkillRegistry;
 use crate::workflows::engine::WorkflowEngine;
 
-use super::state::App;
 use super::scheduler;
+use super::state::App;
 
 impl App {
     /// Build the application.
@@ -73,19 +73,33 @@ impl App {
         let reflection_engine = Arc::new(ReflectionEngine::new());
         // Both the subscriber-side and scheduler-side hypothesis engines share
         // a single hypothesis graph so observations and maintenance stay consistent.
-        let shared_graph: Arc<Mutex<crate::experience::hypothesis::support::graph::HypothesisGraph>> =
-            Arc::new(Mutex::new(
-                crate::experience::hypothesis::support::graph::HypothesisGraph::new(),
-            ));
+        let shared_graph: Arc<
+            Mutex<crate::experience::hypothesis::support::graph::HypothesisGraph>,
+        > = Arc::new(Mutex::new(
+            crate::experience::hypothesis::support::graph::HypothesisGraph::new(),
+        ));
         let hypothesis_engine_for_subscriber =
             Arc::new(HypothesisEngine::with_graph(Arc::clone(&shared_graph)));
         let hypothesis_engine = Arc::new(Mutex::new(HypothesisEngine::with_graph(shared_graph)));
         let evolution_engine = Arc::new(EvolutionEngine::new());
-        let metrics = Arc::new(MetricsCollector::new());
+        let metrics = Arc::new(Metrics::new());
 
         // Create WorkerManager for background job processing per Architecture §22
         // Design: Experience → Recorder → Bus → Job Queue → Workers → Observers
-        let worker_manager = Arc::new(WorkerManager::new(bus.clone()));
+        // The JobQueue is SQLite-backed so jobs survive restarts.
+        let job_queue = std::sync::Arc::new(std::sync::Mutex::new(
+            crate::experience::queue::JobQueue::with_database(database.clone()),
+        ));
+        {
+            let mut q = job_queue.lock().unwrap();
+            if let Err(e) = q.restore_from_database() {
+                tracing::warn!("JobQueue restore failed: {}", e);
+            }
+        }
+        let worker_manager = Arc::new(WorkerManager::new_with_queue(
+            bus.clone(),
+            job_queue.clone(),
+        ));
 
         // Register all observers with WorkerManager per Architecture §22
         // Each observer runs in its own dedicated worker
@@ -113,7 +127,7 @@ impl App {
         tracing::info!("HypothesisObserver registered with WorkerManager");
 
         // 4. MetricsObserver - collects metrics from all events
-        let metrics_observer = Arc::new(MetricsObserver::new(metrics.clone()))
+        let metrics_observer = Arc::new(MetricsObserver::new(metrics.collector()))
             as Arc<dyn crate::experience::observer::ExperienceObserver>;
         worker_manager.register_observer(metrics_observer).await?;
         tracing::info!("MetricsObserver registered with WorkerManager");
@@ -144,27 +158,26 @@ impl App {
             tracing::info!("Worker manager enqueue verified: ok={}", enqueue_ok);
         }
 
-        // Verify the SQLite-backed JobQueue lifecycle works at startup
-        // (Architecture §23.5 Task Queue). This exercises push_job, pop_job,
-        // complete_job and fail_job so those code paths remain live rather
-        // than dead code, and verifies that jobs persist to the job_queue
-        // table (migration 012) and reload across an instance restart.
+        // Verify the durable JobQueue was wired correctly at startup
+        // (Architecture §23.5 Task Queue). Push a probe job, confirm it
+        // persists, then restore from a fresh instance to prove durability.
         {
-            use crate::experience::queue::JobQueue;
-            let mut queue = JobQueue::with_database(database.clone());
-            queue.push_job("startup-queue-probe", "experience_scorer");
-            let popped = queue.pop_job("experience_scorer");
+            let mut q = job_queue.lock().unwrap();
+            q.push_job("startup-queue-probe", "experience_scorer");
+            let popped = q.pop_job("experience_scorer");
             let popped_ok = popped.is_some();
             if let Some(job) = popped.as_ref() {
-                queue.complete_job(&job.id);
+                q.mark_complete(&job.id).ok();
             }
-            queue.push_job("startup-queue-probe-2", "experience_scorer");
-            if let Some(job) = queue.pop_job("experience_scorer") {
-                queue.fail_job(&job.id, "transient probe failure".to_string());
+            q.push_job("startup-queue-probe-2", "experience_scorer");
+            if let Some(job) = q.pop_job("experience_scorer") {
+                q.mark_failed(&job.id, "transient probe failure".to_string())
+                    .ok();
             }
             // Verify durability: a fresh queue instance restores the
             // pending/running rows written above from SQLite.
-            let mut restored_queue = JobQueue::with_database(database.clone());
+            let mut restored_queue =
+                crate::experience::queue::JobQueue::with_database(database.clone());
             let restored = restored_queue.restore_from_database().unwrap_or(0);
             tracing::info!(
                 "JobQueue lifecycle verified: pop_ok={}, restored={}",
@@ -181,10 +194,18 @@ impl App {
             use crate::learning::candidates::{CandidateGenerator, CandidateScore, CandidateType};
             let generator = CandidateGenerator::new();
             generator
-                .generate("probe-candidate", "startup lifecycle probe", CandidateType::Behavior)
+                .generate(
+                    "probe-candidate",
+                    "startup lifecycle probe",
+                    CandidateType::Behavior,
+                )
                 .await;
             generator
-                .generate("probe-candidate-2", "low-risk probe", CandidateType::Strategy)
+                .generate(
+                    "probe-candidate-2",
+                    "low-risk probe",
+                    CandidateType::Strategy,
+                )
                 .await;
             let top = generator.get_top(2).await;
             let low_risk = generator.get_low_risk().await;
@@ -232,9 +253,9 @@ impl App {
         // supporting types so the module remains live rather than dead code.
         {
             use crate::learning::working_memory::{
+                MemoryItemType, WorkingMemory, WorkingMemoryItem,
                 memory_state::{MemoryState, StateTransition, StateTransitionRecord},
                 promotion::{PromotionEvaluation, PromotionPolicy},
-                WorkingMemory, WorkingMemoryItem, MemoryItemType,
             };
             let wm = WorkingMemory::with_policy(100, PromotionPolicy::lenient());
             wm.set_policy(PromotionPolicy::strict());
@@ -345,11 +366,29 @@ impl App {
 
             tracing::info!(
                 "WorkingMemory lifecycle verified: len={}, empty={}, keys={}, values={}, items={}, by_type={}, by_state={}, promotable={}, recent={}, important={}, by_pattern={}, state={:?}, history={}, contains={}, peeked={}, processed={}, promoted={}, cleared_type={}, cleared_state={}, removed={}, removed_many={}, stats_total={}, conf={:.3}",
-                len, is_empty, keys.len(), values.len(), items.len(), by_type.len(), by_state.len(),
-                promotable.len(), recent.len(), important.len(), by_pattern.len(),
-                state, history.map(|h| h.len()).unwrap_or(0), contains,
-                peeked.is_some(), processed, promoted.is_some(), cleared_type,
-                cleared_state, removed.is_some(), removed_many, stats.total_items, conf
+                len,
+                is_empty,
+                keys.len(),
+                values.len(),
+                items.len(),
+                by_type.len(),
+                by_state.len(),
+                promotable.len(),
+                recent.len(),
+                important.len(),
+                by_pattern.len(),
+                state,
+                history.map(|h| h.len()).unwrap_or(0),
+                contains,
+                peeked.is_some(),
+                processed,
+                promoted.is_some(),
+                cleared_type,
+                cleared_state,
+                removed.is_some(),
+                removed_many,
+                stats.total_items,
+                conf
             );
         }
 
@@ -360,8 +399,8 @@ impl App {
         {
             use crate::learning::lineage::{
                 Confirmation, ConfirmationSource, Contradiction, ContradictionResolution,
-                EvidenceRef, EvidenceType, LineageTracker, MemoryLineage,
-                ObservationOutcome, ObservationRef, ObservationType, Refinement, RefinementType,
+                EvidenceRef, EvidenceType, LineageTracker, MemoryLineage, ObservationOutcome,
+                ObservationRef, ObservationType, Refinement, RefinementType,
             };
 
             let mut tracker = LineageTracker::new();
@@ -449,9 +488,7 @@ impl App {
             let current = tracker.get_current_memory(&mem_b);
             let conf = tracker.calculate_confidence(&mem_a, 0.5);
             let summary = tracker.get_summary(&mem_a);
-            let summary_display: Option<String> = summary
-                .as_ref()
-                .map(|s| format!("{}", s));
+            let summary_display: Option<String> = summary.as_ref().map(|s| format!("{}", s));
             let with_contra = tracker.get_memories_with_contradictions();
             let superseded = tracker.get_superseded_memories();
 
@@ -604,7 +641,7 @@ impl App {
                 hypothesis_engine_for_subscriber.clone(),
                 knowledge_store.clone(),
                 bus.clone(),
-                metrics.clone(),
+                metrics.collector(),
             )
             .with_database(database.clone())
             .with_skill_registry(skills_registry.clone()),
@@ -622,7 +659,7 @@ impl App {
         // pipeline from each ExperienceRecorded event.
         let event_subscriber_inner = EventSubscriber::with_learning_coordinator(
             learning_coordinator.clone(),
-            metrics.clone(),
+            metrics.collector(),
             reflection_engine.clone(),
             hypothesis_engine_for_subscriber.clone(),
             evolution_engine.clone(),
@@ -642,7 +679,9 @@ impl App {
                 )
                 .await
                 .ok();
-            let probe_score = event_subscriber.get_reputation("startup-reputation-probe").await;
+            let probe_score = event_subscriber
+                .get_reputation("startup-reputation-probe")
+                .await;
             tracing::info!(
                 "Event subscriber reputation verified: record_ok={} score={:?}",
                 probe_score.is_some(),
@@ -752,7 +791,7 @@ impl App {
             reflection_engine.clone(),
             hypothesis_engine.clone(),
             evolution_engine.clone(),
-            metrics.clone(),
+            metrics.collector(),
             database.clone(),
             learning_coordinator.clone(),
         )
@@ -809,7 +848,9 @@ impl App {
         // live rather than dead code, using transient rows that are cleaned up.
         {
             use crate::experience::repository as exp_repo;
-            use crate::experience::types::{Encounter, EncounterResult, Experience, ExperienceType};
+            use crate::experience::types::{
+                Encounter, EncounterResult, Experience, ExperienceType,
+            };
             use chrono::Utc;
             use uuid::Uuid;
 
@@ -829,10 +870,11 @@ impl App {
             let fetched_encounter = exp_repo::get_encounter(database.clone(), &encounter.id)
                 .await
                 .is_ok();
-            let similar = exp_repo::find_similar_encounters(database.clone(), "startup repository probe")
-                .await
-                .map(|v| v.len())
-                .unwrap_or(0);
+            let similar =
+                exp_repo::find_similar_encounters(database.clone(), "startup repository probe")
+                    .await
+                    .map(|v| v.len())
+                    .unwrap_or(0);
 
             let experience = Experience::new(
                 "Startup repository probe".to_string(),
@@ -864,9 +906,8 @@ impl App {
             );
         }
 
-
         // Create planning system (Architecture §4.03.5, §10)
-        let mut planner = Planner::new(metrics.clone());
+        let mut planner = Planner::new(metrics.collector());
         let policy_engine = Arc::new(PolicyEngine::new());
 
         // Load default policy rules
@@ -901,7 +942,6 @@ impl App {
             );
         }
 
-
         // Wire personality creativity into planner for decision-making
         let shared_personality_clone = shared_personality.clone();
         planner.set_creativity_check(move |complexity: f32| {
@@ -915,11 +955,10 @@ impl App {
         });
         let planner = Arc::new(planner);
 
-
         // Create workflow engine with database access and coordinator for event integration
         // This ensures workflow experiences flow to WorkerManager and EventSubscriber
         let workflow_engine = Arc::new(WorkflowEngine::with_database_and_coordinator(
-            metrics.clone(),
+            metrics.collector(),
             database.clone(),
             coordinator.clone(),
         ));
@@ -928,12 +967,16 @@ impl App {
         // Create ACP router and registry
         let acp_registry = Arc::new(AcpRegistry::new());
         let acp_router = Arc::new(AcpRouter::new(acp_registry.clone()));
-        
+
         // Register system agents
         let system_agent = crate::bridge::acp::system_agent::create_system_agent();
         let worker_agent = crate::bridge::acp::system_agent::create_worker_agent();
-        acp_registry.register(system_agent).map_err(|e| anyhow::anyhow!("Failed to register system agent: {}", e))?;
-        acp_registry.register(worker_agent).map_err(|e| anyhow::anyhow!("Failed to register worker agent: {}", e))?;
+        acp_registry
+            .register(system_agent)
+            .map_err(|e| anyhow::anyhow!("Failed to register system agent: {}", e))?;
+        acp_registry
+            .register(worker_agent)
+            .map_err(|e| anyhow::anyhow!("Failed to register worker agent: {}", e))?;
         tracing::info!("ACP system agents registered (system:main, worker:1)");
 
         // Create MCP context with all systems
@@ -950,6 +993,7 @@ impl App {
 
         let mcp_context = Arc::new(McpContext::new(
             database.clone(),
+            job_queue.clone(),
             bus.clone(),
             coordinator.clone(),
             worker_manager.clone(),
@@ -985,7 +1029,10 @@ impl App {
         // code paths remain live rather than dead code. With no servers
         // connected these are safe no-ops.
         {
-            let disconnected = mcp_client.disconnect("startup-probe-server").await.unwrap_or(false);
+            let disconnected = mcp_client
+                .disconnect("startup-probe-server")
+                .await
+                .unwrap_or(false);
             let cleared = mcp_client.disconnect_all().await;
             let refresh_ok = mcp_client
                 .refresh_tools("startup-probe-server")
@@ -1014,6 +1061,7 @@ impl App {
             mcp_context.database.clone(),
             agent_safety_gate,
             shared_personality.clone(),
+            mcp_context.metrics.clone(),
         );
         let agent_loop = Arc::new(crate::agent::AgentLoop::new(agent_deps));
 
@@ -1021,7 +1069,7 @@ impl App {
         // §5.7). This exercises goal → plan → retrieve → decide → record
         // against an in-memory fixture at startup.
         // V2-09: agent self_check removed
-// V2-09: agent self_check log removed
+        // V2-09: agent self_check log removed
 
         // World Model self-check removed (TASK-V2-09): the world-model APIs
         // are now exercised at runtime by world-model MCP tools
@@ -1048,7 +1096,12 @@ impl App {
         let agent_count = acp_agent_count(&self);
         tracing::info!(
             "ACP subsystem online: router_ready={} registry_agents={} {} agent(s) registered",
-            !router.registry().list_agents().unwrap_or_default().is_empty() || agent_count == 0,
+            !router
+                .registry()
+                .list_agents()
+                .unwrap_or_default()
+                .is_empty()
+                || agent_count == 0,
             registry.count(),
             agent_count
         );
@@ -1084,7 +1137,11 @@ impl App {
         let success_rate = get_personality_success_rate(&self);
         tracing::info!(
             "Personality subsystem online: preset='{}' curiosity={:.2} creativity={:.2} caution={:.2} success_rate={:.2}",
-            preset, traits.curiosity, traits.creativity, traits.caution, success_rate
+            preset,
+            traits.curiosity,
+            traits.creativity,
+            traits.caution,
+            success_rate
         );
         let presets = list_personality_presets(&self);
         tracing::info!("Available personality presets: {:?}", presets);
@@ -1098,7 +1155,10 @@ impl App {
         let timeout = get_personality_timeout(&self, 30);
         tracing::info!(
             "Personality decisions: explore={} risk={} creativity={} timeout={}s",
-            explore, risk, creativity, timeout
+            explore,
+            risk,
+            creativity,
+            timeout
         );
 
         // Re-apply current preset to verify personality system is functional
@@ -1114,9 +1174,7 @@ impl App {
         let current_traits = get_personality_traits(&self);
         set_personality_traits(&self, current_traits.clone());
         adapt_personality(&self, true, false);
-        tracing::info!(
-            "Personality self-check complete: traits re-set and adaptation exercised"
-        );
+        tracing::info!("Personality self-check complete: traits re-set and adaptation exercised");
 
         // Learning subsystem self-check (Architecture §9 - Learning Pipeline)
 
@@ -1124,30 +1182,41 @@ impl App {
         let metrics_summary = crate::experience::metrics::run_metrics_self_check().await;
         tracing::info!("{}", metrics_summary);
 
-
-
         // Log subsystem health for engines held by App that are otherwise
         // only accessed during construction (Architecture: observability).
-        let graph_stats = self.hypothesis_engine.lock()
+        let graph_stats = self
+            .hypothesis_engine
+            .lock()
             .map(|g| g.get_graph_stats())
-            .unwrap_or_else(|_| crate::experience::hypothesis::support::graph::GraphStats {
-                node_count: 0, edge_count: 0, support_edges: 0,
-                contradict_edges: 0, depends_edges: 0,
-                related_edges: 0, cycles: 0,
-            });
+            .unwrap_or_else(
+                |_| crate::experience::hypothesis::support::graph::GraphStats {
+                    node_count: 0,
+                    edge_count: 0,
+                    support_edges: 0,
+                    contradict_edges: 0,
+                    depends_edges: 0,
+                    related_edges: 0,
+                    cycles: 0,
+                },
+            );
         tracing::info!(
             "Hypothesis engine ready: {} nodes / {} edges",
-            graph_stats.node_count, graph_stats.edge_count
+            graph_stats.node_count,
+            graph_stats.edge_count
         );
-        let patterns = self.reflection_pipeline.analyze_patterns(&[]).await
+        let patterns = self
+            .reflection_pipeline
+            .analyze_patterns(&[])
+            .await
             .unwrap_or_default();
         tracing::info!(
             "Reflection pipeline ready: {} baseline patterns",
             patterns.len()
         );
-        let wm_entities = self.world_model.entities_of_kind(
-            crate::world_model::types::EntityKind::Goal,
-        ).await;
+        let wm_entities = self
+            .world_model
+            .entities_of_kind(crate::world_model::types::EntityKind::Goal)
+            .await;
         tracing::info!(
             "World model ready: {} goal entities tracked",
             wm_entities.len()

@@ -9,6 +9,7 @@ use std::sync::{Arc, Mutex};
 
 use crate::database::sqlite::SqliteDatabase;
 use crate::experience::coordinator::ExperienceCoordinator;
+use crate::experience::metrics::Metrics;
 use crate::knowledge::KnowledgeStore;
 use crate::memory::retrieval::MemoryRetrieval;
 use crate::personality::Personality;
@@ -40,6 +41,8 @@ pub struct AgentDeps {
     /// override evidence-based confidence; it biases it. Shared with the App
     /// and the planner behind a mutex.
     pub personality: Arc<Mutex<Personality>>,
+    /// Metrics collection for loop-health monitoring (T1-13..T1-16).
+    pub metrics: Arc<Metrics>,
 }
 
 impl AgentDeps {
@@ -51,6 +54,7 @@ impl AgentDeps {
         database: Arc<SqliteDatabase>,
         safety_gate: Arc<SafetyGate>,
         personality: Arc<Mutex<Personality>>,
+        metrics: Arc<Metrics>,
     ) -> Self {
         Self {
             planner,
@@ -60,6 +64,7 @@ impl AgentDeps {
             database,
             safety_gate,
             personality,
+            metrics,
         }
     }
 }

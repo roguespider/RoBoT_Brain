@@ -1,10 +1,12 @@
 // src/bridge/tools/handlers/agent_handler.rs
 // Agent tools handler - handles MCP connection and workflow tools
 
-use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
+use crate::bridge::mcp::handlers::{
+    HandlerError, HandlerInitError, HandlerInitResult, ToolHandler,
+};
 use crate::bridge::tools::agent::{inputs::*, mcp_tools::*, workflows::*};
-use crate::bridge::mcp::handlers::{HandlerError, HandlerInitError, HandlerInitResult, ToolHandler};
+use std::sync::Arc;
 
 /// Handler for agent and MCP-related tools
 #[derive(Clone)]
@@ -14,9 +16,7 @@ pub struct AgentToolsHandler {
 
 impl AgentToolsHandler {
     /// Create a new agent tools handler
-    pub fn new(
-        context: Arc<McpContext>,
-    ) -> HandlerInitResult<Self> {
+    pub fn new(context: Arc<McpContext>) -> HandlerInitResult<Self> {
         // Validate that required dependencies exist
         if context.database.connection().is_err() {
             return Err(HandlerInitError::new(
@@ -29,27 +29,42 @@ impl AgentToolsHandler {
     }
 
     /// Get workflow - MUST be called before any other tool
-    pub async fn execute_get_workflow(&self, input: GetWorkflowInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    pub async fn execute_get_workflow(
+        &self,
+        input: GetWorkflowInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         execute_get_workflow(input).await
     }
 
     /// List all available tools
-    pub async fn execute_list_tools(&self, input: ListToolsInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    pub async fn execute_list_tools(
+        &self,
+        input: ListToolsInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         execute_list_tools(input).await
     }
 
     /// Get details about a specific tool
-    pub async fn execute_get_tool(&self, input: GetToolInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    pub async fn execute_get_tool(
+        &self,
+        input: GetToolInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         execute_get_tool(input).await
     }
 
     /// Connect to an external MCP server
-    pub async fn execute_connect_mcp_server(&self, input: ConnectMcpServerInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    pub async fn execute_connect_mcp_server(
+        &self,
+        input: ConnectMcpServerInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         execute_connect_mcp_server(input).await
     }
 
     /// Call a tool on a connected MCP server
-    pub async fn execute_call_mcp_tool(&self, input: CallMcpToolInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    pub async fn execute_call_mcp_tool(
+        &self,
+        input: CallMcpToolInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         execute_call_mcp_tool(input).await
     }
 
@@ -58,8 +73,11 @@ impl AgentToolsHandler {
     /// Constructs an AgentLoop from the McpContext's subsystems and runs it
     /// for the given goal. The loop plans, retrieves, decides, acts, and
     /// records the outcome — closing the cognitive loop.
-    pub async fn execute_run_agent_goal(&self, input: RunAgentGoalInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
-        use crate::agent::{AgentLoop, AgentDeps};
+    pub async fn execute_run_agent_goal(
+        &self,
+        input: RunAgentGoalInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        use crate::agent::{AgentDeps, AgentLoop};
 
         let deps = AgentDeps::new(
             self.context.planner.clone(),
@@ -69,6 +87,7 @@ impl AgentToolsHandler {
             self.context.database.clone(),
             self.context.safety_gate.clone(),
             self.context.personality.clone(),
+            self.context.metrics.clone(),
         );
         let agent_loop = AgentLoop::new(deps);
 
@@ -77,14 +96,16 @@ impl AgentToolsHandler {
 
         let outcome = agent_loop.run(goal).await?;
 
-        Ok(crate::bridge::tools::ToolOutput::success(serde_json::json!({
-            "goal_id": outcome.goal_id,
-            "status": format!("{:?}", outcome.status),
-            "action": outcome.action_description,
-            "confidence": outcome.confidence_value,
-            "abstain_reason": outcome.abstain_reason,
-            "experience_id": outcome.experience_id,
-        })))
+        Ok(crate::bridge::tools::ToolOutput::success(
+            serde_json::json!({
+                "goal_id": outcome.goal_id,
+                "status": format!("{:?}", outcome.status),
+                "action": outcome.action_description,
+                "confidence": outcome.confidence_value,
+                "abstain_reason": outcome.abstain_reason,
+                "experience_id": outcome.experience_id,
+            }),
+        ))
     }
 }
 
@@ -182,43 +203,60 @@ impl ToolHandler for AgentToolsHandler {
         ]
     }
 
-    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
+    fn execute_tool(
+        &self,
+        name: &str,
+        args: serde_json::Value,
+    ) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send
+    {
         async move {
             match name {
                 "get_workflow" => {
-                    let input: crate::bridge::tools::agent::inputs::GetWorkflowInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_get_workflow(input).await
+                    let input: crate::bridge::tools::agent::inputs::GetWorkflowInput =
+                        serde_json::from_value(args)
+                            .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_get_workflow(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "list_tools" => {
-                    let input: crate::bridge::tools::agent::inputs::ListToolsInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_list_tools(input).await
+                    let input: crate::bridge::tools::agent::inputs::ListToolsInput =
+                        serde_json::from_value(args)
+                            .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_list_tools(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "get_tool" => {
-                    let input: crate::bridge::tools::agent::inputs::GetToolInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_get_tool(input).await
+                    let input: crate::bridge::tools::agent::inputs::GetToolInput =
+                        serde_json::from_value(args)
+                            .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_get_tool(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "connect_mcp_server" => {
-                    let input: crate::bridge::tools::agent::inputs::ConnectMcpServerInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_connect_mcp_server(input).await
+                    let input: crate::bridge::tools::agent::inputs::ConnectMcpServerInput =
+                        serde_json::from_value(args)
+                            .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_connect_mcp_server(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "call_tool" => {
-                    let input: crate::bridge::tools::agent::inputs::CallMcpToolInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_call_mcp_tool(input).await
+                    let input: crate::bridge::tools::agent::inputs::CallMcpToolInput =
+                        serde_json::from_value(args)
+                            .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_call_mcp_tool(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "run_agent_goal" => {
-                    let input: crate::bridge::tools::agent::inputs::RunAgentGoalInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_run_agent_goal(input).await
+                    let input: crate::bridge::tools::agent::inputs::RunAgentGoalInput =
+                        serde_json::from_value(args)
+                            .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_run_agent_goal(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 _ => Err(HandlerError::ToolNotFound(name.to_string())),

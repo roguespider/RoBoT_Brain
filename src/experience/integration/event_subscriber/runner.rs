@@ -5,8 +5,8 @@
 use std::sync::Arc;
 use tokio::sync::broadcast;
 
-use crate::experience::bus::ExperienceBus;
 use super::EventSubscriber;
+use crate::experience::bus::ExperienceBus;
 
 /// Start the event subscriber as a background task
 pub fn start_event_subscriber(
@@ -26,6 +26,10 @@ pub fn start_event_subscriber(
                 }
                 Err(broadcast::error::RecvError::Lagged(n)) => {
                     tracing::warn!("Event subscriber lagged {} events", n);
+                    // Drain the lagged events so we don't re-process the same one.
+                    for _ in 0..n {
+                        let _ = receiver.recv().await;
+                    }
                 }
                 Err(broadcast::error::RecvError::Closed) => {
                     tracing::info!("Event bus closed, subscriber shutting down");

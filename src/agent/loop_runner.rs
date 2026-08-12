@@ -58,6 +58,7 @@ impl AgentLoop {
     /// panics; every failure path is converted into an abstained/failed
     /// outcome that is itself recorded as a learning experience.
     pub async fn run(&self, mut goal: AgentGoal) -> Result<AgentLoopOutcome> {
+        let start = std::time::Instant::now();
         goal.status = GoalStatus::InProgress;
 
         // Reset per-iteration safety counters (§16 sandbox budget + rollback
@@ -65,7 +66,12 @@ impl AgentLoop {
         self.deps.safety_gate.reset_iteration();
 
         // 1. Plan (§2.8). A planning failure is a learnable outcome.
-        let plan = match self.deps.planner.create_plan(goal.description.clone()).await {
+        let plan = match self
+            .deps
+            .planner
+            .create_plan(goal.description.clone())
+            .await
+        {
             Ok(plan) => plan,
             Err(e) => {
                 let experience_id = self
@@ -74,6 +80,8 @@ impl AgentLoop {
                     .ok();
                 goal.status = GoalStatus::Failed;
                 goal.completed_at = Some(chrono::Utc::now());
+                let latency_ms = start.elapsed().as_secs_f64() * 1000.0;
+                self.deps.metrics.record_loop_latency(latency_ms).await;
                 return Ok(AgentLoopOutcome {
                     goal_id: goal.id,
                     status: goal.status,
@@ -95,10 +103,7 @@ impl AgentLoop {
             .await;
         let experiences: Vec<_> = memory
             .iter()
-            .filter(|r| {
-                r.item.memory_type
-                    == crate::memory::types::MemoryType::Experience
-            })
+            .filter(|r| r.item.memory_type == crate::memory::types::MemoryType::Experience)
             .map(|r| r.item.clone())
             .collect();
 
@@ -139,6 +144,8 @@ impl AgentLoop {
                 .ok();
             goal.status = GoalStatus::Abstained;
             goal.completed_at = Some(chrono::Utc::now());
+            let latency_ms = start.elapsed().as_secs_f64() * 1000.0;
+            self.deps.metrics.record_loop_latency(latency_ms).await;
             return Ok(AgentLoopOutcome {
                 goal_id: goal.id,
                 status: goal.status,
@@ -169,11 +176,7 @@ impl AgentLoop {
         //    confidence), confidence thresholds, and action risk.
         //    Use evaluate_full() so the hallucination check runs on the
         //    SelectedAction's evidence diversity.
-        match self
-            .deps
-            .safety_gate
-            .evaluate_full(&mut selected)
-        {
+        match self.deps.safety_gate.evaluate_full(&mut selected) {
             SafetyDecision::Block { reason, report } => {
                 // Observe the abstention emotionally: a blocked action is a
                 // low-friction setback (no real failure), so record a mild
@@ -205,6 +208,10 @@ impl AgentLoop {
                 let experience_id = self.record_abstention(&goal, reason.clone()).await.ok();
                 goal.status = GoalStatus::Abstained;
                 goal.completed_at = Some(chrono::Utc::now());
+                let latency_ms = start.elapsed().as_secs_f64() * 1000.0;
+                if let Some(metrics) = &self.deps.metrics {
+                    metrics.record_loop_latency(latency_ms).await;
+                }
                 Ok(AgentLoopOutcome {
                     goal_id: goal.id,
                     status: goal.status,
@@ -224,7 +231,10 @@ impl AgentLoop {
                 tracing::info!("Agent loop proceeding: {}", rationale);
                 let outcome_summary = format!(
                     "Selected action '{}' (confidence {:.2}, emotion {:+.2}) for goal '{}'",
-                    selected.step.action, selected.confidence.value, emotional_weight, goal.description
+                    selected.step.action,
+                    selected.confidence.value,
+                    emotional_weight,
+                    goal.description
                 );
 
                 // 6. Record the outcome as a new experience. The recorder
@@ -259,6 +269,10 @@ impl AgentLoop {
 
                 goal.status = GoalStatus::Achieved;
                 goal.completed_at = Some(chrono::Utc::now());
+                let latency_ms = start.elapsed().as_secs_f64() * 1000.0;
+                if let Some(metrics) = &self.deps.metrics {
+                    metrics.record_loop_latency(latency_ms).await;
+                }
                 Ok(AgentLoopOutcome {
                     goal_id: goal.id,
                     status: goal.status,
@@ -339,14 +353,16 @@ impl AgentLoop {
         if !rolled_back.is_empty() {
             let targets: Vec<String> = rolled_back
                 .iter()
-                .map(|e| format!(
-                    "{}({}) at {} [id={}{}]",
-                    e.action,
-                    e.target_id,
-                    e.timestamp.format("%H:%M:%S"),
-                    e.id,
-                    if e.rolled_back { ", reversed" } else { "" }
-                ))
+                .map(|e| {
+                    format!(
+                        "{}({}) at {} [id={}{}]",
+                        e.action,
+                        e.target_id,
+                        e.timestamp.format("%H:%M:%S"),
+                        e.id,
+                        if e.rolled_back { ", reversed" } else { "" }
+                    )
+                })
                 .collect();
             tracing::info!(
                 "Safety gate rolled back {} mutation(s): {}",

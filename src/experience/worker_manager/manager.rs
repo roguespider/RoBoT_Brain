@@ -1,14 +1,15 @@
 // /src/experience/worker_manager/manager.rs
 //! Core WorkerManager implementation
 
-use std::collections::HashMap;
-use std::sync::Arc;
 use anyhow::Result;
-use tokio::sync::{mpsc, RwLock};
+use std::collections::HashMap;
+use std::sync::{Arc, Mutex};
+use tokio::sync::{RwLock, mpsc};
 
 use crate::experience::bus::ExperienceBus;
 use crate::experience::events::ExperienceEvent;
 use crate::experience::observer::ExperienceObserver;
+use crate::experience::queue::JobQueue;
 pub use crate::experience::worker::WorkerStats;
 use crate::experience::worker::{ExperienceWorker, ObserverJob};
 
@@ -25,31 +26,32 @@ struct WorkerHandle {
 
 /// Manages workers for all registered observers
 /// Routes events from bus to appropriate worker channels
+/// Jobs are persisted to SQLite via the JobQueue for durability.
 pub struct WorkerManager {
     /// Event bus for subscribing to events
     bus: Arc<ExperienceBus>,
     /// Workers indexed by observer name
     workers: Arc<RwLock<HashMap<String, WorkerHandle>>>,
+    /// Durable job queue backed by SQLite
+    job_queue: Arc<Mutex<JobQueue>>,
 }
 
 impl WorkerManager {
-    /// Create a new worker manager
-    pub fn new(bus: Arc<ExperienceBus>) -> Self {
+    /// Create a new worker manager with a durable SQLite-backed job queue.
+    pub fn new_with_queue(bus: Arc<ExperienceBus>, job_queue: Arc<Mutex<JobQueue>>) -> Self {
         Self {
             bus,
             workers: Arc::new(RwLock::new(HashMap::new())),
+            job_queue,
         }
     }
 
     /// Register an observer and spawn a worker for it
-    pub async fn register_observer(
-        &self,
-        observer: Arc<dyn ExperienceObserver>,
-    ) -> Result<()> {
+    pub async fn register_observer(&self, observer: Arc<dyn ExperienceObserver>) -> Result<()> {
         let name = observer.name().to_string();
-        
+
         let mut workers = self.workers.write().await;
-        
+
         // Check if worker already exists for this observer
         if workers.contains_key(&name) {
             tracing::warn!("Observer {} already registered, skipping", name);
@@ -65,7 +67,7 @@ impl WorkerManager {
 
         // Clone name for the async task
         let task_name = name.clone();
-        
+
         // Spawn the worker task - task runs until channel closes or observer.shutdown()
         tokio::spawn(async move {
             if let Err(e) = worker.start().await {
@@ -74,27 +76,33 @@ impl WorkerManager {
         });
 
         // Store the handle
-        workers.insert(name.clone(), WorkerHandle {
-            sender,
-            stats,
-        });
+        workers.insert(name.clone(), WorkerHandle { sender, stats });
 
         tracing::info!("Registered observer: {} with worker", name);
         Ok(())
     }
 
     /// Enqueue a job for an observer by name
-    /// Called by the bus subscriber when events are published
+    /// Called by the bus subscriber when events are published.
+    /// The job is persisted to SQLite via the JobQueue.
     pub async fn enqueue(&self, observer_name: &str, event: ExperienceEvent) -> Result<()> {
         let workers = self.workers.read().await;
-        
-        let handle = workers
-            .get(observer_name)
-            .ok_or_else(|| anyhow::anyhow!("No worker registered for observer: {}", observer_name))?;
+
+        let handle = workers.get(observer_name).ok_or_else(|| {
+            anyhow::anyhow!("No worker registered for observer: {}", observer_name)
+        })?;
+
+        // Persist the job to the durable queue before sending via channel
+        let event_id = event.id.to_string();
+        {
+            let mut q = self.job_queue.lock().unwrap();
+            q.push_job(&event_id, observer_name);
+        }
 
         let job = ObserverJob::new(event);
-        
-        handle.sender
+
+        handle
+            .sender
             .send(job)
             .await
             .map_err(|e| anyhow::anyhow!("Failed to enqueue job: {}", e))?;
@@ -104,13 +112,26 @@ impl WorkerManager {
     }
 
     /// Broadcast an event to all interested observers
-    /// Checks each observer's accepts() before enqueueing
+    /// Checks each observer's accepts() before enqueueing.
+    /// Jobs are persisted to the JobQueue for durability.
     pub async fn broadcast_event(&self, event: ExperienceEvent) -> Result<()> {
         let workers = self.workers.read().await;
         let event_type = event.event_type.clone();
+        let event_id = event.id.to_string();
+
+        // Persist the job to the durable queue for all workers
+        {
+            let mut q = self
+                .job_queue
+                .lock()
+                .map_err(|e| anyhow::anyhow!("Queue lock poisoned: {}", e))?;
+            for name in workers.keys() {
+                q.push_job(&event_id, name);
+            }
+        }
 
         let mut enqueued_count = 0;
-        
+
         for (name, handle) in workers.iter() {
             // We can't check accepts() here without the observer reference
             // So we send to all and let workers filter
@@ -127,7 +148,11 @@ impl WorkerManager {
         }
 
         if enqueued_count > 0 {
-            tracing::debug!("Broadcast event {:?} to {} observers", event_type, enqueued_count);
+            tracing::debug!(
+                "Broadcast event {:?} to {} observers",
+                event_type,
+                enqueued_count
+            );
         }
 
         Ok(())
@@ -136,9 +161,7 @@ impl WorkerManager {
     /// Get statistics for all workers
     pub async fn get_stats(&self) -> Vec<WorkerStats> {
         let workers = self.workers.read().await;
-        workers.values()
-            .map(|h| (*h.stats).clone())
-            .collect()
+        workers.values().map(|h| (*h.stats).clone()).collect()
     }
 
     /// Get statistics for a specific observer
@@ -165,5 +188,23 @@ impl WorkerManager {
     /// dead state.
     pub fn bus_subscriber_count(&self) -> usize {
         self.bus.subscriber_count()
+    }
+
+    /// Mark a job as completed after a worker processes it.
+    pub fn mark_job_complete(&self, job_id: &str) -> Result<()> {
+        let mut q = self
+            .job_queue
+            .lock()
+            .map_err(|e| anyhow::anyhow!("Queue lock poisoned: {}", e))?;
+        q.mark_complete(job_id)
+    }
+
+    /// Mark a job as failed after a worker encounters an error.
+    pub fn mark_job_failed(&self, job_id: &str, error: String) -> Result<()> {
+        let mut q = self
+            .job_queue
+            .lock()
+            .map_err(|e| anyhow::anyhow!("Queue lock poisoned: {}", e))?;
+        q.mark_failed(job_id, error)
     }
 }
