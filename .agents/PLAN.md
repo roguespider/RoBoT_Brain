@@ -310,8 +310,18 @@ first; AI Runtime (Candle) comes last as the local provider behind the
       exposed as an MCP tool. record_observation stores observations in DB
       directly, never touching LearningPipeline. Pure internal state machine
       with no MCP surface.
-      - [ ] **T1-10B-16** `experience/evolution/engine.rs` (3) —
-            EvolutionEngine.
+      - [~] **T1-10B-16** `experience/evolution/engine.rs` (3) —
+      RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
+      Reason: EvolutionEngine's methods (create_behavior, record_result,
+      add_evidence, get_metrics, update_priority, merge_behaviors,
+      evaluate_and_maintain, etc.) have ZERO callers on any MCP-reachable
+      path. The only MCP-reachable methods are list_behaviors +
+      list_active_behaviors, called by get_system_status (returns counts
+      only, not behaviors). No MCP tool creates/populates behaviors, so
+      list_behaviors always returns 0 via MCP. create_behavior_from_insight
+      (the trait method) is internal-only. Behavior methods (add_source_insight,
+      record_success/failure, start_practicing, success_rate) are also
+      internal-only. Pure internal evolution logic with no MCP surface.
       - [ ] **T1-10B-17** `bridge/tools/ingestor/semantic_chunker.rs` (3) —
             markdown/sentence/code chunking.
       - [~] **T1-10B-18** `memory/repository.rs` (1) —
