@@ -180,8 +180,14 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             may be internal-only — assess per-test.
       - [ ] **T1-10B-02** `personality/emotional.rs` (3 tests) — get_personality
             (emotional_state field).
-      - [ ] **T1-10B-03** `experience/reflection/services/generator.rs` (3) —
-            create_reflection / get_insights / validate_reflection.
+      - [~] **T1-10B-03** `experience/reflection/services/generator.rs` (3) —
+            RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
+            Reason: execute_create_reflection passes vec![].as_slice() (empty
+            experiences) to generate_reflection -> generate_from_experiences,
+            so the MCP tool NEVER exercises the tested logic (success/failure
+            type determination, min-experiences threshold). It always returns
+            success:true regardless. The tool is effectively a stub. Migrating
+            would test stub behavior, not generate_from_experiences logic.
       - [x] **T1-10B-04** `knowledge/store.rs` (2 tests) DONE 2026-08-12.
             Migrated test_add_and_get + test_get_mature to test_suite/src/
             tests/knowledge_store.rs via MCP flow. test_add_and_get: add_knowledge
