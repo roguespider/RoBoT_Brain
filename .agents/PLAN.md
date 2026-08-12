@@ -55,6 +55,12 @@ Knowledge → Reputation`; `run_agent_goal` agent loop works.
   `#[allow(...)]`, no ignored `_` vars). Enforced by the test suite.
 - Incremental workflow: after EACH increment, run the gate (below) green, then
   commit + push, then STOP. Never batch.
+- **Verify, don't trust:** every step must be VERIFIED by inspecting the actual
+  codebase state and running the gate — never rely on a "done" message, a
+  commit description, or a checkbox marked `[x]`/`[in]`. Open the file, read the
+  code, confirm the change is there and the gate is actually green. A commit
+  that claims "fixes all warnings" may be lying; run the gate and read the JSON
+  report to confirm the metric is actually 0.
 - Large-file rule: split `.rs` files over ~1000 lines that mix
   responsibilities (see `.agents/LARGE_FILE_REFACTOR.md`).
 - Local-first: the cognitive architecture must work against cloud/external
@@ -588,15 +594,20 @@ Reputation` wired in `src/experience/integration/event_subscriber/handlers.rs`.
 - T1-20 added 9 ACP tool tests (commit 6b7d036).
 - T1-21..T1-29 added 41 remaining tool tests (commit 7775ca1).
 
-## Verified state (2026-08-11)
+## Verified state (2026-08-12)
 
-- 0 cargo warnings; 134 MCP tools (T1-19 exposed 6 embedding tools);
-  141/141 FunctionRegistry tests pass (333/333 traditional); 0 code-quality
-  issues.
-- ✅ **Coverage gate GREEN** (section 1E done): test_suite exits 0, untested 0,
-  phantom 0 (all 134 server tools tested).
-- ⚠️ **TIER 1 NOT fully done — 10 tasks remain** (1B SQLite queue, 1C metrics,
-  1D MCP→experience hook). See sections 1B/1C/1D above.
+- ⚠️ **GATE RED** — `compiler_warnings=163`, `code_issues=0`, `untested=0`,
+  `tests=145/145`. The 163 warnings are the current blocker. Triage:
+  ~60 `collapsible_if`, ~14 `async fn` simplification, ~6 `module_inception`,
+  3 `too_many_arguments`, ~80 dead-code (`never used`/`never read`).
+- 134 MCP tools (T1-19 exposed 6 embedding tools); 145 FunctionRegistry tests
+  pass; 0 code-quality issues; 0 untested tools.
+- Code-issue fixes done this session (commit a21055d): planner.rs
+  (`_step`/`_analysis` renamed, `replan`/`should_use_creativity` unwrapped from
+  `#[cfg(test)]` and wired into maintenance loop), reflection.rs
+  (`experience_count` wired into analyzer), graph `edge_count` unwrapped +
+  wired into probe, `HypothesisStatistics`/`StatisticsSnapshot` unwrapped from
+  `#[cfg(test)]` and wired into maintenance probe.
 - ⏳ **T1-10 changes made** (5 files), NOT YET BUILT. Next: build + gate.
 - 8 self_check.rs files remain (→ TIER 2).
 - Large-file refactors done: `personality/personality.rs` (352→101, split into
