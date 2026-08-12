@@ -103,7 +103,7 @@ impl ReflectionAnalyzer {
         let indicators = ReflectionQualityIndicators {
             has_description: !reflection.description.is_empty(),
             has_summary: !reflection.summary.is_empty(),
-            experience_count: reflection.experience_ids.len(),
+            experience_count: reflection.experience_count(),
             confidence_score: reflection.confidence.score,
             is_actionable: reflection.confidence.score >= 0.7,
         };

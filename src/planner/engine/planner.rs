@@ -52,7 +52,6 @@ impl Planner {
     /// Check if a creative approach should be used for replanning.
     /// Returns true when the personality system determines creativity is warranted
     /// given the problem complexity.
-    #[cfg(test)]
     fn should_use_creativity(&self, problem_complexity: f32) -> bool {
         self.creativity_check
             .as_ref()
@@ -545,7 +544,6 @@ impl Planner {
     /// - New knowledge becomes available
     /// - Context changes significantly
     /// - A better approach is discovered
-    #[cfg(test)]
     pub async fn replan(&self, plan_id: &str, reason: ReplanReason) -> Result<Option<Plan>> {
         let plans = self.active_plans.read().await;
 
@@ -703,7 +701,7 @@ impl Planner {
             )
             .await?;
         let plan_id = plan.id.clone();
-        let _step = self
+        let step = self
             .add_informed_step(
                 &plan_id,
                 "probe step",
@@ -726,7 +724,8 @@ impl Planner {
         };
         let best = self.select_best_action(vec![candidate]).await;
         tracing::debug!(
-            "Planner maintenance best action present: {}",
+            "Planner maintenance probe step '{}' best action present: {}",
+            step.description,
             best.is_some()
         );
 
@@ -740,8 +739,24 @@ impl Planner {
         // Retry failed steps and analyze failure on the probe plan (no-ops if
         // no failed steps, but exercises the replanning path).
         let retried = self.retry_failed_steps(&plan_id).await.unwrap_or(0);
-        let _analysis = self.analyze_failure(&plan_id).await?;
-        tracing::debug!("Planner maintenance retried steps: {}", retried);
+        let analysis = self.analyze_failure(&plan_id).await?;
+        tracing::debug!(
+            "Planner maintenance retried {} steps, analysis failed_step_count: {}",
+            retried,
+            analysis.failed_step_count
+        );
+
+        // If steps are still failing after retry, trigger a replan (§5.6
+        // "Replanning").
+        if analysis.failed_step_count > 0 {
+            let replanned = self
+                .replan(&plan_id, ReplanReason::StepFailed(plan_id.to_string()))
+                .await?;
+            tracing::debug!(
+                "Planner maintenance replan triggered, new plan: {}",
+                replanned.is_some()
+            );
+        }
 
         // Status listing + stale cleanup (housekeeping).
         let in_progress = self.list_plans_by_status(PlanStatus::InProgress).await;

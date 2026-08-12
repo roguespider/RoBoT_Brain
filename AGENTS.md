@@ -10,6 +10,52 @@
 - This makes each change independently reviewable and revertable.
 - If a later change breaks something, you know exactly which change caused it.
 
+### Verify, Don't Trust (MANDATORY)
+
+**Never rely on a "done" message — yours, a prior session's, or a commit
+description. Verify each step by inspecting the actual codebase state.**
+
+- A commit that says "fixes all warnings" may be lying. Run the gate and read
+  the actual output.
+- A PLAN.md checkbox marked `[x]` only means someone claimed it was done. Open
+  the file, read the code, confirm the change is actually there and actually
+  works.
+- A task marked `[in]` (in progress) may have been abandoned mid-step. Check
+  whether the described changes actually exist in the source and whether they
+  compile.
+- Before claiming a task is done: run the gate, read the JSON report, confirm
+  the relevant metric is actually 0 (not just "I think I fixed it").
+- "It compiles on my machine" is not verification. The gate is the verifier.
+
+### Never Separately Build robot_brain (MANDATORY)
+
+**test_suite auto-builds robot_brain. Never run
+`cargo build -p robot_brain` or `cargo build --release -p robot_brain`
+separately.**
+
+- test_suite and robot_brain are two separate, independent projects.
+  test_suite does NOT import or link robot_brain's source. It spawns
+  robot_brain as a subprocess via MCP.
+- When working on test_suite, NEVER touch `src/` (robot_brain's source). When
+  working on robot_brain, NEVER touch `test_suite/src/`.
+- To build + test robot_brain: `cd test_suite && cargo build --release &&
+  ./target/release/test_suite`. That's it. test_suite rebuilds robot_brain
+  automatically.
+- Running a separate `cargo build -p robot_brain` wastes time and can mask
+  discrepancies between what you built and what test_suite built.
+
+### Quality Gate (MANDATORY before any commit)
+
+Run `cd test_suite && cargo build --release && ./target/release/test_suite --gate`.
+All four metrics must pass: `tests` (100%), `compiler_warnings` (0),
+`code_issues` (0), `untested_tools` (0). See README "Quality Gate" section
+for the full table and the JSON-report triage recipe.
+
+The structured report at `test_suite/test_suite_report.json` has an `issues[]`
+array; each entry has `kind`/`category`/`file`/`line`/`message`/`suggested_action`.
+Use `python3 -c` + `collections.Counter` to group warnings by message/file for
+triage. Fix dead-code first (highest signal), then mechanical clippy lints.
+
 ## Startup (do this every session — see `.agents/STARTUP.md` for the full call to action)
 
 1. Read `.agents/STARTUP.md`, then this file, then `.agents/PLAN.md` — in full.
@@ -47,44 +93,48 @@ This is a Rust workspace with **two separate, independent programs**:
 | Component | Location | Binary | Purpose |
 |-----------|----------|--------|---------|
 | **robot_brain** | `/` (root) | `robot_brain` | Main MCP server (AI agent with tool plugins) |
-| **brain_tester** | `/brain_tester/` | `brain_tester` | Unified test suite (live MCP/ACP tests + coverage gate + code analysis) |
+| **test_suite** | `/test_suite/` | `test_suite` | Unified test suite (live MCP/ACP tests + coverage gate + code analysis) |
 
-These programs **do NOT depend on each other's source code**. brain_tester tests robot_brain by spawning it as a subprocess via MCP protocol.
+These programs **do NOT depend on each other's source code**. test_suite tests robot_brain by spawning it as a subprocess via MCP protocol.
 
 ## Build Commands
 
 ```bash
-# Build main binary (from repo root)
-cargo build --release -p robot_brain
-
-# Build + run the unified test suite (brain_tester/ is a SEPARATE independent
-# project, NOT a workspace member — its own Cargo.toml/Cargo.lock.
-# `cargo build -p brain_tester` from the repo root FAILS with "package ID did
-# not match". Build it from its own directory.)
-cd brain_tester && cargo build --release && ./target/release/brain_tester
-# Outputs: brain_tester/brain_tester_output.txt and brain_tester/brain_tester_report.json
+# The verify gate — test_suite auto-builds robot_brain, connects via MCP,
+# runs all tests + code analysis, and enforces 0 warnings / 0 code-issues /
+# 0 untested tools. This is the ONLY command needed to build + test:
+cd test_suite && cargo build --release && ./target/release/test_suite
+# Outputs: test_suite/test_suite_output.txt and test_suite/test_suite_report.json
+#
+# Or use `make gate` (runs the same thing via .agents/scripts/gate.sh).
 #
 # CLI modes:
-#   brain_tester              → full suite (default)
-#   brain_tester --list       → list all server tools (smoke check)
-#   brain_tester --probe TOOL → introspect one tool's live inputSchema
+#   test_suite              → full suite (default)
+#   test_suite --list       → list all server tools (smoke check)
+#   test_suite --probe TOOL → introspect one tool's live inputSchema
+#
+# Build main binary only (rarely needed — test_suite does this automatically):
+#   cargo build --release -p robot_brain
 ```
 
 ## Post-Compile: Connect to robot_brain MCP/ACP
 
-**IMPORTANT (User Requirement):** After compiling `robot_brain`, the AI agent MUST connect to the running robot_brain MCP/ACP server directly to test it. Do not rely solely on brain_tester — connect yourself as a client.
+**IMPORTANT (User Requirement):** test_suite auto-builds robot_brain and
+connects via MCP, but the AI agent MUST also connect to the running
+robot_brain MCP/ACP server directly to test it. Do not rely solely on
+test_suite — connect yourself as a client.
 
 **Two ways to connect (do NOT hand-write a new MCP client):**
 
-1. **`brain_tester --probe TOOL`** — Rust, built into the test suite. Introspects a tool's live `inputSchema` (required/optional params). Fastest way to discover what a tool expects.
+1. **`test_suite --probe TOOL`** — Rust, built into the test suite. Introspects a tool's live `inputSchema` (required/optional params). Fastest way to discover what a tool expects.
 2. **`.agents/live_test/mcp_client.py`** — stdlib-only Python `RobotBrainClient` for ad-hoc calls. Auto-detects the binary, auto-handles the workflow gate.
 
 ```bash
 # Schema introspection (Rust) — discover a tool's required fields:
-cd brain_tester && ./target/release/brain_tester --probe register_agent
+cd test_suite && ./target/release/test_suite --probe register_agent
 
 # Quick smoke check — list all server tools + required fields:
-cd brain_tester && ./target/release/brain_tester --list
+cd test_suite && ./target/release/test_suite --list
 
 # Ad-hoc tool calls via the reusable Python RobotBrainClient:
 #   from mcp_client import RobotBrainClient
@@ -95,10 +145,10 @@ cd brain_tester && ./target/release/brain_tester --list
 
 The `robot-brain` skill (`.agents/skills/robot-brain/skill.md`) documents the tool catalog and the workflow gate. Steps after a successful build:
 1. Invoke the `robot-brain` skill
-2. Run `brain_tester` (full suite) or `brain_tester --probe TOOL` (schema lookup) or use `RobotBrainClient` for targeted calls
+2. Run `test_suite` (full suite) or `test_suite --probe TOOL` (schema lookup) or use `RobotBrainClient` for targeted calls
 3. Verify key tools: `store_memory`, `search_memory`, `list_memories`, `create_plan`, `list_plans`, `create_workflow`, `start_workflow`, `query_knowledge`, `record_experience`
 4. ACP tools: `route_acp_message`, `register_agent`, `list_acp_agents` (note: `list_agents` does not exist — the real tool is `list_acp_agents`)
-5. Discovery: `brain_tester --list` confirms all tools are available
+5. Discovery: `test_suite --list` confirms all tools are available
 6. Report which tools work and which fail
 
 **Workflow gate (required before any substantive tool call):** the server returns `WORKFLOW_NOT_RETRIEVED` until `get_workflow` is called, then `MEMORY_NOT_SEARCHED` until `search_memory` is called. `RobotBrainClient.init()` handles both automatically.
@@ -181,10 +231,10 @@ server has moved to **`.agents/OPENHANDS_INTEGRATION.md`**. Consult it when
 integrating with the OpenHands SDK; it is not needed for normal build/test/work
 sessions.
 
-## brain_tester Coverage (FunctionRegistry)
+## test_suite Coverage (FunctionRegistry)
 
 The coverage gate cross-checks the server's `tools/list` against the test
-suite's `FunctionRegistry` (in `brain_tester/src/function_registry/`). Key facts
+suite's `FunctionRegistry` (in `test_suite/src/function_registry/`). Key facts
 every session should know:
 
 - **Adding a tool to the server's `tools/list` is NOT enough to close
@@ -192,7 +242,7 @@ every session should know:
   `function_registry/` (with a matching `id` case in
   `comprehensive_test/argument_builder.rs`). The cross-check diffs server tool
   names vs the registry's `function_name` fields. Standalone tests in
-  `brain_tester/src/tests/` do NOT count toward coverage.
+  `test_suite/src/tests/` do NOT count toward coverage.
 - **Tool-list drift hazard:** each MCP handler maintains `tool_names()` /
   `get_tools()` / `execute_tool()` as THREE separate lists that must stay in
   sync. `get_tools()` feeds the RMCP `tools/list` response; if it omits an

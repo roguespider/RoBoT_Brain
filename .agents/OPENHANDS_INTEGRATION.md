@@ -37,11 +37,11 @@ conversation.run()
 
 ## Complete Example
 
-See `examples/robot_brain_agent.py` for a full-featured script:
+See `.agents/examples/robot_brain_agent.py` for a full-featured script:
 
 ```bash
 export LLM_API_KEY="your-key"
-python examples/robot_brain_agent.py -m "Search memory for architecture patterns"
+python .agents/examples/robot_brain_agent.py -m "Search memory for architecture patterns"
 ```
 
 ## Available Tools (~89 total)

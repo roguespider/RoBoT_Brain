@@ -12,18 +12,18 @@
 
 ## 2. Run the verify gate (must be green BEFORE any code change)
 
-> **The wall (use it):** `make gate` runs all three checks below in order and
-> aborts on the first failure. It is installed as a pre-commit hook
-> (`.githooks/pre-commit`) so **no commit lands unless the gate is green** —
-> including the live connect-to-robot_brain step, which cannot be skipped.
-> One-time clone setup: `make hooks` (sets `core.hooksPath = .githooks`).
+> **The wall (use it):** `make gate` runs test_suite, which auto-builds
+> robot_brain, connects via MCP, runs all tests + code analysis, and enforces
+> the quality wall. It is installed as a pre-commit hook
+> (`.agents/githooks/pre-commit`) so **no commit lands unless the gate is green**.
+> One-time clone setup: `make hooks` (sets `core.hooksPath = .agents/githooks`).
 >
 > AGENTS.md is enforced as a **HARD wall**: 0 compiler warnings, 0 code-issues
 > (no `#[allow]`, no `PublicNeverCalled`, no stubs), 0 untested tools. There is
 > no ratchet and no baseline to ratchet against. A non-zero count blocks the
 > commit; fix it by wiring the dead-code pub API into a real caller — never by
 > `#[allow]` or `_`. `git commit --no-verify` is ONLY for the one-time
-> bootstrap of the wall files themselves (scripts/, .githooks/, Makefile) and
+> bootstrap of the wall files themselves (.agents/scripts/, .agents/githooks/, Makefile) and
 > trivial doc-only edits; never for `src/` changes.
 
 If the toolchain is not installed, install it first (see AGENTS.md
@@ -33,16 +33,18 @@ If the toolchain is not installed, install it first (see AGENTS.md
 make gate
 ```
 
-…or run the three steps by hand (the wall does exactly this):
+…or run test_suite by hand (the wall does exactly this):
 
 ```bash
-cargo build --release -p robot_brain          # must finish 0 warnings
-python3 brain_tester     # must be 54/54
-cd brain_tester && cargo build --release && ./target/release/brain_tester  # 333/333, 0 code-quality
+cd test_suite && cargo build --release && ./target/release/test_suite
 ```
 
-All three must pass. If any fails, fix the failure before doing anything else.
-Do not "remember" a prior pass — actually run them this session.
+test_suite auto-builds robot_brain, spawns it as a subprocess, connects
+via MCP, runs all tests + code analysis, and writes
+`test_suite/test_suite_report.json`. The gate is green only when all
+tests pass AND 0 warnings / 0 code-issues / 0 untested tools. If any fails,
+fix the failure before doing anything else. Do not "remember" a prior pass —
+actually run it this session.
 
 ## 3. Pick the next task (in order, do not skip ahead)
 
@@ -50,7 +52,7 @@ Open `.agents/PLAN.md`. Find the FIRST unchecked `- [ ]` increment. Work tiers
 in order: TIER 1 (finish v0.0.1) → TIER 2 (reach v0.0.2) → TIER 3 (reach
 v0.0.2.1). Each increment is one ~10-15 min change.
 
-- **Coverage gate is GREEN** (section 1E done). brain_tester exits 0 (141/141 tests
+- **Coverage gate is GREEN** (section 1E done). test_suite exits 0 (141/141 tests
   pass, 0 code issues, 0 warnings, 0 untested, 0 phantom). All 134 server tools
   are covered. Commits: b9b43ff (phantom fix), 6b7d036 (ACP tests), 7775ca1
   (remaining 41 tools).

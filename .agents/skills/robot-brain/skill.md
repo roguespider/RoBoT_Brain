@@ -22,7 +22,7 @@ mcp_config = {
 }
 ```
 
-> **Prefer brain_tester for verification.** The unified test suite at `brain_tester/` has three modes: `brain_tester` (full suite), `brain_tester --list` (smoke check), and `brain_tester --probe TOOL` (introspect a tool's live inputSchema). For ad-hoc calls, the repo also ships a stdlib-only Python `RobotBrainClient` at `.agents/live_test/mcp_client.py` that auto-detects the binary and auto-handles the workflow gate below. Do not hand-write a new client. See "Live Testing" below.
+> **Prefer test_suite for verification.** The unified test suite at `test_suite/` has three modes: `test_suite` (full suite), `test_suite --list` (smoke check), and `test_suite --probe TOOL` (introspect a tool's live inputSchema). For ad-hoc calls, the repo also ships a stdlib-only Python `RobotBrainClient` at `.agents/live_test/mcp_client.py` that auto-detects the binary and auto-handles the workflow gate below. Do not hand-write a new client. See "Live Testing" below.
 
 ## Workflow Gate (REQUIRED before any tool)
 
@@ -126,26 +126,26 @@ Create hypothesis: "Using module-based refactoring reduces compilation time for 
 
 ## Example Script
 
-See `examples/robot_brain_agent.py` for a complete integration example:
+See `.agents/examples/robot_brain_agent.py` for a complete integration example:
 
 ```bash
 export LLM_API_KEY="your-key"
-python examples/robot_brain_agent.py -m "Search memory for architecture patterns"
+python .agents/examples/robot_brain_agent.py -m "Search memory for architecture patterns"
 ```
 
 ## Live Testing
 
-The fastest way to verify the server works after compiling is `brain_tester` (Rust, built into the test suite):
+The fastest way to verify the server works after compiling is `test_suite` (Rust, built into the test suite):
 
 ```bash
 # Full end-to-end suite (387 tests + coverage gate + code analysis)
-cd brain_tester && cargo build --release && ./target/release/brain_tester
+cd test_suite && cargo build --release && ./target/release/test_suite
 
 # Quick smoke check — list all server tools + required fields
-./target/release/brain_tester --list
+./target/release/test_suite --list
 
 # Introspect one tool's live inputSchema (required/optional params)
-./target/release/brain_tester --probe register_agent
+./target/release/test_suite --probe register_agent
 ```
 
 For ad-hoc tool calls, the Python `RobotBrainClient` (`.agents/live_test/mcp_client.py`) is still available:

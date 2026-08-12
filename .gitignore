@@ -5,9 +5,16 @@
 target/
 
 LLModel/
-brain_tester_output.txt
-brain_tester_report.json
+
+# Generated test output (do not commit)
+test_suite/test_suite_output.txt
+test_suite/test_suite_report.json
 
 # Python live-test cache
 __pycache__/
 *.pyc
+
+# Cargo.lock — robot_brain is a binary crate; test_suite is a separate
+# independent binary crate. Neither lock file should be committed.
+Cargo.lock
+test_suite/Cargo.lock

@@ -407,7 +407,11 @@ impl HypothesisEngine {
             .add_dependency(HypothesisId("e".to_string()), HypothesisId("f".to_string()))
             .add_related(HypothesisId("g".to_string()), HypothesisId("h".to_string()))
             .build();
-        tracing::debug!("Graph builder probe: {} nodes", probe.node_count());
+        tracing::debug!(
+            "Graph builder probe: {} nodes, {} edges",
+            probe.node_count(),
+            probe.edge_count()
+        );
         // Exercise the remaining graph accessors on the probe graph (mutations
         // must not touch the live hypothesis graph).
         let probe_node = HypothesisId("probe".to_string());
@@ -515,6 +519,31 @@ impl HypothesisEngine {
         tracing::debug!(
             "Hypothesis planner prioritized {} actions",
             prioritized.len()
+        );
+
+        // Exercise hypothesis statistics tracking (Architecture §8.3) so the
+        // HypothesisStatistics API stays wired to a real caller.
+        use crate::experience::hypothesis::support::statistics::{
+            HypothesisStatistics, StatisticsSnapshot,
+        };
+        let mut hyp_stats = HypothesisStatistics::new();
+        for h in &probes {
+            hyp_stats.record(h);
+        }
+        let snapshot: StatisticsSnapshot = (&hyp_stats).into();
+        tracing::debug!(
+            "Hypothesis stats: {} total, avg_conf={:.2}, support_rate={:.2}, confirm_rate={:.2}",
+            snapshot.total_hypotheses,
+            snapshot.average_confidence,
+            snapshot.support_rate,
+            snapshot.confirmation_rate
+        );
+        // Reset after the maintenance probe so counters don't accumulate
+        // across cycles.
+        hyp_stats.reset();
+        tracing::debug!(
+            "Hypothesis stats reset: {} total after reset",
+            hyp_stats.total_hypotheses
         );
     }
 }

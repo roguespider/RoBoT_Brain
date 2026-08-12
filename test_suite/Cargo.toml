@@ -1,0 +1,22 @@
+[package]
+name = "test_suite"
+version = "0.0.2"
+edition = "2024"
+description = "Unified test suite for the RoBoT Brain ACP/MCP server (live tool tests, coverage gate, code analysis, schema probe)"
+license = "AGPL-3.0-or-later"
+authors = ["Rogue Spider"]
+
+[[bin]]
+name = "test_suite"
+path = "src/main.rs"
+
+[dependencies]
+tokio = { version = "1", features = ["full"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+anyhow = "1"
+zip = "2"
+flate2 = "1"
+tar = "0.4"
+regex = "1"
+tracing = "0.1"
