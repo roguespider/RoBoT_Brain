@@ -29,6 +29,7 @@ pub mod exploration_hypothesis;
 pub mod knowledge_store;
 pub mod knowledge_query;
 pub mod memory_retrieval;
+pub mod audio_transcriber;
 
 pub use memory::run_memory_tests;
 pub use experience::run_experience_tests;

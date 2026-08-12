@@ -229,9 +229,20 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             by any MCP tool), and retrieve_with_query(min_confidence) is never
             called by an MCP tool. Removed those 2 from src/ test block, kept
             the 2 Group B tests. Gate: 145/145, 0 issues, 0 untested, 67 warnings.
-      - [ ] **T1-10B-07** `bridge/tools/ingestor/audio_transcriber.rs` (3) —
-            PARTIAL: transcribe_audio tool exists, but is_audio_file /
-            get_supported_extensions are pure helpers.
+      - [x] **T1-10B-07** `bridge/tools/ingestor/audio_transcriber.rs` (2 of 3 migrated; 1 reclassified Group B) DONE 2026-08-12.
+            Migrated test_is_audio_file + test_get_supported_extensions to
+            test_suite/src/tests/audio_transcriber.rs via MCP flow.
+            transcribe_audio calls is_audio_file (which calls
+            get_supported_extensions) and returns "Not a supported audio file"
+            for non-audio extensions. Test: create temp files with audio
+            (mp3/wav/m4a/flac/ogg) + non-audio (txt/mp4) extensions, call
+            transcribe_audio, verify audio exts pass the is_audio_file gate
+            (different error) while non-audio exts get "Not a supported audio
+            file". RECLASSIFIED to Group B (LEAVE as Rust unit test):
+            test_audio_analysis — AudioAnalysis::from_samples requires valid
+            audio samples loaded from a real WAV file; not practical via MCP.
+            Removed 2 from src/ test block, kept test_audio_analysis.
+            Gate: 145/145, 0 issues, 0 untested, 67 warnings.
       - [x] **T1-10B-08** `experience/exploration/hypothesis.rs` (2 tests) DONE
             2026-08-12. Migrated test_hypothesis_lifecycle +
             test_confidence_clamping to test_suite/src/tests/
