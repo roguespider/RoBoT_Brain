@@ -178,8 +178,16 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             / set_personality_traits / get_personality_decision. Caveat:
             adapt_from_experience / success_rate / decay / reset / serialization
             may be internal-only — assess per-test.
-      - [ ] **T1-10B-02** `personality/emotional.rs` (3 tests) — get_personality
-            (emotional_state field).
+      - [~] **T1-10B-02** `personality/emotional.rs` (3 tests) —
+            RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
+            Reason: EmotionalState::observe() has no MCP surface — it's only
+            called by the agent loop (loop_runner.rs:304 via
+            observe_emotional_outcome), never by a tool. get_personality
+            returns emotional_weight (observable) but NOT the individual
+            fields (frustration/satisfaction/engagement) the tests assert on,
+            and there's no tool to trigger observe() or set fields. The tests
+            require direct struct manipulation + observe() calls, which are
+            internal-only.
       - [~] **T1-10B-03** `experience/reflection/services/generator.rs` (3) —
             RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
             Reason: execute_create_reflection passes vec![].as_slice() (empty
