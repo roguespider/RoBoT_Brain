@@ -42,7 +42,7 @@ milestone on the way there.
   experience/reflection, experience/hypothesis, experience/hypothesis/support/graph,
   experience/hypothesis/services).
 - Cognitive loop (P0/P1) DONE: `ExperienceRecorded → Reflection → Hypothesis →
-  Knowledge → Reputation`; `run_agent_goal` agent loop works.
+Knowledge → Reputation`; `run_agent_goal` agent loop works.
 - P4 open: in-memory `JobQueue`; no loop-health metrics; generic MCP dispatch
   does not emit experiences.
 - **No v0.0.2/v0.0.2.1 new subsystems exist**: no Context Engine, Conversation
@@ -67,10 +67,12 @@ cargo build --release -p robot_brain          # 0 warnings
 python3 .agents/live_test/live_test_all.py     # 54/54
 cd test_suite && cargo build --release && ./target/release/test_suite  # 333/333, 0 code-quality
 ```
+
 All three must pass. If any is red, the increment is NOT done. Fix it before
 claiming done. Never commit a red gate.
 
 ---
+
 # 3. APPROACH — three tiers of small increments
 
 Work through three tiers in order. Each tier is a checklist of small
@@ -131,7 +133,14 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 
 - [x] **T1-09** Add `job_queue` table + migration in `src/database/migrations/`.
       (commit d1ee096; migration 012 + registered in run loop)
-- [ ] **T1-10** Wire enqueue/dequeue through `src/experience/queue.rs` to SQLite.
+- [in] **T1-10** Wire enqueue/dequeue through `src/experience/queue.rs` to SQLite.
+  CHANGES MADE (5 files): queue.rs (mark_complete/mark_failed),
+  worker_manager/manager.rs (job_queue field, new_with_queue, enqueue→push_job,
+  broadcast→push_job, mark_job_complete/mark_job_failed),
+  worker_manager/background.rs (loop calls mark_complete/mark_failed),
+  mcp/context.rs (job_queue field, new() updated),
+  bridge/app/initialization.rs (create JobQueue, restore_from_db, pass to
+  WorkerManager + McpContext). NOT YET BUILT — build & gate next session.
 - [ ] **T1-11** Handle broadcast `Lagged` events explicitly (skip+log or drain)
       in the worker path.
 - [ ] **T1-12** Update `src/bridge/app/initialization.rs` startup verification
@@ -485,6 +494,7 @@ gate green.
 # 7. Definition of Done
 
 ## v0.0.1-clean (end of TIER 1)
+
 - `find src -name "self_check.rs"` returns empty.
 - `grep -rn 'allow(' src/` returns nothing (already true).
 - **test_suite exits 0** — `coverage.untested_tools` empty,
@@ -496,6 +506,7 @@ gate green.
 - Gate green: 0 build warnings, 54/54 live, 333/333 suite, suite exit 0.
 
 ## v0.0.2 (end of TIER 2)
+
 - Data-contract types round-trip through serde.
 - Each upgraded subsystem's MCP tools return correct results live.
 - Knowledge graph traversal returns relationship chains.
@@ -503,6 +514,7 @@ gate green.
 - Gate green throughout.
 
 ## v0.0.2.1 (end of TIER 3)
+
 - All 33 blueprint chapters + appendices have a corresponding implemented
   module or documented deferral.
 - The cognitive pipeline (Observe → Understand → Retrieve → Plan → Reason →
@@ -537,30 +549,37 @@ gate green.
 > but it records what was already done so progress isn't re-attempted.
 
 ## P0 — event spine drives learning — DONE
+
 - V2-01/02/03: `ExperienceRecorded → Reflection → Hypothesis → Knowledge →
-  Reputation` wired in `src/experience/integration/event_subscriber/handlers.rs`.
+Reputation` wired in `src/experience/integration/event_subscriber/handlers.rs`.
 
 ## P1 — cognitive loop — PARTIAL
+
 - V2-04: goal-driven `src/agent/` loop DONE; `run_agent_goal` MCP tool works
   (status=Achieved, confidence=0.507).
 - V2-05: generic MCP dispatch does NOT auto-emit experience (→ T1-17/T1-18).
 
 ## P2 — stub chapters — DONE
+
 - V2-06: World Model exists. V2-07: `src/agent/safety_gate/` (sandbox,
   rollback, hallucination, uncertainty). V2-08: Personality emotional_weight →
   confidence (`personality/decision_making.rs:49-51`).
 
 ## P3 — self-check probes — REMAINING (→ T1-01..T1-08)
+
 - V2-09: 8 self_check.rs files remain. Pattern: wire MCP tool, delete self_check.
 
 ## P3.1 — `#![allow]` violations — RESOLVED
+
 - 2026-08-11: `grep -rn '#!\[allow' src` returns 0; `grep -rln '#\[allow' src`
   returns 0. Both clean.
 
 ## P4 — performance maturity — REMAINING (→ T1-09..T1-16)
+
 - V2-11: in-memory JobQueue (→ SQLite). V2-12: no loop-health metrics.
 
 ## GATE (coverage) — ✅ GREEN (T1-19..T1-29 all DONE)
+
 - The test_suite now exits 0. 141/141 tests pass, 0 code issues, 0 warnings.
 - coverage: untested 0, phantom 0. All 134 server tools are tested.
 - T1-19 fixed the 6 phantom embedding tools (commit b9b43ff).
@@ -568,13 +587,15 @@ gate green.
 - T1-21..T1-29 added 41 remaining tool tests (commit 7775ca1).
 
 ## Verified state (2026-08-11)
+
 - 0 cargo warnings; 134 MCP tools (T1-19 exposed 6 embedding tools);
   141/141 FunctionRegistry tests pass (333/333 traditional); 0 code-quality
   issues.
 - ✅ **Coverage gate GREEN** (section 1E done): test_suite exits 0, untested 0,
   phantom 0 (all 134 server tools tested).
 - ⚠️ **TIER 1 NOT fully done — 10 tasks remain** (1B SQLite queue, 1C metrics,
-  1D MCP→experience hook). See sections 1B/1C/1D above. Next: T1-09.
+  1D MCP→experience hook). See sections 1B/1C/1D above.
+- ⏳ **T1-10 changes made** (5 files), NOT YET BUILT. Next: build + gate.
 - 8 self_check.rs files remain (→ TIER 2).
 - Large-file refactors done: `personality/personality.rs` (352→101, split into
   presets/adaptation/decision_making); `memory/handlers.rs` (400→ directory).

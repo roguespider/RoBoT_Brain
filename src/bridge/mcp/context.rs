@@ -2,14 +2,16 @@
 
 // MCP context for sharing state across handlers
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
+use crate::agent::SafetyGate;
 use crate::bridge::acp::{AcpRegistry, AcpRouter};
 use crate::database::sqlite::SqliteDatabase;
 use crate::experience::bus::ExperienceBus;
 use crate::experience::coordinator::ExperienceCoordinator;
 use crate::experience::evolution::EvolutionEngine;
 use crate::experience::metrics::MetricsCollector;
+use crate::experience::queue::JobQueue;
 use crate::experience::reflection::ReflectionEngine;
 use crate::experience::scheduler::Scheduler;
 use crate::experience::worker_manager::WorkerManager;
@@ -18,11 +20,8 @@ use crate::memory::{MemoryRetrieval, PermanentMemory, WorkingMemory};
 use crate::personality::Personality;
 use crate::planner::{Planner, PolicyEngine};
 use crate::skills::registry::{SkillExecutor, SkillRegistry};
-use crate::workflows::engine::WorkflowEngine;
 use crate::workflows::enforcement::WorkflowEnforcer;
-use crate::agent::SafetyGate;
-
-use std::sync::Mutex;
+use crate::workflows::engine::WorkflowEngine;
 
 use super::types::{McpCapabilities, McpServerInfo};
 
@@ -30,6 +29,9 @@ use super::types::{McpCapabilities, McpServerInfo};
 pub struct McpContext {
     /// Database layer
     pub database: Arc<SqliteDatabase>,
+
+    /// Durable job queue for experience processing
+    pub job_queue: Arc<Mutex<JobQueue>>,
 
     /// Event bus
     pub bus: Arc<ExperienceBus>,
@@ -112,6 +114,7 @@ pub struct McpContext {
 impl McpContext {
     pub fn new(
         database: Arc<SqliteDatabase>,
+        job_queue: Arc<Mutex<JobQueue>>,
         bus: Arc<ExperienceBus>,
         coordinator: Arc<ExperienceCoordinator>,
         worker_manager: Arc<WorkerManager>,
@@ -137,6 +140,7 @@ impl McpContext {
         let skill_executor = Arc::new(SkillExecutor::new(skills.clone()));
         Self {
             database,
+            job_queue,
             bus,
             coordinator,
             worker_manager,
