@@ -217,8 +217,18 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             Deleted #[cfg(test)] block from src/. apply_query/rank_items still
             used by query_knowledge handler. Gate: 145/145, 0 issues, 0
             untested, 67 warnings.
-      - [ ] **T1-10B-06** `memory/retrieval.rs` (4) — search_memory / get_memory
-            / ranked_search / global_search.
+      - [x] **T1-10B-06** `memory/retrieval.rs` (2 of 4 migrated; 2 reclassified Group B) DONE 2026-08-12.
+            Migrated test_retrieve_working + test_unified_retrieve to
+            test_suite/src/tests/memory_retrieval.rs via MCP flow. search_memory
+            calls retrieve() which calls get_from_working + get_from_permanent.
+            test_retrieve_working: store_memory -> search -> content in results[].
+            test_unified_retrieve: store 2 items -> search -> both in results[].
+            RECLASSIFIED to Group B (LEAVE as Rust unit test):
+            test_retrieve_permanent + test_confidence_filtering — store_memory
+            only writes to Working layer (PermanentMemory cache not populated
+            by any MCP tool), and retrieve_with_query(min_confidence) is never
+            called by an MCP tool. Removed those 2 from src/ test block, kept
+            the 2 Group B tests. Gate: 145/145, 0 issues, 0 untested, 67 warnings.
       - [ ] **T1-10B-07** `bridge/tools/ingestor/audio_transcriber.rs` (3) —
             PARTIAL: transcribe_audio tool exists, but is_audio_file /
             get_supported_extensions are pure helpers.

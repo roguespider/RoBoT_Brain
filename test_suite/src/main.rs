@@ -1122,6 +1122,9 @@ async fn main() -> anyhow::Result<()> {
     // T1-10B-05: migrated knowledge query text/confidence/ranking unit test (MCP-based).
     tests::knowledge_query::run_knowledge_query_tests(&mut client, &mut stats).await?;
 
+    // T1-10B-06: migrated memory retrieval working+unified unit test (MCP-based).
+    tests::memory_retrieval::run_memory_retrieval_tests(&mut client, &mut stats).await?;
+
     // Run CLI-based tool tests (tests robot_brain CLI subcommands)
     teeprintln!(
         "
