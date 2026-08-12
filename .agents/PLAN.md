@@ -203,8 +203,14 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             -> promote_finding [calls f.promote()] -> get_exploration_status
             [promoted=true]). Deleted #[cfg(test)] block from src/. promote()
             still used by promote_finding MCP handler (no new dead-code).
-      - [ ] **T1-10B-11** `database/queries/observations.rs` (1) —
-            record_observation / list_observations.
+      - [x] **T1-10B-11** `database/queries/observations.rs` (1 test) — DONE
+            2026-08-12. Migrated the MCP-reachable part (record_observation
+            [insert_observation] → list_observations, verify content+type) to
+            test_suite/src/tests/observations.rs. The original test focused on
+            link_observation_to_experience, which had NO MCP surface and NO
+            production callers (was #[cfg(test)]-only dead code) — deleted
+            link_observation_to_experience + get_observation + the test module
+            from src/. Gate: 145/145, 0 issues, 0 untested, 67 warnings.
 
       ### Group B — internal-only, NO MCP surface (DECISION NEEDED)
       These test pure internal Rust types no tool exposes. test_suite cannot

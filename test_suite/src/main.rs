@@ -1107,6 +1107,9 @@ async fn main() -> anyhow::Result<()> {
     // T1-10B-10: migrated finding new+promote unit test (MCP-based).
     tests::exploration_finding::run_exploration_finding_tests(&mut client, &mut stats).await?;
 
+    // T1-10B-11: migrated observations record+list unit test (MCP-based).
+    tests::observations::run_observations_tests(&mut client, &mut stats).await?;
+
     // Run CLI-based tool tests (tests robot_brain CLI subcommands)
     teeprintln!(
         "
