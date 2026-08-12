@@ -26,6 +26,8 @@ pub fn insert_embedding(conn: &Connection, embedding: &MemoryEmbedding) -> Resul
     Ok(())
 }
 
+/// Get embedding by memory ID
+pub fn get_embedding_by_memory_id(conn: &Connection, memory_id: Uuid) -> Result<Option<MemoryEmbedding>> {
     let mut stmt = conn.prepare(
         "SELECT id, memory_id, embedding, model FROM memory_embeddings WHERE memory_id = ?1"
     )?;
