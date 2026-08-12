@@ -294,7 +294,14 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             structs.
       - [ ] **T1-10B-13** `bridge/mcp/client/mod.rs` (8) — McpClient empty-state
             / ToolError Display.
-      - [ ] **T1-10B-14** `experience/scorer.rs` (5) — EncounterScore math.
+      - [~] **T1-10B-14** `experience/scorer.rs` (5) —
+      RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
+      Reason: EncounterScore, score_encounter(), and aggregate_encounter_scores()
+      have ZERO callers on any MCP-reachable path. The coordinator uses
+      scorer.score() (returns ExperienceScore, a DIFFERENT type), not
+      score_encounter(). The only non-test references are ExperienceScorer::new()
+      passed to the coordinator (which calls .score(), not .score_encounter()).
+      EncounterScore is pure internal math with no MCP surface.
       - [ ] **T1-10B-15** `learning/pipeline.rs` (3) — LearningPipeline stages.
       - [ ] **T1-10B-16** `experience/evolution/engine.rs` (3) —
             EvolutionEngine.
