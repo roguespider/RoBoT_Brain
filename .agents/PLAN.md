@@ -307,8 +307,13 @@ first; AI Runtime (Candle) comes last as the local provider behind the
       store_memory MCP tool uses queries::insert_memory directly, not the
       repository abstraction. from_path is a constructor for a custom DB path
       that no MCP tool invokes. Cannot be exercised via MCP.
-      - [ ] **T1-10B-19** `database/queries/memory.rs` (1) —
-            delete_memories_by_string_ids DB query.
+      - [~] **T1-10B-19** `database/queries/memory.rs` (1) —
+            RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
+            Reason: delete_memories_by_string_ids has ZERO callers outside
+            its own test — it's dead code (both the function and its test are
+            wrapped in #[cfg(test)]). The archive_memory MCP tool uses
+            delete_memories (by Uuid), not delete_memories_by_string_ids.
+            Cannot be exercised via MCP.
       - [ ] **T1-10B-20** `database/queries/embeddings.rs` (1) —
             get/delete embedding by id DB query.
 
