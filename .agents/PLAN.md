@@ -322,8 +322,18 @@ first; AI Runtime (Candle) comes last as the local provider behind the
       (the trait method) is internal-only. Behavior methods (add_source_insight,
       record_success/failure, start_practicing, success_rate) are also
       internal-only. Pure internal evolution logic with no MCP surface.
-      - [ ] **T1-10B-17** `bridge/tools/ingestor/semantic_chunker.rs` (3) —
-            markdown/sentence/code chunking.
+      - [x] **T1-10B-17** `bridge/tools/ingestor/semantic_chunker.rs` (3) DONE 2026-08-12.
+            Migrated test_markdown_parsing + test_sentence_splitting +
+            test_code_parsing to test_suite/src/tests/semantic_chunker.rs via
+            MCP flow. ingest_files (file_path) calls ingest_single_file ->
+            parse_document, which dispatches to parse_markdown (for .md) /
+            parse_code (for .rs). parse_markdown internally calls
+            split_sentences. The tree is flatten()-ed; chunks_created in the
+            output is the chunk count. Test: create .md with >=2 sections ->
+            ingest_files -> chunks_created >= 2 (exercises parse_markdown +
+            split_sentences). Create .rs with >=2 functions -> ingest_files ->
+            chunks_created >= 2 (exercises parse_code). Removed test block
+            from src/. Gate: 145/145, 0 warnings, 0 issues, 0 untested.
       - [~] **T1-10B-18** `memory/repository.rs` (1) —
       RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
       Reason: SqliteMemoryRepository and the MemoryRepository trait have ZERO

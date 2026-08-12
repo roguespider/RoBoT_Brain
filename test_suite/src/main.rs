@@ -1131,6 +1131,9 @@ async fn main() -> anyhow::Result<()> {
     // T1-10B-20: migrated embeddings get+delete by memory_id test (MCP-based).
     tests::embeddings::run_embeddings_tests(&mut client, &mut stats).await?;
 
+    // T1-10B-17: migrated semantic chunker markdown+code parsing test (MCP-based).
+    tests::semantic_chunker::run_semantic_chunker_tests(&mut client, &mut stats).await?;
+
     // Run CLI-based tool tests (tests robot_brain CLI subcommands)
     teeprintln!(
         "
