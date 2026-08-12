@@ -1,7 +1,7 @@
 //! Shared output module for writing to both stdout and file
 //!
 //! This module provides the TeeWriter and teeprintln macro for
-//! outputting to both stdout and the test_suite_output.txt file.
+//! outputting to both stdout and the brain_tester_output.txt file.
 
 use std::fs::File;
 use std::io::{Write, BufWriter};

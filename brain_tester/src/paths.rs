@@ -1,6 +1,6 @@
-//! Runtime path resolution for the test suite.
+//! Runtime path resolution for the brain_tester suite.
 //!
-//! The robot_brain project layout is fixed: `test_suite/` lives one directory
+//! The robot_brain project layout is fixed: `brain_tester/` lives one directory
 //! below the project root, and the compiled server binary lands in
 //! `<root>/target/release/robot_brain`. These helpers resolve that layout
 //! relative to the current working directory at runtime instead of baking a
@@ -19,7 +19,7 @@ fn binary_name() -> &'static str {
 
 /// Candidate project-root locations, evaluated by walking up from the current
 /// working directory to its ancestors. This handles being run from any
-/// subdirectory (e.g. `test_suite/target/release/`), not just `test_suite/`.
+/// subdirectory (e.g. `brain_tester/target/release/`), not just `brain_tester/`.
 fn root_candidates() -> Vec<PathBuf> {
     let cwd = std::env::current_dir().unwrap_or_else(|_| PathBuf::from("."));
     let mut candidates = Vec::new();
@@ -80,11 +80,11 @@ pub fn project_root() -> PathBuf {
 
 /// Resolve the directory the test suite itself lives in.
 ///
-/// This is the project root's `test_suite` subdirectory when present,
+/// This is the project root's `brain_tester` subdirectory when present,
 /// otherwise the current working directory.
 pub fn test_suite_dir() -> PathBuf {
     let root = project_root();
-    let candidate = root.join("test_suite");
+    let candidate = root.join("brain_tester");
     if candidate.is_dir() {
         return candidate;
     }

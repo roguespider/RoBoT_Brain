@@ -2633,8 +2633,8 @@ This project includes a comprehensive test suite with 54 unit tests and a full i
 # Run unit tests
 cargo test
 
-# Build and run the comprehensive integration test suite
-cd test_suite && cargo build && ./target/debug/test_suite
+# Build and run the unified integration test suite
+cd brain_tester && cargo build && ./target/debug/brain_tester
 ```
 
 **Test Results:**

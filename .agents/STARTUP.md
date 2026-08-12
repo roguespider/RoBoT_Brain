@@ -37,8 +37,8 @@ make gate
 
 ```bash
 cargo build --release -p robot_brain          # must finish 0 warnings
-python3 .agents/live_test/live_test_all.py     # must be 54/54
-cd test_suite && cargo build --release && ./target/release/test_suite  # 333/333, 0 code-quality
+python3 brain_tester     # must be 54/54
+cd brain_tester && cargo build --release && ./target/release/brain_tester  # 333/333, 0 code-quality
 ```
 
 All three must pass. If any fails, fix the failure before doing anything else.
@@ -50,7 +50,7 @@ Open `.agents/PLAN.md`. Find the FIRST unchecked `- [ ]` increment. Work tiers
 in order: TIER 1 (finish v0.0.1) → TIER 2 (reach v0.0.2) → TIER 3 (reach
 v0.0.2.1). Each increment is one ~10-15 min change.
 
-- **Coverage gate is GREEN** (section 1E done). test_suite exits 0 (141/141 tests
+- **Coverage gate is GREEN** (section 1E done). brain_tester exits 0 (141/141 tests
   pass, 0 code issues, 0 warnings, 0 untested, 0 phantom). All 134 server tools
   are covered. Commits: b9b43ff (phantom fix), 6b7d036 (ACP tests), 7775ca1
   (remaining 41 tools).

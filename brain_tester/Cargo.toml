@@ -1,13 +1,13 @@
 [package]
-name = "test_suite"
+name = "brain_tester"
 version = "0.1.0"
 edition = "2024"
-description = "Comprehensive test suite for RoBoT Brain ACP/MCP Server"
+description = "Unified test suite for the RoBoT Brain ACP/MCP server (live tool tests, coverage gate, code analysis, schema probe)"
 license = "AGPL-3.0-or-later"
 authors = ["Rogue Spider"]
 
 [[bin]]
-name = "test_suite"
+name = "brain_tester"
 path = "src/main.rs"
 
 [dependencies]

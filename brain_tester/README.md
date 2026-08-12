@@ -1,23 +1,37 @@
-# RoBoT Brain — End-to-End Test Suite
+# RoBoT Brain — Unified Test Suite (`brain_tester`)
 
 Independent project (own `Cargo.toml`/`Cargo.lock`, NOT a workspace member).
-Tests the `robot_brain` MCP server end-to-end by spawning it as a subprocess and
-speaking MCP over stdio. No mocking, no stubs.
+Tests the `robot_brain` MCP/ACP server end-to-end by spawning it as a subprocess
+and speaking MCP over stdio. No mocking, no stubs. This is the **single**
+test tool — it supersedes the old `test_suite` and the Python `live_test`.
 
 ## Build + run (from this directory)
 
 ```bash
-cargo build --release && ./target/release/test_suite
+cargo build --release && ./target/release/brain_tester
 ```
 
-Do NOT run `cargo build -p test_suite` / `cargo run --package test_suite` from
-the repo root — it fails with "package ID did not match". This project is built
-from its own directory only.
+Do NOT run `cargo build -p brain_tester` / `cargo run --package brain_tester`
+from the repo root — it fails with "package ID did not match". This project is
+built from its own directory only.
+
+## CLI modes
+
+| Command | Purpose |
+|---|---|
+| `brain_tester` | Full suite: live tool tests + coverage gate + code analysis + lint (default). |
+| `brain_tester --list` | Quick smoke check: list every server-advertised tool + required fields. |
+| `brain_tester --probe TOOL` | Introspect one tool's live `inputSchema` — discover required/optional params. |
+
+The `--probe` mode replaces the old Python `RobotBrainClient.list_tools()`
+introspection. It lets you discover the exact parameters a tool expects without
+guessing (e.g. `brain_tester --probe register_agent` reveals it requires
+`agent_type` + `instance_id`).
 
 ## Outputs
 
-- `test_suite_output.txt` — human-readable report.
-- `test_suite_report.json` — machine-readable (summary, coverage, issues, all
+- `brain_tester_output.txt` — human-readable report.
+- `brain_tester_report.json` — machine-readable (summary, coverage, issues, all
   results, lint/code issues). Use for run-to-run diffing and CI gating.
 
 ## Exit code
@@ -52,7 +66,7 @@ with stub messages, early-return stubs, placeholder returns, `_` ignored vars.
 After `tools/list`, diffs server-exposed tool names against the FunctionRegistry
 tested names. Produces **untested tools** (server exposes, no test) and
 **phantom tools** (registry tests, server doesn't expose). Untested tools are
-counted in the verdict — so the suite can exit non-zero even with 333/333 tests
+counted in the verdict — so the suite can exit non-zero even with all tests
 passing if coverage is incomplete.
 
 See `../.agents/TEST_SUITE_NOTES.md` for the full contract + analyzer internals +

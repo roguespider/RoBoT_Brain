@@ -115,7 +115,7 @@ pub async fn run_cli_tool_tests() -> Vec<CliTestResult> {
     results.push(result);
     
     // Test memory add
-    let result = test_command("memory.add", &["memory", "add", "Test memory from test_suite"]);
+    let result = test_command("memory.add", &["memory", "add", "Test memory from brain_tester"]);
     println!("  memory add: {}", if result.success { "✓ PASS" } else { "✗ FAIL" });
     results.push(result);
     

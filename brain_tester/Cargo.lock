@@ -59,6 +59,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "brain_tester"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "flate2",
+ "regex",
+ "serde",
+ "serde_json",
+ "tar",
+ "tokio",
+ "tracing",
+ "zip",
+]
+
+[[package]]
 name = "bumpalo"
 version = "3.20.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -720,21 +735,6 @@ dependencies = [
  "filetime",
  "libc",
  "xattr",
-]
-
-[[package]]
-name = "test_suite"
-version = "0.1.0"
-dependencies = [
- "anyhow",
- "flate2",
- "regex",
- "serde",
- "serde_json",
- "tar",
- "tokio",
- "tracing",
- "zip",
 ]
 
 [[package]]

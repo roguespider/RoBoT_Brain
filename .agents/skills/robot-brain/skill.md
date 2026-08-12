@@ -22,7 +22,7 @@ mcp_config = {
 }
 ```
 
-> **Prefer the live-test client for ad-hoc / verification calls.** This repo ships a dependency-free Python MCP client at `.agents/live_test/mcp_client.py` (a `RobotBrainClient` class that auto-detects the binary and auto-handles the workflow gate below) plus a comprehensive `live_test_all.py` (54/54 tools pass). Use those instead of hand-writing a client. See "Live Testing" below.
+> **Prefer brain_tester for verification.** The unified test suite at `brain_tester/` has three modes: `brain_tester` (full suite), `brain_tester --list` (smoke check), and `brain_tester --probe TOOL` (introspect a tool's live inputSchema). For ad-hoc calls, the repo also ships a stdlib-only Python `RobotBrainClient` at `.agents/live_test/mcp_client.py` that auto-detects the binary and auto-handles the workflow gate below. Do not hand-write a new client. See "Live Testing" below.
 
 ## Workflow Gate (REQUIRED before any tool)
 
@@ -135,12 +135,22 @@ python examples/robot_brain_agent.py -m "Search memory for architecture patterns
 
 ## Live Testing
 
-The fastest, correct way to verify the server works after compiling is the bundled Python client — do not hand-write a new MCP client:
+The fastest way to verify the server works after compiling is `brain_tester` (Rust, built into the test suite):
 
 ```bash
-# Comprehensive live test of every tool category (54/54 pass, cleans DB first)
-python3 .agents/live_test/live_test_all.py
+# Full end-to-end suite (387 tests + coverage gate + code analysis)
+cd brain_tester && cargo build --release && ./target/release/brain_tester
 
+# Quick smoke check — list all server tools + required fields
+./target/release/brain_tester --list
+
+# Introspect one tool's live inputSchema (required/optional params)
+./target/release/brain_tester --probe register_agent
+```
+
+For ad-hoc tool calls, the Python `RobotBrainClient` (`.agents/live_test/mcp_client.py`) is still available:
+
+```bash
 # Ad-hoc tool calls via the reusable client:
 #   from mcp_client import RobotBrainClient
 #   with RobotBrainClient() as c:
