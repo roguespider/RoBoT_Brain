@@ -4,15 +4,15 @@
 
 A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with persistent memory, experience-based learning, and structured knowledge storage.
 
-> **Status:** v0.0.1 (release) — Automated release workflow for Linux, Windows, and macOS. Memory System implemented per Architecture §4.08, §6.3 with Working Memory, Permanent Memory, and Memory Retrieval.
+> **Status:** v0.0.1 (release) — Automated release workflow for Windows, Linux, and macOS. Memory System implemented per Architecture §4.08, §6.3 with Working Memory, Permanent Memory, and Memory Retrieval.
 > Full event catalog per Architecture §4.04. Learning Pipeline per Architecture §9. Database layer with 8 migrations. Integration test suite: 145 tests passing, 0 errors, 0 code issues, 0 untested tools.
 >
-> **Automated Releases:** GitHub Actions CI/CD builds binaries for Linux (x86_64, aarch64), Windows (x86_64), and macOS (x86_64, aarch64).
+> **Automated Releases:** GitHub Actions CI/CD builds binaries for Windows (x86_64), Linux (x86_64, aarch64), and macOS (x86_64, aarch64).
 ---
 To Build
 install rust 
 run -> "cargo build --release"
-tested on Linux, and Windows 
+tested on Windows, and Linux 
 ---
 
 ## Building
@@ -22,9 +22,9 @@ tested on Linux, and Windows
 | Platform | Requirements |
 |----------|--------------|
 | **All** | Rust 1.70+ (install via [rustup.rs](https://rustup.rs)) |
-| **macOS** | Xcode Command Line Tools (`xcode-select --install`) |
-| **Linux** | GCC/Clang, SQLite development headers |
 | **Windows** | Visual Studio Build Tools or MinGW |
+| **Linux** | GCC/Clang, SQLite development headers |
+| **macOS** | Xcode Command Line Tools (`xcode-select --install`) |
 
 ### Build Commands
 
@@ -47,26 +47,20 @@ cargo test
 
 ### Platform-Specific Notes
 
-#### macOS
+#### Windows
 
-1. Install Rust:
-   ```bash
-   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
-   ```
+1. Install Rust via [rustup.rs](https://rustup.rs) (includes MSVC toolchain)
 
-2. Install Xcode Command Line Tools (required for SQLite):
-   ```bash
-   xcode-select --install
-   ```
+2. Open PowerShell or Developer Command Prompt
 
 3. Build:
-   ```bash
+   ```powershell
    cargo build --release
    ```
 
 4. Run:
-   ```bash
-   ./target/release/robot_brain
+   ```powershell
+   .\target\release\robot_brain.exe
    ```
 
 #### Linux (Ubuntu/Debian)
@@ -96,20 +90,26 @@ sudo dnf install gcc sqlite-devel
 cargo build --release
 ```
 
-#### Windows
+#### macOS
 
-1. Install Rust via [rustup.rs](https://rustup.rs) (includes MSVC toolchain)
+1. Install Rust:
+   ```bash
+   curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+   ```
 
-2. Open PowerShell or Developer Command Prompt
+2. Install Xcode Command Line Tools (required for SQLite):
+   ```bash
+   xcode-select --install
+   ```
 
 3. Build:
-   ```powershell
+   ```bash
    cargo build --release
    ```
 
 4. Run:
-   ```powershell
-   .\target\release\robot_brain.exe
+   ```bash
+   ./target/release/robot_brain
    ```
 
 ### Usage
@@ -150,10 +150,10 @@ Releases are automated via GitHub Actions. To create a new release:
    ```
 
 3. **GitHub Actions** will automatically:
-   - ✅ Run tests on Linux, Windows, and macOS
+   - ✅ Run tests on Windows, Linux, and macOS
    - ✅ Build release binaries for all platforms:
-     - Linux: x86_64, aarch64
      - Windows: x86_64
+     - Linux: x86_64, aarch64
      - macOS: x86_64, aarch64 (Apple Silicon)
    - ✅ Generate SHA256 checksums
    - ✅ Create a GitHub Release with all artifacts
@@ -164,21 +164,13 @@ Pre-built binaries are available on the [Releases page](https://github.com/rogue
 
 | Platform | Architecture | Filename |
 |----------|-------------|----------|
+| Windows | x86_64 | `robot_brain-windows-x86_64.zip` |
 | Linux | x86_64 | `robot_brain-linux-x86_64.tar.gz` |
 | Linux | aarch64 | `robot_brain-linux-aarch64.tar.gz` |
-| Windows | x86_64 | `robot_brain-windows-x86_64.zip` |
 | macOS | x86_64 | `robot_brain-macos-x86_64.tar.gz` |
 | macOS | aarch64 | `robot_brain-macos-aarch64.tar.gz` |
 
 ### Installing from Release
-
-**Linux/macOS:**
-```bash
-# Download the latest release
-curl -L https://github.com/roguespider/RoBoT_Brain/releases/latest/download/robot_brain-linux-x86_64.tar.gz | tar xz
-sudo mv robot_brain /usr/local/bin/
-robot_brain --version
-```
 
 **Windows:**
 ```powershell
@@ -186,6 +178,14 @@ robot_brain --version
 Invoke-WebRequest -Uri "https://github.com/roguespider/RoBoT_Brain/releases/latest/download/robot_brain-windows-x86_64.zip" -OutFile robot_brain.zip
 Expand-Archive robot_brain.zip -DestinationPath .
 .\robot_brain.exe --version
+```
+
+**Linux/macOS:**
+```bash
+# Download the latest release
+curl -L https://github.com/roguespider/RoBoT_Brain/releases/latest/download/robot_brain-linux-x86_64.tar.gz | tar xz
+sudo mv robot_brain /usr/local/bin/
+robot_brain --version
 ```
 
 ### Homebrew (macOS)
