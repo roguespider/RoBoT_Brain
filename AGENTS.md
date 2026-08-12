@@ -199,6 +199,14 @@ When modifying or extending this codebase, you **MUST** adhere to these strict c
 
 ### Dead Code Resolution Protocol
 
+> **Don't add `#[cfg(test)]` to robot_brain's `src/`.** It causes code-quality
+> issues and the quality gate flags it. Tests belong in `test_suite/` (as MCP
+> flow tests) where they exercise the real public surface. The ONLY exception is
+> Group B — internal-only/dead-code logic with no MCP surface that genuinely
+> cannot be reached from test_suite. For Group B, leave the existing Rust unit
+> test in place and document the reclassification in PLAN.md, but do NOT create
+> NEW `#[cfg(test)]` blocks in `src/`.
+
 When encountering unused, unreachable, or seemingly dead code:
 
 1. **Cross-reference architecture**: Check `RoBoT_Brain/robot_architecture/` directory for documentation

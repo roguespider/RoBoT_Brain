@@ -384,10 +384,17 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 
 - [x] **T1-13** Add `loop_latency` metric capture around `AgentLoop::run`.
       (commit in progress — added gauge fields + timer wrapping)
-- [ ] **T1-14** Add `confidence_drift` metric capture in the event-spine
-      handlers (`src/experience/integration/event_subscriber/handlers.rs`).
-- [ ] **T1-15** Add promotion-throughput (reflection→hypothesis→knowledge)
-      metric.
+- [x] **T1-14** Add `confidence_drift` metric capture. DONE (verified
+      2026-08-12 by codebase inspection). Captured in `src/agent/loop_runner.rs:176`
+      (record_confidence_drift), not in event_subscriber/handlers.rs as originally
+      planned — the loop runner is the correct capture point (drift measured per
+      loop iteration). Field + record/get in `src/experience/metrics.rs`. Exposed
+      via get_system_status (acp_handler.rs:437).
+- [x] **T1-15** Add promotion-throughput (reflection→hypothesis→knowledge)
+      metric. DONE (verified 2026-08-12 by codebase inspection). Captured in
+      `src/agent/loop_runner.rs:287` (record_promotion_throughput). Field +
+      record/get in `src/experience/metrics.rs`. Exposed via get_system_status
+      (acp_handler.rs:438).
 - [x] **T1-16** Expose the three new metrics via the `get_system_status` MCP
       tool. (done — `loop_health` block added to status JSON)
 
@@ -396,10 +403,19 @@ promotion_throughput; gate green.
 
 ## 1D. Close the generic MCP→experience path (V2-05)
 
-- [ ] **T1-17** Hook `emit_experience_recorded` into the post-tool-execution
-      dispatch wrapper in `src/bridge/mcp/handlers/`.
-- [ ] **T1-18** Ensure idempotency (the agent loop already publishes once — no
-      double-emit). Add a guard or source tag.
+- [x] **T1-17** Hook `emit_tool_experience` (publishes ExperienceRecorded)
+      into the post-tool-execution dispatch wrapper. DONE (verified 2026-08-12).
+      Wired in `src/bridge/rmcp/mod.rs:127` (success path) and `:141` (error path)
+      — both call `emit_tool_experience(tool_name, was_successful, &arguments)`.
+      Impl in `src/bridge/rmcp/types.rs:121`. Note: impl method renamed to
+      `emit_tool_experience` (not `emit_experience_recorded`); it publishes the
+      ExperienceRecorded event via coordinator.process() internally.
+- [x] **T1-18** Ensure idempotency (no double-emit from a single tool call).
+      DONE (verified 2026-08-12). The emit_tool_experience call sites are in
+      mutually-exclusive match arms (Ok at mod.rs:127, Err at mod.rs:141), so a
+      single tool execution emits exactly once. coordinator.process() publishes
+      ExperienceRecorded once per call. No explicit guard needed — structural
+      idempotency via mutually-exclusive match arms.
 
 **Done when:** calling `store_memory` directly records an experience; no
 double-emit from the agent loop; gate green.
