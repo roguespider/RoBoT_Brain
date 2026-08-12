@@ -164,6 +164,70 @@ first; AI Runtime (Candle) comes last as the local provider behind the
   pop_job can drain restored `experience_scorer` rows. Replay-on-start is a
   gap, but the "queue survives a process restart" criterion is met.)
 - [ ] **T1-10B** all #[cfg(test)] in codebase should be made into actual test's in test_suite
+      (Verified inventory 2026-08-12: 85 test fns across 20 files, plus 20
+      more files with EMPTY `#[cfg(test)] mod tests{}` blocks.) Work proceeds
+      ONE file at a time: migrate → gate green → commit → push → stop.
+      Rules: AGENTS.md forbids `#[allow(*)]`; test_suite cannot import/link
+      robot_brain source (it only talks MCP/CLI). So tests are re-expressed as
+      MCP/CLI-based tests in `test_suite/src/tests/`, then the `#[cfg(test)]`
+      block is deleted from `src/`.
+
+      ### Group A — MCP-reachable (move to test_suite, delete src/ block)
+      - [ ] **T1-10B-01** `personality/mod.rs` (16 tests) — tools:
+            get_personality / apply_personality_preset / list_personality_presets
+            / set_personality_traits / get_personality_decision. Caveat:
+            adapt_from_experience / success_rate / decay / reset / serialization
+            may be internal-only — assess per-test.
+      - [ ] **T1-10B-02** `personality/emotional.rs` (3 tests) — get_personality
+            (emotional_state field).
+      - [ ] **T1-10B-03** `experience/reflection/services/generator.rs` (3) —
+            create_reflection / get_insights / validate_reflection.
+      - [ ] **T1-10B-04** `knowledge/store.rs` (2) — add_knowledge /
+            query_knowledge / get_knowledge.
+      - [ ] **T1-10B-05** `knowledge/query.rs` (3) — query_knowledge (text /
+            confidence / status filtering).
+      - [ ] **T1-10B-06** `memory/retrieval.rs` (4) — search_memory / get_memory
+            / ranked_search / global_search.
+      - [ ] **T1-10B-07** `bridge/tools/ingestor/audio_transcriber.rs` (3) —
+            PARTIAL: transcribe_audio tool exists, but is_audio_file /
+            get_supported_extensions are pure helpers.
+      - [ ] **T1-10B-08** `experience/exploration/hypothesis.rs` (2) —
+            add_hypothesis / evaluate_exploration_hypothesis.
+      - [ ] **T1-10B-09** `experience/exploration/attempt.rs` (2) —
+            record_attempt.
+      - [ ] **T1-10B-10** `experience/exploration/finding.rs` (1) —
+            promote_finding.
+      - [ ] **T1-10B-11** `database/queries/observations.rs` (1) —
+            record_observation / list_observations.
+
+      ### Group B — internal-only, NO MCP surface (DECISION NEEDED)
+      These test pure internal Rust types no tool exposes. test_suite cannot
+      run them without importing robot_brain source (forbidden). Options:
+      (1) leave as Rust unit tests (gate does NOT flag #[cfg(test)], only
+      dead-code), (2) delete (loses coverage), (3) expose via test-only MCP
+      tool (overkill). Leaning: LEAVE as-is. ~48 tests.
+      - [ ] **T1-10B-12** `bridge/acp/mod.rs` (20) — ACP router/registry/message
+            structs.
+      - [ ] **T1-10B-13** `bridge/mcp/client/mod.rs` (8) — McpClient empty-state
+            / ToolError Display.
+      - [ ] **T1-10B-14** `experience/scorer.rs` (5) — EncounterScore math.
+      - [ ] **T1-10B-15** `learning/pipeline.rs` (3) — LearningPipeline stages.
+      - [ ] **T1-10B-16** `experience/evolution/engine.rs` (3) —
+            EvolutionEngine.
+      - [ ] **T1-10B-17** `bridge/tools/ingestor/semantic_chunker.rs` (3) —
+            markdown/sentence/code chunking.
+      - [ ] **T1-10B-18** `memory/repository.rs` (1) — from_path constructor.
+      - [ ] **T1-10B-19** `database/queries/memory.rs` (1) —
+            delete_memories_by_string_ids DB query.
+      - [ ] **T1-10B-20** `database/queries/embeddings.rs` (1) —
+            get/delete embedding by id DB query.
+
+      ### Group C — empty cfg-test blocks (delete, trivial)
+      - [ ] **T1-10B-Z** Remove 20 EMPTY `#[cfg(test)] mod tests{}` blocks
+            (files with 0 actual #[test] fns). Low risk.
+
+      **Resume here:** T1-10B-01 (personality/mod.rs) once Group B strategy
+      confirmed. Pending user decision: Group A + C only, or push into Group B.
 - [x] **T1-11** Handle broadcast `Lagged` events explicitly (skip+log or drain)
       in the worker path. (commit 560efad — both event subscriber and worker manager drain lagged events + worker manager records failed job)
 - [x] **T1-12** Update `src/bridge/app/initialization.rs` startup verification
