@@ -28,7 +28,7 @@ use super::{
     should_use_creativity,
 };
 use crate::experience::integration::reflection_pipeline::ReflectionPipeline;
-use crate::experience::metrics::MetricsCollector;
+use crate::experience::metrics::{Metrics, MetricsCollector};
 use crate::experience::observer::{HypothesisObserver, MetricsObserver, ReputationObserver};
 use crate::experience::reflection::ReflectionEngine;
 use crate::experience::scorer::ExperienceScorer;
@@ -82,7 +82,7 @@ impl App {
             Arc::new(HypothesisEngine::with_graph(Arc::clone(&shared_graph)));
         let hypothesis_engine = Arc::new(Mutex::new(HypothesisEngine::with_graph(shared_graph)));
         let evolution_engine = Arc::new(EvolutionEngine::new());
-        let metrics = Arc::new(MetricsCollector::new());
+        let metrics = Arc::new(Metrics::new());
 
         // Create WorkerManager for background job processing per Architecture §22
         // Design: Experience → Recorder → Bus → Job Queue → Workers → Observers
@@ -127,7 +127,7 @@ impl App {
         tracing::info!("HypothesisObserver registered with WorkerManager");
 
         // 4. MetricsObserver - collects metrics from all events
-        let metrics_observer = Arc::new(MetricsObserver::new(metrics.clone()))
+        let metrics_observer = Arc::new(MetricsObserver::new(metrics.collector()))
             as Arc<dyn crate::experience::observer::ExperienceObserver>;
         worker_manager.register_observer(metrics_observer).await?;
         tracing::info!("MetricsObserver registered with WorkerManager");
@@ -641,7 +641,7 @@ impl App {
                 hypothesis_engine_for_subscriber.clone(),
                 knowledge_store.clone(),
                 bus.clone(),
-                metrics.clone(),
+                metrics.collector(),
             )
             .with_database(database.clone())
             .with_skill_registry(skills_registry.clone()),
@@ -659,7 +659,7 @@ impl App {
         // pipeline from each ExperienceRecorded event.
         let event_subscriber_inner = EventSubscriber::with_learning_coordinator(
             learning_coordinator.clone(),
-            metrics.clone(),
+            metrics.collector(),
             reflection_engine.clone(),
             hypothesis_engine_for_subscriber.clone(),
             evolution_engine.clone(),
@@ -791,7 +791,7 @@ impl App {
             reflection_engine.clone(),
             hypothesis_engine.clone(),
             evolution_engine.clone(),
-            metrics.clone(),
+            metrics.collector(),
             database.clone(),
             learning_coordinator.clone(),
         )
@@ -907,7 +907,7 @@ impl App {
         }
 
         // Create planning system (Architecture §4.03.5, §10)
-        let mut planner = Planner::new(metrics.clone());
+        let mut planner = Planner::new(metrics.collector());
         let policy_engine = Arc::new(PolicyEngine::new());
 
         // Load default policy rules
@@ -958,7 +958,7 @@ impl App {
         // Create workflow engine with database access and coordinator for event integration
         // This ensures workflow experiences flow to WorkerManager and EventSubscriber
         let workflow_engine = Arc::new(WorkflowEngine::with_database_and_coordinator(
-            metrics.clone(),
+            metrics.collector(),
             database.clone(),
             coordinator.clone(),
         ));
@@ -1061,6 +1061,7 @@ impl App {
             mcp_context.database.clone(),
             agent_safety_gate,
             shared_personality.clone(),
+            mcp_context.metrics.clone(),
         );
         let agent_loop = Arc::new(crate::agent::AgentLoop::new(agent_deps));
 

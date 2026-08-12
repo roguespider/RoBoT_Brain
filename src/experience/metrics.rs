@@ -1,7 +1,6 @@
 // /src/experience/metrics.rs
 // Metrics collection for performance and learning tracking
 
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
@@ -42,18 +41,27 @@ pub struct AggregatedMetric {
 pub struct Metrics {
     /// Internal metrics collector
     collector: Arc<MetricsCollector>,
-    
+
     /// Experience count gauge
     experience_count: Arc<RwLock<u64>>,
-    
-    /// Knowledge count gauge  
+
+    /// Knowledge count gauge
     knowledge_count: Arc<RwLock<u64>>,
-    
+
     /// Learning rate (insights per experience)
     learning_rate: Arc<RwLock<f64>>,
-    
+
     /// Reputation scores by source
     reputation_scores: Arc<RwLock<HashMap<String, f64>>>,
+
+    /// Last loop latency in milliseconds (T1-13)
+    loop_latency_ms: Arc<RwLock<f64>>,
+
+    /// Max confidence drift since last loop (T1-14)
+    confidence_drift: Arc<RwLock<f64>>,
+
+    /// Promotion throughput: hypotheses promoted per hour (T1-15)
+    promotion_throughput: Arc<RwLock<f64>>,
 }
 
 impl Metrics {
@@ -65,49 +73,60 @@ impl Metrics {
             knowledge_count: Arc::new(RwLock::new(0)),
             learning_rate: Arc::new(RwLock::new(0.0)),
             reputation_scores: Arc::new(RwLock::new(HashMap::new())),
+            loop_latency_ms: Arc::new(RwLock::new(0.0)),
+            confidence_drift: Arc::new(RwLock::new(0.0)),
+            promotion_throughput: Arc::new(RwLock::new(0.0)),
         }
     }
-    
+
     /// Record experience count
     pub async fn set_experience_count(&self, count: u64) {
         let mut exp_count = self.experience_count.write().await;
         *exp_count = count;
-        self.collector.set_gauge("system.experiences.total", count as f64).await;
+        self.collector
+            .set_gauge("system.experiences.total", count as f64)
+            .await;
     }
-    
+
     /// Increment experience count
     pub async fn increment_experience_count(&self) {
         let mut exp_count = self.experience_count.write().await;
         *exp_count += 1;
-        self.collector.set_gauge("system.experiences.total", *exp_count as f64).await;
+        self.collector
+            .set_gauge("system.experiences.total", *exp_count as f64)
+            .await;
         self.collector.increment("experiences.recorded").await;
     }
-    
+
     /// Get experience count
     pub async fn get_experience_count(&self) -> u64 {
         *self.experience_count.read().await
     }
-    
+
     /// Record knowledge count
     pub async fn set_knowledge_count(&self, count: u64) {
         let mut know_count = self.knowledge_count.write().await;
         *know_count = count;
-        self.collector.set_gauge("system.knowledge.total", count as f64).await;
+        self.collector
+            .set_gauge("system.knowledge.total", count as f64)
+            .await;
     }
-    
+
     /// Increment knowledge count
     pub async fn increment_knowledge_count(&self) {
         let mut know_count = self.knowledge_count.write().await;
         *know_count += 1;
-        self.collector.set_gauge("system.knowledge.total", *know_count as f64).await;
+        self.collector
+            .set_gauge("system.knowledge.total", *know_count as f64)
+            .await;
         self.collector.increment("knowledge.created").await;
     }
-    
+
     /// Get knowledge count
     pub async fn get_knowledge_count(&self) -> u64 {
         *self.knowledge_count.read().await
     }
-    
+
     /// Update learning rate (insights generated per experience)
     pub async fn update_learning_rate(&self, insights: u64, experiences: u64) {
         let rate = if experiences > 0 {
@@ -115,64 +134,109 @@ impl Metrics {
         } else {
             0.0
         };
-        
+
         let mut lr = self.learning_rate.write().await;
         *lr = rate;
-        
+
         self.collector.record("learning.rate", rate).await;
-        self.collector.set_gauge("learning.rate.current", rate).await;
+        self.collector
+            .set_gauge("learning.rate.current", rate)
+            .await;
     }
-    
+
     /// Get current learning rate
     pub async fn get_learning_rate(&self) -> f64 {
         *self.learning_rate.read().await
     }
-    
+
     /// Update reputation score for a source
     pub async fn update_reputation_score(&self, source: &str, score: f64) {
         let mut scores = self.reputation_scores.write().await;
         scores.insert(source.to_string(), score);
-        
+
         let key = format!("reputation.{}", source);
         self.collector.set_gauge(&key, score).await;
     }
-    
+
     /// Get all reputation scores
     pub async fn get_reputation_scores(&self) -> HashMap<String, f64> {
         self.reputation_scores.read().await.clone()
     }
-    
+
     /// Get reputation score for a specific source
     pub async fn get_reputation_score(&self, source: &str) -> Option<f64> {
         self.reputation_scores.read().await.get(source).copied()
     }
-    
+
+    // ======================================================
+    // Loop-health metrics (T1-13..T1-16)
+    // ======================================================
+
+    /// Record the latency of a single agent loop iteration in milliseconds (T1-13).
+    pub async fn record_loop_latency(&self, latency_ms: f64) {
+        *self.loop_latency_ms.write().await = latency_ms;
+        self.collector
+            .set_gauge(metric_names::LOOP_LATENCY_MS, latency_ms)
+            .await;
+    }
+
+    /// Get the last recorded loop latency.
+    pub async fn get_loop_latency_ms(&self) -> f64 {
+        *self.loop_latency_ms.read().await
+    }
+
+    /// Record the max confidence drift observed this loop (T1-14).
+    pub async fn record_confidence_drift(&self, drift: f64) {
+        *self.confidence_drift.write().await = drift;
+        self.collector
+            .set_gauge(metric_names::CONFIDENCE_DRIFT, drift)
+            .await;
+    }
+
+    /// Get the last recorded confidence drift.
+    pub async fn get_confidence_drift(&self) -> f64 {
+        *self.confidence_drift.read().await
+    }
+
+    /// Record the promotion throughput (hypotheses promoted per hour) (T1-15).
+    pub async fn record_promotion_throughput(&self, throughput: f64) {
+        *self.promotion_throughput.write().await = throughput;
+        self.collector
+            .set_gauge(metric_names::PROMOTION_THROUGHPUT, throughput)
+            .await;
+    }
+
+    /// Get the last recorded promotion throughput.
+    pub async fn get_promotion_throughput(&self) -> f64 {
+        *self.promotion_throughput.read().await
+    }
+
     /// Get internal collector for direct access
     pub fn collector(&self) -> Arc<MetricsCollector> {
         Arc::clone(&self.collector)
     }
-    
+
     /// Get aggregated metric
     pub async fn get_aggregated(&self, name: &str) -> Option<AggregatedMetric> {
         self.collector.aggregate(name).await
     }
-    
+
     /// Calculate and return learning statistics
     pub async fn get_learning_stats(&self) -> LearningMetrics {
         let counters = self.collector.get_all_counters().await;
-        
+
         let reflections = *counters.get("reflections.created").unwrap_or(&0);
         let insights = *counters.get("insights.generated").unwrap_or(&0);
         let hypotheses = *counters.get("hypotheses.generated").unwrap_or(&0);
         let validated = *counters.get("hypotheses.confirmed").unwrap_or(&0);
         let rejected = *counters.get("hypotheses.rejected").unwrap_or(&0);
-        
+
         let validation_rate = if hypotheses > 0 {
             validated as f64 / hypotheses as f64
         } else {
             0.0
         };
-        
+
         LearningMetrics {
             reflections_generated: reflections,
             insights_extracted: insights,
@@ -491,6 +555,11 @@ pub mod metric_names {
     pub const INSIGHTS_GENERATED: &str = "insights.generated";
     pub const LEARNING_ITERATIONS: &str = "learning.iterations";
     pub const KNOWLEDGE_CONFIDENCE: &str = "knowledge.confidence";
+
+    // Loop-health metrics (T1-13..T1-16)
+    pub const LOOP_LATENCY_MS: &str = "loop.latency_ms";
+    pub const CONFIDENCE_DRIFT: &str = "loop.confidence_drift";
+    pub const PROMOTION_THROUGHPUT: &str = "promotion.throughput";
 }
 
 /// Run the metrics subsystem self-check.
@@ -520,25 +589,29 @@ pub async fn run_metrics_self_check() -> String {
     // Exercise the collector accessor exposed by the high-level Metrics API.
     let collector = metrics.collector();
     collector
-        .record_with_labels(
-            "metrics.high_level_record",
-            1.0,
-            {
-                let mut l = HashMap::new();
-                l.insert("scope".to_string(), "self-check".to_string());
-                l
-            },
-        )
+        .record_with_labels("metrics.high_level_record", 1.0, {
+            let mut l = HashMap::new();
+            l.insert("scope".to_string(), "self-check".to_string());
+            l
+        })
         .await;
     let aggregated = metrics.get_aggregated("test.metric").await;
     let learning_stats = metrics.get_learning_stats().await;
 
     tracing::info!(
         "Metrics self-check [high-level]: exp_count={} know_count={} learning_rate={:.2} rep_scores={} rep_score={:?} aggregated={:?} learning_stats=(reflections={} insights={} hyp_formed={} hyp_confirmed={} hyp_rejected={} validation_rate={:.2} lr={:.2})",
-        exp_count, know_count, learning_rate, rep_scores.len(), rep_score, aggregated.is_some(),
-        learning_stats.reflections_generated, learning_stats.insights_extracted,
-        learning_stats.hypotheses_formed, learning_stats.hypotheses_confirmed,
-        learning_stats.hypotheses_rejected, learning_stats.validation_rate,
+        exp_count,
+        know_count,
+        learning_rate,
+        rep_scores.len(),
+        rep_score,
+        aggregated.is_some(),
+        learning_stats.reflections_generated,
+        learning_stats.insights_extracted,
+        learning_stats.hypotheses_formed,
+        learning_stats.hypotheses_confirmed,
+        learning_stats.hypotheses_rejected,
+        learning_stats.validation_rate,
         learning_stats.learning_rate
     );
 
@@ -550,7 +623,9 @@ pub async fn run_metrics_self_check() -> String {
 
     let mut labels = HashMap::new();
     labels.insert("env".to_string(), "self-check".to_string());
-    collector.record_with_labels("test.labeled_metric", 1.0, labels).await;
+    collector
+        .record_with_labels("test.labeled_metric", 1.0, labels)
+        .await;
 
     collector.increment_by("test.counter", 5).await;
     let counter_val = collector.get_counter("test.counter").await;
@@ -595,7 +670,11 @@ pub async fn run_metrics_self_check() -> String {
 
     tracing::info!(
         "Metrics self-check [low-level]: counter={} gauge={:?} metric_points={} counter_after_reset={} vocab_counters={}",
-        counter_val, gauge_val, metric_points.len(), counter_after_reset, vocab_counters.len()
+        counter_val,
+        gauge_val,
+        metric_points.len(),
+        counter_after_reset,
+        vocab_counters.len()
     );
 
     format!(
@@ -603,4 +682,3 @@ pub async fn run_metrics_self_check() -> String {
         exp_count, know_count, learning_rate, rep_score
     )
 }
-

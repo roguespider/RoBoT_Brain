@@ -10,7 +10,7 @@ use crate::database::sqlite::SqliteDatabase;
 use crate::experience::bus::ExperienceBus;
 use crate::experience::coordinator::ExperienceCoordinator;
 use crate::experience::evolution::EvolutionEngine;
-use crate::experience::metrics::MetricsCollector;
+use crate::experience::metrics::Metrics;
 use crate::experience::queue::JobQueue;
 use crate::experience::reflection::ReflectionEngine;
 use crate::experience::scheduler::Scheduler;
@@ -52,7 +52,7 @@ pub struct McpContext {
     pub scheduler: Arc<Scheduler>,
 
     /// Metrics collector
-    pub metrics: Arc<MetricsCollector>,
+    pub metrics: Arc<Metrics>,
 
     /// Knowledge system - manages validated knowledge (used by knowledge tools)
     pub knowledge: Arc<KnowledgeStore>,
@@ -121,7 +121,7 @@ impl McpContext {
         reflection: Arc<ReflectionEngine>,
         evolution: Arc<EvolutionEngine>,
         scheduler: Arc<Scheduler>,
-        metrics: Arc<MetricsCollector>,
+        metrics: Arc<Metrics>,
         knowledge: Arc<KnowledgeStore>,
         planner: Arc<Planner>,
         policy: Arc<PolicyEngine>,

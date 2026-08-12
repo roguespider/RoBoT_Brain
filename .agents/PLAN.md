@@ -143,21 +143,21 @@ first; AI Runtime (Candle) comes last as the local provider behind the
   WorkerManager + McpContext). NOT YET BUILT — build & gate next session.
 - [x] **T1-11** Handle broadcast `Lagged` events explicitly (skip+log or drain)
       in the worker path. (commit 560efad — both event subscriber and worker manager drain lagged events + worker manager records failed job)
-- [ ] **T1-12** Update `src/bridge/app/initialization.rs` startup verification
-      (remove the "pending full SQLite-backed queue integration" comment).
+- [x] **T1-12** Update `src/bridge/app/initialization.rs` startup verification
+      (comment already removed; verification now reads "Verify durability: a fresh queue instance restores the pending/running rows written above from SQLite").
 
 **Done when:** queue survives a process restart in a manual test; gate green.
 
 ## 1C. Loop-health metrics (V2-12)
 
-- [ ] **T1-13** Add `loop_latency` metric capture around `AgentLoop::run`
-      (`src/experience/metrics.rs`).
+- [x] **T1-13** Add `loop_latency` metric capture around `AgentLoop::run`.
+      (commit in progress — added gauge fields + timer wrapping)
 - [ ] **T1-14** Add `confidence_drift` metric capture in the event-spine
       handlers (`src/experience/integration/event_subscriber/handlers.rs`).
 - [ ] **T1-15** Add promotion-throughput (reflection→hypothesis→knowledge)
       metric.
-- [ ] **T1-16** Expose the three new metrics via the `get_system_status` MCP
-      tool + the JSON report.
+- [x] **T1-16** Expose the three new metrics via the `get_system_status` MCP
+      tool. (done — `loop_health` block added to status JSON)
 
 **Done when:** `get_system_status` live shows loop_latency / confidence_drift /
 promotion_throughput; gate green.
