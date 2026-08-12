@@ -1101,6 +1101,9 @@ async fn main() -> anyhow::Result<()> {
     tests::run_acp_tests(&mut client, &mut stats, None).await?;
     tests::run_agent_simulation_tests(&mut client, &mut stats, None).await?;
 
+    // T1-10: verify the SQLite JobQueue survives a process restart.
+    tests::queue_durability::run_queue_durability_tests(&mut stats).await?;
+
     // Run CLI-based tool tests (tests robot_brain CLI subcommands)
     teeprintln!(
         "

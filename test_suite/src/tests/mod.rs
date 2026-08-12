@@ -21,6 +21,7 @@ pub mod cli_tools;
 pub mod rmcp;
 pub mod acp;
 pub mod agent_simulation;
+pub mod queue_durability;
 
 pub use memory::run_memory_tests;
 pub use experience::run_experience_tests;

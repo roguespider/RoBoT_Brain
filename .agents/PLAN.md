@@ -141,14 +141,29 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 
 - [x] **T1-09** Add `job_queue` table + migration in `src/database/migrations/`.
       (commit d1ee096; migration 012 + registered in run loop)
-- [in] **T1-10** Wire enqueue/dequeue through `src/experience/queue.rs` to SQLite.
-  CHANGES MADE (5 files): queue.rs (mark_complete/mark_failed),
-  worker_manager/manager.rs (job_queue field, new_with_queue, enqueue→push_job,
-  broadcast→push_job, mark_job_complete/mark_job_failed),
-  worker_manager/background.rs (loop calls mark_complete/mark_failed),
-  mcp/context.rs (job_queue field, new() updated),
-  bridge/app/initialization.rs (create JobQueue, restore_from_db, pass to
-  WorkerManager + McpContext). NOT YET BUILT — build & gate next session.
+- [x] **T1-10** Wire enqueue/dequeue through `src/experience/queue.rs` to SQLite.
+  VERIFIED 2026-08-12 by codebase inspection + live restart-durability test:
+  queue.rs (with_database/push_job/pop_job/mark_complete/mark_failed/
+  restore_from_database), worker_manager/manager.rs (job_queue field,
+  new_with_queue, enqueue→push_job, broadcast→push_job,
+  mark_job_complete/mark_job_failed), worker_manager/background.rs (loop calls
+  mark_job_complete/mark_job_failed), bridge/mcp/context.rs (NOTE: PLAN's old
+  path `src/mcp/context.rs` was wrong — real path is `src/bridge/mcp/context.rs`;
+  pub job_queue field + new() takes it), bridge/app/initialization.rs (creates
+  JobQueue::with_database, restore_from_database at startup, passes to
+  WorkerManager::new_with_queue + McpContext::new, runs a startup lifecycle
+  probe). Project builds and the full test suite runs (145/145 pass). A new
+  end-to-end restart-durability test in test_suite
+  (tests/queue_durability.rs) boots the real server, injects a pending
+  job_queue row into its SQLite DB, kills the server, boots a fresh server in
+  the same dir, and confirms via get_system_status (event_bus.pending_jobs)
+  that the row is restored into the live queue and survives with status=pending
+  in SQLite. The test passes. (Caveat noted: restored jobs are NOT replayed to
+  workers — restore_from_database repopulates the in-memory JobQueue cache but
+  nothing re-enqueues to ExperienceWorker channels. The startup probe's
+  pop_job can drain restored `experience_scorer` rows. Replay-on-start is a
+  gap, but the "queue survives a process restart" criterion is met.)
+- [ ] **T1-10B** all #[cfg(test)] in codebase should be made into actual test's in test_suite
 - [x] **T1-11** Handle broadcast `Lagged` events explicitly (skip+log or drain)
       in the worker path. (commit 560efad — both event subscriber and worker manager drain lagged events + worker manager records failed job)
 - [x] **T1-12** Update `src/bridge/app/initialization.rs` startup verification
@@ -608,7 +623,13 @@ Reputation` wired in `src/experience/integration/event_subscriber/handlers.rs`.
   (`experience_count` wired into analyzer), graph `edge_count` unwrapped +
   wired into probe, `HypothesisStatistics`/`StatisticsSnapshot` unwrapped from
   `#[cfg(test)]` and wired into maintenance probe.
-- ⏳ **T1-10 changes made** (5 files), NOT YET BUILT. Next: build + gate.
+- ✅ **T1-10 DONE** — SQLite JobQueue fully wired (queue.rs, worker_manager/manager.rs,
+  background.rs, bridge/mcp/context.rs, initialization.rs) and verified by a
+  live restart-durability test in test_suite (tests/queue_durability.rs): inject
+  pending row → kill server → restart in same dir → row restored into live
+  queue (pending_jobs>baseline) and durable row survives status=pending.
+  Known gap: restored jobs are not replayed to workers (replay-on-start is
+  future work).
 - 8 self_check.rs files remain (→ TIER 2).
 - Large-file refactors done: `personality/personality.rs` (352→101, split into
   presets/adaptation/decision_making); `memory/handlers.rs` (400→ directory).

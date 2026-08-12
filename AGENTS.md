@@ -260,9 +260,46 @@ every session should know:
       for t in c.list_tools():
           print(t['name'], t.get('inputSchema',{}).get('required',[]))
   ```
-- **Current gate state (2026-08-11):** GREEN — 141/141 tests pass, 0 code
-  issues, 0 warnings, 0 untested, 0 phantom. All 134 server tools covered. See
-  `.agents/PLAN.md` "Verified state" for the live snapshot.
+- **Current gate state (2026-08-12):** RED on warnings. 145/145 tests pass,
+  0 code issues, 0 untested, 0 phantom, but **67 compiler warnings**
+  (dead-code `never used`/`never read`, `collapsible_if`, async-fn
+  simplification, `module_inception`, `too_many_arguments`). The warning count
+  is the only gate blocker. See `.agents/PLAN.md` "Verified state" for the
+  live snapshot. NOTE: the 2026-08-11 "GREEN" note above was stale — always
+  re-run the gate, never trust a prior "done/GREEN" claim (Verify, Don't Trust).
+
+## Verifying task status (MANDATORY)
+
+When asked "is T1-NN done?" or "is X working 100%?":
+- Do NOT read the PLAN.md checkbox and repeat it. Checkboxes lie.
+- Do NOT trust the "Verified state" snapshot in PLAN.md — it can be stale.
+- INSPECT THE CODEBASE: `grep`/`find` for the actual change, read the code,
+  confirm the API exists and is wired.
+- RUN THE GATE: `cd test_suite && cargo build --release &&
+  ./target/release/test_suite`. Read `test_suite_report.json` for the real
+  metrics (`compiler_warnings`, `code_issues`, `untested_tools`,
+  `tests passed/total`, `overall_success`).
+- For "working 100%" claims, the done-when criteria matter (e.g. T1-10 =
+  "queue survives a process restart"). Wire a real end-to-end test in
+  test_suite that exercises that criterion, not just "the function exists".
+- Report what is actually true, including gaps the PLAN glosses over.
+
+## All tests live in test_suite (MANDATORY)
+
+- `#[cfg(test)]` modules inside robot_brain's `src/` are NOT the place for
+  tests. All tests belong in `test_suite/`. (test_suite tests robot_brain by
+  spawning it as a subprocess over MCP/CLI — that is the project's testing
+  model.)
+- When verifying a feature end-to-end, add the test under
+  `test_suite/src/tests/` (e.g. `queue_durability.rs`), wire it into
+  `tests/mod.rs` and dispatch it from `main.rs`. Add deps to
+  `test_suite/Cargo.toml` as needed (e.g. `rusqlite` bundled, `tempfile`).
+- Cross-process/restart tests: copy the server binary into a `tempfile::tempdir()`
+  (the server creates `robot_brain.db` beside `current_exe`), spawn via stdio
+  MCP, manipulate the DB with `rusqlite`, restart, and assert via MCP tools.
+  Remember the workflow gate: a fresh client must call `get_workflow` then
+  `search_memory` before any substantive tool (else `WORKFLOW_NOT_RETRIEVED` /
+  `MEMORY_NOT_SEARCHED`).
 
 ---
 
