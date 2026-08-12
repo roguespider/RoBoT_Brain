@@ -1104,6 +1104,9 @@ async fn main() -> anyhow::Result<()> {
     // T1-10: verify the SQLite JobQueue survives a process restart.
     tests::queue_durability::run_queue_durability_tests(&mut stats).await?;
 
+    // T1-10B-10: migrated finding new+promote unit test (MCP-based).
+    tests::exploration_finding::run_exploration_finding_tests(&mut client, &mut stats).await?;
+
     // Run CLI-based tool tests (tests robot_brain CLI subcommands)
     teeprintln!(
         "

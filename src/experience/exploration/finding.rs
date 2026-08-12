@@ -46,21 +46,3 @@ impl ExplorationFinding {
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_finding_new_and_promote() {
-        // Test new() and promote() - wires up the dead functions
-        let mut finding = ExplorationFinding::new(
-            "finding-1".to_string(),
-            "Discovered a new pattern".to_string(),
-            0.85,
-        );
-        assert!(!finding.promoted);
-        
-        finding.promote();
-        assert!(finding.promoted);
-    }
-}

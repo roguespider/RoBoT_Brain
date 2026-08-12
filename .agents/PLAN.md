@@ -195,8 +195,14 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             add_hypothesis / evaluate_exploration_hypothesis.
       - [ ] **T1-10B-09** `experience/exploration/attempt.rs` (2) —
             record_attempt.
-      - [ ] **T1-10B-10** `experience/exploration/finding.rs` (1) —
-            promote_finding.
+      - [x] **T1-10B-10** `experience/exploration/finding.rs` (1 test) — DONE
+            2026-08-12. Migrated test_finding_new_and_promote to
+            test_suite/src/tests/exploration_finding.rs via MCP flow
+            (start_exploration -> complete_exploration [calls
+            ExplorationFinding::new] -> get_exploration_status [promoted=false]
+            -> promote_finding [calls f.promote()] -> get_exploration_status
+            [promoted=true]). Deleted #[cfg(test)] block from src/. promote()
+            still used by promote_finding MCP handler (no new dead-code).
       - [ ] **T1-10B-11** `database/queries/observations.rs` (1) —
             record_observation / list_observations.
 
@@ -226,8 +232,13 @@ first; AI Runtime (Candle) comes last as the local provider behind the
       - [ ] **T1-10B-Z** Remove 20 EMPTY `#[cfg(test)] mod tests{}` blocks
             (files with 0 actual #[test] fns). Low risk.
 
-      **Resume here:** T1-10B-01 (personality/mod.rs) once Group B strategy
-      confirmed. Pending user decision: Group A + C only, or push into Group B.
+      **Decision (2026-08-12):** Group B = LEAVE as Rust unit tests (gate does
+      not flag #[cfg(test)]; deleting loses real coverage; no MCP surface to
+      migrate to). Group A executed SMALLEST-FIRST to establish the migration
+      pattern before the 16-test personality file. Group C last (trivial).
+      **Resume here:** T1-10B-10 (exploration/finding.rs, 1 test) — smallest,
+      establishes pattern. Execution order: 10, 11, 09, 08, 04, 05, 03, 02, 06,
+      07, 01, then Z.
 - [x] **T1-11** Handle broadcast `Lagged` events explicitly (skip+log or drain)
       in the worker path. (commit 560efad — both event subscriber and worker manager drain lagged events + worker manager records failed job)
 - [x] **T1-12** Update `src/bridge/app/initialization.rs` startup verification
