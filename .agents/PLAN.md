@@ -302,7 +302,14 @@ first; AI Runtime (Candle) comes last as the local provider behind the
       score_encounter(). The only non-test references are ExperienceScorer::new()
       passed to the coordinator (which calls .score(), not .score_encounter()).
       EncounterScore is pure internal math with no MCP surface.
-      - [ ] **T1-10B-15** `learning/pipeline.rs` (3) — LearningPipeline stages.
+      - [~] **T1-10B-15** `learning/pipeline.rs` (3) —
+      RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
+      Reason: LearningPipeline (start_from_input, advance_stage, stats) has
+      ZERO callers on any MCP-reachable path. It's only used in
+      initialization.rs as a startup self-check (tracing::info log), not
+      exposed as an MCP tool. record_observation stores observations in DB
+      directly, never touching LearningPipeline. Pure internal state machine
+      with no MCP surface.
       - [ ] **T1-10B-16** `experience/evolution/engine.rs` (3) —
             EvolutionEngine.
       - [ ] **T1-10B-17** `bridge/tools/ingestor/semantic_chunker.rs` (3) —
