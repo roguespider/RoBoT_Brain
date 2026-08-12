@@ -8,10 +8,8 @@
 //! Per Architecture §5.7 Decision Flow:
 //! Goal → Planning → Memory Retrieval → Knowledge Retrieval → Experience Retrieval → Confidence Evaluation → Action Selection → Execution → Outcome Recording
 
-#[cfg(test)]
 mod actions;
 pub mod planner;
-#[cfg(test)]
 mod replanning;
 pub mod types;
 

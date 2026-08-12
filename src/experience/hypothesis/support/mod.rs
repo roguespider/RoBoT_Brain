@@ -11,7 +11,6 @@
 
 
 pub mod graph;
-#[cfg(test)]
 pub mod planner;
 pub mod simulation;
 #[cfg(test)]

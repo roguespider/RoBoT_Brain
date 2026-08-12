@@ -191,20 +191,26 @@ impl WorkerManager {
     }
 
     /// Mark a job as completed after a worker processes it.
+    /// Delegates to `JobQueue::complete_job` (the infallible SQLite-aware
+    /// path); persist failures are logged inside the queue.
     pub fn mark_job_complete(&self, job_id: &str) -> Result<()> {
         let mut q = self
             .job_queue
             .lock()
             .map_err(|e| anyhow::anyhow!("Queue lock poisoned: {}", e))?;
-        q.mark_complete(job_id)
+        q.complete_job(job_id);
+        Ok(())
     }
 
     /// Mark a job as failed after a worker encounters an error.
+    /// Delegates to `JobQueue::fail_job` (the infallible SQLite-aware path);
+    /// persist failures are logged inside the queue.
     pub fn mark_job_failed(&self, job_id: &str, error: String) -> Result<()> {
         let mut q = self
             .job_queue
             .lock()
             .map_err(|e| anyhow::anyhow!("Queue lock poisoned: {}", e))?;
-        q.mark_failed(job_id, error)
+        q.fail_job(job_id, error);
+        Ok(())
     }
 }

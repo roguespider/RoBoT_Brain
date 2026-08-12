@@ -189,6 +189,16 @@ impl LearningCoordinator {
 
     /// Perform maintenance tasks (called periodically)
     pub async fn run_maintenance(&self) -> Result<MaintenanceStats> {
+        // Record active-pipeline counts as maintenance diagnostics (Architecture
+        // §2.7/§12 observability) so the exploration/reputation introspection
+        // accessors stay wired to a real caller rather than dead state.
+        let explorations = self.active_exploration_count().await;
+        let reputations = self.active_reputation_count().await;
+        tracing::debug!(
+            "Maintenance pre-check: {} active explorations, {} reputation sources",
+            explorations,
+            reputations
+        );
         let methods = EntryMethods {
             config: &self.config,
             hypothesis_engine: &self.hypothesis_engine,

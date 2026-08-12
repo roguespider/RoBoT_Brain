@@ -67,7 +67,6 @@ pub enum StepStatus {
 /// - Expected outcomes
 /// - Potential risks
 #[derive(Debug, Clone)]
-#[cfg(test)]
 pub struct PlannerPolicy {
     /// Minimum confidence required to trust knowledge in planning
     pub min_knowledge_confidence: f32,
@@ -81,7 +80,6 @@ pub struct PlannerPolicy {
     pub confidence_weight: f32,
 }
 
-#[cfg(test)]
 impl Default for PlannerPolicy {
     fn default() -> Self {
         Self {
@@ -96,7 +94,6 @@ impl Default for PlannerPolicy {
 
 /// Reason for replanning
 #[derive(Debug, Clone)]
-#[cfg(test)]
 pub enum ReplanReason {
     /// A step in the plan failed
     StepFailed(String),
@@ -114,7 +111,6 @@ pub enum ReplanReason {
 
 /// Analysis of why a plan failed
 #[derive(Debug, Clone, Default)]
-#[cfg(test)]
 pub struct PlanFailureAnalysis {
     pub plan_id: String,
     pub failed_step_count: usize,
@@ -125,7 +121,6 @@ pub struct PlanFailureAnalysis {
 
 /// Action candidate for selection
 #[derive(Debug, Clone)]
-#[cfg(test)]
 pub struct ActionCandidate {
     pub id: String,
     pub description: String,
@@ -138,7 +133,6 @@ pub struct ActionCandidate {
 
 /// Reference to knowledge item
 #[derive(Debug, Clone)]
-#[cfg(test)]
 pub struct KnowledgeRef {
     pub id: uuid::Uuid,
     pub confidence: f32,
@@ -146,7 +140,6 @@ pub struct KnowledgeRef {
 
 /// Reference to experience
 #[derive(Debug, Clone)]
-#[cfg(test)]
 pub struct ExperienceRef {
     pub id: uuid::Uuid,
     pub was_successful: bool,
@@ -154,7 +147,6 @@ pub struct ExperienceRef {
 
 /// Risk level for actions
 #[derive(Debug, Clone, Copy)]
-#[cfg(test)]
 pub enum RiskLevel {
     Low,
     Medium,

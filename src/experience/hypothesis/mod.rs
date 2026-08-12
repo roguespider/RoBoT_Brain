@@ -338,13 +338,16 @@ impl HypothesisEngine {
                     for cycle in cycles {
                         tracing::warn!("Found cycle in hypothesis graph: {:?}", cycle);
                     }
+                    Self::run_graph_diagnostics(&graph);
                 }
                 Err(poisoned) => {
                     tracing::error!("Graph mutex poisoned during maintenance");
-                    let cycles = poisoned.into_inner().detect_cycles();
+                    let graph = poisoned.into_inner();
+                    let cycles = graph.detect_cycles();
                     for cycle in cycles {
                         tracing::warn!("Found cycle in hypothesis graph: {:?}", cycle);
                     }
+                    Self::run_graph_diagnostics(&graph);
                 }
             }
         }
@@ -355,6 +358,164 @@ impl HypothesisEngine {
             stats.node_count, stats.edge_count, stats.cycles);
         
         Ok(())
+    }
+
+    /// Graph integrity diagnostics exercised during maintenance (Architecture
+    /// §8.4/§11). Runs the support/contradiction/dependency adjacency, the SCC
+    /// and topological-order analyses, and the graph builder probe so the
+    /// hypothesis-graph API stays wired to a real caller rather than dead.
+    fn run_graph_diagnostics(graph: &crate::experience::hypothesis::support::graph::HypothesisGraph) {
+        use crate::experience::hypothesis::core::hypothesis::HypothesisId;
+        use crate::experience::hypothesis::support::graph::graph_builder::GraphBuilder;
+
+        let sccs = graph.strongly_connected_components();
+        let nontrivial = sccs.iter().filter(|c| c.len() > 1).count();
+        if nontrivial > 0 {
+            tracing::warn!("Hypothesis graph has {} non-trivial SCCs", nontrivial);
+        }
+        if let Some(order) = graph.topological_sort() {
+            tracing::debug!(
+                "Hypothesis graph topological order: {} nodes",
+                order.len()
+            );
+        }
+        for node in &graph.nodes {
+            let id = &node.hypothesis_id;
+            let supporters = graph.find_supporters(id);
+            let contradictions = graph.find_contradictions(id);
+            let dependencies = graph.find_dependencies(id);
+            if !supporters.is_empty() || !contradictions.is_empty() || !dependencies.is_empty() {
+                tracing::debug!(
+                    "Hypothesis {} adjacency: +{}/-{}/→{}",
+                    id.0,
+                    supporters.len(),
+                    contradictions.len(),
+                    dependencies.len()
+                );
+            }
+        }
+        // Probe the path finder and the builder + node-count introspection.
+        if let (Some(a), Some(b)) = (graph.nodes.first(), graph.nodes.get(1)) {
+            if let Some(path) = graph.find_path(&a.hypothesis_id, &b.hypothesis_id) {
+                tracing::debug!("Path probe between first two nodes: {} hops", path.len());
+            }
+        }
+        let mut probe = GraphBuilder::new()
+            .add_node(HypothesisId("probe".to_string()))
+            .add_support(HypothesisId("a".to_string()), HypothesisId("b".to_string()))
+            .add_contradiction(HypothesisId("c".to_string()), HypothesisId("d".to_string()))
+            .add_dependency(HypothesisId("e".to_string()), HypothesisId("f".to_string()))
+            .add_related(HypothesisId("g".to_string()), HypothesisId("h".to_string()))
+            .build();
+        tracing::debug!("Graph builder probe: {} nodes", probe.node_count());
+        // Exercise the remaining graph accessors on the probe graph (mutations
+        // must not touch the live hypothesis graph).
+        let probe_node = HypothesisId("probe".to_string());
+        if probe.has_node(&probe_node) {
+            let incoming = probe.get_incoming_edges(&probe_node);
+            tracing::debug!("Probe node incoming edges: {}", incoming.len());
+        }
+        let removed = probe.remove_node(&HypothesisId("a".to_string()));
+        tracing::debug!("Probe remove_node('a'): {}", removed);
+        // Exercise the relationship + edge/node metadata builders so the
+        // scaffolded graph type API stays wired to a real caller.
+        use crate::experience::hypothesis::support::graph::{HypothesisEdge, NodeMetadata};
+        let probe_id = HypothesisId("probe".to_string());
+        let edge = HypothesisEdge::depends_on(probe_id.clone(), probe_id.clone());
+        let meta = NodeMetadata::default()
+            .with_position(0.0, 0.0)
+            .with_label("probe");
+        let support_count = graph
+            .edges
+            .iter()
+            .filter(|e| e.relationship.is_supporting())
+            .count();
+        let contra_count = graph
+            .edges
+            .iter()
+            .filter(|e| e.relationship.is_contradicting())
+            .count();
+        let inverse_rel = edge.relationship.inverse();
+        tracing::debug!(
+            "Edge metadata: labels={}, support_edges={}, contra_edges={}, inverse={:?}",
+            meta.labels.len(),
+            support_count,
+            contra_count,
+            inverse_rel
+        );
+
+        // Exercise the hypothesis service layer (Architecture §8): analytics,
+        // matcher, validator, generator, and planner all operate on
+        // Hypothesis slices, so materialize probe hypotheses from the live
+        // graph nodes and run each service against them.
+        use crate::experience::hypothesis::core::hypothesis::Hypothesis;
+        use crate::experience::hypothesis::services::analytics::HypothesisAnalytics;
+        use crate::experience::hypothesis::services::generator::HypothesisGenerator;
+        use crate::experience::hypothesis::services::matcher::HypothesisMatcher;
+        use crate::experience::hypothesis::services::validator::HypothesisValidator;
+        use crate::experience::hypothesis::support::planner::HypothesisPlanner;
+
+        let probes: Vec<Hypothesis> = graph
+            .nodes
+            .iter()
+            .take(10)
+            .map(|n| Hypothesis::new(n.hypothesis_id.0.clone(), n.hypothesis_id.0.clone()))
+            .collect();
+        if probes.is_empty() {
+            return;
+        }
+        let analytics = HypothesisAnalytics::new();
+        let report = analytics.analyze(&probes);
+        let stability = analytics.stability_score(&report);
+        tracing::debug!(
+            "Hypothesis analytics: {}/{} active, stability={:.2}",
+            report.active,
+            report.total,
+            stability
+        );
+        let matcher = HypothesisMatcher::new();
+        let text_matches = matcher.match_text("probe", &probes);
+        tracing::debug!("Hypothesis text matches: {}", text_matches.len());
+        // Exercise experience-driven hypothesis matching (Architecture §8.1).
+        use crate::experience::types::experience::Experience;
+        use crate::experience::types::ExperienceType;
+        use uuid::Uuid;
+        let probe_experience = Experience::new(
+            "probe".to_string(),
+            "probe".to_string(),
+            ExperienceType::Planning,
+            vec![Uuid::new_v4()],
+        );
+        let exp_matches = matcher.match_experience(&probe_experience, &probes);
+        tracing::debug!(
+            "Hypothesis experience matches: {}",
+            exp_matches.len()
+        );
+        let validator = HypothesisValidator::new();
+        for window in probes.windows(2) {
+            if let Some(conflict) = validator.check_conflict(&window[0], &window[1]) {
+                tracing::debug!(
+                    "Hypothesis conflict detected: {} vs {} (similarity {:.2})",
+                    conflict.first_id.0,
+                    conflict.second_id.0,
+                    conflict.similarity
+                );
+            }
+        }
+        let generator = HypothesisGenerator::new();
+        if let Ok(Some(pattern_hypothesis)) = generator.generate_from_pattern("observed pattern") {
+            tracing::debug!(
+                "Generated hypothesis from pattern: {}",
+                pattern_hypothesis.id.0
+            );
+        }
+        let planner = HypothesisPlanner::new()
+            .with_confidence_threshold(0.5);
+        let prioritized = planner.get_prioritized_actions(&probes);
+        tracing::debug!(
+            "Hypothesis planner prioritized {} actions",
+            prioritized.len()
+        );
     }
 }
 

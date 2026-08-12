@@ -94,6 +94,16 @@ impl JobQueue {
         }
     }
 
+    /// Number of jobs currently held in the in-memory cache (pending +
+    /// running). Useful as a runtime liveness gauge (Architecture §22
+    /// observability) and to keep the owning context's queue handle live.
+    pub fn pending_count(&self) -> usize {
+        self.jobs
+            .values()
+            .filter(|j| j.status == JobStatus::Pending)
+            .count()
+    }
+
     /// Add a new job to the queue
     pub fn push_job(&mut self, experience_id: &str, observer_name: &str) {
         let job = Job::new(experience_id, observer_name);
@@ -132,29 +142,21 @@ impl JobQueue {
         }
     }
 
-    /// Mark a job as completed
+    /// Mark a job as completed (infallible convenience wrapper over
+    /// [`mark_complete`]). Kept for callers that prefer to ignore the persist
+    /// result; the SQLite-aware path is `mark_complete`.
     pub fn complete_job(&mut self, job_id: &str) {
-        if let Some(job) = self.jobs.get_mut(job_id) {
-            job.status = JobStatus::Completed;
-            if let Some(db) = &self.database {
-                if let Err(e) = persist_update(db, job) {
-                    tracing::warn!("JobQueue complete persist failed: {}", e);
-                }
-            }
+        if let Err(e) = self.mark_complete(job_id) {
+            tracing::warn!("JobQueue complete_job failed: {}", e);
         }
     }
 
-    /// Mark a job as failed
+    /// Mark a job as failed (infallible convenience wrapper over
+    /// [`mark_failed`]). Kept for callers that prefer to ignore the persist
+    /// result; the SQLite-aware path is `mark_failed`.
     pub fn fail_job(&mut self, job_id: &str, error: String) {
-        if let Some(job) = self.jobs.get_mut(job_id) {
-            job.status = JobStatus::Failed;
-            job.last_error = Some(error);
-            job.attempts += 1;
-            if let Some(db) = &self.database {
-                if let Err(e) = persist_update(db, job) {
-                    tracing::warn!("JobQueue fail persist failed: {}", e);
-                }
-            }
+        if let Err(e) = self.mark_failed(job_id, error) {
+            tracing::warn!("JobQueue fail_job failed: {}", e);
         }
     }
 

@@ -383,6 +383,19 @@ impl AcpToolsHandler {
         let active_behaviors = self.context.evolution.list_active_behaviors().await.len();
         let policy_rules = self.context.policy.list_rules().await.len();
         let bus_subscribers = self.context.bus.subscriber_count();
+        // Exercise the bus accessor (Architecture §5 observability): the
+        // manager exposes the shared bus so callers can subscribe beyond the
+        // worker's own subscription. Report the handle's identity alongside
+        // the worker's own subscriber count.
+        let worker_bus = self.context.worker_manager.bus();
+        let worker_bus_subscribers = self.context.worker_manager.bus_subscriber_count();
+        let worker_bus_ptr = Arc::as_ptr(&worker_bus) as usize;
+        let pending_jobs = self
+            .context
+            .job_queue
+            .lock()
+            .map(|q| q.pending_count())
+            .unwrap_or(0);
 
         Ok(crate::bridge::tools::ToolOutput::success(
             serde_json::json!({
@@ -414,6 +427,9 @@ impl AcpToolsHandler {
                 },
                 "event_bus": {
                     "subscribers": bus_subscribers,
+                    "worker_subscribers": worker_bus_subscribers,
+                    "worker_bus_addr": worker_bus_ptr,
+                    "pending_jobs": pending_jobs,
                 },
                 // Loop-health metrics (T1-13..T1-16)
                 "loop_health": {

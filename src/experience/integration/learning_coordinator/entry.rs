@@ -266,6 +266,12 @@ impl<'a> EntryMethods<'a> {
         let decayed = hypothesis_methods.decay_hypotheses().await?;
         stats.hypotheses_decayed = decayed;
 
+        // 1b. Reflection engine maintenance: reconcile insight/pattern
+        // confidence and archived reflections (Architecture §4.06).
+        if let Err(e) = self.reflection_engine.maintenance().await {
+            tracing::warn!("Reflection maintenance failed: {}", e);
+        }
+
         // 2. Archive stale explorations
         let archived = exploration_manager.archive_stale_explorations().await?;
         stats.explorations_archived = archived;
