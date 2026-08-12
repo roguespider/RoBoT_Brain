@@ -141,8 +141,8 @@ first; AI Runtime (Candle) comes last as the local provider behind the
   mcp/context.rs (job_queue field, new() updated),
   bridge/app/initialization.rs (create JobQueue, restore_from_db, pass to
   WorkerManager + McpContext). NOT YET BUILT — build & gate next session.
-- [ ] **T1-11** Handle broadcast `Lagged` events explicitly (skip+log or drain)
-      in the worker path.
+- [x] **T1-11** Handle broadcast `Lagged` events explicitly (skip+log or drain)
+      in the worker path. (commit 560efad — both event subscriber and worker manager drain lagged events + worker manager records failed job)
 - [ ] **T1-12** Update `src/bridge/app/initialization.rs` startup verification
       (remove the "pending full SQLite-backed queue integration" comment).
 
