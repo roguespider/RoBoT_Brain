@@ -94,16 +94,16 @@ pub async fn run_memory_retrieval_tests(
             })
             .unwrap_or(false),
         Err(e) => {
-            crate::teeprintln!("  ✗ search_memory(working) — {}", e);
+            crate::teeprintln!("  [FAIL] search_memory(working) — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if found {
-        crate::teeprintln!("  ✓ retrieve working: stored item found in search results (get_from_working via retrieve)");
+        crate::teeprintln!("  [OK] retrieve working: stored item found in search results (get_from_working via retrieve)");
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  ✗ retrieve working: marker not found in results (marker={})", marker);
+        crate::teeprintln!("  [FAIL] retrieve working: marker not found in results (marker={})", marker);
         stats.failed += 1;
         return Ok(());
     }
@@ -151,17 +151,17 @@ pub async fn run_memory_retrieval_tests(
             (fa, fb)
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ search_memory(unified) — {}", e);
+            crate::teeprintln!("  [FAIL] search_memory(unified) — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if found_alpha && found_beta {
-        crate::teeprintln!("  ✓ retrieve unified: both items found in search results (retrieve unions results)");
+        crate::teeprintln!("  [OK] retrieve unified: both items found in search results (retrieve unions results)");
         stats.passed += 1;
     } else {
         crate::teeprintln!(
-            "  ✗ retrieve unified: alpha={}, beta={} (expected both)",
+            "  [FAIL] retrieve unified: alpha={}, beta={} (expected both)",
             found_alpha,
             found_beta
         );
