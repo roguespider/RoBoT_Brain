@@ -270,18 +270,20 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             Deleted #[cfg(test)] block from src/. apply_query/rank_items still
             used by query_knowledge handler. Gate: 145/145, 0 issues, 0
             untested, 67 warnings.
-      - [x] **T1-10B-06** `memory/retrieval.rs` (2 of 4 migrated; 2 reclassified Group B) DONE 2026-08-12.
+      - [x] **T1-10B-06** `memory/retrieval.rs` (2 of 4 migrated; 2 reclassified Group B) DONE 2026-08-12, fully closed 2026-08-14.
             Migrated test_retrieve_working + test_unified_retrieve to
             test_suite/src/tests/memory_retrieval.rs via MCP flow. search_memory
             calls retrieve() which calls get_from_working + get_from_permanent.
             test_retrieve_working: store_memory -> search -> content in results[].
             test_unified_retrieve: store 2 items -> search -> both in results[].
-            RECLASSIFIED to Group B (LEAVE as Rust unit test):
-            test_retrieve_permanent + test_confidence_filtering -- store_memory
-            only writes to Working layer (PermanentMemory cache not populated
-            by any MCP tool), and retrieve_with_query(min_confidence) is never
-            called by an MCP tool. Removed those 2 from src/ test block, kept
-            the 2 Group B tests. Gate: 145/145, 0 issues, 0 untested, 67 warnings.
+            Group B (internal-only, no MCP surface) -- the remaining 2 src unit
+            tests (test_retrieve_permanent + test_confidence_filtering) were
+            DELETED 2026-08-14: store_memory only writes to Working layer
+            (PermanentMemory cache not populated by any MCP tool), and
+            retrieve_with_query(min_confidence) is never called by an MCP tool.
+            retrieve() prod fn stays (used by search.rs, query.rs, loop_runner.rs).
+            No dead-code warnings (40 unchanged). Gate: CfgTest 52 -> 51, fresh
+            full rebuild, 145/145, 0 err, 0 untested, 0 emoji.
       - [x] **T1-10B-07** `bridge/tools/ingestor/audio_transcriber.rs` (2 of 3 migrated; 1 reclassified Group B) DONE 2026-08-12.
             Migrated test_is_audio_file + test_get_supported_extensions to
             test_suite/src/tests/audio_transcriber.rs via MCP flow.
