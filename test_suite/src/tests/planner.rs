@@ -76,11 +76,11 @@ async fn test_create_plan(
             } else {
                 description
             };
-            crate::teeprintln!("  ✓ create_plan('{}...') - SUCCESS", truncated);
+            crate::teeprintln!("  [OK] create_plan('{}...') - SUCCESS", truncated);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ create_plan('{}') - FAILED: {}", description, e);
+            crate::teeprintln!("  [FAIL] create_plan('{}') - FAILED: {}", description, e);
             stats.failed += 1;
         }
     }
@@ -104,11 +104,11 @@ async fn test_add_plan_step(
         .await
     {
         Ok(_) => {
-            crate::teeprintln!("  ✓ add_plan_step('{}') - SUCCESS", description);
+            crate::teeprintln!("  [OK] add_plan_step('{}') - SUCCESS", description);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ add_plan_step('{}') - FAILED: {}", description, e);
+            crate::teeprintln!("  [FAIL] add_plan_step('{}') - FAILED: {}", description, e);
             stats.failed += 1;
         }
     }
@@ -134,13 +134,13 @@ async fn test_add_step_dependency(
     {
         Ok(_) => {
             crate::teeprintln!(
-                "  ✓ add_step_dependency({}) - SUCCESS",
+                "  [OK] add_step_dependency({}) - SUCCESS",
                 step_id.chars().take(8).collect::<String>()
             );
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ add_step_dependency - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] add_step_dependency - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -163,13 +163,13 @@ async fn test_get_plan(
     {
         Ok(_) => {
             crate::teeprintln!(
-                "  ✓ get_plan({}) - SUCCESS",
+                "  [OK] get_plan({}) - SUCCESS",
                 plan_id.chars().take(8).collect::<String>()
             );
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ get_plan - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] get_plan - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -192,13 +192,13 @@ async fn test_start_plan(
     {
         Ok(_) => {
             crate::teeprintln!(
-                "  ✓ start_plan({}) - SUCCESS",
+                "  [OK] start_plan({}) - SUCCESS",
                 plan_id.chars().take(8).collect::<String>()
             );
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ start_plan - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] start_plan - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -224,13 +224,13 @@ async fn test_complete_step(
     {
         Ok(_) => {
             crate::teeprintln!(
-                "  ✓ complete_step({}) - SUCCESS",
+                "  [OK] complete_step({}) - SUCCESS",
                 step_id.chars().take(8).collect::<String>()
             );
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ complete_step - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] complete_step - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -256,13 +256,13 @@ async fn test_fail_step(
     {
         Ok(_) => {
             crate::teeprintln!(
-                "  ✓ fail_step({}) - SUCCESS",
+                "  [OK] fail_step({}) - SUCCESS",
                 step_id.chars().take(8).collect::<String>()
             );
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ fail_step - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] fail_step - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -280,11 +280,11 @@ async fn test_cancel_plan(client: &mut TestMcpClient, stats: &mut TestStats) -> 
         .await
     {
         Ok(_) => {
-            crate::teeprintln!("  ✓ cancel_plan - SUCCESS");
+            crate::teeprintln!("  [OK] cancel_plan - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ cancel_plan - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] cancel_plan - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -304,11 +304,11 @@ async fn test_list_plans(
     match client.call_tool("list_plans", args).await {
         Ok(_) => {
             let s = status.unwrap_or("all");
-            crate::teeprintln!("  ✓ list_plans({}) - SUCCESS", s);
+            crate::teeprintln!("  [OK] list_plans({}) - SUCCESS", s);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ list_plans({:?}) - FAILED: {}", status, e);
+            crate::teeprintln!("  [FAIL] list_plans({:?}) - FAILED: {}", status, e);
             stats.failed += 1;
         }
     }
