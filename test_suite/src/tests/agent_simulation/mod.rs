@@ -34,17 +34,17 @@ pub async fn run_agent_simulation_tests(
     crate::teeprintln!("{}", "=".repeat(80));
 
     // Phase 1: Multi-step workflow tests
-    crate::teeprintln!("\n📋 PHASE 1: MULTI-STEP WORKFLOWS");
+    crate::teeprintln!("\n[INFO] PHASE 1: MULTI-STEP WORKFLOWS");
     crate::teeprintln!("{}", "-".repeat(60));
     let workflow_results = workflows::test_agent_workflows(client, stats).await?;
 
     // Phase 2: Memory-based agent behavior
-    crate::teeprintln!("\n📋 PHASE 2: MEMORY-BASED AGENT BEHAVIOR");
+    crate::teeprintln!("\n[INFO] PHASE 2: MEMORY-BASED AGENT BEHAVIOR");
     crate::teeprintln!("{}", "-".repeat(60));
     let memory_results = memory_agent::test_memory_based_agent(client, stats).await?;
 
     // Phase 3: Agent decision-making
-    crate::teeprintln!("\n📋 PHASE 3: AGENT DECISION-MAKING");
+    crate::teeprintln!("\n[INFO] PHASE 3: AGENT DECISION-MAKING");
     crate::teeprintln!("{}", "-".repeat(60));
     let decision_results = decision_making::test_agent_decision_making(client, stats).await?;
 
@@ -69,25 +69,25 @@ fn print_simulation_results(results: &AgentSimulationResults) {
     crate::teeprintln!("{}", "=".repeat(80));
 
     // Workflow results
-    crate::teeprintln!("\n🔄 Multi-Step Workflows:");
-    crate::teeprintln!("  ✅ Passed: {}", results.workflows.passed);
-    crate::teeprintln!("  ❌ Failed: {}", results.workflows.failed);
-    crate::teeprintln!("  ℹ  Workflows Tested: {}", results.workflows.workflows_tested);
-    crate::teeprintln!("  ℹ  Steps Completed: {}", results.workflows.steps_completed);
+    crate::teeprintln!("\n[INFO] Multi-Step Workflows:");
+    crate::teeprintln!("  [OK] Passed: {}", results.workflows.passed);
+    crate::teeprintln!("  [FAIL] Failed: {}", results.workflows.failed);
+    crate::teeprintln!("  [INFO]  Workflows Tested: {}", results.workflows.workflows_tested);
+    crate::teeprintln!("  [INFO]  Steps Completed: {}", results.workflows.steps_completed);
 
     // Memory agent results
-    crate::teeprintln!("\n🧠 Memory-Based Agent:");
-    crate::teeprintln!("  ✅ Passed: {}", results.memory_agent.passed);
-    crate::teeprintln!("  ❌ Failed: {}", results.memory_agent.failed);
-    crate::teeprintln!("  ℹ  Memory Operations: {}", results.memory_agent.operations_tested);
+    crate::teeprintln!("\n[INFO] Memory-Based Agent:");
+    crate::teeprintln!("  [OK] Passed: {}", results.memory_agent.passed);
+    crate::teeprintln!("  [FAIL] Failed: {}", results.memory_agent.failed);
+    crate::teeprintln!("  [INFO]  Memory Operations: {}", results.memory_agent.operations_tested);
 
     // Decision-making results
-    crate::teeprintln!("\n🎯 Agent Decision-Making:");
-    crate::teeprintln!("  ✅ Passed: {}", results.decision_making.passed);
-    crate::teeprintln!("  ❌ Failed: {}", results.decision_making.failed);
-    crate::teeprintln!("  ℹ  Decisions Made: {}", results.decision_making.decisions_tested);
+    crate::teeprintln!("\n[INFO] Agent Decision-Making:");
+    crate::teeprintln!("  [OK] Passed: {}", results.decision_making.passed);
+    crate::teeprintln!("  [FAIL] Failed: {}", results.decision_making.failed);
+    crate::teeprintln!("  [INFO]  Decisions Made: {}", results.decision_making.decisions_tested);
 
-    crate::teeprintln!("\n📊 Overall:");
+    crate::teeprintln!("\n[INFO] Overall:");
     crate::teeprintln!("  Total Passed: {}", results.total_passed);
     crate::teeprintln!("  Total Failed: {}", results.total_failed);
 }
