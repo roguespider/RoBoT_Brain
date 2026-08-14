@@ -8,7 +8,7 @@ pub async fn test_end_to_end_scenarios(
     client: &mut TestMcpClient,
     stats: &mut TestStats,
 ) -> anyhow::Result<EndToEndScenarioResults> {
-    crate::teeprintln!("\n📋 Phase 5: End-to-End Scenario Tests");
+    crate::teeprintln!("\n[INFO] Phase 5: End-to-End Scenario Tests");
     crate::teeprintln!("{}", "-".repeat(60));
 
     let mut results = EndToEndScenarioResults {
@@ -38,13 +38,13 @@ pub async fn test_end_to_end_scenarios(
             .await;
 
             if tools_exist {
-                crate::teeprintln!("    ✓ File ingestion workflow path available");
+                crate::teeprintln!("    [OK] File ingestion workflow path available");
                 stats.passed += 1;
                 results.file_ingestion_workflow = true;
             }
         }
         Err(e) => {
-            crate::teeprintln!("    ✗ File ingestion workflow failed: {}", e);
+            crate::teeprintln!("    [FAIL] File ingestion workflow failed: {}", e);
             stats.failed += 1;
         }
     }
@@ -65,13 +65,13 @@ pub async fn test_end_to_end_scenarios(
                 verify_workflow_tools_exist(client, &["create_workflow", "list_workflows"]).await;
 
             if tools_exist {
-                crate::teeprintln!("    ✓ Memory search workflow path available");
+                crate::teeprintln!("    [OK] Memory search workflow path available");
                 stats.passed += 1;
                 results.memory_search_workflow = true;
             }
         }
         Err(e) => {
-            crate::teeprintln!("    ✗ Memory search workflow failed: {}", e);
+            crate::teeprintln!("    [FAIL] Memory search workflow failed: {}", e);
             stats.failed += 1;
         }
     }
@@ -88,12 +88,12 @@ pub async fn test_end_to_end_scenarios(
         .await
     {
         Ok(_) => {
-            crate::teeprintln!("    ✓ Experience recording workflow path available");
+            crate::teeprintln!("    [OK] Experience recording workflow path available");
             stats.passed += 1;
             results.experience_recording_workflow = true;
         }
         Err(e) => {
-            crate::teeprintln!("    ✗ Experience recording workflow failed: {}", e);
+            crate::teeprintln!("    [FAIL] Experience recording workflow failed: {}", e);
             stats.failed += 1;
         }
     }
@@ -163,12 +163,12 @@ pub async fn test_end_to_end_scenarios(
                         .await
                     {
                         Ok(_) => {
-                            crate::teeprintln!("    ✓ Multi-step workflow executed successfully");
+                            crate::teeprintln!("    [OK] Multi-step workflow executed successfully");
                             stats.passed += 1;
                             results.multi_step_workflow = true;
                         }
                         Err(e) => {
-                            crate::teeprintln!("    ✗ Multi-step workflow start failed: {}", e);
+                            crate::teeprintln!("    [FAIL] Multi-step workflow start failed: {}", e);
                             stats.failed += 1;
                         }
                     }
@@ -186,13 +186,13 @@ pub async fn test_end_to_end_scenarios(
                 {
                     Ok(_) => {}
                     Err(e) => {
-                        crate::teeprintln!("    ⚠️  Cleanup: cancel_workflow failed: {}", e)
+                        crate::teeprintln!("    [WARN]  Cleanup: cancel_workflow failed: {}", e)
                     }
                 }
             }
         }
         Err(e) => {
-            crate::teeprintln!("    ✗ Multi-step workflow creation failed: {}", e);
+            crate::teeprintln!("    [FAIL] Multi-step workflow creation failed: {}", e);
             stats.failed += 1;
         }
     }
