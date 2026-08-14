@@ -55,19 +55,19 @@ pub async fn run_exploration_finding_tests(
                 .and_then(|i| i.as_str())
                 .map(|s| s.to_string()),
             Err(e) => {
-                crate::teeprintln!("  ✗ start_exploration payload parse — {}", e);
+                crate::teeprintln!("  [FAIL] start_exploration payload parse — {}", e);
                 stats.failed += 1;
                 return Ok(());
             }
         },
         Err(e) => {
-            crate::teeprintln!("  ✗ start_exploration — {}", e);
+            crate::teeprintln!("  [FAIL] start_exploration — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     let Some(exploration_id) = exploration_id else {
-        crate::teeprintln!("  ✗ start_exploration — no exploration_id");
+        crate::teeprintln!("  [FAIL] start_exploration — no exploration_id");
         stats.failed += 1;
         return Ok(());
     };
@@ -93,22 +93,22 @@ pub async fn run_exploration_finding_tests(
         Ok(r) => match payload_json(&r) {
             Ok(v) => v.get("finding_count").and_then(|c| c.as_i64()).unwrap_or(0),
             Err(e) => {
-                crate::teeprintln!("  ✗ complete_exploration payload parse — {}", e);
+                crate::teeprintln!("  [FAIL] complete_exploration payload parse — {}", e);
                 stats.failed += 1;
                 return Ok(());
             }
         },
         Err(e) => {
-            crate::teeprintln!("  ✗ complete_exploration — {}", e);
+            crate::teeprintln!("  [FAIL] complete_exploration — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if finding_count == 1 {
-        crate::teeprintln!("  ✓ complete_exploration created 1 finding (ExplorationFinding::new)");
+        crate::teeprintln!("  [OK] complete_exploration created 1 finding (ExplorationFinding::new)");
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  ✗ complete_exploration finding_count={} (expected 1)", finding_count);
+        crate::teeprintln!("  [FAIL] complete_exploration finding_count={} (expected 1)", finding_count);
         stats.failed += 1;
         return Ok(());
     }
@@ -139,38 +139,38 @@ pub async fn run_exploration_finding_tests(
                         (id, promoted)
                     }
                     None => {
-                        crate::teeprintln!("  ✗ get_exploration_status — no findings in payload");
+                        crate::teeprintln!("  [FAIL] get_exploration_status — no findings in payload");
                         stats.failed += 1;
                         return Ok(());
                     }
                 }
             }
             Err(e) => {
-                crate::teeprintln!("  ✗ get_exploration_status payload parse — {}", e);
+                crate::teeprintln!("  [FAIL] get_exploration_status payload parse — {}", e);
                 stats.failed += 1;
                 return Ok(());
             }
         },
         Err(e) => {
-            crate::teeprintln!("  ✗ get_exploration_status — {}", e);
+            crate::teeprintln!("  [FAIL] get_exploration_status — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if finding_id.is_empty() {
-        crate::teeprintln!("  ✗ get_exploration_status — finding has empty id");
+        crate::teeprintln!("  [FAIL] get_exploration_status — finding has empty id");
         stats.failed += 1;
         return Ok(());
     }
     if !promoted_before {
         crate::teeprintln!(
-            "  ✓ finding '{}' created with promoted=false (new())",
+            "  [OK] finding '{}' created with promoted=false (new())",
             finding_id
         );
         stats.passed += 1;
     } else {
         crate::teeprintln!(
-            "  ✗ finding '{}' unexpectedly promoted right after creation",
+            "  [FAIL] finding '{}' unexpectedly promoted right after creation",
             finding_id
         );
         stats.failed += 1;
@@ -191,22 +191,22 @@ pub async fn run_exploration_finding_tests(
         Ok(r) => match payload_json(&r) {
             Ok(v) => v.get("promoted").and_then(|p| p.as_bool()).unwrap_or(false),
             Err(e) => {
-                crate::teeprintln!("  ✗ promote_finding payload parse — {}", e);
+                crate::teeprintln!("  [FAIL] promote_finding payload parse — {}", e);
                 stats.failed += 1;
                 return Ok(());
             }
         },
         Err(e) => {
-            crate::teeprintln!("  ✗ promote_finding — {}", e);
+            crate::teeprintln!("  [FAIL] promote_finding — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if promote_ok {
-        crate::teeprintln!("  ✓ promote_finding reported promoted=true (f.promote())",);
+        crate::teeprintln!("  [OK] promote_finding reported promoted=true (f.promote())",);
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  ✗ promote_finding did not report promoted=true");
+        crate::teeprintln!("  [FAIL] promote_finding did not report promoted=true");
         stats.failed += 1;
         return Ok(());
     }
@@ -228,22 +228,22 @@ pub async fn run_exploration_finding_tests(
                 .and_then(|p| p.as_bool())
                 .unwrap_or(false),
             Err(e) => {
-                crate::teeprintln!("  ✗ get_exploration_status(2) payload parse — {}", e);
+                crate::teeprintln!("  [FAIL] get_exploration_status(2) payload parse — {}", e);
                 stats.failed += 1;
                 return Ok(());
             }
         },
         Err(e) => {
-            crate::teeprintln!("  ✗ get_exploration_status(2) — {}", e);
+            crate::teeprintln!("  [FAIL] get_exploration_status(2) — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if promoted_after {
-        crate::teeprintln!("  ✓ finding promoted=true persisted in exploration status");
+        crate::teeprintln!("  [OK] finding promoted=true persisted in exploration status");
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  ✗ finding promoted=false after promote_finding");
+        crate::teeprintln!("  [FAIL] finding promoted=false after promote_finding");
         stats.failed += 1;
     }
 
