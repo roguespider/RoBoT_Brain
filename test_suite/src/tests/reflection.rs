@@ -35,11 +35,11 @@ async fn test_create_reflection(
         "reflection_type": reflection_type
     })).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ create_reflection('{}', {}) - SUCCESS", title, reflection_type);
+            crate::teeprintln!("  [OK] create_reflection('{}', {}) - SUCCESS", title, reflection_type);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ create_reflection('{}', {}) - FAILED: {}", title, reflection_type, e);
+            crate::teeprintln!("  [FAIL] create_reflection('{}', {}) - FAILED: {}", title, reflection_type, e);
             stats.failed += 1;
         }
     }
@@ -52,11 +52,11 @@ async fn test_get_patterns(
 ) -> anyhow::Result<()> {
     match client.call_tool("get_patterns", serde_json::json!({})).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ get_patterns - SUCCESS");
+            crate::teeprintln!("  [OK] get_patterns - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ get_patterns - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] get_patterns - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -69,11 +69,11 @@ async fn test_get_insights(
 ) -> anyhow::Result<()> {
     match client.call_tool("get_insights", serde_json::json!({})).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ get_insights - SUCCESS");
+            crate::teeprintln!("  [OK] get_insights - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ get_insights - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] get_insights - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -86,11 +86,11 @@ async fn test_analyze_patterns(
 ) -> anyhow::Result<()> {
     match client.call_tool("analyze_patterns", serde_json::json!({})).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ analyze_patterns - SUCCESS");
+            crate::teeprintln!("  [OK] analyze_patterns - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ analyze_patterns - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] analyze_patterns - FAILED: {}", e);
             stats.failed += 1;
         }
     }
