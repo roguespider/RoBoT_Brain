@@ -154,7 +154,7 @@ pub async fn run_queue_durability_tests(stats: &mut TestStats) -> anyhow::Result
     crate::teeprintln!("\n--- JobQueue Restart-Durability (T1-10) ---");
 
     let Some(bin) = crate::paths::server_binary() else {
-        crate::teeprintln!("  ✗ queue_durability — server binary not found");
+        crate::teeprintln!("  [FAIL] queue_durability — server binary not found");
         stats.failed += 1;
         return Ok(());
     };
@@ -168,7 +168,7 @@ pub async fn run_queue_durability_tests(stats: &mut TestStats) -> anyhow::Result
     let mut c1 = match IsoClient::start(&server_path).await {
         Ok(c) => c,
         Err(e) => {
-            crate::teeprintln!("  ✗ phase1 start — {}", e);
+            crate::teeprintln!("  [FAIL] phase1 start — {}", e);
             stats.failed += 1;
             return Ok(());
         }
@@ -184,7 +184,7 @@ pub async fn run_queue_durability_tests(stats: &mut TestStats) -> anyhow::Result
         n > 0
     };
     if !table_exists {
-        crate::teeprintln!("  ✗ job_queue table missing after boot");
+        crate::teeprintln!("  [FAIL] job_queue table missing after boot");
         stats.failed += 1;
         return Ok(());
     }
@@ -219,7 +219,7 @@ pub async fn run_queue_durability_tests(stats: &mut TestStats) -> anyhow::Result
     let mut c2 = match IsoClient::start(&server_path).await {
         Ok(c) => c,
         Err(e) => {
-            crate::teeprintln!("  ✗ phase2 start — {}", e);
+            crate::teeprintln!("  [FAIL] phase2 start — {}", e);
             stats.failed += 1;
             return Ok(());
         }
@@ -227,7 +227,7 @@ pub async fn run_queue_durability_tests(stats: &mut TestStats) -> anyhow::Result
     let restored_pending = match pending_jobs(&mut c2).await {
         Ok(n) => n,
         Err(e) => {
-            crate::teeprintln!("  ✗ phase2 get_system_status failed — {}", e);
+            crate::teeprintln!("  [FAIL] phase2 get_system_status failed — {}", e);
             stats.failed += 1;
             c2.shutdown().await;
             return Ok(());
@@ -239,11 +239,11 @@ pub async fn run_queue_durability_tests(stats: &mut TestStats) -> anyhow::Result
     // the in-memory count of pending jobs, which restore_from_database
     // rebuilds from the durable table).
     if restored_pending > baseline {
-        crate::teeprintln!("  ✓ pending job survived process restart (restored > baseline)");
+        crate::teeprintln!("  [OK] pending job survived process restart (restored > baseline)");
         stats.passed += 1;
     } else {
         crate::teeprintln!(
-            "  ✗ pending job did NOT survive restart (restored={}, baseline={})",
+            "  [FAIL] pending job did NOT survive restart (restored={}, baseline={})",
             restored_pending,
             baseline
         );
@@ -263,10 +263,10 @@ pub async fn run_queue_durability_tests(stats: &mut TestStats) -> anyhow::Result
     };
     crate::teeprintln!("  • durable row status after restart = {:?}", row_status);
     if row_status.as_deref() == Some("pending") {
-        crate::teeprintln!("  ✓ durable row intact (status=pending)");
+        crate::teeprintln!("  [OK] durable row intact (status=pending)");
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  ✗ durable row not intact");
+        crate::teeprintln!("  [FAIL] durable row not intact");
         stats.failed += 1;
     }
 
