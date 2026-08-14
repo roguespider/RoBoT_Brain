@@ -10,7 +10,7 @@ impl TestReport {
         crate::teeprintln!("\n┌{:─<98}┐", "");
         crate::teeprintln!(
             "│ {:^96} │",
-            "🔎 TOOL COVERAGE (server tools/list vs test registry)"
+            "[INFO] TOOL COVERAGE (server tools/list vs test registry)"
         );
         crate::teeprintln!("├{:─<98}┤", "");
 
@@ -37,7 +37,7 @@ impl TestReport {
 
         if self.coverage.has_gap() {
             crate::teeprintln!("├{:─<98}┤", "");
-            crate::teeprintln!("│  ⚠️  UNTESTED SERVER TOOLS (no test requirement):");
+            crate::teeprintln!("│  [WARN]  UNTESTED SERVER TOOLS (no test requirement):");
             // Render in columns for readability.
             let joined = self.coverage.untested_tools.join(", ");
             for chunk in chunks(&joined, 92) {
@@ -47,7 +47,7 @@ impl TestReport {
 
         if !self.coverage.phantom_tools.is_empty() {
             crate::teeprintln!("├{:─<98}┤", "");
-            crate::teeprintln!("│  ℹ️  PHANTOM TESTS (registry entries with no matching server tool):");
+            crate::teeprintln!("│  [INFO]  PHANTOM TESTS (registry entries with no matching server tool):");
             let joined = self.coverage.phantom_tools.join(", ");
             for chunk in chunks(&joined, 92) {
                 crate::teeprintln!("│    {}", chunk);
@@ -56,7 +56,7 @@ impl TestReport {
 
         if !self.coverage.has_gap() && self.coverage.phantom_tools.is_empty() {
             crate::teeprintln!("├{:─<98}┤", "");
-            crate::teeprintln!("│  ✅ Every server tool is covered by a test requirement");
+            crate::teeprintln!("│  [OK] Every server tool is covered by a test requirement");
         }
 
         crate::teeprintln!("└{:─<98}┘", "");
