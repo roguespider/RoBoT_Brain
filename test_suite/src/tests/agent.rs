@@ -40,11 +40,11 @@ async fn test_get_workflow(
         .await
     {
         Ok(_) => {
-            crate::teeprintln!("  ✓ get_workflow({}) - SUCCESS", purpose);
+            crate::teeprintln!("  [OK] get_workflow({}) - SUCCESS", purpose);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ get_workflow({}) - FAILED: {}", purpose, e);
+            crate::teeprintln!("  [FAIL] get_workflow({}) - FAILED: {}", purpose, e);
             stats.failed += 1;
         }
     }
@@ -64,11 +64,11 @@ async fn test_list_tools(
     match client.call_tool("list_tools", args).await {
         Ok(_) => {
             let c = category.unwrap_or("all");
-            crate::teeprintln!("  ✓ list_tools({}) - SUCCESS", c);
+            crate::teeprintln!("  [OK] list_tools({}) - SUCCESS", c);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ list_tools({:?}) - FAILED: {}", category, e);
+            crate::teeprintln!("  [FAIL] list_tools({:?}) - FAILED: {}", category, e);
             stats.failed += 1;
         }
     }
@@ -90,11 +90,11 @@ async fn test_get_tool(
         .await
     {
         Ok(_) => {
-            crate::teeprintln!("  ✓ get_tool('{}') - SUCCESS", tool_name);
+            crate::teeprintln!("  [OK] get_tool('{}') - SUCCESS", tool_name);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ get_tool('{}') - FAILED: {}", tool_name, e);
+            crate::teeprintln!("  [FAIL] get_tool('{}') - FAILED: {}", tool_name, e);
             stats.failed += 1;
         }
     }
@@ -114,7 +114,7 @@ async fn test_external_mcp_capability(
     let has_call = tools.iter().any(|t| t.get("name").and_then(|n| n.as_str()) == Some("call_tool"));
     
     if has_connect && has_call {
-        crate::teeprintln!("  ℹ External MCP client tools available (connect_mcp_server, call_tool)");
+        crate::teeprintln!("  [INFO] External MCP client tools available (connect_mcp_server, call_tool)");
         crate::teeprintln!("    → These require an actual external MCP server for full testing");
         crate::teeprintln!("    → Skipping live connection tests in unit test environment");
         stats.skipped += 2;
