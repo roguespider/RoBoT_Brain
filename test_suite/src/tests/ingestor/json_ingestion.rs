@@ -40,21 +40,21 @@ pub async fn test_ingest_json_file(
 
                         if success && chunks > 0 {
                             crate::teeprintln!(
-                                "  ✓ ingest JSON (smart extraction) - SUCCESS ({} memory items)",
+                                "  [OK] ingest JSON (smart extraction) - SUCCESS ({} memory items)",
                                 chunks
                             );
                             stats.passed += 1;
                         } else {
-                            crate::teeprintln!("  ⚠ ingest JSON - returned false");
+                            crate::teeprintln!("  [WARN] ingest JSON - returned false");
                             stats.skipped += 1;
                         }
                         return;
                     }
-            crate::teeprintln!("  ✓ ingest JSON - SUCCESS");
+            crate::teeprintln!("  [OK] ingest JSON - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ ingest JSON - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] ingest JSON - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -96,21 +96,21 @@ pub async fn test_ingest_jsonl_file(
 
                         if success && chunks > 0 {
                             crate::teeprintln!(
-                                "  ✓ ingest JSONL (line-by-line) - SUCCESS ({} memory items)",
+                                "  [OK] ingest JSONL (line-by-line) - SUCCESS ({} memory items)",
                                 chunks
                             );
                             stats.passed += 1;
                         } else {
-                            crate::teeprintln!("  ⚠ ingest JSONL - returned false");
+                            crate::teeprintln!("  [WARN] ingest JSONL - returned false");
                             stats.skipped += 1;
                         }
                         return;
                     }
-            crate::teeprintln!("  ✓ ingest JSONL - SUCCESS");
+            crate::teeprintln!("  [OK] ingest JSONL - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ ingest JSONL - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] ingest JSONL - FAILED: {}", e);
             stats.failed += 1;
         }
     }
