@@ -76,24 +76,6 @@ pub fn delete_memories(conn: &Connection, ids: &[Uuid]) -> Result<usize> {
     Ok(deleted)
 }
 
-/// Delete memories by their string IDs
-#[cfg(test)]
-pub fn delete_memories_by_string_ids(conn: &Connection, ids: &[String]) -> Result<usize> {
-    if ids.is_empty() {
-        return Ok(0);
-    }
-    
-    let uuids: Result<Vec<Uuid>, _> = ids
-        .iter()
-        .map(|s| Uuid::parse_str(s))
-        .collect();
-    
-    match uuids {
-        Ok(uuids) => delete_memories(conn, &uuids),
-        Err(e) => anyhow::bail!("Invalid UUID: {}", e),
-    }
-}
-
 /// Get a memory card by ID
 pub fn get_memory(conn: &Connection, id: Uuid) -> Result<Option<MemoryCard>> {
     let mut stmt = conn.prepare(
@@ -244,37 +226,4 @@ pub fn list_memories_by_layer(conn: &Connection, layer: &str, limit: usize) -> R
     }
 
     Ok(memories)
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::database::models::{MemoryCard, MemoryType};
-
-    #[test]
-    fn test_delete_memories_by_string_ids() {
-        let conn = Connection::open_in_memory()
-            .or_else(|_| Connection::open(":memory:"))
-            .expect("open in-memory db");
-        conn.execute(
-            "CREATE TABLE IF NOT EXISTS memories (
-                id TEXT PRIMARY KEY,
-                content TEXT,
-                memory_type TEXT,
-                confidence REAL,
-                importance REAL,
-                created_at TEXT,
-                updated_at TEXT
-            )",
-            [],
-        )
-        .expect("create table");
-
-        let card = MemoryCard::new("probe".to_string(), MemoryType::Fact);
-        let id_str = card.id.to_string();
-        assert!(insert_memory(&conn, &card).is_ok());
-        let deleted =
-            delete_memories_by_string_ids(&conn, &[id_str]).expect("delete by string id");
-        assert_eq!(deleted, 1);
-    }
 }
