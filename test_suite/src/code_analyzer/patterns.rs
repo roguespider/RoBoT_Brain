@@ -45,11 +45,6 @@ pub struct CodePatterns {
     pub underscore_prefix: Regex,
     /// `#[cfg(test)]` attribute (with optional inner whitespace).
     pub cfg_test: Regex,
-    /// Decorative emoji banned in code (AGENTS.md "No emoji / plain-text
-    /// markers"). Arrows (`->` `|` `v` unicode: U+2190-U+21FF) are NOT in
-    /// this set and remain permitted for flow diagrams. This matches any
-    /// single banned codepoint on a line.
-    pub emoji: Regex,
 }
 
 impl CodePatterns {
@@ -69,15 +64,6 @@ impl CodePatterns {
             underscore_prefix: Regex::new(r"\b_\w+\b")
                 .unwrap_or_else(|_| get_fallback_regex().clone()),
             cfg_test: Regex::new(r#"#\s*\[\s*cfg\s*\(\s*test\s*\)\s*\]"#)
-                .unwrap_or_else(|_| get_fallback_regex().clone()),
-            // Banned decorative emoji. Excludes the Arrows block (U+2190-U+21FF)
-            // so flow-diagram arrows remain permitted. Includes U+FE0F
-            // (variation selector-16) which appends to emoji and is a frequent
-            // mojibake source. Raw string so `\u{...}` is passed verbatim to
-            // the regex engine (which interprets it as a unicode codepoint).
-            // Must be a single line: raw strings do not process `\`+newline
-            // as a continuation, so line breaks would inject literal backslashes.
-            emoji: Regex::new(r"[\u{2705}\u{274C}\u{26A0}\u{FE0F}\u{1F4CB}\u{1F389}\u{1F6AB}\u{1F97E}\u{2713}\u{2717}\u{1F50E}\u{1F50C}\u{1F4CA}\u{1F4C4}\u{2699}\u{2B50}\u{2753}\u{2754}\u{2755}\u{2728}\u{1F4A1}\u{1F680}\u{1F47D}\u{1F4DD}\u{1F527}\u{1F4E2}\u{1F4DA}\u{1F4E6}\u{1F4E5}]")
                 .unwrap_or_else(|_| get_fallback_regex().clone()),
         }
     }

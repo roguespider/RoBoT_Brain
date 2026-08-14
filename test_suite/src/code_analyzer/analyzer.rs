@@ -306,33 +306,63 @@ impl CodeAnalyzer {
         }
     }
 
-    /// Detect decorative emoji in source (AGENTS.md "No emoji / plain-text
-    /// markers"). Arrows (U+2190-U+21FF: `->` `|` `v` unicode) are NOT banned
-    /// and remain permitted for flow diagrams. Only the decorative emoji in
-    /// `patterns.emoji` are flagged. Emoji in code caused real mojibake
-    /// breakage in `.agents/` docs (multi-byte sequences mangled by
-    /// round-tripping through sed/git diffs); plain-text markers
-    /// (`[OK]` `[FAIL]` `[WARN]` `[INFO]` `[BLOCKED]`) replace them.
+    /// Detect decorative emoji / disallowed non-ASCII in source (AGENTS.md
+    /// "No emoji / plain-text markers"). Uses an ALLOW-list rather than a
+    /// banned-emoji list: any non-ASCII character that is not explicitly
+    /// permitted is flagged. This is complete — new emoji added later are
+    /// caught automatically without extending a banned set.
+    ///
+    /// Allowed non-ASCII (Option B — keep arrows, ban decorative emoji):
+    /// - U+2190-U+21FF Arrows: flow-diagram symbols (`->` `|` `v` unicode)
+    ///   in doc-comments and docs. Carry meaning; user requirement to keep.
+    /// - U+2500-U+257F Box Drawing: table borders (|, -, +, T-junctions).
+    ///   Not emoji; already tolerated by the gate.
+    /// - A small prose-punctuation set (em/en dash, curly quotes, ellipsis,
+    ///   bullet, NBSP, section sign, degree, middle dot) used in doc prose.
     fn check_emoji(
         &self,
         line: &str,
         file_path: &Path,
         line_number: usize,
     ) -> Option<CodeIssue> {
-        if let Some(m) = self.patterns.emoji.find(line) {
-            let ch = m.as_str();
-            Some(CodeIssue {
+        for ch in line.chars() {
+            if ch.is_ascii() {
+                continue;
+            }
+            if Self::is_allowed_non_ascii(ch) {
+                continue;
+            }
+            return Some(CodeIssue {
                 file_path: file_path.to_path_buf(),
                 line_number,
                 issue_type: IssueType::Emoji,
                 description: format!(
-                    "decorative emoji in code - use plain-text markers ([OK]/[FAIL]/[WARN]/[INFO]/[BLOCKED]); arrows (-> | v) are permitted (AGENTS.md: No emoji / plain-text markers). Found: {}",
+                    "disallowed non-ASCII in code - use plain-text markers ([OK]/[FAIL]/[WARN]/[INFO]/[BLOCKED]); arrows (-> | v) and box-drawing are permitted (AGENTS.md: No emoji / plain-text markers). Found: {}",
                     ch
                 ),
-            })
-        } else {
-            None
+            });
         }
+        None
+    }
+
+    /// Whether a non-ASCII character is permitted in source (allow-list).
+    /// See `check_emoji` for the rationale per range.
+    fn is_allowed_non_ascii(ch: char) -> bool {
+        let o = ch as u32;
+        matches!(
+            o,
+            0x2190..=0x21FF | // Arrows (flow diagrams)
+            0x2500..=0x257F | // Box Drawing (table borders)
+            0x2013 | 0x2014 | // en dash, em dash
+            0x2018 | 0x2019 | // curly single quotes
+            0x201C | 0x201D | // curly double quotes
+            0x2022 | // bullet
+            0x2026 | // ellipsis
+            0x00A0 | // non-breaking space
+            0x00A7 | // section sign
+            0x00B0 | // degree sign
+            0x00B7   // middle dot
+        )
     }
 
     /// Scan a directory tree for decorative emoji only.
@@ -342,9 +372,15 @@ impl CodeAnalyzer {
     /// This runs ONLY `check_emoji` — not the full analyzer — because other
     /// checks (e.g. cfg_test) have directory-specific semantics that do not
     /// apply to the test suite itself.
+    ///
+    /// Uses a dedicated walker (`collect_all_rust_files`) that does NOT skip
+    /// the `tests`/`benches` subdirectories — unlike `collect_rust_files`,
+    /// which skips `tests` (correct for the robot_brain src/ analyzer, but
+    /// wrong here: `test_suite/src/tests/` is exactly where most emoji live
+    /// and must be scanned). Only `target` and hidden directories are skipped.
     pub fn analyze_emoji_in_dir(&self, dir: &Path) -> Vec<CodeIssue> {
         let mut files = Vec::new();
-        self.collect_rust_files(dir, &mut files);
+        self.collect_all_rust_files(dir, &mut files);
         let mut issues = Vec::new();
         for file_path in &files {
             let content = match std::fs::read_to_string(file_path) {
@@ -358,6 +394,30 @@ impl CodeAnalyzer {
             }
         }
         issues
+    }
+
+    /// Walk a directory collecting ALL `.rs` files, skipping only `target`
+    /// and hidden (dot-prefixed) directories. Unlike `collect_rust_files`,
+    /// this does NOT skip `tests`/`benches` — needed so the emoji scan of
+    /// `test_suite/src/` covers `test_suite/src/tests/`.
+    fn collect_all_rust_files(&self, dir: &Path, files: &mut Vec<std::path::PathBuf>) {
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                if path.is_dir() {
+                    let name = path.file_name().map(|n| n.to_string_lossy());
+                    let skip = name
+                        .as_ref()
+                        .map(|n| n.starts_with('.') || n == "target")
+                        .unwrap_or(false);
+                    if !skip {
+                        self.collect_all_rust_files(&path, files);
+                    }
+                } else if path.extension().map(|e| e == "rs").unwrap_or(false) {
+                    files.push(path);
+                }
+            }
+        }
     }
 
     /// Detect `use` imports whose imported names are never referenced elsewhere in the file.

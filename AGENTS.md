@@ -221,10 +221,15 @@ When modifying or extending this codebase, you **MUST** adhere to these strict c
      | no-entry     | `[BLOCKED]` |
      | star / gear  | `[INFO]` |
 
-   - **Enforcement:** the quality gate flags decorative emoji as gate-failing
-     `Emoji` code issues (regex in `test_suite/src/code_analyzer/patterns.rs`,
-     `check_emoji` in `analyzer.rs`, scanned across both `src/` and
-     `test_suite/src/`). Status markers in `.agents/*.md` use `[x]`/`[ ]` for
+   - **Enforcement:** the quality gate flags disallowed non-ASCII as
+     gate-failing `Emoji` code issues. The detector in
+     `test_suite/src/code_analyzer/analyzer.rs` (`check_emoji`) uses an
+     ALLOW-list: any non-ASCII char not explicitly permitted is flagged, so
+     new emoji added later are caught automatically (no banned-list to drift).
+     Allowed: Arrows (U+2190-U+21FF), Box Drawing (U+2500-U+257F), and a
+     small prose-punctuation set (em/en dash, curly quotes, ellipsis, bullet,
+     NBSP, section sign, degree, middle dot). Scanned across both `src/` and
+     `test_suite/src/`. Status markers in `.agents/*.md` use `[x]`/`[ ]` for
      task state and `[DONE]`/`[RED]`/`[PASS]`/`[FAIL]` for gate status.
 
 ### Dead Code Resolution Protocol
