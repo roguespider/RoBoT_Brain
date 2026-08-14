@@ -1134,6 +1134,9 @@ async fn main() -> anyhow::Result<()> {
     // T1-10B-17: migrated semantic chunker markdown+code parsing test (MCP-based).
     tests::semantic_chunker::run_semantic_chunker_tests(&mut client, &mut stats).await?;
 
+    // T1-10B-01: migrated personality defaults/preset/traits/decision (MCP-based).
+    tests::personality::run_personality_tests(&mut client, &mut stats).await?;
+
     // Run CLI-based tool tests (tests robot_brain CLI subcommands)
     teeprintln!(
         "

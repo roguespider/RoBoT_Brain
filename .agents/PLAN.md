@@ -173,11 +173,38 @@ first; AI Runtime (Candle) comes last as the local provider behind the
       block is deleted from `src/`.
 
       ### Group A — MCP-reachable (move to test_suite, delete src/ block)
-      - [ ] **T1-10B-01** `personality/mod.rs` (16 tests) — tools:
-            get_personality / apply_personality_preset / list_personality_presets
-            / set_personality_traits / get_personality_decision. Caveat:
-            adapt_from_experience / success_rate / decay / reset / serialization
-            may be internal-only — assess per-test.
+      - [x] **T1-10B-01** `personality/mod.rs` (16 tests) DONE 2026-08-14.
+            Migrated 8 MCP-reachable behaviors to
+            `test_suite/src/tests/personality.rs` (run_personality_tests):
+            default personality (get_personality), apply_preset valid
+            (apply_personality_preset + get), apply_preset invalid
+            (applied=false, preset unchanged), list_presets, set_trait
+            (set_personality_traits + get), communication_style
+            (verbosity 0.2/0.5/0.8 -> Concise/Balanced/Detailed via
+            get_personality), format_response (detailed vs concise),
+            decide (cautious preset -> reason mentions cautious, approach
+            Thorough via get_personality_decision). f32 traits compared with
+            tolerance (abs diff < 0.01). Each test resets to "balanced" preset
+            first (shared App mutex state).
+            Group B (internal-only, no MCP surface) DELETED per decision:
+            test_adapt_from_experience_success/failure (adapt_from_experience
+            -- no tool; called by app/personality.rs adapt_personality in the
+            agent loop), test_should_explore/should_take_risk
+            (internal math; exercised indirectly by get_personality_decision
+            via decide), test_should_use_creativity (planner-internal),
+            test_get_timeout (app fn exists, no tool), test_success_rate
+            (app fn exists, no tool), test_adjust_trait_clamping (clamping is
+            in adjust_trait, NOT exposed -- set_personality_traits passes
+            out-of-range values through unclamped), and the preset->custom
+            assertion of test_adjust_trait (set_personality_traits does not
+            flip preset to "custom"). The deleted methods themselves remain in
+            production (called by decision_making.rs, planner.rs,
+            app/personality.rs). decide() still covers should_explore/
+            should_take_risk indirectly. Gate: CfgTest 56 -> 55, 0 emoji,
+            145/145 registry tests, 0 err, 0 untested, 40 warns (no regression).
+            tools: get_personality / apply_personality_preset /
+            list_personality_presets / set_personality_traits /
+            get_personality_decision / format_response.
       - [~] **T1-10B-02** `personality/emotional.rs` (3 tests) —
             RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
             Reason: EmotionalState::observe() has no MCP surface — it's only
