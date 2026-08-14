@@ -56,13 +56,13 @@ pub async fn run_exploration_hypothesis_tests(
                     .map(|s| s.to_string())
             }),
         Err(e) => {
-            crate::teeprintln!("  ✗ start_exploration — {}", e);
+            crate::teeprintln!("  [FAIL] start_exploration — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     let Some(exploration_id) = exploration_id else {
-        crate::teeprintln!("  ✗ start_exploration — no exploration_id");
+        crate::teeprintln!("  [FAIL] start_exploration — no exploration_id");
         stats.failed += 1;
         return Ok(());
     };
@@ -87,13 +87,13 @@ pub async fn run_exploration_hypothesis_tests(
             .and_then(|v| v.get("hypothesis_count").and_then(|c| c.as_i64()))
             .unwrap_or(0),
         Err(e) => {
-            crate::teeprintln!("  ✗ add_hypothesis(clamp-high) — {}", e);
+            crate::teeprintln!("  [FAIL] add_hypothesis(clamp-high) — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if hcount1 != 1 {
-        crate::teeprintln!("  ✗ add_hypothesis(clamp-high) count={} (expected 1)", hcount1);
+        crate::teeprintln!("  [FAIL] add_hypothesis(clamp-high) count={} (expected 1)", hcount1);
         stats.failed += 1;
         return Ok(());
     }
@@ -115,13 +115,13 @@ pub async fn run_exploration_hypothesis_tests(
             .and_then(|v| v.get("hypothesis_count").and_then(|c| c.as_i64()))
             .unwrap_or(0),
         Err(e) => {
-            crate::teeprintln!("  ✗ add_hypothesis(clamp-low) — {}", e);
+            crate::teeprintln!("  [FAIL] add_hypothesis(clamp-low) — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if hcount2 != 2 {
-        crate::teeprintln!("  ✗ add_hypothesis(clamp-low) count={} (expected 2)", hcount2);
+        crate::teeprintln!("  [FAIL] add_hypothesis(clamp-low) count={} (expected 2)", hcount2);
         stats.failed += 1;
         return Ok(());
     }
@@ -138,13 +138,13 @@ pub async fn run_exploration_hypothesis_tests(
             .ok()
             .and_then(|v| v.get("hypotheses").and_then(|h| h.as_array()).cloned()),
         Err(e) => {
-            crate::teeprintln!("  ✗ get_exploration_status — {}", e);
+            crate::teeprintln!("  [FAIL] get_exploration_status — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     let Some(hyps) = hyps else {
-        crate::teeprintln!("  ✗ get_exploration_status — no hypotheses array");
+        crate::teeprintln!("  [FAIL] get_exploration_status — no hypotheses array");
         stats.failed += 1;
         return Ok(());
     };
@@ -158,14 +158,14 @@ pub async fn run_exploration_hypothesis_tests(
         .unwrap_or(-1.0);
     if (conf0 - 1.0).abs() < 0.001 && (conf1 - 0.0).abs() < 0.001 {
         crate::teeprintln!(
-            "  ✓ constructor confidence clamp: 1.5->{:.1}, -0.5->{:.1}",
+            "  [OK] constructor confidence clamp: 1.5->{:.1}, -0.5->{:.1}",
             conf0,
             conf1
         );
         stats.passed += 1;
     } else {
         crate::teeprintln!(
-            "  ✗ constructor clamp: conf0={:.3} (expected 1.0), conf1={:.3} (expected 0.0)",
+            "  [FAIL] constructor clamp: conf0={:.3} (expected 1.0), conf1={:.3} (expected 0.0)",
             conf0,
             conf1
         );
@@ -187,7 +187,7 @@ pub async fn run_exploration_hypothesis_tests(
         )
         .await;
     if let Err(e) = add_life {
-        crate::teeprintln!("  ✗ add_hypothesis(lifecycle) — {}", e);
+        crate::teeprintln!("  [FAIL] add_hypothesis(lifecycle) — {}", e);
         stats.failed += 1;
         return Ok(());
     }
@@ -210,13 +210,13 @@ pub async fn run_exploration_hypothesis_tests(
                     .map(|s| s.to_string())
             }),
         Err(e) => {
-            crate::teeprintln!("  ✗ get_exploration_status(2) — {}", e);
+            crate::teeprintln!("  [FAIL] get_exploration_status(2) — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     let Some(hyp_id) = hyp_id else {
-        crate::teeprintln!("  ✗ could not extract lifecycle hypothesis id");
+        crate::teeprintln!("  [FAIL] could not extract lifecycle hypothesis id");
         stats.failed += 1;
         return Ok(());
     };
@@ -258,20 +258,20 @@ pub async fn run_exploration_hypothesis_tests(
             .and_then(|v| v.get("confidence").and_then(|c| c.as_f64()))
             .unwrap_or(-1.0),
         Err(e) => {
-            crate::teeprintln!("  ✗ evaluate_exploration_hypothesis — {}", e);
+            crate::teeprintln!("  [FAIL] evaluate_exploration_hypothesis — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if (eval_conf - 0.9).abs() < 0.001 {
         crate::teeprintln!(
-            "  ✓ evaluate set_result+update_confidence: confidence={:.1} (supported->0.9)",
+            "  [OK] evaluate set_result+update_confidence: confidence={:.1} (supported->0.9)",
             eval_conf
         );
         stats.passed += 1;
     } else {
         crate::teeprintln!(
-            "  ✗ evaluate confidence={:.3} (expected 0.9)",
+            "  [FAIL] evaluate confidence={:.3} (expected 0.9)",
             eval_conf
         );
         stats.failed += 1;
@@ -304,17 +304,17 @@ pub async fn run_exploration_hypothesis_tests(
             })
             .unwrap_or(false),
         Err(e) => {
-            crate::teeprintln!("  ✗ get_exploration_status(3) — {}", e);
+            crate::teeprintln!("  [FAIL] get_exploration_status(3) — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if !has_result_before && has_result_after {
-        crate::teeprintln!("  ✓ lifecycle: result None before evaluate, set after (set_result)");
+        crate::teeprintln!("  [OK] lifecycle: result None before evaluate, set after (set_result)");
         stats.passed += 1;
     } else {
         crate::teeprintln!(
-            "  ✗ lifecycle: has_result before={}, after={} (expected false->true)",
+            "  [FAIL] lifecycle: has_result before={}, after={} (expected false->true)",
             has_result_before,
             has_result_after
         );
