@@ -345,8 +345,18 @@ first; AI Runtime (Candle) comes last as the local provider behind the
       tool (overkill). Leaning: LEAVE as-is. ~48 tests.
       - [ ] **T1-10B-12** `bridge/acp/mod.rs` (20) -- ACP router/registry/message
             structs.
-      - [ ] **T1-10B-13** `bridge/mcp/client/mod.rs` (8) -- McpClient empty-state
-            / ToolError Display.
+      - [x] **T1-10B-13** `bridge/mcp/client/mod.rs` (8) DONE 2026-08-14.
+            Group B (internal-only, no MCP surface) -- deleted the
+            `#[cfg(test)]` block (8 fns: test_client_creation,
+            test_list_servers_empty, test_list_tools_empty,
+            test_get_tool_not_found, test_get_tool_server_not_found,
+            test_tool_error_display, test_tool_error_not_found,
+            test_tool_error_connection_failed). These test McpClient
+            empty-state behavior + ToolError Display impls -- internal-only.
+            McpClient + ToolError are used in production (initialization.rs,
+            mcp_tools.rs, client/error.rs) so no dead-code warnings (40
+            unchanged). Gate: CfgTest 53 -> 52, fresh full rebuild, 145/145,
+            0 err, 0 untested, 0 emoji.
       - [~] **T1-10B-14** `experience/scorer.rs` (5) --
       RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
       Reason: EncounterScore, score_encounter(), and aggregate_encounter_scores()
