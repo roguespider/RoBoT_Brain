@@ -8,7 +8,7 @@ pub async fn test_agent_workflow_integration(
     client: &mut TestMcpClient,
     stats: &mut TestStats,
 ) -> anyhow::Result<AgentWorkflowIntegrationResults> {
-    crate::teeprintln!("\n📋 Phase 4: Agent-Workflow Integration Tests");
+    crate::teeprintln!("\n[INFO] Phase 4: Agent-Workflow Integration Tests");
     crate::teeprintln!("{}", "-".repeat(60));
 
     let mut results = AgentWorkflowIntegrationResults {
@@ -35,11 +35,11 @@ pub async fn test_agent_workflow_integration(
     {
         Ok(_result) => {
             results.agent_discovers_workflow_first = true;
-            crate::teeprintln!("    ✓ Agent can discover workflows via get_workflow");
+            crate::teeprintln!("    [OK] Agent can discover workflows via get_workflow");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("    ✗ Agent workflow discovery failed: {}", e);
+            crate::teeprintln!("    [FAIL] Agent workflow discovery failed: {}", e);
             stats.failed += 1;
         }
     }
@@ -65,7 +65,7 @@ pub async fn test_agent_workflow_integration(
             .await
         {
             Ok(result) => {
-                crate::teeprintln!("    ✓ Workflow for '{}' - SUCCESS", purpose);
+                crate::teeprintln!("    [OK] Workflow for '{}' - SUCCESS", purpose);
                 stats.passed += 1;
 
                 // Verify the workflow has purpose-relevant content
@@ -77,7 +77,7 @@ pub async fn test_agent_workflow_integration(
                 }
             }
             Err(e) => {
-                crate::teeprintln!("    ✗ Workflow for '{}' - FAILED: {}", purpose, e);
+                crate::teeprintln!("    [FAIL] Workflow for '{}' - FAILED: {}", purpose, e);
                 stats.failed += 1;
                 all_purposes_work = false;
             }
@@ -136,11 +136,11 @@ pub async fn test_agent_workflow_integration(
                         .await
                     {
                         Ok(_) => {
-                            crate::teeprintln!("    ✓ Chained step '{}' - SUCCESS", name);
+                            crate::teeprintln!("    [OK] Chained step '{}' - SUCCESS", name);
                             stats.passed += 1;
                         }
                         Err(e) => {
-                            crate::teeprintln!("    ✗ Chained step '{}' - FAILED: {}", name, e);
+                            crate::teeprintln!("    [FAIL] Chained step '{}' - FAILED: {}", name, e);
                             stats.failed += 1;
                             all_steps_added = false;
                         }
@@ -163,13 +163,13 @@ pub async fn test_agent_workflow_integration(
                 {
                     Ok(_) => {}
                     Err(e) => {
-                        crate::teeprintln!("    ⚠️  Cleanup: cancel_workflow failed: {}", e)
+                        crate::teeprintln!("    [WARN]  Cleanup: cancel_workflow failed: {}", e)
                     }
                 }
             }
         }
         Err(e) => {
-            crate::teeprintln!("    ✗ Failed to create chained workflow: {}", e);
+            crate::teeprintln!("    [FAIL] Failed to create chained workflow: {}", e);
             stats.failed += 1;
         }
     }
@@ -191,14 +191,14 @@ pub async fn test_agent_workflow_integration(
             // Server may return success with error message, or error
             if let Some(text) = extract_content_text(&result)
                 && (text.contains("not found") || text.contains("error") || text.contains("fail")) {
-                    crate::teeprintln!("    ✓ Non-existent workflow handled gracefully");
+                    crate::teeprintln!("    [OK] Non-existent workflow handled gracefully");
                     stats.passed += 1;
                     results.agent_respects_workflow_dependencies = true;
                 }
         }
         Err(_) => {
             // Error is also acceptable
-            crate::teeprintln!("    ✓ Non-existent workflow returned error (expected)");
+            crate::teeprintln!("    [OK] Non-existent workflow returned error (expected)");
             stats.passed += 1;
             results.agent_respects_workflow_dependencies = true;
         }
