@@ -52,13 +52,13 @@ pub async fn run_knowledge_store_tests(
             .map(|v| v.get("status").and_then(|s| s.as_str()) == Some("added"))
             .unwrap_or(false),
         Err(e) => {
-            crate::teeprintln!("  ✗ add_knowledge — {}", e);
+            crate::teeprintln!("  [FAIL] add_knowledge — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if !added_ok {
-        crate::teeprintln!("  ✗ add_knowledge did not report status=added");
+        crate::teeprintln!("  [FAIL] add_knowledge did not report status=added");
         stats.failed += 1;
         return Ok(());
     }
@@ -89,16 +89,16 @@ pub async fn run_knowledge_store_tests(
             })
             .unwrap_or(false),
         Err(e) => {
-            crate::teeprintln!("  ✗ query_knowledge — {}", e);
+            crate::teeprintln!("  [FAIL] query_knowledge — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if found {
-        crate::teeprintln!("  ✓ add_knowledge + query_knowledge: added item retrieved (add+get)");
+        crate::teeprintln!("  [OK] add_knowledge + query_knowledge: added item retrieved (add+get)");
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  ✗ query_knowledge did not return the added item (marker={})", marker);
+        crate::teeprintln!("  [FAIL] query_knowledge did not return the added item (marker={})", marker);
         stats.failed += 1;
         return Ok(());
     }
@@ -131,12 +131,12 @@ pub async fn run_knowledge_store_tests(
         )
         .await;
     if let Err(e) = low_add {
-        crate::teeprintln!("  ✗ add_knowledge(low-conf) — {}", e);
+        crate::teeprintln!("  [FAIL] add_knowledge(low-conf) — {}", e);
         stats.failed += 1;
         return Ok(());
     }
     if let Err(e) = high_add {
-        crate::teeprintln!("  ✗ add_knowledge(high-conf) — {}", e);
+        crate::teeprintln!("  [FAIL] add_knowledge(high-conf) — {}", e);
         stats.failed += 1;
         return Ok(());
     }
@@ -170,7 +170,7 @@ pub async fn run_knowledge_store_tests(
             })
             .unwrap_or(false),
         Err(e) => {
-            crate::teeprintln!("  ✗ query_knowledge(high, min_conf=0.7) — {}", e);
+            crate::teeprintln!("  [FAIL] query_knowledge(high, min_conf=0.7) — {}", e);
             stats.failed += 1;
             return Ok(());
         }
@@ -201,7 +201,7 @@ pub async fn run_knowledge_store_tests(
             })
             .unwrap_or(false),
         Err(e) => {
-            crate::teeprintln!("  ✗ query_knowledge(low, min_conf=0.7) — {}", e);
+            crate::teeprintln!("  [FAIL] query_knowledge(low, min_conf=0.7) — {}", e);
             stats.failed += 1;
             return Ok(());
         }
@@ -209,12 +209,12 @@ pub async fn run_knowledge_store_tests(
 
     if high_found && low_excluded {
         crate::teeprintln!(
-            "  ✓ get_mature threshold: high-conf(0.8) included, low-conf(0.3) excluded at >=0.7"
+            "  [OK] get_mature threshold: high-conf(0.8) included, low-conf(0.3) excluded at >=0.7"
         );
         stats.passed += 1;
     } else {
         crate::teeprintln!(
-            "  ✗ get_mature threshold: high_found={}, low_excluded={}",
+            "  [FAIL] get_mature threshold: high_found={}, low_excluded={}",
             high_found,
             low_excluded
         );
