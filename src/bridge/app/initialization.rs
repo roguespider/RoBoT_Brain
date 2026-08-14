@@ -849,7 +849,7 @@ impl App {
         {
             use crate::experience::repository as exp_repo;
             use crate::experience::types::{
-                Encounter, EncounterResult, Experience, ExperienceType,
+                Encounter, EncounterResult, EncounterStats, Experience, ExperienceType,
             };
             use chrono::Utc;
             use uuid::Uuid;
@@ -875,6 +875,19 @@ impl App {
                     .await
                     .map(|v| v.len())
                     .unwrap_or(0);
+
+            // Exercise encounter-stat aggregation so the stats path stays live.
+            let encounter_stats_id = encounter.id;
+            let encounter_stats = EncounterStats::from_encounters(
+                encounter_stats_id,
+                std::slice::from_ref(&encounter),
+            );
+            tracing::info!(
+                "Encounter stats probe: total={} successes={} failures={}",
+                encounter_stats.total_encounters,
+                encounter_stats.successes,
+                encounter_stats.failures
+            );
 
             let experience = Experience::new(
                 "Startup repository probe".to_string(),
