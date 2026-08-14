@@ -836,10 +836,30 @@ Reputation` wired in `src/experience/integration/event_subscriber/handlers.rs`.
 
 ## Verified state (2026-08-14)
 
-- ⚠️ **GATE RED** — `compiler_warnings=69` (all dead-code: `never used`/`never
-  read`/`never constructed`; NO mechanical lints remain), `code_issues=0`,
-  `untested=0`, `tests=145/145 (100%)`, `compiler_errors=0`, `tool_coverage=100%`,
-  `mcp_protocol_ok=true`. The 69 warnings are the only gate blocker.
+- ⚠️ **GATE RED** — `compiler_warnings=40` (all dead-code: `never used`/`never
+  read`/`never constructed`; NO mechanical lints remain), `code_issues=60`
+  (all `CfgTest` — see T1-10B-CFG below), `code_issues=0` for non-cfg, `untested=0`,
+  `tests=145/145 (100%)`, `compiler_errors=0`, `tool_coverage=100%`,
+  `mcp_protocol_ok=true`. The 40 warnings + 60 cfg_test issues are the gate
+  blockers.
+- ✅ **T1-10B-CFG (2026-08-14, commit f7973fa):** The gate now **flags
+  `#[cfg(test)]`** in robot_brain `src/` as gate-failing code issues. Per
+  AGENTS.md "All tests live in test_suite (MANDATORY)" and the user's
+  directive (2026-08-14): tests must not live in the server source. The gate
+  builds robot_brain in release (no `--tests`), so `#[cfg(test)]` blocks were
+  previously invisible to the compiler. Added `CfgTest` `IssueType` + regex +
+  `check_cfg_test()` in `test_suite/src/code_analyzer/` (analyzer/patterns/types).
+  The gate now reports **60 `CfgTest` issues across 17 files** (matches
+  independent `grep -rn '#\[cfg(test)\]' src/`). This retroactively makes the
+  old "Group B = LEAVE as Rust unit tests" decision (2026-08-12) non-compliant.
+  test_suite/src/ change only; no robot_brain src/ touched. Gate intentionally
+  red on cfg_test count until the blocks are removed (follow-up increment).
+  The 60 cfg_test occurrences by file: experience/evolution/engine.rs (21),
+  bridge/acp/message.rs (7), planner/policy.rs (5), evolution/behavior.rs (4),
+  hypothesis/services/repository.rs (4), bridge/acp/mod.rs (4),
+  database/queries/memory.rs (2), memory/repository.rs (2),
+  evolution/evidence.rs (2), hypothesis/support/graph/graph_types.rs (2),
+  + 7 files with 1 each.
 - ✅ **T1-10B file repair COMPLETE (commit 2d611ac).** T1-10B-Z had truncated
   ~20 files, leaving ~119 compile errors. Reconstruction restored: enforcement
   SessionState/WorkflowEnforcer, learning/working_memory WorkingMemoryItem +
