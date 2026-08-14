@@ -50,6 +50,10 @@ pub enum IssueType {
     /// clipboard, warning, etc.) are banned. Plain-text markers replace
     /// them: `[OK]` `[FAIL]` `[WARN]` `[INFO]` `[BLOCKED]`.
     Emoji,
+    /// Bare `.unwrap()` or `.expect(...)` in non-test production code
+    /// (AGENTS.md "NO Panics or Crashes": forbidden `.unwrap()`/`.expect()`).
+    /// `.unwrap_or*` variants are allowed and not flagged.
+    Unwrap,
 }
 
 impl std::fmt::Display for IssueType {
@@ -68,6 +72,7 @@ impl std::fmt::Display for IssueType {
             IssueType::PlaceholderReturn => write!(f, "Placeholder Return"),
             IssueType::CfgTest => write!(f, "#[cfg(test)]"),
             IssueType::Emoji => write!(f, "Emoji"),
+            IssueType::Unwrap => write!(f, "unwrap()/expect()"),
         }
     }
 }

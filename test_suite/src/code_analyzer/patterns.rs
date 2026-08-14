@@ -45,6 +45,10 @@ pub struct CodePatterns {
     pub underscore_prefix: Regex,
     /// `#[cfg(test)]` attribute (with optional inner whitespace).
     pub cfg_test: Regex,
+    /// Bare `.unwrap()` (NOT `.unwrap_or`, `.unwrap_or_else`, `.unwrap_or_default`).
+    pub unwrap: Regex,
+    /// Bare `.expect(...)` in non-test code.
+    pub expect: Regex,
 }
 
 impl CodePatterns {
@@ -64,6 +68,17 @@ impl CodePatterns {
             underscore_prefix: Regex::new(r"\b_\w+\b")
                 .unwrap_or_else(|_| get_fallback_regex().clone()),
             cfg_test: Regex::new(r#"#\s*\[\s*cfg\s*\(\s*test\s*\)\s*\]"#)
+                .unwrap_or_else(|_| get_fallback_regex().clone()),
+            // Bare `.unwrap()` — a `.` then `unwrap` then `(` then `)`.
+            // The negative lookahead on `_or`/`_or_else`/`_or_default` is not
+            // expressible in the regex crate, so we anchor on the closing `()`
+            // being immediately preceded by `unwrap` (no `_or` suffix). We match
+            // `.unwrap()` literally and let check_unwrap reject the allowed
+            // `.unwrap_or*` variants by inspecting the matched text.
+            unwrap: Regex::new(r"\.unwrap\s*\(\s*\)")
+                .unwrap_or_else(|_| get_fallback_regex().clone()),
+            // `.expect("...")` — a `.expect(` followed by an argument and `)`.
+            expect: Regex::new(r"\.expect\s*\(")
                 .unwrap_or_else(|_| get_fallback_regex().clone()),
         }
     }

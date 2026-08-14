@@ -95,7 +95,10 @@ impl WorkerManager {
         // Persist the job to the durable queue before sending via channel
         let event_id = event.id.to_string();
         {
-            let mut q = self.job_queue.lock().unwrap();
+            let mut q = self
+                .job_queue
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             q.push_job(&event_id, observer_name);
         }
 

@@ -160,6 +160,12 @@ impl CodeAnalyzer {
         let always_err_issues = self.analyze_always_err(content, file_path);
         issues.extend(always_err_issues);
 
+        // Detect bare .unwrap() / .expect() in non-test production code
+        // (AGENTS.md "NO Panics or Crashes"). cfg(test) blocks are skipped —
+        // they are already flagged by check_cfg_test and slated for removal.
+        let unwrap_issues = self.analyze_unwrap(content, file_path);
+        issues.extend(unwrap_issues);
+
         issues
     }
 
@@ -693,6 +699,79 @@ impl CodeAnalyzer {
         issues
     }
 
+    /// Detect bare `.unwrap()` and `.expect(...)` in non-test production code.
+    ///
+    /// AGENTS.md forbids `.unwrap()`/`.expect()`/`panic!()` in non-test code.
+    /// The allowed `.unwrap_or`, `.unwrap_or_else`, `.unwrap_or_default`
+    /// variants are NOT matched because the `unwrap` regex requires the call to
+    /// end immediately with `)` after `unwrap` (no `_or` suffix). Lines inside a
+    /// `#[cfg(test)]` block are skipped: those blocks are already flagged by
+    /// `check_cfg_test` and will be removed/migrated as part of T1-10B.
+    fn analyze_unwrap(&self, content: &str, file_path: &Path) -> Vec<CodeIssue> {
+        let mut issues = Vec::new();
+        let lines: Vec<&str> = content.lines().collect();
+        // Track whether we are inside a #[cfg(test)] module/block. A
+        // `#[cfg(test)]` attribute applies to the item that follows it (a mod
+        // or fn); we approximate by toggling in/out at the attribute line and
+        // the closing brace of the module it opens. This is intentionally
+        // conservative: false-negatives inside cfg(test) are fine (already
+        // flagged), false-positives outside are what we want to prevent.
+        let mut in_cfg_test = false;
+        let mut cfg_test_brace_depth: i32 = 0;
+
+        for (i, line) in lines.iter().enumerate() {
+            let line_number = i + 1;
+            let trimmed = line.trim();
+
+            // Track cfg(test) block entry/exit.
+            if self.patterns.cfg_test.is_match(line) {
+                in_cfg_test = true;
+                cfg_test_brace_depth = 0;
+                // Look for an opening brace on the same line (mod tests { ...).
+                cfg_test_brace_depth += count_braces(line);
+                continue;
+            }
+            if in_cfg_test {
+                cfg_test_brace_depth += count_braces(line);
+                if cfg_test_brace_depth <= 0 {
+                    in_cfg_test = false;
+                }
+                continue;
+            }
+
+            // Skip comments and string literals.
+            if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with('*') {
+                continue;
+            }
+
+            // Bare .unwrap()
+            if self.patterns.unwrap.is_match(line) {
+                issues.push(CodeIssue {
+                    file_path: file_path.to_path_buf(),
+                    line_number,
+                    issue_type: IssueType::Unwrap,
+                    description:
+                        "Bare .unwrap() in non-test code - use ?, match, or unwrap_or* (AGENTS.md: NO panics)"
+                            .to_string(),
+                });
+            }
+
+            // Bare .expect(...)
+            if self.patterns.expect.is_match(line) {
+                issues.push(CodeIssue {
+                    file_path: file_path.to_path_buf(),
+                    line_number,
+                    issue_type: IssueType::Unwrap,
+                    description:
+                        ".expect() in non-test code - use ?, match, or unwrap_or* (AGENTS.md: NO panics)"
+                            .to_string(),
+                });
+            }
+        }
+
+        issues
+    }
+
     fn analyze_stub_functions(&self, content: &str, file_path: &Path) -> Vec<CodeIssue> {
         let mut issues = Vec::new();
         let lines: Vec<&str> = content.lines().collect();
@@ -1081,4 +1160,28 @@ fn is_trait_used_via_methods(name: &str, lines: &[&str], import_line: usize) -> 
             }
             methods.iter().any(|m| line.contains(m))
         })
+}
+
+/// Count net brace depth change on a line (`{` minus `}`). Used by
+/// `analyze_unwrap` to track entry/exit of `#[cfg(test)]` blocks. Naive
+/// (ignores braces inside string/char literals) but sufficient for the
+/// module-level brace tracking of cfg(test) blocks.
+fn count_braces(line: &str) -> i32 {
+    let mut depth: i32 = 0;
+    let mut in_str = false;
+    let mut prev = '\0';
+    for ch in line.chars() {
+        if ch == '"' && prev != '\\' {
+            in_str = !in_str;
+        }
+        if !in_str {
+            match ch {
+                '{' => depth += 1,
+                '}' => depth -= 1,
+                _ => {}
+            }
+        }
+        prev = ch;
+    }
+    depth
 }

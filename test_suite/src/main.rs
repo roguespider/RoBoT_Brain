@@ -104,13 +104,14 @@ async fn build_server() -> anyhow::Result<PathBuf> {
 
     let robot_brain_dir = paths::project_root();
 
-    // Check for existing binary
-    if let Some(path) = find_server_binary(&robot_brain_dir) {
-        teeprintln!("[OK] Server already built at: {}", path.display());
-        return Ok(path);
-    }
-
-    teeprintln!("Building robot_brain...");
+    // ALWAYS rebuild robot_brain, even if the binary already exists. Cargo's
+    // incremental compilation makes the no-op case (no source changes) fast,
+    // but skipping the build when the binary exists means the gate tests
+    // against a STALE binary and never sees source changes — letting
+    // violations (unwrap, cfg-test, warnings) slip through undetected. The
+    // gate's value depends on testing the code as it currently is, not as it
+    // was at some past build.
+    teeprintln!("Rebuilding robot_brain (cargo build --release)...");
 
     let output = AsyncCommand::new("cargo")
         .current_dir(&robot_brain_dir)
@@ -126,6 +127,8 @@ async fn build_server() -> anyhow::Result<PathBuf> {
             stderr
         );
     }
+
+    teeprintln!("[OK] robot_brain rebuilt");
 
     // Find the binary after build
     find_server_binary(&robot_brain_dir).ok_or_else(|| {

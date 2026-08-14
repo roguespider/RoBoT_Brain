@@ -91,7 +91,9 @@ impl App {
             crate::experience::queue::JobQueue::with_database(database.clone()),
         ));
         {
-            let mut q = job_queue.lock().unwrap();
+            let mut q = job_queue
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             if let Err(e) = q.restore_from_database() {
                 tracing::warn!("JobQueue restore failed: {}", e);
             }
@@ -162,7 +164,9 @@ impl App {
         // (Architecture §23.5 Task Queue). Push a probe job, confirm it
         // persists, then restore from a fresh instance to prove durability.
         {
-            let mut q = job_queue.lock().unwrap();
+            let mut q = job_queue
+                .lock()
+                .unwrap_or_else(|e| e.into_inner());
             q.push_job("startup-queue-probe", "experience_scorer");
             let popped = q.pop_job("experience_scorer");
             let popped_ok = popped.is_some();
