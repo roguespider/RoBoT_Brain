@@ -8,11 +8,33 @@ use std::collections::HashSet;
 use std::collections::VecDeque;
 
 use super::graph_types::HypothesisEdge;
-use super::graph_types::{GraphStats, HypothesisRelationship};
+use super::graph_types::{GraphStats, HypothesisNode, HypothesisRelationship};
 use crate::experience::hypothesis::core::hypothesis::HypothesisId;
 use crate::experience::hypothesis::support::graph::HypothesisGraph;
 
 impl HypothesisGraph {
+    /// Number of nodes in the graph.
+    pub fn node_count(&self) -> usize {
+        self.nodes.len()
+    }
+
+    /// Number of edges in the graph.
+    pub fn edge_count(&self) -> usize {
+        self.edges.len()
+    }
+
+    /// Does a node for this hypothesis exist?
+    pub fn has_node(&self, hypothesis_id: &HypothesisId) -> bool {
+        self.node_index.contains_key(&hypothesis_id.0)
+    }
+
+    /// Get the node for a hypothesis, if present.
+    pub fn get_node(&self, hypothesis_id: &HypothesisId) -> Option<&HypothesisNode> {
+        self.node_index
+            .get(&hypothesis_id.0)
+            .map(|&idx| &self.nodes[idx])
+    }
+
     /// Find all connected hypotheses
     pub fn find_connected(&self, hypothesis_id: &HypothesisId) -> Vec<HypothesisId> {
         let mut visited = HashSet::new();

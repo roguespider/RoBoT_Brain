@@ -18,3 +18,7 @@ pub mod permanent;
 pub mod retrieval;
 pub mod pipeline;
 
+pub use permanent::PermanentMemory;
+pub use retrieval::MemoryRetrieval;
+pub use working::WorkingMemory;
+

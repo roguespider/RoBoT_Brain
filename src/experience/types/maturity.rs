@@ -27,12 +27,3 @@ pub enum KnowledgeMaturity {
     /// Proven incorrect.
     Rejected,
 }
-
-/// Relative importance assigned by the scoring engine.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-pub enum ImportanceLevel {
-    Low,
-    Medium,
-    High,
-    Critical,
-}

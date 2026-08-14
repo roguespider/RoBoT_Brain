@@ -44,6 +44,21 @@ impl GraphBuilder {
         self
     }
 
+    /// Add a weighted support edge (confidence-weighted relationship).
+    pub fn add_support_weighted(
+        mut self,
+        from: HypothesisId,
+        to: HypothesisId,
+        weight: f32,
+    ) -> Self {
+        self.graph.add_node(from.clone());
+        self.graph.add_node(to.clone());
+        let edge = super::graph_types::HypothesisEdge::depends_on(from, to)
+            .with_weight(weight);
+        self.graph.edges.push(edge);
+        self
+    }
+
     pub fn build(self) -> HypothesisGraph {
         self.graph
     }

@@ -7,7 +7,7 @@ use super::types::{
 
 /// Score an action candidate based on policy
 pub fn score_action(action: &ActionCandidate, policy: &PlannerPolicy) -> f32 {
-    let mut score = 0.0;
+    let mut score: f32 = 0.0;
 
     // Factor in supporting knowledge confidence
     if !action.supporting_knowledge.is_empty() {

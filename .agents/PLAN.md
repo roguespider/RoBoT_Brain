@@ -834,14 +834,44 @@ Reputation` wired in `src/experience/integration/event_subscriber/handlers.rs`.
 - T1-20 added 9 ACP tool tests (commit 6b7d036).
 - T1-21..T1-29 added 41 remaining tool tests (commit 7775ca1).
 
-## Verified state (2026-08-12)
+## Verified state (2026-08-14)
 
-- ⚠️ **GATE RED** — `compiler_warnings=163`, `code_issues=0`, `untested=0`,
-  `tests=145/145`. The 163 warnings are the current blocker. Triage:
-  ~60 `collapsible_if`, ~14 `async fn` simplification, ~6 `module_inception`,
-  3 `too_many_arguments`, ~80 dead-code (`never used`/`never read`).
-- 134 MCP tools (T1-19 exposed 6 embedding tools); 145 FunctionRegistry tests
-  pass; 0 code-quality issues; 0 untested tools.
+- ⚠️ **GATE RED** — `compiler_warnings=69` (all dead-code: `never used`/`never
+  read`/`never constructed`; NO mechanical lints remain), `code_issues=0`,
+  `untested=0`, `tests=145/145 (100%)`, `compiler_errors=0`, `tool_coverage=100%`,
+  `mcp_protocol_ok=true`. The 69 warnings are the only gate blocker.
+- ✅ **T1-10B file repair COMPLETE (commit 2d611ac).** T1-10B-Z had truncated
+  ~20 files, leaving ~119 compile errors. Reconstruction restored: enforcement
+  SessionState/WorkflowEnforcer, learning/working_memory WorkingMemoryItem +
+  module tree, memory re-exports, graph EdgeId/HypothesisRelationship +
+  accessors, Hypothesis::has_evidence, PlannerStatistics, acp
+  list_agents/count/registry()/create_system_agent/create_worker_agent, etc.
+  Result: compiles cleanly, 413 E2E test assertions pass, 0 code issues.
+- ✅ **Newly-added methods wired into production (commit 4a2a2c0)** so they are
+  not dead code: `AcpMessageType::expects_reply` → `route()` tracing;
+  `AcpRouter::register_handler` → init registers default Inform handler;
+  `AcpRegistry::get_by_type` → startup worker-count diagnostic;
+  `HypothesisValidator::validate` → hypothesis maintenance probe (also wires
+  has_evidence/ValidationReport/ValidationIssue/ValidationIssueType);
+  `PlannerStatistics` → `Planner::create_plan` tracks `plans_created`.
+  Warnings 77→69.
+- **Remaining 69 dead-code warnings** are pre-existing scaffolded-but-unwired
+  subsystems in `src/experience/` (NOT T1-10B damage — they predate it; the
+  08-12 snapshot showed 163 warnings). Clusters: reflection_pipeline +
+  Reflector/InsightProducer/ReflectionInsight/Evidence/Review/Lesson (redundant
+  with EventSubscriber+LearningCoordinator §4.04 path — needs wire-vs-delete
+  decision per Dead Code Protocol), exploration store
+  (InMemoryExplorationRepository, "implemented but not yet integrated"),
+  reputation (ReputationRecord/ReputationTarget/factors), encounter
+  (EncounterScore/Stats/ExperienceRecorder record/success/failure),
+  hypothesis_pipeline, learning_coordinator orphan methods
+  (process_experience/complete_exploration/get_reputation/update_reputation),
+  scorer (EncounterScore/score_encounter), maturity enums, and ~6 never-read
+  config/struct fields. Each cluster is a separate increment (wire into the
+  cognitive loop OR delete if architecture confirms redundancy).
+- 134 MCP tools; 145 FunctionRegistry tests pass; 0 code-quality issues;
+  0 untested tools; 0 phantom tools.
+- 8 self_check.rs files remain (→ TIER 2).
 - Code-issue fixes done this session (commit a21055d): planner.rs
   (`_step`/`_analysis` renamed, `replan`/`should_use_creativity` unwrapped from
   `#[cfg(test)]` and wired into maintenance loop), reflection.rs
@@ -855,6 +885,5 @@ Reputation` wired in `src/experience/integration/event_subscriber/handlers.rs`.
   queue (pending_jobs>baseline) and durable row survives status=pending.
   Known gap: restored jobs are not replayed to workers (replay-on-start is
   future work).
-- 8 self_check.rs files remain (→ TIER 2).
 - Large-file refactors done: `personality/personality.rs` (352→101, split into
   presets/adaptation/decision_making); `memory/handlers.rs` (400→ directory).

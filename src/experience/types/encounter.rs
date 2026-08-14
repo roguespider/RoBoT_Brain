@@ -75,3 +75,45 @@ pub struct EncounterStats {
     /// Average calculated score.
     pub average_score: f32,
 }
+
+impl EncounterStats {
+    /// Build aggregate encounter statistics for a single experience.
+    pub fn from_encounters(experience_id: Uuid, encounters: &[Encounter]) -> Self {
+        let total = encounters.len() as u64;
+        let successes = encounters
+            .iter()
+            .filter(|e| matches!(e.result, EncounterResult::Success))
+            .count() as u64;
+        let failures = encounters
+            .iter()
+            .filter(|e| matches!(e.result, EncounterResult::Failure))
+            .count() as u64;
+
+        let first_seen = encounters
+            .iter()
+            .map(|e| e.timestamp)
+            .min()
+            .unwrap_or_else(Utc::now);
+        let last_seen = encounters
+            .iter()
+            .map(|e| e.timestamp)
+            .max()
+            .unwrap_or_else(Utc::now);
+
+        let average_score = if total == 0 {
+            0.0
+        } else {
+            successes as f32 / total as f32
+        };
+
+        Self {
+            experience_id,
+            total_encounters: total,
+            successes,
+            failures,
+            first_seen,
+            last_seen,
+            average_score,
+        }
+    }
+}

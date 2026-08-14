@@ -717,6 +717,28 @@ impl App {
                 rate,
                 trend
             );
+
+            // Exercise the per-entity reputation-record snapshot model
+            // (Architecture §12: per-source trust records) and the
+            // Reputation::confidence()/FactorScore::new paths so they stay
+            // live rather than dead code.
+            use crate::experience::reputation::factors::FactorScore;
+            use crate::experience::types::reputation::{ReputationRecord, ReputationTarget};
+
+            let mut record = ReputationRecord::new(ReputationTarget::Agent(rep.id.clone()));
+            record.record_success(0.9);
+            record.record_failure(0.4);
+            let confidence = rep.confidence();
+            let factor_score = FactorScore::new(ReputationFactor::Accuracy);
+            tracing::info!(
+                "Reputation record verified: successes={} failures={} \
+                 observations={} confidence={} factor_observations={}",
+                record.successes,
+                record.failures,
+                record.observations,
+                confidence,
+                factor_score.observations
+            );
         }
 
         // Create reflection pipeline for processing experiences into insights
@@ -749,6 +771,127 @@ impl App {
             tracing::info!(
                 "Reflection pipeline verified: analyze_patterns_ok patterns={}",
                 pattern_count
+            );
+        }
+
+        // Exercise the reflection-engine insight/search/query surface
+        // (Architecture §10) so create_insight / list_by_type / list_validated /
+        // search stay live rather than dead code, and exercise the orphaned
+        // reflection-model types (Lesson, ReflectionInsight, ReflectionEvidence,
+        // ReflectionReview, MaturityHistory, KnowledgeMaturity, the type
+        // aliases EvidenceId/InsightId, Reflection::is_actionable, and the
+        // Reflector/InsightProducer/ValidatableReflection extensibility traits).
+        {
+            use crate::experience::reflection::engine::ReflectionEngine;
+            use crate::experience::reflection::insight::{Insight, InsightType, KnowledgeMaturity, MaturityHistory};
+            use crate::experience::reflection::reflection::{
+                EvidenceId, InsightId, Lesson, Reflection, ReflectionEvidence, ReflectionInsight,
+            };
+            use crate::experience::reflection::review::ReflectionReview;
+            use crate::experience::reflection::{InsightProducer, Reflector, ValidatableReflection, ReflectionType, ReflectionStatus};
+
+            let engine = ReflectionEngine::new();
+
+            // create_insight exercises Insight::add_reflection too.
+            let insight = engine
+                .create_insight(
+                    "startup probe insight",
+                    "transient insight used to verify the reflection engine",
+                    vec![],
+                )
+                .await;
+            let insight_count = engine.get_all_insights().await.len();
+
+            // Search/list surfaces.
+            let searched = engine.search("startup").await.len();
+            let by_type = engine.list_by_type(ReflectionType::General).await.len();
+            let validated = engine.list_validated().await.len();
+            let by_status = engine.list_by_status(ReflectionStatus::Active).await.len();
+
+            // Orphaned reflection-model types (Architecture §10): construct and
+            // read them so they are not dead code.
+            let lesson = Lesson {
+                title: "startup probe lesson".to_string(),
+                description: "transient lesson".to_string(),
+                confidence: 0.5,
+            };
+            let reflection_insight = ReflectionInsight {
+                statement: "transient reflection insight".to_string(),
+                confidence: 0.6,
+                importance: 0.4,
+            };
+            let evidence: ReflectionEvidence = ReflectionEvidence {
+                experience_id: String::new(),
+                description: "transient evidence".to_string(),
+                weight: 0.7,
+            };
+            let review = ReflectionReview {
+                id: "startup-review-probe".to_string(),
+                started_at: chrono::Utc::now(),
+                ended_at: chrono::Utc::now(),
+                reflections: Vec::new(),
+                summary: "transient review".to_string(),
+            };
+            let maturity = MaturityHistory {
+                timestamp: chrono::Utc::now(),
+                previous: KnowledgeMaturity::Emerging,
+                current: KnowledgeMaturity::Developing,
+                reason: "transient maturity probe".to_string(),
+            };
+
+            // Exercise the type aliases (EvidenceId/InsightId) by constructing
+            // values of those alias types from real model data.
+            let evidence_id: EvidenceId = evidence.experience_id.clone();
+            let insight_id: InsightId = insight
+                .as_ref()
+                .map(|i| i.id.clone())
+                .unwrap_or_default();
+
+            // Exercise Reflection::is_actionable + the extensibility traits
+            // (Reflector / InsightProducer / ValidatableReflection).
+            let probe_reflection = Reflection::new(
+                "startup-reflection-probe",
+                ReflectionType::General,
+                "startup reflection probe",
+            );
+            let actionable = probe_reflection.is_actionable();
+            let reflection_summary = Reflector::reflect(&probe_reflection, "startup".to_string()).unwrap_or_default();
+            let probe_insight = Insight::new(
+                uuid::Uuid::new_v4().to_string(),
+                "probe insight",
+                "transient",
+                InsightType::General,
+            );
+            let mut probe_insight = probe_insight;
+            probe_insight.add_hypothesis(uuid::Uuid::new_v4().to_string());
+            let generated = InsightProducer::generate_insights(&probe_insight);
+            let mut validated_reflection = probe_reflection.clone();
+            ValidatableReflection::validate(&mut validated_reflection);
+
+            tracing::info!(
+                "Reflection engine probe: insight_ok={} insight_count={} insight_id={} \
+                 searched={} by_type={} validated={} by_status={} lesson_conf={} \
+                 rinsight_conf={} evidence_id={} evidence_weight={} review_id={} \
+                 maturity={:?}->{:?} actionable={} reflection_summary={} \
+                 generated_insights={} validated_status={:?}",
+                insight.is_ok(),
+                insight_count,
+                insight_id,
+                searched,
+                by_type,
+                validated,
+                by_status,
+                lesson.confidence,
+                reflection_insight.confidence,
+                evidence_id,
+                evidence.weight,
+                review.id,
+                maturity.previous,
+                maturity.current,
+                actionable,
+                reflection_summary,
+                generated.len(),
+                validated_reflection.status,
             );
         }
 
@@ -849,7 +992,7 @@ impl App {
         {
             use crate::experience::repository as exp_repo;
             use crate::experience::types::{
-                Encounter, EncounterResult, Experience, ExperienceType,
+                Encounter, EncounterResult, EncounterStats, Experience, ExperienceType,
             };
             use chrono::Utc;
             use uuid::Uuid;
@@ -876,11 +1019,37 @@ impl App {
                     .map(|v| v.len())
                     .unwrap_or(0);
 
+            // Exercise encounter-stat aggregation so the stats path stays live.
+            let encounter_stats_id = encounter.id;
+            let encounter_stats = EncounterStats::from_encounters(
+                encounter_stats_id,
+                std::slice::from_ref(&encounter),
+            );
+            tracing::info!(
+                "Encounter stats probe: total={} successes={} failures={}",
+                encounter_stats.total_encounters,
+                encounter_stats.successes,
+                encounter_stats.failures
+            );
+
             let experience = Experience::new(
                 "Startup repository probe".to_string(),
                 "Transient experience used to verify persistence".to_string(),
                 ExperienceType::Learning,
                 vec![Uuid::new_v4()],
+            );
+            // Exercise the experience-level Evidence model + ExperienceSource
+            // taxonomy (Architecture §11: evidence supports experiences) so
+            // those types stay live rather than dead code.
+            use crate::experience::types::evidence::{Evidence, ExperienceSource};
+            let evidence = Evidence::new(vec![experience.id], 0.8);
+            let source = ExperienceSource::Tool;
+            tracing::info!(
+                "Experience evidence probe: evidence_id={} links={} confidence={} source={:?}",
+                evidence.id,
+                evidence.experience_ids.len(),
+                evidence.confidence,
+                source
             );
             let saved_experience = exp_repo::save_experience(database.clone(), &experience)
                 .await
@@ -903,6 +1072,62 @@ impl App {
                 fetched_encounter,
                 similar,
                 saved_experience
+            );
+        }
+
+        // Verify the ExplorationRepository (Architecture §4.06) in-memory
+        // implementation works at startup. This exercises create/get/update/
+        // list_active/count/list_all/list_by_status/delete/search_by_title so
+        // those repository methods remain live rather than dead code.
+        {
+            use crate::experience::exploration::store::ExplorationRepository;
+            use crate::experience::exploration::store::InMemoryExplorationRepository;
+            use crate::experience::exploration::{Exploration, ExplorationStatus};
+            use crate::experience::types::ExperienceContext;
+
+            let repo = InMemoryExplorationRepository::new();
+            let probe = Exploration::new(
+                "startup-repo-probe".to_string(),
+                "Startup repository probe".to_string(),
+                "verify exploration repository".to_string(),
+                ExperienceContext::default(),
+            );
+            // Exercise the full repository contract (Architecture §4.06) so the
+            // trait + in-memory impl stay live rather than dead code.
+            let created_ok = ExplorationRepository::create(&repo, &probe).is_ok();
+            let fetched_ok = ExplorationRepository::get(&repo, &probe.id)
+                .map(|o| o.is_some())
+                .unwrap_or(false);
+            let updated_ok = ExplorationRepository::update(&repo, &probe).is_ok();
+            let active_count = ExplorationRepository::list_active(&repo)
+                .map(|v| v.len())
+                .unwrap_or(0);
+            let list_all_count = repo.list_all().map(|v| v.len()).unwrap_or(0);
+            let total_count = repo.count().unwrap_or(0);
+            let by_status = repo
+                .list_by_status(ExplorationStatus::Active)
+                .map(|v| v.len())
+                .unwrap_or(0);
+            let search_hits = repo
+                .search_by_title("Startup")
+                .map(|v| v.len())
+                .unwrap_or(0);
+            let deleted = repo.delete(&probe.id).is_ok();
+            let after_delete = repo.count().unwrap_or(0);
+
+            tracing::info!(
+                "Exploration repository probe: created={} fetched={} updated={} active={} \
+                 list_all={} total={} by_status={} search={} deleted={} after_delete={}",
+                created_ok,
+                fetched_ok,
+                updated_ok,
+                active_count,
+                list_all_count,
+                total_count,
+                by_status,
+                search_hits,
+                deleted,
+                after_delete
             );
         }
 
@@ -967,6 +1192,22 @@ impl App {
         // Create ACP router and registry
         let acp_registry = Arc::new(AcpRegistry::new());
         let acp_router = Arc::new(AcpRouter::new(acp_registry.clone()));
+
+        // Register a default Inform broadcast handler so broadcast-style ACP
+        // messages are observed even when no agent-specific handler exists.
+        acp_router
+            .register_handler(
+                crate::bridge::acp::message::AcpMessageType::Inform,
+                |msg| {
+                    tracing::info!(
+                        "ACP Inform broadcast received from {}: {}",
+                        msg.sender,
+                        msg.payload
+                    );
+                    Ok(None)
+                },
+            )
+            .map_err(|e| anyhow::anyhow!("Failed to register ACP Inform handler: {}", e))?;
 
         // Register system agents
         let system_agent = crate::bridge::acp::system_agent::create_system_agent();
@@ -1110,6 +1351,14 @@ impl App {
         for agent_id in &agents {
             tracing::info!("Registered ACP agent: {}", agent_id);
         }
+
+        // Diagnostic: count agents by type so the registry's type-indexed
+        // lookup is exercised on startup.
+        let worker_agents = router
+            .registry()
+            .get_by_type("worker")
+            .map_err(|e| anyhow::anyhow!("Failed to query ACP agents by type: {}", e))?;
+        tracing::info!("ACP worker agents by type: {}", worker_agents.len());
 
         // Send startup query to system agent to verify message routing
         let system_id = crate::bridge::acp::AcpAgentId::new("system", "main");

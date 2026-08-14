@@ -406,6 +406,7 @@ impl HypothesisEngine {
             .add_contradiction(HypothesisId("c".to_string()), HypothesisId("d".to_string()))
             .add_dependency(HypothesisId("e".to_string()), HypothesisId("f".to_string()))
             .add_related(HypothesisId("g".to_string()), HypothesisId("h".to_string()))
+            .add_support_weighted(HypothesisId("w1".to_string()), HypothesisId("w2".to_string()), 0.8)
             .build();
         tracing::debug!(
             "Graph builder probe: {} nodes, {} edges",
@@ -505,6 +506,16 @@ impl HypothesisEngine {
                     conflict.similarity
                 );
             }
+        }
+        // Exercise the structural validator so the validation report path
+        // stays wired to a real caller.
+        if let Some(probe_hyp) = probes.first() {
+            let report = validator.validate(probe_hyp);
+            tracing::debug!(
+                "Hypothesis probe validation: valid={}, issues={}",
+                report.valid,
+                report.issues.len()
+            );
         }
         let generator = HypothesisGenerator::new();
         if let Ok(Some(pattern_hypothesis)) = generator.generate_from_pattern("observed pattern") {

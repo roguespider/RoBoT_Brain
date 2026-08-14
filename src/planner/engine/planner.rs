@@ -17,7 +17,7 @@ use super::replanning::{
 };
 use super::types::{Plan, PlanStatus, PlanStep, StepStatus};
 use super::types::{
-    ActionCandidate, PlanFailureAnalysis, PlannerPolicy, ReplanReason,
+    ActionCandidate, PlanFailureAnalysis, PlannerPolicy, PlannerStatistics, ReplanReason,
 };
 
 /// Core planning engine
@@ -29,6 +29,7 @@ pub struct Planner {
     active_plans: Arc<RwLock<HashMap<String, Plan>>>,
     policy: Arc<tokio::sync::RwLock<PlannerPolicy>>,
     creativity_check: Option<Arc<dyn Fn(f32) -> bool + Send + Sync>>,
+    stats: Arc<RwLock<PlannerStatistics>>,
 }
 
 impl Planner {
@@ -39,6 +40,7 @@ impl Planner {
             active_plans: Arc::new(RwLock::new(HashMap::new())),
             policy: Arc::new(tokio::sync::RwLock::new(PlannerPolicy::default())),
             creativity_check: None,
+            stats: Arc::new(RwLock::new(PlannerStatistics::default())),
         }
     }
 
@@ -99,6 +101,12 @@ impl Planner {
         plans.insert(plan.id.clone(), plan.clone());
 
         self.metrics.increment("planner.plans.created").await;
+
+        // Track plan-creation statistics.
+        {
+            let mut stats = self.stats.write().await;
+            stats.plans_created += 1;
+        }
 
         Ok(plan)
     }

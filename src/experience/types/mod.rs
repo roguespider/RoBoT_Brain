@@ -24,7 +24,7 @@ pub mod score;
 
 // Re-export all types for backwards compatibility
 pub use context::ExperienceContext;
-pub use encounter::{Encounter, EncounterResult};
+pub use encounter::{Encounter, EncounterResult, EncounterStats};
 pub use experience::{Experience, ExperienceType};
 pub use outcome::{ExperienceOutcome, OutcomeKind};
 pub use score::ExperienceScore;

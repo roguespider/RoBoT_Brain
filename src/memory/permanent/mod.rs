@@ -11,3 +11,5 @@
 
 mod store;
 
+pub use store::PermanentMemory;
+

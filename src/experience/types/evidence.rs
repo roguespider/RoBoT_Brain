@@ -32,3 +32,14 @@ pub struct Evidence {
     /// Confidence in this evidence.
     pub confidence: f32,
 }
+
+impl Evidence {
+    /// Create new evidence linking the given experiences at a confidence.
+    pub fn new(experience_ids: Vec<Uuid>, confidence: f32) -> Self {
+        Self {
+            id: Uuid::new_v4(),
+            experience_ids,
+            confidence,
+        }
+    }
+}

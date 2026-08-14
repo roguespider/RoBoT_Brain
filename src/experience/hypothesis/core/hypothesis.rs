@@ -232,5 +232,41 @@ impl Hypothesis {
         }
     }
 
-    /// Add a tag.
+    /// Add a tag (deduplicated).
+    pub fn add_tag(&mut self, tag: impl Into<String>) {
+        let tag = tag.into();
+        if !self.tags.contains(&tag) {
+            self.tags.push(tag);
+            self.touch();
+        }
+    }
+
+    /// Add supporting evidence by ID.
+    pub fn add_supporting_evidence(&mut self, evidence: impl Into<String>) {
+        let id = evidence.into();
+        if !self.supporting_evidence.contains(&id) {
+            self.supporting_evidence.push(id);
+        }
+        self.touch();
+    }
+
+    /// Add contradicting evidence by ID.
+    pub fn add_contradicting_evidence(&mut self, evidence: impl Into<String>) {
+        let id = evidence.into();
+        if !self.contradicting_evidence.contains(&id) {
+            self.contradicting_evidence.push(id);
+        }
+        self.touch();
+    }
+
+    /// Refresh the last-updated timestamp.
+    pub fn touch(&mut self) {
+        self.updated_at = Utc::now();
+    }
+
+    /// Whether this hypothesis has any supporting or contradicting evidence.
+    pub fn has_evidence(&self) -> bool {
+        !self.supporting_evidence.is_empty() || !self.contradicting_evidence.is_empty()
+    }
+}
 
