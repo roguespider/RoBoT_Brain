@@ -362,6 +362,13 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             mcp_tools.rs, client/error.rs) so no dead-code warnings (40
             unchanged). Gate: CfgTest 53 -> 52, fresh full rebuild, 145/145,
             0 err, 0 untested, 0 emoji.
+      - [x] **T1-10B-P** `planner/engine/planner.rs` (1) DONE 2026-08-14.
+            Removed the `#[cfg(test)]`-gated `get_stats` method + its doc
+            comment. get_stats referenced an undefined `PlannerStats` (only
+            compiled under cfg(test), excluded from release builds) -- dead/
+            broken test code with zero callers. Deleted the whole method
+            (lines 512-542). Gate: CfgTest 50 -> 49, fresh full rebuild,
+            145/145, 0 err, 0 untested, 0 emoji.
       - [~] **T1-10B-14** `experience/scorer.rs` (5) --
       RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
       Reason: EncounterScore, score_encounter(), and aggregate_encounter_scores()

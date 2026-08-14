@@ -509,38 +509,6 @@ impl Planner {
         select_best_scored(scored)
     }
 
-    /// Get plan statistics
-    #[cfg(test)]
-    pub async fn get_stats(&self) -> PlannerStats {
-        let plans = self.active_plans.read().await;
-
-        let mut by_status: std::collections::HashMap<PlanStatus, usize> =
-            std::collections::HashMap::new();
-        let mut total_confidence = 0.0;
-        let mut total_knowledge = 0;
-        let mut total_experiences = 0;
-
-        for plan in plans.values() {
-            *by_status.entry(plan.status).or_insert(0) += 1;
-            total_confidence += plan.confidence;
-            total_knowledge += plan.knowledge_used.len();
-            total_experiences += plan.experiences_used.len();
-        }
-
-        let count = plans.len();
-        PlannerStats {
-            total_plans: count,
-            by_status,
-            avg_confidence: if count > 0 {
-                total_confidence / count as f32
-            } else {
-                0.0
-            },
-            total_knowledge_used: total_knowledge,
-            total_experiences_used: total_experiences,
-        }
-    }
-
     // ========================================================================
     // REPLANNING
     // ========================================================================
@@ -781,4 +749,3 @@ impl Planner {
         Ok(())
     }
 }
-
