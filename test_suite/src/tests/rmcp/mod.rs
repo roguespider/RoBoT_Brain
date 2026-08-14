@@ -25,22 +25,22 @@ pub async fn run_rmcp_tests(
     crate::teeprintln!("{}", "=".repeat(80));
 
     // Phase 1: Protocol tests
-    crate::teeprintln!("\n📋 PHASE 1: PROTOCOL INITIALIZATION");
+    crate::teeprintln!("\n[INFO] PHASE 1: PROTOCOL INITIALIZATION");
     crate::teeprintln!("{}", "-".repeat(60));
     let protocol_results = protocol::test_rmcp_protocol(client, stats).await?;
 
     // Phase 2: Tool discovery tests
-    crate::teeprintln!("\n📋 PHASE 2: TOOL DISCOVERY (list_tools)");
+    crate::teeprintln!("\n[INFO] PHASE 2: TOOL DISCOVERY (list_tools)");
     crate::teeprintln!("{}", "-".repeat(60));
     let tool_discovery = tools::test_tool_discovery(client, stats).await?;
 
     // Phase 3: Tool execution tests
-    crate::teeprintln!("\n📋 PHASE 3: TOOL EXECUTION (call_tool)");
+    crate::teeprintln!("\n[INFO] PHASE 3: TOOL EXECUTION (call_tool)");
     crate::teeprintln!("{}", "-".repeat(60));
     let tool_execution = tools::test_tool_execution(client, stats).await?;
 
     // Phase 4: Session tests
-    crate::teeprintln!("\n📋 PHASE 4: SESSION MANAGEMENT");
+    crate::teeprintln!("\n[INFO] PHASE 4: SESSION MANAGEMENT");
     crate::teeprintln!("{}", "-".repeat(60));
     let session_results = sessions::test_rmcp_sessions(client, stats).await?;
 
@@ -82,33 +82,33 @@ fn print_rmcp_results(results: &RmcpTestResults) {
     crate::teeprintln!("{}", "=".repeat(80));
 
     // Protocol results
-    crate::teeprintln!("\n📡 Protocol Tests:");
-    crate::teeprintln!("  ✅ Passed: {}", results.protocol.passed);
-    crate::teeprintln!("  ❌ Failed: {}", results.protocol.failed);
-    crate::teeprintln!("  ℹ  Initialization: {}", if results.protocol.init_ok { "OK" } else { "FAILED" });
-    crate::teeprintln!("  ℹ  Capabilities: {}", if results.protocol.capabilities_ok { "OK" } else { "FAILED" });
+    crate::teeprintln!("\n[INFO] Protocol Tests:");
+    crate::teeprintln!("  [OK] Passed: {}", results.protocol.passed);
+    crate::teeprintln!("  [FAIL] Failed: {}", results.protocol.failed);
+    crate::teeprintln!("  [INFO]  Initialization: {}", if results.protocol.init_ok { "OK" } else { "FAILED" });
+    crate::teeprintln!("  [INFO]  Capabilities: {}", if results.protocol.capabilities_ok { "OK" } else { "FAILED" });
 
     // Tool discovery results
-    crate::teeprintln!("\n🔍 Tool Discovery:");
-    crate::teeprintln!("  ✅ Passed: {}", results.tool_discovery.passed);
-    crate::teeprintln!("  ❌ Failed: {}", results.tool_discovery.failed);
-    crate::teeprintln!("  ℹ  Tools Found: {}", results.tool_discovery.tools_found);
-    crate::teeprintln!("  ℹ  Categories Covered: {:?}", results.tool_discovery.categories_found);
+    crate::teeprintln!("\n[INFO] Tool Discovery:");
+    crate::teeprintln!("  [OK] Passed: {}", results.tool_discovery.passed);
+    crate::teeprintln!("  [FAIL] Failed: {}", results.tool_discovery.failed);
+    crate::teeprintln!("  [INFO]  Tools Found: {}", results.tool_discovery.tools_found);
+    crate::teeprintln!("  [INFO]  Categories Covered: {:?}", results.tool_discovery.categories_found);
 
     // Tool execution results
-    crate::teeprintln!("\n⚡ Tool Execution:");
-    crate::teeprintln!("  ✅ Passed: {}", results.tool_execution.passed);
-    crate::teeprintln!("  ❌ Failed: {}", results.tool_execution.failed);
-    crate::teeprintln!("  ℹ  Tools Executed: {}", results.tool_execution.tools_executed);
-    crate::teeprintln!("  ℹ  Categories Executed: {:?}", results.tool_execution.categories_executed);
+    crate::teeprintln!("\n[WARN] Tool Execution:");
+    crate::teeprintln!("  [OK] Passed: {}", results.tool_execution.passed);
+    crate::teeprintln!("  [FAIL] Failed: {}", results.tool_execution.failed);
+    crate::teeprintln!("  [INFO]  Tools Executed: {}", results.tool_execution.tools_executed);
+    crate::teeprintln!("  [INFO]  Categories Executed: {:?}", results.tool_execution.categories_executed);
 
     // Session results
-    crate::teeprintln!("\n🔗 Session Management:");
-    crate::teeprintln!("  ✅ Passed: {}", results.sessions.passed);
-    crate::teeprintln!("  ❌ Failed: {}", results.sessions.failed);
-    crate::teeprintln!("  ℹ  Sessions Tracked: {}", results.sessions.sessions_tracked);
+    crate::teeprintln!("\n[INFO] Session Management:");
+    crate::teeprintln!("  [OK] Passed: {}", results.sessions.passed);
+    crate::teeprintln!("  [FAIL] Failed: {}", results.sessions.failed);
+    crate::teeprintln!("  [INFO]  Sessions Tracked: {}", results.sessions.sessions_tracked);
 
-    crate::teeprintln!("\n📊 Overall:");
+    crate::teeprintln!("\n[INFO] Overall:");
     crate::teeprintln!("  Total Passed: {}", results.total_passed());
     crate::teeprintln!("  Total Failed: {}", results.total_failed());
 }
