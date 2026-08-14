@@ -19,12 +19,12 @@ milestone on the way there.
 
 ## The blueprints
 
-- **v0.0.1** — `robot_architecture/v0.0.1/ARCHITECTURE.md`. What the codebase
+- **v0.0.1** -- `robot_architecture/v0.0.1/ARCHITECTURE.md`. What the codebase
   currently approximates. TIER 1 finishes conforming to this.
-- **v0.0.2** — `robot_architecture/RoBoT Architecture v0.0.2.md`. Intermediate
+- **v0.0.2** -- `robot_architecture/RoBoT Architecture v0.0.2.md`. Intermediate
   upgrade: elevate Context + Conversation to first-class, add Data Contracts.
   TIER 2 conforms existing systems to this.
-- **v0.0.2.1** — `robot_architecture/v0.0.2.1/` (00.md-33.md + appendices). The
+- **v0.0.2.1** -- `robot_architecture/v0.0.2.1/` (00.md-33.md + appendices). The
   FINAL architectural baseline. Adds Execution Engine, Tool Engine, Memory
   Hierarchy, Context Lifecycle, Retrieval Pipeline, Prompt Construction,
   Strategic Learning, Confidence System, Storage, Database Design, Background
@@ -33,7 +33,7 @@ milestone on the way there.
 
 ## Current codebase state (verified 2026-08-11)
 
-- Workspace: two independent programs — `robot_brain` (root, MCP server) and
+- Workspace: two independent programs -- `robot_brain` (root, MCP server) and
   `test_suite/` (E2E tests via MCP protocol).
 - Builds with **0 cargo warnings**, **128 MCP tools**, **333/333 tests pass**,
   0 code-quality issues. Coverage gap: 50 server tools untested (60.9%).
@@ -56,7 +56,7 @@ Knowledge → Reputation`; `run_agent_goal` agent loop works.
 - Incremental workflow: after EACH increment, run the gate (below) green, then
   commit + push, then STOP. Never batch.
 - **Verify, don't trust:** every step must be VERIFIED by inspecting the actual
-  codebase state and running the gate — never rely on a "done" message, a
+  codebase state and running the gate -- never rely on a "done" message, a
   commit description, or a checkbox marked `[x]`/`[in]`. Open the file, read the
   code, confirm the change is there and the gate is actually green. A commit
   that claims "fixes all warnings" may be lying; run the gate and read the JSON
@@ -81,25 +81,25 @@ done. Never commit a red gate.
 
 ---
 
-# 3. APPROACH — three tiers of small increments
+# 3. APPROACH -- three tiers of small increments
 
 Work through three tiers in order. Each tier is a checklist of small
 increments. Do them top-to-bottom, one at a time, with the verify gate green
 between each.
 
-- **TIER 1 — Finish v0.0.1** (clean baseline). Clear the remaining self_check
+- **TIER 1 -- Finish v0.0.1** (clean baseline). Clear the remaining self_check
   debt, migrate the queue, add loop metrics, close the MCP→experience path.
   No new features; just finish what v0.0.1 requires. **End state = finished v0.0.1.**
-- **TIER 2 — Reach v0.0.2** (upgrade existing systems). Introduce Data Contracts,
+- **TIER 2 -- Reach v0.0.2** (upgrade existing systems). Introduce Data Contracts,
   then upgrade each existing subsystem (Memory, Knowledge, Experience, Learning,
   Planner, Skills/Workflows, World Model, Personality) to its v0.0.2 chapter.
   **End state = finished v0.0.2.**
-- **TIER 3 — Reach v0.0.2.1** (add missing subsystems). Build the new engines
+- **TIER 3 -- Reach v0.0.2.1** (add missing subsystems). Build the new engines
   from the v0.0.2.1 chapters: Execution, Tool, Memory Hierarchy, Context
   Lifecycle, Retrieval Pipeline, Prompt Construction, Strategic Learning,
   Confidence System, Storage/Database, Background Workers, Security & Trust,
   Observability, Developer Interface/Control Plane, Configuration, Testing,
-  Deployment — then AI Runtime (Candle), Multimodal, GUI last.
+  Deployment -- then AI Runtime (Candle), Multimodal, GUI last.
   **End state = finished v0.0.2.1.**
 
 **Why this order:** finish v0.0.1 first so no dead-code debt is carried into a
@@ -111,12 +111,12 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 
 ---
 
-# 4. TIER 1 — Finish v0.0.1 (clean baseline)
+# 4. TIER 1 -- Finish v0.0.1 (clean baseline)
 
 > Goal: green gate (test_suite exit 0). End state = a clean v0.0.1 baseline.
 > Tick `[x]` when an increment is committed with a green gate.
 >
-> **Work order:** 1E (coverage gate) FIRST — it's the actual gate problem and
+> **Work order:** 1E (coverage gate) FIRST -- it's the actual gate problem and
 > the user's priority. Then 1B (queue), 1C (metrics), 1D (MCP→experience).
 >
 > **NOTE on self_check removal (moved to TIER 2):** the 8 `self_check.rs` files
@@ -148,7 +148,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
   new_with_queue, enqueue→push_job, broadcast→push_job,
   mark_job_complete/mark_job_failed), worker_manager/background.rs (loop calls
   mark_job_complete/mark_job_failed), bridge/mcp/context.rs (NOTE: PLAN's old
-  path `src/mcp/context.rs` was wrong — real path is `src/bridge/mcp/context.rs`;
+  path `src/mcp/context.rs` was wrong -- real path is `src/bridge/mcp/context.rs`;
   pub job_queue field + new() takes it), bridge/app/initialization.rs (creates
   JobQueue::with_database, restore_from_database at startup, passes to
   WorkerManager::new_with_queue + McpContext::new, runs a startup lifecycle
@@ -159,7 +159,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
   the same dir, and confirms via get_system_status (event_bus.pending_jobs)
   that the row is restored into the live queue and survives with status=pending
   in SQLite. The test passes. (Caveat noted: restored jobs are NOT replayed to
-  workers — restore_from_database repopulates the in-memory JobQueue cache but
+  workers -- restore_from_database repopulates the in-memory JobQueue cache but
   nothing re-enqueues to ExperienceWorker channels. The startup probe's
   pop_job can drain restored `experience_scorer` rows. Replay-on-start is a
   gap, but the "queue survives a process restart" criterion is met.)
@@ -172,7 +172,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
       MCP/CLI-based tests in `test_suite/src/tests/`, then the `#[cfg(test)]`
       block is deleted from `src/`.
 
-      ### Group A — MCP-reachable (move to test_suite, delete src/ block)
+      ### Group A -- MCP-reachable (move to test_suite, delete src/ block)
       - [x] **T1-10B-01** `personality/mod.rs` (16 tests) DONE 2026-08-14.
             Migrated 8 MCP-reachable behaviors to
             `test_suite/src/tests/personality.rs` (run_personality_tests):
@@ -206,10 +206,10 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             list_personality_presets / set_personality_traits /
             get_personality_decision / format_response.
       - [x] **T1-10B-02** `personality/emotional.rs` (3 tests) DONE.
-            Group B (internal-only, no MCP surface) — the `#[cfg(test)]` block
+            Group B (internal-only, no MCP surface) -- the `#[cfg(test)]` block
             was DELETED per the Group B decision (not left in place). Verified
             2026-08-14: emotional.rs has no cfg(test) block and is NOT in the
-            gate CfgTest list. EmotionalState::observe() has no MCP surface —
+            gate CfgTest list. EmotionalState::observe() has no MCP surface --
             it is only called by the agent loop (loop_runner.rs:304 via
             observe_emotional_outcome -> personality.rs:72), never by a tool.
             get_personality returns emotional_weight (observable) but NOT the
@@ -228,15 +228,15 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             get_personality (returns the field) and get_personality_decision
             (decide() applies emotional_weight to confidence).
       - [x] **T1-10B-03** `experience/reflection/services/generator.rs` (3) DONE
-            2026-08-14. Group B (internal-only, no MCP surface) — the
+            2026-08-14. Group B (internal-only, no MCP surface) -- the
             `#[cfg(test)]` block was DELETED per the Group B decision. The 3
             tests (test_generate_from_multiple_successes,
             test_generate_from_failures, test_requires_min_experiences)
             tested generate_from_experiences directly with constructed
-            Experience vecs — behavior not reachable via any tool:
+            Experience vecs -- behavior not reachable via any tool:
               - execute_create_reflection (the MCP tool) calls
                 reflection_engine.generate_reflection(vec![].as_slice(), ...)
-                — passes EMPTY experiences.
+                -- passes EMPTY experiences.
               - generate_reflection -> generate_from_experiences with an empty
                 slice returns None (len < min_experiences=2) -> tool always
                 returns {success:true, id:random_uuid} regardless of input.
@@ -277,7 +277,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             test_retrieve_working: store_memory -> search -> content in results[].
             test_unified_retrieve: store 2 items -> search -> both in results[].
             RECLASSIFIED to Group B (LEAVE as Rust unit test):
-            test_retrieve_permanent + test_confidence_filtering — store_memory
+            test_retrieve_permanent + test_confidence_filtering -- store_memory
             only writes to Working layer (PermanentMemory cache not populated
             by any MCP tool), and retrieve_with_query(min_confidence) is never
             called by an MCP tool. Removed those 2 from src/ test block, kept
@@ -292,7 +292,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             transcribe_audio, verify audio exts pass the is_audio_file gate
             (different error) while non-audio exts get "Not a supported audio
             file". RECLASSIFIED to Group B (LEAVE as Rust unit test):
-            test_audio_analysis — AudioAnalysis::from_samples requires valid
+            test_audio_analysis -- AudioAnalysis::from_samples requires valid
             audio samples loaded from a real WAV file; not practical via MCP.
             Removed 2 from src/ test block, kept test_audio_analysis.
             Gate: 145/145, 0 issues, 0 untested, 67 warnings.
@@ -309,7 +309,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             constructor clamp is tested. Both use the same .clamp(0.0,1.0).
             Deleted #[cfg(test)] block from src/. Methods still used by
             handlers. Gate: 145/145, 0 issues, 0 untested, 67 warnings.
-      - [x] **T1-10B-09** `experience/exploration/attempt.rs` (2 tests) — DONE
+      - [x] **T1-10B-09** `experience/exploration/attempt.rs` (2 tests) -- DONE
             2026-08-12. Migrated test_attempt_builder + test_attempt_failure to
             test_suite/src/tests/exploration_attempt.rs via MCP flow
             (start_exploration -> record_attempt [expected==actual] ->
@@ -320,7 +320,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             Deleted #[cfg(test)] block from src/. Builders still used by
             record_attempt handler (no new dead-code). Gate: 145/145, 0 issues,
             0 untested, 67 warnings.
-      - [x] **T1-10B-10** `experience/exploration/finding.rs` (1 test) — DONE
+      - [x] **T1-10B-10** `experience/exploration/finding.rs` (1 test) -- DONE
             2026-08-12. Migrated test_finding_new_and_promote to
             test_suite/src/tests/exploration_finding.rs via MCP flow
             (start_exploration -> complete_exploration [calls
@@ -328,26 +328,26 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             -> promote_finding [calls f.promote()] -> get_exploration_status
             [promoted=true]). Deleted #[cfg(test)] block from src/. promote()
             still used by promote_finding MCP handler (no new dead-code).
-      - [x] **T1-10B-11** `database/queries/observations.rs` (1 test) — DONE
+      - [x] **T1-10B-11** `database/queries/observations.rs` (1 test) -- DONE
             2026-08-12. Migrated the MCP-reachable part (record_observation
             [insert_observation] → list_observations, verify content+type) to
             test_suite/src/tests/observations.rs. The original test focused on
             link_observation_to_experience, which had NO MCP surface and NO
-            production callers (was #[cfg(test)]-only dead code) — deleted
+            production callers (was #[cfg(test)]-only dead code) -- deleted
             link_observation_to_experience + get_observation + the test module
             from src/. Gate: 145/145, 0 issues, 0 untested, 67 warnings.
 
-      ### Group B — internal-only, NO MCP surface (DECISION NEEDED)
+      ### Group B -- internal-only, NO MCP surface (DECISION NEEDED)
       These test pure internal Rust types no tool exposes. test_suite cannot
       run them without importing robot_brain source (forbidden). Options:
       (1) leave as Rust unit tests (gate does NOT flag #[cfg(test)], only
       dead-code), (2) delete (loses coverage), (3) expose via test-only MCP
       tool (overkill). Leaning: LEAVE as-is. ~48 tests.
-      - [ ] **T1-10B-12** `bridge/acp/mod.rs` (20) — ACP router/registry/message
+      - [ ] **T1-10B-12** `bridge/acp/mod.rs` (20) -- ACP router/registry/message
             structs.
-      - [ ] **T1-10B-13** `bridge/mcp/client/mod.rs` (8) — McpClient empty-state
+      - [ ] **T1-10B-13** `bridge/mcp/client/mod.rs` (8) -- McpClient empty-state
             / ToolError Display.
-      - [~] **T1-10B-14** `experience/scorer.rs` (5) —
+      - [~] **T1-10B-14** `experience/scorer.rs` (5) --
       RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
       Reason: EncounterScore, score_encounter(), and aggregate_encounter_scores()
       have ZERO callers on any MCP-reachable path. The coordinator uses
@@ -355,15 +355,17 @@ first; AI Runtime (Candle) comes last as the local provider behind the
       score_encounter(). The only non-test references are ExperienceScorer::new()
       passed to the coordinator (which calls .score(), not .score_encounter()).
       EncounterScore is pure internal math with no MCP surface.
-      - [~] **T1-10B-15** `learning/pipeline.rs` (3) —
-      RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
-      Reason: LearningPipeline (start_from_input, advance_stage, stats) has
-      ZERO callers on any MCP-reachable path. It's only used in
-      initialization.rs as a startup self-check (tracing::info log), not
-      exposed as an MCP tool. record_observation stores observations in DB
-      directly, never touching LearningPipeline. Pure internal state machine
-      with no MCP surface.
-      - [~] **T1-10B-16** `experience/evolution/engine.rs` (3) —
+      - [x] **T1-10B-15** `learning/pipeline.rs` (3) DONE 2026-08-14.
+            Group B (internal-only, no MCP surface) -- deleted the
+            `#[cfg(test)]` block (3 fns: test_start_pipeline,
+            test_advance_stage, test_pipeline_stats). LearningPipeline methods
+            (start_from_input, advance_stage, stats, get, get_by_stage,
+            cleanup) ARE used in production -- initialization.rs runs a startup
+            self-check that exercises every pub API -- but NOT via any MCP tool,
+            so the tests are internal-only. No dead-code warnings introduced
+            (40 warns unchanged). Gate: CfgTest 54 -> 53, fresh full rebuild,
+            145/145, 0 err, 0 untested, 0 emoji.
+      - [~] **T1-10B-16** `experience/evolution/engine.rs` (3) --
       RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
       Reason: EvolutionEngine's methods (create_behavior, record_result,
       add_evidence, get_metrics, update_priority, merge_behaviors,
@@ -387,17 +389,17 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             split_sentences). Create .rs with >=2 functions -> ingest_files ->
             chunks_created >= 2 (exercises parse_code). Removed test block
             from src/. Gate: 145/145, 0 warnings, 0 issues, 0 untested.
-      - [~] **T1-10B-18** `memory/repository.rs` (1) —
+      - [~] **T1-10B-18** `memory/repository.rs` (1) --
       RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
       Reason: SqliteMemoryRepository and the MemoryRepository trait have ZERO
-      callers outside repository.rs — they're unused dead code. The
+      callers outside repository.rs -- they're unused dead code. The
       store_memory MCP tool uses queries::insert_memory directly, not the
       repository abstraction. from_path is a constructor for a custom DB path
       that no MCP tool invokes. Cannot be exercised via MCP.
-      - [~] **T1-10B-19** `database/queries/memory.rs` (1) —
+      - [~] **T1-10B-19** `database/queries/memory.rs` (1) --
             RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
             Reason: delete_memories_by_string_ids has ZERO callers outside
-            its own test — it's dead code (both the function and its test are
+            its own test -- it's dead code (both the function and its test are
             wrapped in #[cfg(test)]). The archive_memory MCP tool uses
             delete_memories (by Uuid), not delete_memories_by_string_ids.
             Cannot be exercised via MCP.
@@ -415,7 +417,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             (get_embedding, delete_embedding) + the test block from src/.
             Gate: 145/145, 0 warnings, 0 issues, 0 untested.
 
-      ### Group C — empty cfg-test blocks (delete, trivial)
+      ### Group C -- empty cfg-test blocks (delete, trivial)
       - [ ] **T1-10B-Z** Remove 20 EMPTY `#[cfg(test)] mod tests{}` blocks
             (files with 0 actual #[test] fns). Low risk.
 
@@ -423,11 +425,11 @@ first; AI Runtime (Candle) comes last as the local provider behind the
       not flag #[cfg(test)]; deleting loses real coverage; no MCP surface to
       migrate to). Group A executed SMALLEST-FIRST to establish the migration
       pattern before the 16-test personality file. Group C last (trivial).
-      **Resume here:** T1-10B-10 (exploration/finding.rs, 1 test) — smallest,
+      **Resume here:** T1-10B-10 (exploration/finding.rs, 1 test) -- smallest,
       establishes pattern. Execution order: 10, 11, 09, 08, 04, 05, 03, 02, 06,
       07, 01, then Z.
 - [x] **T1-11** Handle broadcast `Lagged` events explicitly (skip+log or drain)
-      in the worker path. (commit 560efad — both event subscriber and worker manager drain lagged events + worker manager records failed job)
+      in the worker path. (commit 560efad -- both event subscriber and worker manager drain lagged events + worker manager records failed job)
 - [x] **T1-12** Update `src/bridge/app/initialization.rs` startup verification
       (comment already removed; verification now reads "Verify durability: a fresh queue instance restores the pending/running rows written above from SQLite").
 
@@ -436,11 +438,11 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 ## 1C. Loop-health metrics (V2-12)
 
 - [x] **T1-13** Add `loop_latency` metric capture around `AgentLoop::run`.
-      (commit in progress — added gauge fields + timer wrapping)
+      (commit in progress -- added gauge fields + timer wrapping)
 - [x] **T1-14** Add `confidence_drift` metric capture. DONE (verified
       2026-08-12 by codebase inspection). Captured in `src/agent/loop_runner.rs:176`
       (record_confidence_drift), not in event_subscriber/handlers.rs as originally
-      planned — the loop runner is the correct capture point (drift measured per
+      planned -- the loop runner is the correct capture point (drift measured per
       loop iteration). Field + record/get in `src/experience/metrics.rs`. Exposed
       via get_system_status (acp_handler.rs:437).
 - [x] **T1-15** Add promotion-throughput (reflection→hypothesis→knowledge)
@@ -449,7 +451,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
       record/get in `src/experience/metrics.rs`. Exposed via get_system_status
       (acp_handler.rs:438).
 - [x] **T1-16** Expose the three new metrics via the `get_system_status` MCP
-      tool. (done — `loop_health` block added to status JSON)
+      tool. (done -- `loop_health` block added to status JSON)
 
 **Done when:** `get_system_status` live shows loop_latency / confidence_drift /
 promotion_throughput; gate green.
@@ -459,7 +461,7 @@ promotion_throughput; gate green.
 - [x] **T1-17** Hook `emit_tool_experience` (publishes ExperienceRecorded)
       into the post-tool-execution dispatch wrapper. DONE (verified 2026-08-12).
       Wired in `src/bridge/rmcp/mod.rs:127` (success path) and `:141` (error path)
-      — both call `emit_tool_experience(tool_name, was_successful, &arguments)`.
+      -- both call `emit_tool_experience(tool_name, was_successful, &arguments)`.
       Impl in `src/bridge/rmcp/types.rs:121`. Note: impl method renamed to
       `emit_tool_experience` (not `emit_experience_recorded`); it publishes the
       ExperienceRecorded event via coordinator.process() internally.
@@ -467,7 +469,7 @@ promotion_throughput; gate green.
       DONE (verified 2026-08-12). The emit_tool_experience call sites are in
       mutually-exclusive match arms (Ok at mod.rs:127, Err at mod.rs:141), so a
       single tool execution emits exactly once. coordinator.process() publishes
-      ExperienceRecorded once per call. No explicit guard needed — structural
+      ExperienceRecorded once per call. No explicit guard needed -- structural
       idempotency via mutually-exclusive match arms.
 
 **Done when:** calling `store_memory` directly records an experience; no
@@ -485,12 +487,12 @@ double-emit from the agent loop; gate green.
 > `test_suite/test_suite_report.json` → `coverage.untested_tools` /
 > `coverage.phantom_tools`.
 
-### 1E.1 — Fix the phantom embedding tools (a real wiring defect)
+### 1E.1 -- Fix the phantom embedding tools (a real wiring defect)
 
 - [x] **T1-19** Fix the 6 phantom embedding tools (`store_embedding`,
       `get_embedding`, `search_similar`, `list_embeddings`, `delete_embedding`,
       `get_embedding_stats`). **DONE (commit b9b43ff).** Root cause: the memory
-      handler maintained three separate tool lists that drifted — `tool_names()`
+      handler maintained three separate tool lists that drifted -- `tool_names()`
       listed all 13, `execute_tool()` dispatched all 13, but `get_tools()` (which
       feeds the RMCP `tools/list` response) only built 7 `Tool::new` entries and
       omitted the 6 embedding tools. They were callable but not advertised, so
@@ -500,13 +502,13 @@ double-emit from the agent loop; gate green.
       live-callable, full round-trip (store→get→search→list→stats→delete→
       post-delete confirms gone), build 0 warnings, live 54/54, `phantom_tools`
       6→0. **Lesson:** the `tool_names()` / `get_tools()` / `execute_tool()` triad
-      in each handler is a drift hazard — three lists that must stay in sync.
+      in each handler is a drift hazard -- three lists that must stay in sync.
       Watch for the same pattern in other handlers.
 
-### 1E.2 — Add FunctionRegistry tests for untested tool groups
+### 1E.2 -- Add FunctionRegistry tests for untested tool groups
 
 One increment per group. Each adds test entries that call the tool via MCP and
-assert a sane response. Pattern is in `function_registry/` — copy an existing
+assert a sane response. Pattern is in `function_registry/` -- copy an existing
 entry, change the tool name + expected fields.
 
 - [x] **T1-20** ACP tools (9): `route_acp_message`, `register_agent`,
@@ -542,7 +544,7 @@ entry, change the tool name + expected fields.
   probing: `IsSuccess(None)` for tools that succeed on a default/fake call;
   `IsSuccess(Some("false"))` for 6 tools that return an MCP error on a fake id
   (`update_knowledge`, `update_reflection`, `validate_reflection`,
-  `get_evidence`, `add_world_relationship`, `archive_memory` — note
+  `get_evidence`, `add_world_relationship`, `archive_memory` -- note
   `archive_memory` returned success on a fresh memory in the direct probe but
   isError=true inside the suite, so it expects failure). **Probing tip:** to
   pick the right validation for a future tool, call it with a fake id via
@@ -550,14 +552,14 @@ entry, change the tool name + expected fields.
 
 **Done when:** `test_suite_report.json` → `coverage.untested_tools` is empty,
 `phantom_tools` is empty, suite exits 0. ✅ **DONE (commit 7775ca1):** untested
-0, phantom 0, 141/141 tests pass, exit 0. This is the **green-gate milestone** —
+0, phantom 0, 141/141 tests pass, exit 0. This is the **green-gate milestone** --
 every increment after this has an honest verify step.
 
 **End of TIER 1 = finished v0.0.1. Tag: `v0.0.1-clean`.**
 
 ---
 
-# 5. TIER 2 — Reach v0.0.2 (upgrade existing systems)
+# 5. TIER 2 -- Reach v0.0.2 (upgrade existing systems)
 
 > Goal: every existing subsystem conforms to its v0.0.2 chapter and
 > communicates through Data Contracts. End state = finished v0.0.2.
@@ -571,7 +573,7 @@ Create `src/data_contracts/`. Types-only first; wire adapters incrementally.
 - [ ] **T2-02** `Observation` struct + serde round-trip unit test.
 - [ ] **T2-03** `ContextPacket` struct + serde round-trip test.
 - [ ] **T2-04** `MemoryRecord` struct + serde round-trip test.
-- [ ] **T2-05** `ExperienceRecord` — alias/migrate the existing type; serde
+- [ ] **T2-05** `ExperienceRecord` -- alias/migrate the existing type; serde
       round-trip test.
 - [ ] **T2-06** `Plan` struct + serde round-trip test.
 - [ ] **T2-07** `Decision` struct + serde round-trip test.
@@ -663,7 +665,7 @@ gate green.
 
 ---
 
-# 6. TIER 3 — Reach v0.0.2.1 (add missing subsystems)
+# 6. TIER 3 -- Reach v0.0.2.1 (add missing subsystems)
 
 > Goal: every v0.0.2.1 chapter (01-33) has a corresponding implemented module or
 > documented deferral. Build in dependency order; AI Runtime/Multimodal/GUI last.
@@ -671,17 +673,17 @@ gate green.
 
 ## 3A. Execution & Tool engines (Chapters 12 & 13)
 
-- [ ] **T3-01** `src/execution/` skeleton — execution isolation, action
+- [ ] **T3-01** `src/execution/` skeleton -- execution isolation, action
       authorization (Chapter 12).
 - [ ] **T3-02** Execution: workflow graphs/DAGs + checkpoints.
 - [ ] **T3-03** Execution: result normalization + recovery.
-- [ ] **T3-04** `src/tools/` (Tool Engine) — capability registration contracts
+- [ ] **T3-04** `src/tools/` (Tool Engine) -- capability registration contracts
       distinct from skills (Chapter 13).
 - [ ] **T3-05** Tool: permissions + input/output contracts + isolation.
 
 ## 3B. Context subsystem (Chapters 07, 15, 16, 17)
 
-- [ ] **T3-06** `src/context/` (Context Engine) skeleton — RetrievalPlanner,
+- [ ] **T3-06** `src/context/` (Context Engine) skeleton -- RetrievalPlanner,
       TokenBudget, TopicTracker, SlidingWindow (Chapter 07).
 - [ ] **T3-07** Context: 4-level memory hierarchy (L0 live, L1 working summary,
       L2 checkpoints, L3 raw DB) (Chapter 14).
@@ -696,7 +698,7 @@ gate green.
 
 ## 3C. Conversation Engine (Chapter 06)
 
-- [ ] **T3-12** `src/conversation/` skeleton — interaction/session ownership,
+- [ ] **T3-12** `src/conversation/` skeleton -- interaction/session ownership,
       lifecycle, interruption, traceability (Chapter 06).
 - [ ] **T3-13** Conversation: Input → Understanding → Context Assembly →
       Reasoning → Planning → Tool Execution → Response → Learning pipeline.
@@ -722,7 +724,7 @@ gate green.
 ## 3F. Governance & Safety (Chapters 24, 25, 26)
 
 - [ ] **T3-20** AI Contributor Operating Agreement: human/AI contribution
-      boundaries, review gates, traceability (Chapter 24 — process + tests).
+      boundaries, review gates, traceability (Chapter 24 -- process + tests).
 - [ ] **T3-21** Security & Trust: identity, authorization, capability
       security, trust boundaries, memory protection, audit (Chapter 25).
 - [ ] **T3-22** Self-Improvement/Evolution: controlled hypotheses,
@@ -798,7 +800,7 @@ gate green.
 
 - `find src -name "self_check.rs"` returns empty.
 - `grep -rn 'allow(' src/` returns nothing (already true).
-- **test_suite exits 0** — `coverage.untested_tools` empty,
+- **test_suite exits 0** -- `coverage.untested_tools` empty,
   `coverage.phantom_tools` empty (the 1E green-gate milestone).
 - Queue is SQLite-backed and survives a process restart.
 - `get_system_status` shows loop_latency / confidence_drift /
@@ -843,43 +845,43 @@ gate green.
 
 ---
 
-# 8. v0.0.1 CONFORMANCE WORK (legacy status — for reference)
+# 8. v0.0.1 CONFORMANCE WORK (legacy status -- for reference)
 
 > Moved here from AGENTS.md on 2026-08-11. Historical status of the v0.0.1
 > conformance work (P0-P4). TIER 1 above supersedes this for forward planning,
 > but it records what was already done so progress isn't re-attempted.
 
-## P0 — event spine drives learning — DONE
+## P0 -- event spine drives learning -- DONE
 
 - V2-01/02/03: `ExperienceRecorded → Reflection → Hypothesis → Knowledge →
 Reputation` wired in `src/experience/integration/event_subscriber/handlers.rs`.
 
-## P1 — cognitive loop — PARTIAL
+## P1 -- cognitive loop -- PARTIAL
 
 - V2-04: goal-driven `src/agent/` loop DONE; `run_agent_goal` MCP tool works
   (status=Achieved, confidence=0.507).
 - V2-05: generic MCP dispatch does NOT auto-emit experience (→ T1-17/T1-18).
 
-## P2 — stub chapters — DONE
+## P2 -- stub chapters -- DONE
 
 - V2-06: World Model exists. V2-07: `src/agent/safety_gate/` (sandbox,
   rollback, hallucination, uncertainty). V2-08: Personality emotional_weight →
   confidence (`personality/decision_making.rs:49-51`).
 
-## P3 — self-check probes — REMAINING (→ T1-01..T1-08)
+## P3 -- self-check probes -- REMAINING (→ T1-01..T1-08)
 
 - V2-09: 8 self_check.rs files remain. Pattern: wire MCP tool, delete self_check.
 
-## P3.1 — `#![allow]` violations — RESOLVED
+## P3.1 -- `#![allow]` violations -- RESOLVED
 
 - 2026-08-11: `grep -rn '#!\[allow' src` returns 0; `grep -rln '#\[allow' src`
   returns 0. Both clean.
 
-## P4 — performance maturity — REMAINING (→ T1-09..T1-16)
+## P4 -- performance maturity -- REMAINING (→ T1-09..T1-16)
 
 - V2-11: in-memory JobQueue (→ SQLite). V2-12: no loop-health metrics.
 
-## GATE (coverage) — ✅ GREEN (T1-19..T1-29 all DONE)
+## GATE (coverage) -- ✅ GREEN (T1-19..T1-29 all DONE)
 
 - Brain_tester now exits 0. 141/141 tests pass, 0 code issues, 0 warnings.
 - coverage: untested 0, phantom 0. All 134 server tools are tested.
@@ -950,10 +952,10 @@ Reputation` wired in `src/experience/integration/event_subscriber/handlers.rs`.
   `PlannerStatistics` → `Planner::create_plan` tracks `plans_created`.
   Warnings 77→69.
 - **Remaining 69 dead-code warnings** are pre-existing scaffolded-but-unwired
-  subsystems in `src/experience/` (NOT T1-10B damage — they predate it; the
+  subsystems in `src/experience/` (NOT T1-10B damage -- they predate it; the
   08-12 snapshot showed 163 warnings). Clusters: reflection_pipeline +
   Reflector/InsightProducer/ReflectionInsight/Evidence/Review/Lesson (redundant
-  with EventSubscriber+LearningCoordinator §4.04 path — needs wire-vs-delete
+  with EventSubscriber+LearningCoordinator §4.04 path -- needs wire-vs-delete
   decision per Dead Code Protocol), exploration store
   (InMemoryExplorationRepository, "implemented but not yet integrated"),
   reputation (ReputationRecord/ReputationTarget/factors), encounter
@@ -972,7 +974,7 @@ Reputation` wired in `src/experience/integration/event_subscriber/handlers.rs`.
   (`experience_count` wired into analyzer), graph `edge_count` unwrapped +
   wired into probe, `HypothesisStatistics`/`StatisticsSnapshot` unwrapped from
   `#[cfg(test)]` and wired into maintenance probe.
-- ✅ **T1-10 DONE** — SQLite JobQueue fully wired (queue.rs, worker_manager/manager.rs,
+- ✅ **T1-10 DONE** -- SQLite JobQueue fully wired (queue.rs, worker_manager/manager.rs,
   background.rs, bridge/mcp/context.rs, initialization.rs) and verified by a
   live restart-durability test in test_suite (tests/queue_durability.rs): inject
   pending row → kill server → restart in same dir → row restored into live
