@@ -60,15 +60,24 @@ pub async fn run_comprehensive_tests(
 
     let source_path = paths::project_root().join("src");
     let analyzer = CodeAnalyzer::new(source_path.clone());
-    let code_issues = analyzer.analyze();
+    let mut code_issues = analyzer.analyze();
+    // Also enforce the no-emoji rule across test_suite/src/ (AGENTS.md:
+    // "No emoji / plain-text markers"). Run emoji-only scan there — the full
+    // analyzer is not run on test_suite/src because checks like cfg_test have
+    // robot_brain-src-specific semantics that do not apply to the test suite.
+    let test_suite_src = paths::project_root().join("test_suite").join("src");
+    let emoji_issues = analyzer.analyze_emoji_in_dir(&test_suite_src);
+    code_issues.extend(emoji_issues);
     let summary = analyzer.get_summary(&code_issues);
 
     summary.print_table();
     report.set_code_issues(code_issues.clone());
-    report.set_source_path(source_path.clone());
+    // Use the project root as the display base so relative paths render
+    // correctly for BOTH robot_brain src/ and test_suite/src/ files.
+    report.set_source_path(paths::project_root());
 
     // Print issues table
-    print_issues_table(&code_issues, &source_path);
+    print_issues_table(&code_issues, &paths::project_root());
 
     // Step 1b: Run lint analysis (clippy + cargo check)
     crate::teeprintln!("\n📋 PHASE 1B: LINT ANALYSIS (clippy + cargo check)");

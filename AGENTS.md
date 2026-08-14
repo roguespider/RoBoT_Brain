@@ -197,6 +197,36 @@ When modifying or extending this codebase, you **MUST** adhere to these strict c
 6. **Name Conflicts**
    - If renaming types, use descriptive new names (e.g., `LearningPattern` instead of `Pattern`)
 
+7. **NO Emoji / Plain-Text Markers Only**
+   - Strictly forbidden in ALL code and `.agents/` docs: decorative emoji
+     (check marks, cross marks, party popper, clipboard, warning signs, etc.)
+     and the variation selector U+FE0F. Emoji caused real mojibake breakage in
+     `.agents/` files (multi-byte sequences mangled when round-tripping
+     through sed/git diffs/terminals), breaking automated edits.
+   - **Scope:** all `.rs` files (both robot_brain `src/` and `test_suite/src/`),
+     `.agents/**/*.md`, `.agents/**/*.sh`, githooks, and README. **Excluded:**
+     `robot_architecture/**` (user-authored, out of scope).
+   - **Permitted non-ASCII:** flow-diagram arrows `->` `|` `v` (Unicode
+     U+2190-U+21FF) in doc-comments and docs. These carry meaning and are NOT
+     banned. Only decorative emoji are banned.
+   - **Plain-text markers to use instead:**
+
+     | Emoji | Plain-text |
+     |-------|-----------|
+     | check / OK   | `[OK]` / `[PASS]` |
+     | cross / X    | `[FAIL]` / `[ERR]` |
+     | warning      | `[WARN]` |
+     | clipboard/info | `[INFO]` |
+     | party / done | `[DONE]` |
+     | no-entry     | `[BLOCKED]` |
+     | star / gear  | `[INFO]` |
+
+   - **Enforcement:** the quality gate flags decorative emoji as gate-failing
+     `Emoji` code issues (regex in `test_suite/src/code_analyzer/patterns.rs`,
+     `check_emoji` in `analyzer.rs`, scanned across both `src/` and
+     `test_suite/src/`). Status markers in `.agents/*.md` use `[x]`/`[ ]` for
+     task state and `[DONE]`/`[RED]`/`[PASS]`/`[FAIL]` for gate status.
+
 ### Dead Code Resolution Protocol
 
 > **Don't add `#[cfg(test)]` to robot_brain's `src/`.** It causes code-quality

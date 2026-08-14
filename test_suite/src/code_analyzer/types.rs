@@ -44,6 +44,12 @@ pub enum IssueType {
     /// release so these blocks are invisible to the compiler; this check
     /// surfaces them explicitly.
     CfgTest,
+    /// Decorative emoji in code (AGENTS.md "No emoji / plain-text
+    /// markers"). Arrows (`->` `|` `v` unicode) are permitted for flow
+    /// diagrams; only decorative emoji (check/cross marks, party popper,
+    /// clipboard, warning, etc.) are banned. Plain-text markers replace
+    /// them: `[OK]` `[FAIL]` `[WARN]` `[INFO]` `[BLOCKED]`.
+    Emoji,
 }
 
 impl std::fmt::Display for IssueType {
@@ -61,6 +67,7 @@ impl std::fmt::Display for IssueType {
             IssueType::AlwaysErr => write!(f, "Always Returns Err"),
             IssueType::PlaceholderReturn => write!(f, "Placeholder Return"),
             IssueType::CfgTest => write!(f, "#[cfg(test)]"),
+            IssueType::Emoji => write!(f, "Emoji"),
         }
     }
 }

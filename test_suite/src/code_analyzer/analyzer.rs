@@ -137,6 +137,11 @@ impl CodeAnalyzer {
             if let Some(issue) = self.check_cfg_test(line, file_path, line_number) {
                 issues.push(issue);
             }
+
+            // Check for decorative emoji — plain-text markers only (AGENTS.md)
+            if let Some(issue) = self.check_emoji(line, file_path, line_number) {
+                issues.push(issue);
+            }
         }
 
         // Analyze for stub functions
@@ -299,6 +304,60 @@ impl CodeAnalyzer {
         } else {
             None
         }
+    }
+
+    /// Detect decorative emoji in source (AGENTS.md "No emoji / plain-text
+    /// markers"). Arrows (U+2190-U+21FF: `->` `|` `v` unicode) are NOT banned
+    /// and remain permitted for flow diagrams. Only the decorative emoji in
+    /// `patterns.emoji` are flagged. Emoji in code caused real mojibake
+    /// breakage in `.agents/` docs (multi-byte sequences mangled by
+    /// round-tripping through sed/git diffs); plain-text markers
+    /// (`[OK]` `[FAIL]` `[WARN]` `[INFO]` `[BLOCKED]`) replace them.
+    fn check_emoji(
+        &self,
+        line: &str,
+        file_path: &Path,
+        line_number: usize,
+    ) -> Option<CodeIssue> {
+        if let Some(m) = self.patterns.emoji.find(line) {
+            let ch = m.as_str();
+            Some(CodeIssue {
+                file_path: file_path.to_path_buf(),
+                line_number,
+                issue_type: IssueType::Emoji,
+                description: format!(
+                    "decorative emoji in code - use plain-text markers ([OK]/[FAIL]/[WARN]/[INFO]/[BLOCKED]); arrows (-> | v) are permitted (AGENTS.md: No emoji / plain-text markers). Found: {}",
+                    ch
+                ),
+            })
+        } else {
+            None
+        }
+    }
+
+    /// Scan a directory tree for decorative emoji only.
+    ///
+    /// Used to enforce the no-emoji rule across `test_suite/src/` in addition
+    /// to robot_brain `src/` (which is scanned by the normal per-file loop).
+    /// This runs ONLY `check_emoji` — not the full analyzer — because other
+    /// checks (e.g. cfg_test) have directory-specific semantics that do not
+    /// apply to the test suite itself.
+    pub fn analyze_emoji_in_dir(&self, dir: &Path) -> Vec<CodeIssue> {
+        let mut files = Vec::new();
+        self.collect_rust_files(dir, &mut files);
+        let mut issues = Vec::new();
+        for file_path in &files {
+            let content = match std::fs::read_to_string(file_path) {
+                Ok(c) => c,
+                Err(_) => continue,
+            };
+            for (line_num, line) in content.lines().enumerate() {
+                if let Some(issue) = self.check_emoji(line, file_path, line_num + 1) {
+                    issues.push(issue);
+                }
+            }
+        }
+        issues
     }
 
     /// Detect `use` imports whose imported names are never referenced elsewhere in the file.
