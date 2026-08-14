@@ -13,11 +13,11 @@ pub async fn test_delete_ingested_files(
         "file_ids": file_ids
     })).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ delete_ingested_files - SUCCESS");
+            crate::teeprintln!("  [OK] delete_ingested_files - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ⚠ delete_ingested_files - BLOCKED (expected without admin): {}", e);
+            crate::teeprintln!("  [WARN] delete_ingested_files - BLOCKED (expected without admin): {}", e);
             stats.skipped += 1;
         }
     }
