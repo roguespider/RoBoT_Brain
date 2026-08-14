@@ -33,10 +33,17 @@ impl AcpRouter {
 
     /// Route a message to the appropriate agent
     pub fn route(&self, message: AcpMessage) -> Result<Option<AcpMessage>> {
+        let expects_reply = message.message_type.expects_reply();
+
         // Check for custom handlers first
         let type_name = format!("{:?}", message.message_type);
         if let Ok(handlers) = self.handlers.read() {
             if let Some(handler) = handlers.get(&type_name) {
+                tracing::trace!(
+                    "ACP routing {:?} to custom handler (expects_reply={})",
+                    message.message_type,
+                    expects_reply
+                );
                 return handler(message);
             }
         }
@@ -45,7 +52,15 @@ impl AcpRouter {
         let agent = self.registry.get(&message.receiver)?;
 
         match agent {
-            Some(agent) => agent.handle(message),
+            Some(agent) => {
+                tracing::trace!(
+                    "ACP routing {:?} to agent {} (expects_reply={})",
+                    message.message_type,
+                    message.receiver,
+                    expects_reply
+                );
+                agent.handle(message)
+            }
             None => Err(anyhow!("Unknown receiver: {}", message.receiver)),
         }
     }

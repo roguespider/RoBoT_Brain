@@ -968,6 +968,22 @@ impl App {
         let acp_registry = Arc::new(AcpRegistry::new());
         let acp_router = Arc::new(AcpRouter::new(acp_registry.clone()));
 
+        // Register a default Inform broadcast handler so broadcast-style ACP
+        // messages are observed even when no agent-specific handler exists.
+        acp_router
+            .register_handler(
+                crate::bridge::acp::message::AcpMessageType::Inform,
+                |msg| {
+                    tracing::info!(
+                        "ACP Inform broadcast received from {}: {}",
+                        msg.sender,
+                        msg.payload
+                    );
+                    Ok(None)
+                },
+            )
+            .map_err(|e| anyhow::anyhow!("Failed to register ACP Inform handler: {}", e))?;
+
         // Register system agents
         let system_agent = crate::bridge::acp::system_agent::create_system_agent();
         let worker_agent = crate::bridge::acp::system_agent::create_worker_agent();
@@ -1110,6 +1126,14 @@ impl App {
         for agent_id in &agents {
             tracing::info!("Registered ACP agent: {}", agent_id);
         }
+
+        // Diagnostic: count agents by type so the registry's type-indexed
+        // lookup is exercised on startup.
+        let worker_agents = router
+            .registry()
+            .get_by_type("worker")
+            .map_err(|e| anyhow::anyhow!("Failed to query ACP agents by type: {}", e))?;
+        tracing::info!("ACP worker agents by type: {}", worker_agents.len());
 
         // Send startup query to system agent to verify message routing
         let system_id = crate::bridge::acp::AcpAgentId::new("system", "main");

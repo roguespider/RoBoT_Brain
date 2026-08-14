@@ -507,6 +507,16 @@ impl HypothesisEngine {
                 );
             }
         }
+        // Exercise the structural validator so the validation report path
+        // stays wired to a real caller.
+        if let Some(probe_hyp) = probes.first() {
+            let report = validator.validate(probe_hyp);
+            tracing::debug!(
+                "Hypothesis probe validation: valid={}, issues={}",
+                report.valid,
+                report.issues.len()
+            );
+        }
         let generator = HypothesisGenerator::new();
         if let Ok(Some(pattern_hypothesis)) = generator.generate_from_pattern("observed pattern") {
             tracing::debug!(
