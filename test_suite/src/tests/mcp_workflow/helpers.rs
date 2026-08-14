@@ -52,15 +52,15 @@ pub fn print_mcp_workflow_results(results: &super::results::McpWorkflowTestResul
     crate::teeprintln!("{}", "=".repeat(80));
 
     // MCP Protocol Status
-    crate::teeprintln!("\n🔌 MCP Protocol Status:");
+    crate::teeprintln!("\n[INFO] MCP Protocol Status:");
     crate::teeprintln!(
         "  - Protocol implementation: {}",
-        if results.mcp_protocol_valid { "✓ Valid" } else { "✗ Issues detected" }
+        if results.mcp_protocol_valid { "[OK] Valid" } else { "[FAIL] Issues detected" }
     );
 
     if !results.mcp_protocol_valid {
         crate::teeprintln!("\n┌{:─<78}┐", "");
-        crate::teeprintln!("│ {:^76} │", "⚠️  MCP SERVER IMPLEMENTATION REQUIRED");
+        crate::teeprintln!("│ {:^76} │", "[WARN] MCP SERVER IMPLEMENTATION REQUIRED");
         crate::teeprintln!("├{:─<78}┤", "");
         crate::teeprintln!("│ {:^76} │", "The MCP server must implement these ServerHandler trait methods:");
         crate::teeprintln!("│ {:^76} │", "");
@@ -80,21 +80,21 @@ pub fn print_mcp_workflow_results(results: &super::results::McpWorkflowTestResul
     }
 
     // Discovery Results
-    crate::teeprintln!("\n📋 Workflow Discovery:");
+    crate::teeprintln!("\n[INFO] Workflow Discovery:");
     crate::teeprintln!(
         "  - get_workflow tool available: {}",
         if results.workflow_discovery.get_workflow_available {
-            "✓"
+            "[OK]"
         } else {
-            "✗"
+            "[FAIL]"
         }
     );
     crate::teeprintln!(
         "  - Default workflow retrieved: {}",
         if results.workflow_discovery.default_workflow_retrieved {
-            "✓"
+            "[OK]"
         } else {
-            "✗"
+            "[FAIL]"
         }
     );
     crate::teeprintln!(
@@ -104,20 +104,20 @@ pub fn print_mcp_workflow_results(results: &super::results::McpWorkflowTestResul
     crate::teeprintln!(
         "  - Workflow rules understood: {}",
         if results.workflow_discovery.workflow_rules_understood {
-            "✓"
+            "[OK]"
         } else {
-            "✗"
+            "[FAIL]"
         }
     );
 
     // Execution Results
-    crate::teeprintln!("\n⚙️  Workflow Execution:");
+    crate::teeprintln!("\n[INFO] Workflow Execution:");
     crate::teeprintln!(
         "  - Workflow creation: {}",
         if results.workflow_execution.create_workflow_succeeds {
-            "✓"
+            "[OK]"
         } else {
-            "✗"
+            "[FAIL]"
         }
     );
     crate::teeprintln!(
@@ -127,38 +127,38 @@ pub fn print_mcp_workflow_results(results: &super::results::McpWorkflowTestResul
     crate::teeprintln!(
         "  - Step addition: {}",
         if results.workflow_execution.add_step_succeeds {
-            "✓"
+            "[OK]"
         } else {
-            "✗"
+            "[FAIL]"
         }
     );
     crate::teeprintln!(
         "  - Workflow start: {}",
         if results.workflow_execution.start_workflow_succeeds {
-            "✓"
+            "[OK]"
         } else {
-            "✗"
+            "[FAIL]"
         }
     );
     crate::teeprintln!(
         "  - Workflow completion: {}",
         if results.workflow_execution.workflow_completes {
-            "✓"
+            "[OK]"
         } else {
-            "✗"
+            "[FAIL]"
         }
     );
     crate::teeprintln!(
         "  - Pause/Resume: {}",
         if results.workflow_execution.pause_resume_works {
-            "✓"
+            "[OK]"
         } else {
-            "✗"
+            "[FAIL]"
         }
     );
 
     // Tools Results
-    crate::teeprintln!("\n🔧 Workflow Tools:");
+    crate::teeprintln!("\n[INFO] Workflow Tools:");
     crate::teeprintln!("  - Total tools: {}", results.workflow_tools.total_tools);
     crate::teeprintln!(
         "  - Workflow tools available: {}",
@@ -171,23 +171,23 @@ pub fn print_mcp_workflow_results(results: &super::results::McpWorkflowTestResul
     crate::teeprintln!(
         "  - Tool definitions valid: {}",
         if results.workflow_tools.workflow_tool_definitions_valid {
-            "✓"
+            "[OK]"
         } else {
-            "✗"
+            "[FAIL]"
         }
     );
 
     // Agent Integration Results
-    crate::teeprintln!("\n🤖 Agent-Workflow Integration:");
+    crate::teeprintln!("\n[INFO] Agent-Workflow Integration:");
     crate::teeprintln!(
         "  - Agent discovers workflow: {}",
         if results
             .agent_workflow_integration
             .agent_discovers_workflow_first
         {
-            "✓"
+            "[OK]"
         } else {
-            "✗"
+            "[FAIL]"
         }
     );
     crate::teeprintln!(
@@ -196,9 +196,9 @@ pub fn print_mcp_workflow_results(results: &super::results::McpWorkflowTestResul
             .agent_workflow_integration
             .agent_uses_correct_workflow_for_purpose
         {
-            "✓"
+            "[OK]"
         } else {
-            "✗"
+            "[FAIL]"
         }
     );
     crate::teeprintln!(
@@ -207,9 +207,9 @@ pub fn print_mcp_workflow_results(results: &super::results::McpWorkflowTestResul
             .agent_workflow_integration
             .agent_chains_workflow_steps
         {
-            "✓"
+            "[OK]"
         } else {
-            "✗"
+            "[FAIL]"
         }
     );
     crate::teeprintln!(
@@ -218,44 +218,44 @@ pub fn print_mcp_workflow_results(results: &super::results::McpWorkflowTestResul
             .agent_workflow_integration
             .agent_respects_workflow_dependencies
         {
-            "✓"
+            "[OK]"
         } else {
-            "✗"
+            "[FAIL]"
         }
     );
 
     // E2E Results
-    crate::teeprintln!("\n🔄 End-to-End Scenarios:");
+    crate::teeprintln!("\n[INFO] End-to-End Scenarios:");
     crate::teeprintln!(
         "  - File ingestion workflow: {}",
         if results.end_to_end_scenarios.file_ingestion_workflow {
-            "✓"
+            "[OK]"
         } else {
-            "✗"
+            "[FAIL]"
         }
     );
     crate::teeprintln!(
         "  - Memory search workflow: {}",
         if results.end_to_end_scenarios.memory_search_workflow {
-            "✓"
+            "[OK]"
         } else {
-            "✗"
+            "[FAIL]"
         }
     );
     crate::teeprintln!(
         "  - Experience recording workflow: {}",
         if results.end_to_end_scenarios.experience_recording_workflow {
-            "✓"
+            "[OK]"
         } else {
-            "✗"
+            "[FAIL]"
         }
     );
     crate::teeprintln!(
         "  - Multi-step workflow: {}",
         if results.end_to_end_scenarios.multi_step_workflow {
-            "✓"
+            "[OK]"
         } else {
-            "✗"
+            "[FAIL]"
         }
     );
 
@@ -299,13 +299,13 @@ pub fn print_mcp_workflow_results(results: &super::results::McpWorkflowTestResul
     );
 
     // All checks passed
-    let status = "🎉 MCP WORKFLOW INTEGRATION COMPLETE";
+    let status = "[DONE] MCP WORKFLOW INTEGRATION COMPLETE";
 
     crate::teeprintln!("\n{}", status);
     
     if !results.mcp_protocol_valid {
         crate::teeprintln!("\n┌{:─<78}┐", "");
-        crate::teeprintln!("│ {:^76} │", "🔧 REQUIRED FIX: Implement ServerHandler Trait Methods");
+        crate::teeprintln!("│ {:^76} │", "[WARN] REQUIRED FIX: Implement ServerHandler Trait Methods");
         crate::teeprintln!("├{:─<78}┤", "");
         crate::teeprintln!("│ {:^76} │", "File: src/bridge/rmcp/mod.rs");
         crate::teeprintln!("│ {:^76} │", "");
@@ -328,7 +328,7 @@ pub fn print_mcp_workflow_results(results: &super::results::McpWorkflowTestResul
         crate::teeprintln!("│ {:^76} │", "}");
         crate::teeprintln!("└{:─<78}┘", "");
         
-        crate::teeprintln!("\n📚 See rmcp crate documentation for ListToolsResult and CallToolResult types.");
+        crate::teeprintln!("\n[INFO] See rmcp crate documentation for ListToolsResult and CallToolResult types.");
         crate::teeprintln!("   The test_suite will pass once these methods return proper values.");
     }
 
