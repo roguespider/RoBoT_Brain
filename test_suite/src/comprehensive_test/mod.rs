@@ -39,14 +39,14 @@ pub async fn run_comprehensive_tests(
     crate::teeprintln!("{}", "#".repeat(100));
 
     // Step 0: Test MCP Protocol basics first
-    crate::teeprintln!("\n📊 PHASE 0: MCP PROTOCOL VALIDATION");
+    crate::teeprintln!("\n[INFO] PHASE 0: MCP PROTOCOL VALIDATION");
     crate::teeprintln!("{}", "─".repeat(100));
     
     let mcp_ok = test_mcp_basics(client, stats).await;
     report.set_mcp_protocol_ok(mcp_ok);
     
     if !mcp_ok {
-        crate::teeprintln!("\n⚠️  MCP Protocol Issue Detected!");
+        crate::teeprintln!("\n[WARN] MCP Protocol Issue Detected!");
         crate::teeprintln!("    The MCP server must implement ServerHandler trait methods:");
         crate::teeprintln!("    - list_tools() - Returns ListToolsResult with available tools");
         crate::teeprintln!("    - call_tool() - Executes tools and returns CallToolResult");
@@ -55,7 +55,7 @@ pub async fn run_comprehensive_tests(
     }
 
     // Step 1: Analyze source code for issues
-    crate::teeprintln!("\n📊 PHASE 1: SOURCE CODE ANALYSIS");
+    crate::teeprintln!("\n[INFO] PHASE 1: SOURCE CODE ANALYSIS");
     crate::teeprintln!("{}", "─".repeat(100));
 
     let source_path = paths::project_root().join("src");
@@ -80,7 +80,7 @@ pub async fn run_comprehensive_tests(
     print_issues_table(&code_issues, &paths::project_root());
 
     // Step 1b: Run lint analysis (clippy + cargo check)
-    crate::teeprintln!("\n📋 PHASE 1B: LINT ANALYSIS (clippy + cargo check)");
+    crate::teeprintln!("\n[INFO] PHASE 1B: LINT ANALYSIS (clippy + cargo check)");
     crate::teeprintln!("{}", "─".repeat(100));
 
     let project_path = paths::project_root();
@@ -89,7 +89,7 @@ pub async fn run_comprehensive_tests(
     let clippy_issues = match LintAnalyzer::run_clippy(&project_path) {
         Ok(issues) => issues,
         Err(e) => {
-            crate::teeprintln!("    ⚠️  Clippy failed: {}", e);
+            crate::teeprintln!("    [WARN] Clippy failed: {}", e);
             Vec::new()
         }
     };
@@ -98,7 +98,7 @@ pub async fn run_comprehensive_tests(
     let check_issues = match LintAnalyzer::run_check(&project_path) {
         Ok(issues) => issues,
         Err(e) => {
-            crate::teeprintln!("    ⚠️  Cargo check failed: {}", e);
+            crate::teeprintln!("    [WARN] Cargo check failed: {}", e);
             Vec::new()
         }
     };
@@ -122,7 +122,7 @@ pub async fn run_comprehensive_tests(
     report.set_lint_issues(all_lint_issues);
 
     // Step 2: Get all test requirements
-    crate::teeprintln!("\n📋 PHASE 2: COLLECTING TEST REQUIREMENTS");
+    crate::teeprintln!("\n[INFO] PHASE 2: COLLECTING TEST REQUIREMENTS");
     crate::teeprintln!("{}", "─".repeat(100));
 
     let requirements = FunctionRegistry::get_all_functions();
@@ -144,14 +144,14 @@ pub async fn run_comprehensive_tests(
     // tools/list) against the tools the FunctionRegistry exercises. Any server
     // tool with no matching test requirement is a coverage gap — a tool that
     // could break without the suite noticing.
-    crate::teeprintln!("\n  🔎 TOOL COVERAGE ANALYSIS");
+    crate::teeprintln!("\n  [INFO] TOOL COVERAGE ANALYSIS");
     let server_tool_names: Vec<String> = match client.list_tools().await {
         Ok(tools) => tools
             .iter()
             .filter_map(|t| t.get("name").and_then(|n| n.as_str()).map(|s| s.to_string()))
             .collect(),
         Err(e) => {
-            crate::teeprintln!("    ⚠️  Could not retrieve server tool list for coverage check: {}", e);
+            crate::teeprintln!("    [WARN] Could not retrieve server tool list for coverage check: {}", e);
             Vec::new()
         }
     };
@@ -168,20 +168,20 @@ pub async fn run_comprehensive_tests(
     );
     if coverage.has_gap() {
         crate::teeprintln!(
-            "    ⚠️  {} server tool(s) have NO test: {}",
+            "    [WARN] {} server tool(s) have NO test: {}",
             coverage.untested_count(),
             coverage.untested_tools.join(", ")
         );
     }
     if !coverage.phantom_tools.is_empty() {
         crate::teeprintln!(
-            "    ℹ️  {} registry tool(s) not exposed by server: {}",
+            "    [INFO] {} registry tool(s) not exposed by server: {}",
             coverage.phantom_count(),
             coverage.phantom_tools.join(", ")
         );
     }
     if !coverage.has_gap() && coverage.phantom_tools.is_empty() {
-        crate::teeprintln!("    ✅ Tool coverage is complete — every server tool is tested");
+        crate::teeprintln!("    [OK] Tool coverage is complete — every server tool is tested");
     }
     report.set_coverage(coverage);
 
@@ -200,8 +200,8 @@ pub async fn run_comprehensive_tests(
         )
         .await
     {
-        Ok(_) => crate::teeprintln!("    ✅ Workflow initialized"),
-        Err(e) => crate::teeprintln!("    ⚠️  Workflow init warning: {}", e),
+        Ok(_) => crate::teeprintln!("    [OK] Workflow initialized"),
+        Err(e) => crate::teeprintln!("    [WARN] Workflow init warning: {}", e),
     }
 
     // Print test table header
@@ -235,21 +235,21 @@ pub async fn run_comprehensive_tests(
     crate::teeprintln!("\n🔒 WORKFLOW ENFORCEMENT: Initializing...");
     match client.call_tool("get_workflow", serde_json::json!({"purpose": "general"})).await {
         Ok(_result) => {
-            crate::teeprintln!("  ✅ Workflow retrieved - enforcement active");
+            crate::teeprintln!("  [OK] Workflow retrieved - enforcement active");
         }
         Err(e) => {
-            crate::teeprintln!("  ⚠️  Failed to retrieve workflow: {}", e);
+            crate::teeprintln!("  [WARN] Failed to retrieve workflow: {}", e);
         }
     }
 
     // Also call search_memory to satisfy memory search requirement
     crate::teeprintln!("  🔍 Checking memory...");
     match client.call_tool("search_memory", serde_json::json!({"query": "test"})).await {
-        Ok(_) => crate::teeprintln!("    ✓ Memory search responded"),
-        Err(e) => crate::teeprintln!("    ⚠️  Memory search failed: {}", e),
+        Ok(_) => crate::teeprintln!("    [OK] Memory search responded"),
+        Err(e) => crate::teeprintln!("    [WARN] Memory search failed: {}", e),
     }
     
-    crate::teeprintln!("  ✅ Workflow enforcement satisfied - running tests...\n");
+    crate::teeprintln!("  [OK] Workflow enforcement satisfied - running tests...\n");
 
     // Run tests for each category
     let mut data_created: HashMap<String, Vec<String>> = HashMap::new();
@@ -312,7 +312,7 @@ pub async fn run_comprehensive_tests(
     );
 
     // Step 4: Generate report
-    crate::teeprintln!("\n📊 PHASE 4: GENERATING REPORT");
+    crate::teeprintln!("\n[INFO] PHASE 4: GENERATING REPORT");
     crate::teeprintln!("{}", "─".repeat(100));
 
     report.print_report();
