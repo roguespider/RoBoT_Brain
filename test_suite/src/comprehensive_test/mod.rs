@@ -186,7 +186,7 @@ pub async fn run_comprehensive_tests(
     report.set_coverage(coverage);
 
     // Step 3: Run all tests
-    crate::teeprintln!("\n🧪 PHASE 3: RUNNING END-TO-END TESTS");
+    crate::teeprintln!("\n[INFO] PHASE 3: RUNNING END-TO-END TESTS");
     crate::teeprintln!("{}", "─".repeat(100));
 
     // First, ensure workflow is initialized (required for most tests)
@@ -232,7 +232,7 @@ pub async fn run_comprehensive_tests(
 
     // CRITICAL: Initialize workflow enforcement by calling get_workflow first
     // This is REQUIRED before any non-exempt tool can be called
-    crate::teeprintln!("\n🔒 WORKFLOW ENFORCEMENT: Initializing...");
+    crate::teeprintln!("\n[INFO] WORKFLOW ENFORCEMENT: Initializing...");
     match client.call_tool("get_workflow", serde_json::json!({"purpose": "general"})).await {
         Ok(_result) => {
             crate::teeprintln!("  [OK] Workflow retrieved - enforcement active");
@@ -243,7 +243,7 @@ pub async fn run_comprehensive_tests(
     }
 
     // Also call search_memory to satisfy memory search requirement
-    crate::teeprintln!("  🔍 Checking memory...");
+    crate::teeprintln!("  [INFO] Checking memory...");
     match client.call_tool("search_memory", serde_json::json!({"query": "test"})).await {
         Ok(_) => crate::teeprintln!("    [OK] Memory search responded"),
         Err(e) => crate::teeprintln!("    [WARN] Memory search failed: {}", e),
