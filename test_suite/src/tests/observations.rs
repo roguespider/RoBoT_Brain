@@ -59,22 +59,22 @@ pub async fn run_observations_tests(
                     || v.pointer("/observation/id").is_some()
             }
             Err(e) => {
-                crate::teeprintln!("  ✗ record_observation payload parse — {}", e);
+                crate::teeprintln!("  [FAIL] record_observation payload parse — {}", e);
                 stats.failed += 1;
                 return Ok(());
             }
         },
         Err(e) => {
-            crate::teeprintln!("  ✗ record_observation — {}", e);
+            crate::teeprintln!("  [FAIL] record_observation — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if recorded_ok {
-        crate::teeprintln!("  ✓ record_observation persisted (insert_observation)");
+        crate::teeprintln!("  [OK] record_observation persisted (insert_observation)");
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  ✗ record_observation did not report success/id");
+        crate::teeprintln!("  [FAIL] record_observation did not report success/id");
         stats.failed += 1;
         return Ok(());
     }
@@ -104,23 +104,23 @@ pub async fn run_observations_tests(
                 })
                 .unwrap_or(false),
             Err(e) => {
-                crate::teeprintln!("  ✗ list_observations payload parse — {}", e);
+                crate::teeprintln!("  [FAIL] list_observations payload parse — {}", e);
                 stats.failed += 1;
                 return Ok(());
             }
         },
         Err(e) => {
-            crate::teeprintln!("  ✗ list_observations — {}", e);
+            crate::teeprintln!("  [FAIL] list_observations — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if found {
-        crate::teeprintln!("  ✓ list_observations returned the recorded observation (content+type match)");
+        crate::teeprintln!("  [OK] list_observations returned the recorded observation (content+type match)");
         stats.passed += 1;
     } else {
         crate::teeprintln!(
-            "  ✗ list_observations did not return the recorded observation (marker={})",
+            "  [FAIL] list_observations did not return the recorded observation (marker={})",
             marker
         );
         stats.failed += 1;
