@@ -27,11 +27,11 @@ pub async fn test_rmcp_protocol(
     // Test 1: Check client is connected (initialized)
     crate::teeprintln!("  Testing client connection status...");
     if client.is_running() {
-        crate::teeprintln!("    ✅ Client connected and server responding");
+        crate::teeprintln!("    [OK] Client connected and server responding");
         results.init_ok = true;
         results.passed += 1;
     } else {
-        crate::teeprintln!("    ❌ Client not running - server may have crashed");
+        crate::teeprintln!("    [FAIL] Client not running - server may have crashed");
         results.init_ok = false;
         results.failed += 1;
         return Ok(results);
@@ -41,21 +41,21 @@ pub async fn test_rmcp_protocol(
     crate::teeprintln!("  Testing server initialize response...");
     match client.list_tools().await {
         Ok(tools) => {
-            crate::teeprintln!("    ✅ Server responds to initialize/list_tools");
+            crate::teeprintln!("    [OK] Server responds to initialize/list_tools");
             results.capabilities_ok = true;
             results.passed += 1;
             
             if !tools.is_empty() {
-                crate::teeprintln!("    ✅ Server reports {} tools available", tools.len());
+                crate::teeprintln!("    [OK] Server reports {} tools available", tools.len());
                 results.passed += 1;
             } else {
-                crate::teeprintln!("    ⚠️  Server returns empty tool list");
-                crate::teeprintln!("    ℹ  This may indicate list_tools() not fully implemented");
+                crate::teeprintln!("    [WARN]  Server returns empty tool list");
+                crate::teeprintln!("    [INFO]  This may indicate list_tools() not fully implemented");
                 results.failed += 1;
             }
         }
         Err(e) => {
-            crate::teeprintln!("    ❌ Server not responding: {}", e);
+            crate::teeprintln!("    [FAIL] Server not responding: {}", e);
             results.capabilities_ok = false;
             results.failed += 1;
         }
@@ -65,12 +65,12 @@ pub async fn test_rmcp_protocol(
     crate::teeprintln!("  Testing protocol version compatibility...");
     let version_info = client.get_protocol_info();
     if let Some(info) = version_info {
-        crate::teeprintln!("    ℹ  Protocol info: {:?}", info);
+        crate::teeprintln!("    [INFO]  Protocol info: {:?}", info);
         // Version check is informational
         results.version_ok = true;
         results.passed += 1;
     } else {
-        crate::teeprintln!("    ⚠️  Could not determine protocol version");
+        crate::teeprintln!("    [WARN]  Could not determine protocol version");
         results.version_ok = false;
         results.failed += 1;
     }
@@ -79,11 +79,11 @@ pub async fn test_rmcp_protocol(
     crate::teeprintln!("  Testing server responsiveness...");
     match client.list_tools().await {
         Ok(_) => {
-            crate::teeprintln!("    ✅ Server is responsive to requests");
+            crate::teeprintln!("    [OK] Server is responsive to requests");
             results.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("    ❌ Server unresponsive: {}", e);
+            crate::teeprintln!("    [FAIL] Server unresponsive: {}", e);
             results.failed += 1;
         }
     }
