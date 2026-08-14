@@ -8,7 +8,7 @@ pub async fn test_workflow_execution(
     client: &mut TestMcpClient,
     stats: &mut TestStats,
 ) -> anyhow::Result<WorkflowExecutionResults> {
-    crate::teeprintln!("\n📋 Phase 2: Workflow Execution Tests");
+    crate::teeprintln!("\n[INFO] Phase 2: Workflow Execution Tests");
     crate::teeprintln!("{}", "-".repeat(60));
 
     let mut results = WorkflowExecutionResults {
@@ -32,7 +32,7 @@ pub async fn test_workflow_execution(
         .await
     {
         Ok(result) => {
-            crate::teeprintln!("    ✓ create_workflow - SUCCESS");
+            crate::teeprintln!("    [OK] create_workflow - SUCCESS");
             stats.passed += 1;
             results.create_workflow_succeeds = true;
 
@@ -46,13 +46,13 @@ pub async fn test_workflow_execution(
                     {
                         results.workflow_id_generated = id.as_str().map(String::from);
                         crate::teeprintln!(
-                            "    ✓ Workflow ID: {:?}",
+                            "    [OK] Workflow ID: {:?}",
                             results.workflow_id_generated
                         );
                     }
         }
         Err(e) => {
-            crate::teeprintln!("    ✗ create_workflow - FAILED: {}", e);
+            crate::teeprintln!("    [FAIL] create_workflow - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -79,7 +79,7 @@ pub async fn test_workflow_execution(
         match client.call_tool("add_workflow_step", args).await {
             Ok(_) => {
                 crate::teeprintln!(
-                    "    ✓ add_workflow_step('{}', '{}') - SUCCESS",
+                    "    [OK] add_workflow_step('{}', '{}') - SUCCESS",
                     name,
                     action
                 );
@@ -88,7 +88,7 @@ pub async fn test_workflow_execution(
             }
             Err(e) => {
                 crate::teeprintln!(
-                    "    ✗ add_workflow_step('{}', '{}') - FAILED: {}",
+                    "    [FAIL] add_workflow_step('{}', '{}') - FAILED: {}",
                     name,
                     action,
                     e
@@ -107,17 +107,17 @@ pub async fn test_workflow_execution(
 
     match client.call_tool("get_workflow_status", status_args).await {
         Ok(result) => {
-            crate::teeprintln!("    ✓ get_workflow_status - SUCCESS");
+            crate::teeprintln!("    [OK] get_workflow_status - SUCCESS");
             stats.passed += 1;
 
             // Check if workflow has correct structure
             if let Some(text) = extract_content_text(&result)
                 && (text.contains("id") || text.contains("status") || text.contains("workflow")) {
-                    crate::teeprintln!("    ✓ Workflow status contains expected fields");
+                    crate::teeprintln!("    [OK] Workflow status contains expected fields");
                 }
         }
         Err(e) => {
-            crate::teeprintln!("    ✗ get_workflow_status - FAILED: {}", e);
+            crate::teeprintln!("    [FAIL] get_workflow_status - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -129,17 +129,17 @@ pub async fn test_workflow_execution(
         .await
     {
         Ok(result) => {
-            crate::teeprintln!("    ✓ list_workflows - SUCCESS");
+            crate::teeprintln!("    [OK] list_workflows - SUCCESS");
             stats.passed += 1;
 
             // Check if response contains workflow list
             if let Some(text) = extract_content_text(&result)
                 && (text.contains("workflows") || text.contains("[]") || text.len() > 10) {
-                    crate::teeprintln!("    ✓ Workflow list retrieved successfully");
+                    crate::teeprintln!("    [OK] Workflow list retrieved successfully");
                 }
         }
         Err(e) => {
-            crate::teeprintln!("    ✗ list_workflows - FAILED: {}", e);
+            crate::teeprintln!("    [FAIL] list_workflows - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -157,13 +157,13 @@ pub async fn test_workflow_execution(
             .await
         {
             Ok(_result) => {
-                crate::teeprintln!("    ✓ start_workflow - SUCCESS");
+                crate::teeprintln!("    [OK] start_workflow - SUCCESS");
                 stats.passed += 1;
                 results.start_workflow_succeeds = true;
                 results.workflow_completes = true;
             }
             Err(e) => {
-                crate::teeprintln!("    ✗ start_workflow - FAILED: {}", e);
+                crate::teeprintln!("    [FAIL] start_workflow - FAILED: {}", e);
                 stats.failed += 1;
             }
         }
@@ -180,7 +180,7 @@ pub async fn test_workflow_execution(
             .await
         {
             Ok(_) => {
-                crate::teeprintln!("    ✓ pause_workflow - SUCCESS");
+                crate::teeprintln!("    [OK] pause_workflow - SUCCESS");
                 stats.passed += 1;
 
                 match client
@@ -193,18 +193,18 @@ pub async fn test_workflow_execution(
                     .await
                 {
                     Ok(_) => {
-                        crate::teeprintln!("    ✓ resume_workflow - SUCCESS");
+                        crate::teeprintln!("    [OK] resume_workflow - SUCCESS");
                         stats.passed += 1;
                         results.pause_resume_works = true;
                     }
                     Err(e) => {
-                        crate::teeprintln!("    ✗ resume_workflow - FAILED: {}", e);
+                        crate::teeprintln!("    [FAIL] resume_workflow - FAILED: {}", e);
                         stats.failed += 1;
                     }
                 }
             }
             Err(e) => {
-                crate::teeprintln!("    ✗ pause_workflow - FAILED: {}", e);
+                crate::teeprintln!("    [FAIL] pause_workflow - FAILED: {}", e);
                 stats.failed += 1;
             }
         }
@@ -223,11 +223,11 @@ pub async fn test_workflow_execution(
             .await
         {
             Ok(_) => {
-                crate::teeprintln!("    ✓ cancel_workflow - SUCCESS");
+                crate::teeprintln!("    [OK] cancel_workflow - SUCCESS");
                 stats.passed += 1;
             }
             Err(e) => {
-                crate::teeprintln!("    ✗ cancel_workflow - FAILED: {}", e);
+                crate::teeprintln!("    [FAIL] cancel_workflow - FAILED: {}", e);
                 stats.failed += 1;
             }
         }
