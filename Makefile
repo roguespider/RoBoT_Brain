@@ -15,7 +15,7 @@
 # tools). No ratchet. Fix violations by wiring dead-code pub APIs into real
 # callers; never #[allow] or `_`.
 
-.PHONY: gate build suite hooks
+.PHONY: gate build suite hooks session
 
 gate: ## Run the full verify gate (the brick wall)
 	    @./.agents/scripts/gate.sh
@@ -31,3 +31,6 @@ hooks: ## Configure git to use .agents/githooks/ (run once per clone)
 	@git config core.hooksPath .agents/githooks
 	@echo "git hooks installed: core.hooksPath = .agents/githooks"
 	@echo "All commits now require 'make gate' to pass (use --no-verify only for doc-only edits)."
+
+session: ## THE NEWSPAPER — run at every session start (reads docs, runs gate, connects MCP, picks first task)
+	@./.agents/scripts/session_start.sh

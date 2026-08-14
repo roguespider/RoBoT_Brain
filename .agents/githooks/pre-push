@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+#
+# .agents/githooks/pre-push — the gate that the pre-commit hook can't be.
+#
+# pre-commit runs the quality gate (code must compile + pass). But pre-commit
+# fires on EVERY commit, including intermediate ones, and an agent can
+# `commit --no-verify` to skip it. The push is the real wall: it's the moment
+# work leaves the machine.
+#
+# This hook refuses to push unless:
+#   1. .agents/session_proof.json exists for THIS session (created by
+#      session_start.sh), AND
+#   2. mcp_connected == true  (the agent actually connected to live MCP), AND
+#   3. The proof is fresh (not older than 12h — prevents reusing last
+#      session's proof).
+#
+# It also re-runs the quality gate so a doc-only `--no-verify` commit can't
+# slip a src/ regression out the door.
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+cd "$REPO_ROOT"
+
+RED=$'\033[31m'; GRN=$'\033[32m'; YLW=$'\033[33m'; RST=$'\033[0m'
+smack() { printf "\n${RED}🥾 NEWSPAPER (pre-push): %s${RST}\n" "$1"; }
+
+PROOF="$REPO_ROOT/.agents/session_proof.json"
+MAX_AGE_SEC=43200  # 12 hours
+
+# ---- 1. session proof must exist and be fresh ----
+if [ ! -f "$PROOF" ]; then
+    smack "No session proof. You never ran session_start.sh this session."
+    printf "${RED}Run: .agents/scripts/session_start.sh  (or 'make session')${RST}\n"
+    printf "${RED}It forces you to READ docs, RUN the gate, CONNECT to live MCP,${RST}\n"
+    printf "${RED}and pick the FIRST incomplete task in order.${RST}\n"
+    exit 1
+fi
+
+MCP=$(python3 -c "import json;d=json.load(open('$PROOF'));print('true' if d.get('mcp_connected') else 'false')" 2>/dev/null || echo "false")
+if [ "$MCP" != "true" ]; then
+    smack "session_proof.json says mcp_connected != true."
+    printf "${RED}You did NOT connect to the live robot_brain MCP server.${RST}\n"
+    printf "${RED}Run session_smoke.py until it passes, then re-stamp the proof.${RST}\n"
+    exit 1
+fi
+
+# Freshness: proof file mtime within MAX_AGE_SEC.
+if [ "$(uname)" = "Darwin" ]; then
+    mtime=$(stat -f %m "$PROOF")
+else
+    mtime=$(stat -c %Y "$PROOF")
+fi
+now=$(date +%s)
+age=$((now - mtime))
+if [ "$age" -gt "$MAX_AGE_SEC" ]; then
+    smack "session_proof.json is stale (${age}s old > ${MAX_AGE_SEC}s)."
+    printf "${RED}Re-run session_start.sh this session.${RST}\n"
+    exit 1
+fi
+
+TASK=$(python3 -c "import json;print(json.load(open('$PROOF')).get('first_task_in_order','?'))" 2>/dev/null || echo "?")
+printf "${GRN}✓ session proof valid (mcp connected, task=%s, age=%ss)${RST}\n" "$TASK" "$age"
+
+# ---- 2. re-run the quality gate (catches --no-verify commits) ----
+smack "Re-running quality gate (catches any --no-verify commits)."
+if ! .agents/scripts/gate.sh >/tmp/prepush_gate.log 2>&1; then
+    cat /tmp/prepush_gate.log | tail -20
+    smack "GATE RED. Push refused."
+    exit 1
+fi
+printf "${GRN}✓ quality gate green — push permitted${RST}\n"
+exit 0
