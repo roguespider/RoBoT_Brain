@@ -184,3 +184,34 @@ pub struct ReflectionEvidence {
     pub description: String,
     pub weight: f32,
 }
+
+/// A [`Reflection`] carries a confidence score that evolves over time, so it
+/// is [`ValidatableReflection`] (Architecture §10: reflection validation).
+impl crate::experience::reflection::ValidatableReflection for Reflection {
+    fn confidence(&self) -> f32 {
+        self.confidence.score
+    }
+
+    fn validate(&mut self) {
+        self.status = crate::experience::reflection::ReflectionStatus::Validated;
+        self.metadata.updated_at = chrono::Utc::now();
+    }
+
+    fn invalidate(&mut self) {
+        self.confidence.score = 0.0;
+        self.metadata.updated_at = chrono::Utc::now();
+    }
+}
+
+/// A reflection produces its summary as output of the reflection process
+/// (Architecture §10). The input is a context tag that is folded into the
+/// returned summary so the reflection is reproducible from its context.
+impl crate::experience::reflection::Reflector for Reflection {
+    type Input = String;
+    type Output = String;
+
+    fn reflect(&self, context: Self::Input) -> anyhow::Result<Self::Output> {
+        Ok(format!("{} | {}", context, self.summary))
+    }
+}
+

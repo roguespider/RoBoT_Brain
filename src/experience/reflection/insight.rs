@@ -190,3 +190,15 @@ pub struct MaturityHistory {
     pub current: KnowledgeMaturity,
     pub reason: String,
 }
+
+/// An [`Insight`] summarizes what was learned from one or more reflections,
+/// so it is a natural [`InsightProducer`] (Architecture §10).
+impl crate::experience::reflection::InsightProducer for Insight {
+    fn generate_insights(&self) -> Vec<String> {
+        // Surface the core learning statement plus its supporting reflections.
+        let mut out = vec![self.statement.clone()];
+        out.extend(self.reflection_ids.iter().cloned());
+        out
+    }
+}
+

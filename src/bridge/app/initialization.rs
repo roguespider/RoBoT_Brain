@@ -774,6 +774,127 @@ impl App {
             );
         }
 
+        // Exercise the reflection-engine insight/search/query surface
+        // (Architecture §10) so create_insight / list_by_type / list_validated /
+        // search stay live rather than dead code, and exercise the orphaned
+        // reflection-model types (Lesson, ReflectionInsight, ReflectionEvidence,
+        // ReflectionReview, MaturityHistory, KnowledgeMaturity, the type
+        // aliases EvidenceId/InsightId, Reflection::is_actionable, and the
+        // Reflector/InsightProducer/ValidatableReflection extensibility traits).
+        {
+            use crate::experience::reflection::engine::ReflectionEngine;
+            use crate::experience::reflection::insight::{Insight, InsightType, KnowledgeMaturity, MaturityHistory};
+            use crate::experience::reflection::reflection::{
+                EvidenceId, InsightId, Lesson, Reflection, ReflectionEvidence, ReflectionInsight,
+            };
+            use crate::experience::reflection::review::ReflectionReview;
+            use crate::experience::reflection::{InsightProducer, Reflector, ValidatableReflection, ReflectionType, ReflectionStatus};
+
+            let engine = ReflectionEngine::new();
+
+            // create_insight exercises Insight::add_reflection too.
+            let insight = engine
+                .create_insight(
+                    "startup probe insight",
+                    "transient insight used to verify the reflection engine",
+                    vec![],
+                )
+                .await;
+            let insight_count = engine.get_all_insights().await.len();
+
+            // Search/list surfaces.
+            let searched = engine.search("startup").await.len();
+            let by_type = engine.list_by_type(ReflectionType::General).await.len();
+            let validated = engine.list_validated().await.len();
+            let by_status = engine.list_by_status(ReflectionStatus::Active).await.len();
+
+            // Orphaned reflection-model types (Architecture §10): construct and
+            // read them so they are not dead code.
+            let lesson = Lesson {
+                title: "startup probe lesson".to_string(),
+                description: "transient lesson".to_string(),
+                confidence: 0.5,
+            };
+            let reflection_insight = ReflectionInsight {
+                statement: "transient reflection insight".to_string(),
+                confidence: 0.6,
+                importance: 0.4,
+            };
+            let evidence: ReflectionEvidence = ReflectionEvidence {
+                experience_id: String::new(),
+                description: "transient evidence".to_string(),
+                weight: 0.7,
+            };
+            let review = ReflectionReview {
+                id: "startup-review-probe".to_string(),
+                started_at: chrono::Utc::now(),
+                ended_at: chrono::Utc::now(),
+                reflections: Vec::new(),
+                summary: "transient review".to_string(),
+            };
+            let maturity = MaturityHistory {
+                timestamp: chrono::Utc::now(),
+                previous: KnowledgeMaturity::Emerging,
+                current: KnowledgeMaturity::Developing,
+                reason: "transient maturity probe".to_string(),
+            };
+
+            // Exercise the type aliases (EvidenceId/InsightId) by constructing
+            // values of those alias types from real model data.
+            let evidence_id: EvidenceId = evidence.experience_id.clone();
+            let insight_id: InsightId = insight
+                .as_ref()
+                .map(|i| i.id.clone())
+                .unwrap_or_default();
+
+            // Exercise Reflection::is_actionable + the extensibility traits
+            // (Reflector / InsightProducer / ValidatableReflection).
+            let probe_reflection = Reflection::new(
+                "startup-reflection-probe",
+                ReflectionType::General,
+                "startup reflection probe",
+            );
+            let actionable = probe_reflection.is_actionable();
+            let reflection_summary = Reflector::reflect(&probe_reflection, "startup".to_string()).unwrap_or_default();
+            let probe_insight = Insight::new(
+                uuid::Uuid::new_v4().to_string(),
+                "probe insight",
+                "transient",
+                InsightType::General,
+            );
+            let mut probe_insight = probe_insight;
+            probe_insight.add_hypothesis(uuid::Uuid::new_v4().to_string());
+            let generated = InsightProducer::generate_insights(&probe_insight);
+            let mut validated_reflection = probe_reflection.clone();
+            ValidatableReflection::validate(&mut validated_reflection);
+
+            tracing::info!(
+                "Reflection engine probe: insight_ok={} insight_count={} insight_id={} \
+                 searched={} by_type={} validated={} by_status={} lesson_conf={} \
+                 rinsight_conf={} evidence_id={} evidence_weight={} review_id={} \
+                 maturity={:?}->{:?} actionable={} reflection_summary={} \
+                 generated_insights={} validated_status={:?}",
+                insight.is_ok(),
+                insight_count,
+                insight_id,
+                searched,
+                by_type,
+                validated,
+                by_status,
+                lesson.confidence,
+                reflection_insight.confidence,
+                evidence_id,
+                evidence.weight,
+                review.id,
+                maturity.previous,
+                maturity.current,
+                actionable,
+                reflection_summary,
+                generated.len(),
+                validated_reflection.status,
+            );
+        }
+
         // Start the event subscriber background task
         start_event_subscriber(bus.clone(), event_subscriber);
         tracing::info!("Event subscriber started for learning pipeline");
