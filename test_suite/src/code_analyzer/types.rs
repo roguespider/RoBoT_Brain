@@ -38,6 +38,12 @@ pub enum IssueType {
     PublicNeverCalled,
     AlwaysErr,
     PlaceholderReturn,
+    /// `#[cfg(test)]` in robot_brain `src/` — tests must live in
+    /// `test_suite/`, not in the server's source (AGENTS.md "All tests
+    /// live in test_suite (MANDATORY)"). The gate compiles robot_brain in
+    /// release so these blocks are invisible to the compiler; this check
+    /// surfaces them explicitly.
+    CfgTest,
 }
 
 impl std::fmt::Display for IssueType {
@@ -54,6 +60,7 @@ impl std::fmt::Display for IssueType {
             IssueType::PublicNeverCalled => write!(f, "Public Never Called"),
             IssueType::AlwaysErr => write!(f, "Always Returns Err"),
             IssueType::PlaceholderReturn => write!(f, "Placeholder Return"),
+            IssueType::CfgTest => write!(f, "#[cfg(test)]"),
         }
     }
 }

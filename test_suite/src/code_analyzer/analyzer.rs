@@ -132,6 +132,11 @@ impl CodeAnalyzer {
             if let Some(issue) = self.check_underscore_prefix(line, file_path, line_number) {
                 issues.push(issue);
             }
+
+            // Check for #[cfg(test)] — tests must live in test_suite/, not src/
+            if let Some(issue) = self.check_cfg_test(line, file_path, line_number) {
+                issues.push(issue);
+            }
         }
 
         // Analyze for stub functions
@@ -260,6 +265,36 @@ impl CodeAnalyzer {
                 line_number,
                 issue_type: IssueType::DeadCodeAllow,
                 description: "#[allow(dead_code)] found - dead code suppressed".to_string(),
+            })
+        } else {
+            None
+        }
+    }
+
+    /// Detect `#[cfg(test)]` in robot_brain `src/`.
+    ///
+    /// Per AGENTS.md "All tests live in test_suite (MANDATORY)": tests must
+    /// not live inside the server's source. The gate builds robot_brain in
+    /// release (without `--tests`), so the compiler never sees these blocks;
+    /// this check surfaces them as gate-failing code issues so they cannot
+    /// hide behind the release build.
+    fn check_cfg_test(
+        &self,
+        line: &str,
+        file_path: &Path,
+        line_number: usize,
+    ) -> Option<CodeIssue> {
+        let trimmed = line.trim();
+        // Skip comments — a `#[cfg(test)]` mentioned in a doc/comment is not an attribute.
+        if trimmed.starts_with("//") || trimmed.starts_with("/*") || trimmed.starts_with('*') {
+            return None;
+        }
+        if self.patterns.cfg_test.is_match(line) {
+            Some(CodeIssue {
+                file_path: file_path.to_path_buf(),
+                line_number,
+                issue_type: IssueType::CfgTest,
+                description: "#[cfg(test)] in src/ - tests must live in test_suite/, not the server source (AGENTS.md: All tests live in test_suite)".to_string(),
             })
         } else {
             None

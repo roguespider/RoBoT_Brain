@@ -43,6 +43,8 @@ pub struct CodePatterns {
     pub todo: Regex,
     pub panic: Regex,
     pub underscore_prefix: Regex,
+    /// `#[cfg(test)]` attribute (with optional inner whitespace).
+    pub cfg_test: Regex,
 }
 
 impl CodePatterns {
@@ -60,6 +62,8 @@ impl CodePatterns {
             panic: Regex::new(r#"panic!\s*\("#)
                 .unwrap_or_else(|_| get_fallback_regex().clone()),
             underscore_prefix: Regex::new(r"\b_\w+\b")
+                .unwrap_or_else(|_| get_fallback_regex().clone()),
+            cfg_test: Regex::new(r#"#\s*\[\s*cfg\s*\(\s*test\s*\)\s*\]"#)
                 .unwrap_or_else(|_| get_fallback_regex().clone()),
         }
     }
