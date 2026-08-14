@@ -115,7 +115,7 @@ pub async fn run_single_test(
     // Debug: Print validation results
     eprintln!("[TEST] Validation Results:");
     for vr in &validation_results {
-        let icon = if vr.passed { "✓" } else { "✗" };
+        let icon = if vr.passed { "[OK]" } else { "[FAIL]" };
         let msg = vr.message.as_deref().unwrap_or("no message");
         eprintln!("[TEST]   {} {} - {}", icon, vr.field, msg);
     }
