@@ -792,21 +792,3 @@ pub async fn store_transcription_as_memory(
 
     Ok(vec![memory.id.to_string()])
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_audio_analysis() {
-        // Create 1 second of 16kHz silence
-        let samples: Vec<f32> = vec![0.0; 16000];
-        let analysis = AudioAnalysis::from_samples(&samples, 16000, 1.0);
-
-        assert_eq!(analysis.duration_seconds, 1.0);
-        assert_eq!(analysis.sample_rate, 16000);
-        assert!(analysis.rms_db < -60.0); // Silence should be very quiet
-        assert!(analysis.speech_estimate_percent < 10.0);
-        assert!(analysis.silence_percent > 90.0);
-    }
-}

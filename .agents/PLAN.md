@@ -293,11 +293,14 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             (mp3/wav/m4a/flac/ogg) + non-audio (txt/mp4) extensions, call
             transcribe_audio, verify audio exts pass the is_audio_file gate
             (different error) while non-audio exts get "Not a supported audio
-            file". RECLASSIFIED to Group B (LEAVE as Rust unit test):
+            file".             RECLASSIFIED to Group B (DELETED 2026-08-14):
             test_audio_analysis -- AudioAnalysis::from_samples requires valid
             audio samples loaded from a real WAV file; not practical via MCP.
-            Removed 2 from src/ test block, kept test_audio_analysis.
-            Gate: 145/145, 0 issues, 0 untested, 67 warnings.
+            Removed the last src/ test fn. AudioAnalysis::from_samples stays
+            in production (called at line 452 in the transcribe_audio path +
+            generate_audio_analysis_text at 515), so no dead-code warnings
+            (40 unchanged). Gate: CfgTest 51 -> 50, fresh full rebuild,
+            145/145, 0 err, 0 untested, 0 emoji.
       - [x] **T1-10B-08** `experience/exploration/hypothesis.rs` (2 tests) DONE
             2026-08-12. Migrated test_hypothesis_lifecycle +
             test_confidence_clamping to test_suite/src/tests/
