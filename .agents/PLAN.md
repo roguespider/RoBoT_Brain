@@ -348,8 +348,23 @@ first; AI Runtime (Candle) comes last as the local provider behind the
       (1) leave as Rust unit tests (gate does NOT flag #[cfg(test)], only
       dead-code), (2) delete (loses coverage), (3) expose via test-only MCP
       tool (overkill). Leaning: LEAVE as-is. ~48 tests.
-      - [ ] **T1-10B-12** `bridge/acp/mod.rs` (20) -- ACP router/registry/message
-            structs.
+      - [x] **T1-10B-12** `bridge/acp/` (mod.rs 4 + message.rs 7 = 11) DONE 2026-08-14.
+            Group B (internal-only, no MCP surface) -- deleted all ACP
+            test-only code. (1) acp/mod.rs: removed the `#[cfg(test)] mod
+            tests` block (~20 fns) and the 3 `#[cfg(test)] pub mod
+            {builder,channel,error}` declarations. (2) Deleted the 3 test-only
+            submodule files builder.rs/channel.rs/error.rs (AcpMessageBuilder,
+            InMemoryChannel, AcpError/AcpErrorCode -- only referenced by the
+            mod tests block; absent from architecture Chapter 15). (3)
+            acp/message.rs: removed 7 `#[cfg(test)]` methods (with_ttl,
+            is_expired, decrement_ttl, forward_to, with_random_instance,
+            broadcast, is_broadcast) -- only called by the mod tests block;
+            architecture Ch.15 does not specify TTL/broadcast/forward as ACP
+            message features; the sole non-acp `is_expired` caller was on a
+            WorkingMemoryItem (different type). Production AcpMessage::new,
+            reply + AcpAgentId::new/uri + AcpMessageType stay. No dead-code
+            warnings (40 unchanged). Gate: CfgTest 49 -> 38, fresh full
+            rebuild, 145/145, 0 err, 0 untested, 0 emoji.
       - [x] **T1-10B-13** `bridge/mcp/client/mod.rs` (8) DONE 2026-08-14.
             Group B (internal-only, no MCP surface) -- deleted the
             `#[cfg(test)]` block (8 fns: test_client_creation,
