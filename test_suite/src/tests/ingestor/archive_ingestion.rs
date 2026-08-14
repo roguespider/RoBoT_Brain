@@ -40,21 +40,21 @@ pub async fn test_ingest_archive_zip(
 
                         if success && chunks > 0 {
                             crate::teeprintln!(
-                                "  ✓ ingest ZIP archive - SUCCESS ({} chunks from extracted files)",
+                                "  [OK] ingest ZIP archive - SUCCESS ({} chunks from extracted files)",
                                 chunks
                             );
                             stats.passed += 1;
                         } else {
-                            crate::teeprintln!("  ⚠ ingest ZIP archive - returned false");
+                            crate::teeprintln!("  [WARN] ingest ZIP archive - returned false");
                             stats.skipped += 1;
                         }
                         return;
                     }
-            crate::teeprintln!("  ✓ ingest ZIP archive - SUCCESS");
+            crate::teeprintln!("  [OK] ingest ZIP archive - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ ingest ZIP archive - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] ingest ZIP archive - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -95,19 +95,19 @@ pub async fn test_ingest_archive_tar_gz(
                             .unwrap_or(0);
 
                         if success && chunks > 0 {
-                            crate::teeprintln!("  ✓ ingest TAR.GZ archive - SUCCESS ({} chunks from extracted files)", chunks);
+                            crate::teeprintln!("  [OK] ingest TAR.GZ archive - SUCCESS ({} chunks from extracted files)", chunks);
                             stats.passed += 1;
                         } else {
-                            crate::teeprintln!("  ⚠ ingest TAR.GZ archive - returned false");
+                            crate::teeprintln!("  [WARN] ingest TAR.GZ archive - returned false");
                             stats.skipped += 1;
                         }
                         return;
                     }
-            crate::teeprintln!("  ✓ ingest TAR.GZ archive - SUCCESS");
+            crate::teeprintln!("  [OK] ingest TAR.GZ archive - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ ingest TAR.GZ archive - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] ingest TAR.GZ archive - FAILED: {}", e);
             stats.failed += 1;
         }
     }
