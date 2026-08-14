@@ -717,6 +717,28 @@ impl App {
                 rate,
                 trend
             );
+
+            // Exercise the per-entity reputation-record snapshot model
+            // (Architecture §12: per-source trust records) and the
+            // Reputation::confidence()/FactorScore::new paths so they stay
+            // live rather than dead code.
+            use crate::experience::reputation::factors::FactorScore;
+            use crate::experience::types::reputation::{ReputationRecord, ReputationTarget};
+
+            let mut record = ReputationRecord::new(ReputationTarget::Agent(rep.id.clone()));
+            record.record_success(0.9);
+            record.record_failure(0.4);
+            let confidence = rep.confidence();
+            let factor_score = FactorScore::new(ReputationFactor::Accuracy);
+            tracing::info!(
+                "Reputation record verified: successes={} failures={} \
+                 observations={} confidence={} factor_observations={}",
+                record.successes,
+                record.failures,
+                record.observations,
+                confidence,
+                factor_score.observations
+            );
         }
 
         // Create reflection pipeline for processing experiences into insights

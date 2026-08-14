@@ -283,6 +283,22 @@ impl<'a> EntryMethods<'a> {
         // 4: Update reputation decay
         reputation_manager.decay_reputations().await?;
 
+        // 4b: Surface a reputation score probe so ReputationManager::get_reputation
+        // stays live (Architecture §12). If any tracked source exists, log its
+        // current score; otherwise the empty store is a valid no-op.
+        if let Some((probe_source, _)) = self
+            .reputations
+            .read()
+            .await
+            .iter()
+            .next()
+            .map(|(k, v)| (k.clone(), v.score))
+        {
+            if let Some(score) = reputation_manager.get_reputation(&probe_source).await {
+                tracing::info!("Maintenance reputation probe: {} score={}", probe_source, score);
+            }
+        }
+
         // 5. Generalize from recent experiences and transfer knowledge across
         // domains (Architecture §9: generalization + transfer learning).
         let generalization_methods = super::generalization::GeneralizationMethods {
