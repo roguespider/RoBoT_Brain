@@ -23,13 +23,13 @@ pub async fn test_memory_based_agent(
     crate::teeprintln!("  Testing memory retrieval for context...");
     match client.call_tool("search_memory", serde_json::json!({"query": "test", "limit": 5})).await {
         Ok(_) => {
-            crate::teeprintln!("    ✅ Memory search SUCCESS");
+            crate::teeprintln!("    [OK] Memory search SUCCESS");
             results.operations_tested += 1;
             results.passed += 1;
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("    ❌ Memory search: {}", e);
+            crate::teeprintln!("    [FAIL] Memory search: {}", e);
             results.failed += 1;
             stats.failed += 1;
         }
@@ -39,13 +39,13 @@ pub async fn test_memory_based_agent(
     crate::teeprintln!("  Testing knowledge retrieval for context...");
     match client.call_tool("query_knowledge", serde_json::json!({"query": "system design", "limit": 5})).await {
         Ok(_) => {
-            crate::teeprintln!("    ✅ Knowledge query SUCCESS");
+            crate::teeprintln!("    [OK] Knowledge query SUCCESS");
             results.operations_tested += 1;
             results.passed += 1;
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("    ❌ Knowledge query: {}", e);
+            crate::teeprintln!("    [FAIL] Knowledge query: {}", e);
             results.failed += 1;
             stats.failed += 1;
         }
@@ -55,13 +55,13 @@ pub async fn test_memory_based_agent(
     crate::teeprintln!("  Testing cross-memory search...");
     match client.call_tool("global_search", serde_json::json!({"query": "architecture", "limit": 10})).await {
         Ok(_) => {
-            crate::teeprintln!("    ✅ Cross-memory search SUCCESS");
+            crate::teeprintln!("    [OK] Cross-memory search SUCCESS");
             results.operations_tested += 1;
             results.passed += 1;
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("    ❌ Cross-memory search: {}", e);
+            crate::teeprintln!("    [FAIL] Cross-memory search: {}", e);
             results.failed += 1;
             stats.failed += 1;
         }
@@ -71,7 +71,7 @@ pub async fn test_memory_based_agent(
     crate::teeprintln!("  Testing layer-based memory access...");
     match client.call_tool("list_memories", serde_json::json!({"layer": "working", "limit": 10})).await {
         Ok(_) => {
-            crate::teeprintln!("    ✅ Layer-based memory access SUCCESS");
+            crate::teeprintln!("    [OK] Layer-based memory access SUCCESS");
             results.operations_tested += 1;
             results.passed += 1;
             stats.passed += 1;
@@ -80,13 +80,13 @@ pub async fn test_memory_based_agent(
             // Try without layer filter
             match client.call_tool("list_memories", serde_json::json!({"limit": 10})).await {
                 Ok(_) => {
-                    crate::teeprintln!("    ✅ Memory listing SUCCESS (layer filter not supported)");
+                    crate::teeprintln!("    [OK] Memory listing SUCCESS (layer filter not supported)");
                     results.operations_tested += 1;
                     results.passed += 1;
                     stats.passed += 1;
                 }
                 Err(e) => {
-                    crate::teeprintln!("    ❌ Layer-based access: {}", e);
+                    crate::teeprintln!("    [FAIL] Layer-based access: {}", e);
                     results.failed += 1;
                     stats.failed += 1;
                 }
@@ -107,12 +107,12 @@ pub async fn test_memory_based_agent(
     }
     
     if chain_success >= 1 {
-        crate::teeprintln!("    ✅ Memory reflection: {}/2 operations succeeded", chain_success);
+        crate::teeprintln!("    [OK] Memory reflection: {}/2 operations succeeded", chain_success);
         results.operations_tested += chain_success;
         results.passed += 1;
         stats.passed += 1;
     } else {
-        crate::teeprintln!("    ❌ Memory reflection chain failed");
+        crate::teeprintln!("    [FAIL] Memory reflection chain failed");
         results.failed += 1;
         stats.failed += 1;
     }
@@ -121,13 +121,13 @@ pub async fn test_memory_based_agent(
     crate::teeprintln!("  Testing memory persistence verification...");
     match client.call_tool("get_system_status", serde_json::json!({})).await {
         Ok(_) => {
-            crate::teeprintln!("    ✅ System status (memory state) SUCCESS");
+            crate::teeprintln!("    [OK] System status (memory state) SUCCESS");
             results.operations_tested += 1;
             results.passed += 1;
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("    ⚠️  System status: {}", e);
+            crate::teeprintln!("    [WARN]  System status: {}", e);
             results.failed += 1;
             stats.skipped += 1;
         }
