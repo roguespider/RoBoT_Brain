@@ -25,22 +25,22 @@ pub async fn run_acp_tests(
     crate::teeprintln!("{}", "=".repeat(80));
 
     // Phase 1: Registry tests
-    crate::teeprintln!("\n📋 PHASE 1: AGENT REGISTRY");
+    crate::teeprintln!("\n[INFO] PHASE 1: AGENT REGISTRY");
     crate::teeprintln!("{}", "-".repeat(60));
     let registry_results = registry::test_acp_registry(client, stats).await?;
 
     // Phase 2: Router tests
-    crate::teeprintln!("\n📋 PHASE 2: MESSAGE ROUTING");
+    crate::teeprintln!("\n[INFO] PHASE 2: MESSAGE ROUTING");
     crate::teeprintln!("{}", "-".repeat(60));
     let router_results = router::test_acp_router(client, stats).await?;
 
     // Phase 3: Agent tests
-    crate::teeprintln!("\n📋 PHASE 3: AGENT CAPABILITIES");
+    crate::teeprintln!("\n[INFO] PHASE 3: AGENT CAPABILITIES");
     crate::teeprintln!("{}", "-".repeat(60));
     let agent_results = agents::test_acp_agents(client, stats).await?;
 
     // Phase 4: Message tests
-    crate::teeprintln!("\n📋 PHASE 4: MESSAGE HANDLING");
+    crate::teeprintln!("\n[INFO] PHASE 4: MESSAGE HANDLING");
     crate::teeprintln!("{}", "-".repeat(60));
     let message_results = messages::test_acp_messages(client, stats).await?;
 
@@ -82,30 +82,30 @@ fn print_acp_results(results: &AcpTestResults) {
     crate::teeprintln!("{}", "=".repeat(80));
 
     // Registry results
-    crate::teeprintln!("\n📝 Agent Registry:");
-    crate::teeprintln!("  ✅ Passed: {}", results.registry.passed);
-    crate::teeprintln!("  ❌ Failed: {}", results.registry.failed);
-    crate::teeprintln!("  ℹ  Registered Agents: {}", results.registry.agents_registered);
+    crate::teeprintln!("\n[INFO] Agent Registry:");
+    crate::teeprintln!("  [OK] Passed: {}", results.registry.passed);
+    crate::teeprintln!("  [FAIL] Failed: {}", results.registry.failed);
+    crate::teeprintln!("  [INFO]  Registered Agents: {}", results.registry.agents_registered);
 
     // Router results
-    crate::teeprintln!("\n🔀 Message Router:");
-    crate::teeprintln!("  ✅ Passed: {}", results.router.passed);
-    crate::teeprintln!("  ❌ Failed: {}", results.router.failed);
-    crate::teeprintln!("  ℹ  Messages Routed: {}", results.router.messages_routed);
+    crate::teeprintln!("\n[INFO] Message Router:");
+    crate::teeprintln!("  [OK] Passed: {}", results.router.passed);
+    crate::teeprintln!("  [FAIL] Failed: {}", results.router.failed);
+    crate::teeprintln!("  [INFO]  Messages Routed: {}", results.router.messages_routed);
 
     // Agent results
-    crate::teeprintln!("\n🤖 Agent Capabilities:");
-    crate::teeprintln!("  ✅ Passed: {}", results.agents.passed);
-    crate::teeprintln!("  ❌ Failed: {}", results.agents.failed);
-    crate::teeprintln!("  ℹ  Agents Tested: {}", results.agents.agents_tested);
+    crate::teeprintln!("\n[INFO] Agent Capabilities:");
+    crate::teeprintln!("  [OK] Passed: {}", results.agents.passed);
+    crate::teeprintln!("  [FAIL] Failed: {}", results.agents.failed);
+    crate::teeprintln!("  [INFO]  Agents Tested: {}", results.agents.agents_tested);
 
     // Message results
-    crate::teeprintln!("\n💬 Message Handling:");
-    crate::teeprintln!("  ✅ Passed: {}", results.messages.passed);
-    crate::teeprintln!("  ❌ Failed: {}", results.messages.failed);
-    crate::teeprintln!("  ℹ  Messages Handled: {}", results.messages.messages_handled);
+    crate::teeprintln!("\n[INFO] Message Handling:");
+    crate::teeprintln!("  [OK] Passed: {}", results.messages.passed);
+    crate::teeprintln!("  [FAIL] Failed: {}", results.messages.failed);
+    crate::teeprintln!("  [INFO]  Messages Handled: {}", results.messages.messages_handled);
 
-    crate::teeprintln!("\n📊 Overall:");
+    crate::teeprintln!("\n[INFO] Overall:");
     crate::teeprintln!("  Total Passed: {}", results.total_passed());
     crate::teeprintln!("  Total Failed: {}", results.total_failed());
 }
