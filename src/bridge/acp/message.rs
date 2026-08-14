@@ -190,4 +190,11 @@ impl AcpMessageType {
     }
 
     /// Check if this message type expects a reply
+    pub fn expects_reply(&self) -> bool {
+        matches!(
+            self,
+            Self::Request | Self::Query | Self::Subscribe | Self::Unsubscribe
+        )
+    }
+}
 

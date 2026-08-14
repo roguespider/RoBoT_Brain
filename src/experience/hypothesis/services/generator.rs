@@ -13,9 +13,6 @@
 
 use anyhow::Result;
 
-#[cfg(test)]
-use serde::{Deserialize, Serialize};
-
 use crate::experience::hypothesis::core::hypothesis::{Hypothesis, HypothesisCategory, HypothesisPriority};
 
 use crate::experience::types::Experience;
@@ -86,9 +83,4 @@ impl Default for HypothesisGenerator {
         Self::new()
     }
 }
-
-/// ============================================================================
-/// GENERATION RESULT
-/// ============================================================================
-#[derive(Debug, Clone, Serialize, Deserialize)]
 

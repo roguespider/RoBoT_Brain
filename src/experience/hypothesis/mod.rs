@@ -406,6 +406,7 @@ impl HypothesisEngine {
             .add_contradiction(HypothesisId("c".to_string()), HypothesisId("d".to_string()))
             .add_dependency(HypothesisId("e".to_string()), HypothesisId("f".to_string()))
             .add_related(HypothesisId("g".to_string()), HypothesisId("h".to_string()))
+            .add_support_weighted(HypothesisId("w1".to_string()), HypothesisId("w2".to_string()), 0.8)
             .build();
         tracing::debug!(
             "Graph builder probe: {} nodes, {} edges",

@@ -128,4 +128,10 @@ impl HypothesisGraph {
     }
 
     /// Clear all nodes and edges
+    pub fn clear(&mut self) {
+        self.nodes.clear();
+        self.edges.clear();
+        self.node_index.clear();
+    }
+}
 

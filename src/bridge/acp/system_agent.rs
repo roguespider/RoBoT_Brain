@@ -4,6 +4,7 @@
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
 use super::agent::AcpAgent;
 use super::message::{AcpAgentId, AcpMessage};
@@ -25,7 +26,7 @@ pub struct SystemAgent {
 impl SystemAgent {
     pub fn new() -> Self {
         let id = AcpAgentId::new("system", "main");
-        
+
         let capabilities = vec![
             SystemCapability {
                 name: "message_handling".to_string(),
@@ -43,15 +44,14 @@ impl SystemAgent {
                 version: "1.0".to_string(),
             },
         ];
-        
+
         Self { id, capabilities }
     }
-    #[cfg(test)]
-    
+
     pub fn agent_id(&self) -> &AcpAgentId {
         &self.id
     }
-    
+
 }
 
 impl Default for SystemAgent {
@@ -79,7 +79,7 @@ impl AcpAgent for SystemAgent {
             "original_action": message.payload.get("action"),
             "message_type": format!("{:?}", message.message_type),
         });
-        
+
         let response = message.reply(response_payload);
         Ok(Some(response))
     }
@@ -94,7 +94,7 @@ pub struct WorkerAgent {
 impl WorkerAgent {
     pub fn new() -> Self {
         let id = AcpAgentId::new("worker", "1");
-        
+
         let capabilities = vec![
             SystemCapability {
                 name: "task_processing".to_string(),
@@ -102,12 +102,51 @@ impl WorkerAgent {
                 version: "1.0".to_string(),
             },
         ];
-        
+
         Self { id, capabilities }
     }
-    #[cfg(test)]
-    
+
     pub fn agent_id(&self) -> &AcpAgentId {
         &self.id
     }
+}
 
+impl Default for WorkerAgent {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl AcpAgent for WorkerAgent {
+    fn id(&self) -> &AcpAgentId {
+        &self.id
+    }
+
+    fn capabilities(&self) -> Vec<(String, String)> {
+        self.capabilities
+            .iter()
+            .map(|c| (c.name.clone(), c.description.clone()))
+            .collect()
+    }
+
+    fn handle(&self, message: AcpMessage) -> Result<Option<AcpMessage>> {
+        let response_payload = serde_json::json!({
+            "status": "task_received",
+            "original_action": message.payload.get("action"),
+            "message_type": format!("{:?}", message.message_type),
+        });
+
+        let response = message.reply(response_payload);
+        Ok(Some(response))
+    }
+}
+
+/// Create the default system agent as a trait object.
+pub fn create_system_agent() -> Arc<dyn AcpAgent> {
+    Arc::new(SystemAgent::new())
+}
+
+/// Create the default worker agent as a trait object.
+pub fn create_worker_agent() -> Arc<dyn AcpAgent> {
+    Arc::new(WorkerAgent::new())
+}

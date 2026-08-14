@@ -6,7 +6,66 @@
 
 use serde::{Deserialize, Serialize};
 
+use uuid::Uuid;
+
 use crate::experience::hypothesis::core::hypothesis::HypothesisId;
+
+/// ============================================================================
+/// EDGE ID
+/// ============================================================================
+#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub struct EdgeId(pub String);
+
+impl EdgeId {
+    pub fn new() -> Self {
+        Self(Uuid::new_v4().to_string())
+    }
+}
+
+impl Default for EdgeId {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// ============================================================================
+/// HYPOTHESIS RELATIONSHIP
+/// ============================================================================
+/// The kind of relationship one hypothesis has to another.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+pub enum HypothesisRelationship {
+    /// `from` supports `to`.
+    Supports,
+    /// `from` contradicts `to`.
+    Contradicts,
+    /// `from` depends on `to`.
+    DependsOn,
+    /// `from` is related to `to` (generic).
+    Related,
+}
+
+impl HypothesisRelationship {
+    /// Is this a supporting relationship?
+    pub fn is_supporting(&self) -> bool {
+        matches!(self, Self::Supports)
+    }
+
+    /// Is this a contradicting relationship?
+    pub fn is_contradicting(&self) -> bool {
+        matches!(self, Self::Contradicts)
+    }
+
+    /// Return the inverse direction of this relationship (same kind, opposite edge).
+    pub fn inverse(&self) -> Self {
+        match self {
+            Self::Supports => Self::Supports,
+            Self::Contradicts => Self::Contradicts,
+            Self::DependsOn => Self::DependsOn,
+            Self::Related => Self::Related,
+        }
+    }
+}
+
 
 /// ============================================================================
 /// GRAPH STATISTICS
@@ -105,4 +164,11 @@ impl HypothesisEdge {
             weight: 1.0,
         }
     }
+
+    /// Set the edge weight (builder-style).
+    pub fn with_weight(mut self, weight: f32) -> Self {
+        self.weight = weight;
+        self
+    }
+}
 

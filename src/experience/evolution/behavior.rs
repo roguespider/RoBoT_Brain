@@ -219,5 +219,13 @@ impl Behavior {
         false
     }
 
-    /// Get success rate as a percentage
+    /// Get success rate as a fraction in [0.0, 1.0] (0.0 when never applied)
+    pub fn success_rate(&self) -> f32 {
+        if self.application_count == 0 {
+            0.0
+        } else {
+            self.success_count as f32 / self.application_count as f32
+        }
+    }
+}
 

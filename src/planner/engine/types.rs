@@ -155,5 +155,13 @@ pub enum RiskLevel {
 }
 
 /// Planner statistics
-#[derive(Debug)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct PlannerStatistics {
+    /// Total number of plans created.
+    pub plans_created: usize,
+    /// Total number of actions evaluated.
+    pub actions_evaluated: usize,
+    /// Average action score across evaluated candidates.
+    pub avg_score: f32,
+}
 

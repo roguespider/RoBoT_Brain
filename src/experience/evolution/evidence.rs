@@ -121,5 +121,10 @@ impl EvolutionEvidence {
         Self::new(id, behavior_id, evidence_type, description, EvidenceVerdict::Neutral)
     }
 
-    /// Set confidence level
+    /// Set confidence level and return self (builder-style)
+    pub fn with_confidence(mut self, confidence: f32) -> Self {
+        self.confidence = confidence;
+        self
+    }
+}
 
