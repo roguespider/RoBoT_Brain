@@ -64,14 +64,14 @@ async fn test_store_memory(
     
     match client.call_tool("store_memory", args).await {
         Ok(result) => {
-            crate::teeprintln!("  ✓ store_memory({}) - SUCCESS", memory_type);
+            crate::teeprintln!("  [OK] store_memory({}) - SUCCESS", memory_type);
             stats.passed += 1;
             // Extract the ID from the result
             let id = result.get("id").and_then(|v| v.as_str()).map(|s| s.to_string());
             Ok(id)
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ store_memory({}) - FAILED: {}", memory_type, e);
+            crate::teeprintln!("  [FAIL] store_memory({}) - FAILED: {}", memory_type, e);
             stats.failed += 1;
             Ok(None)
         }
@@ -99,11 +99,11 @@ async fn test_search_memory(
         "query": query
     })).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ search_memory('{}') - SUCCESS", query);
+            crate::teeprintln!("  [OK] search_memory('{}') - SUCCESS", query);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ search_memory('{}') - FAILED: {}", query, e);
+            crate::teeprintln!("  [FAIL] search_memory('{}') - FAILED: {}", query, e);
             stats.failed += 1;
         }
     }
@@ -119,11 +119,11 @@ async fn test_get_memory(
         "id": id
     })).await {
         Ok(_result) => {
-            crate::teeprintln!("  ✓ get_memory({}) - SUCCESS", id.chars().take(8).collect::<String>());
+            crate::teeprintln!("  [OK] get_memory({}) - SUCCESS", id.chars().take(8).collect::<String>());
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ get_memory({}) - FAILED: {}", id.chars().take(8).collect::<String>(), e);
+            crate::teeprintln!("  [FAIL] get_memory({}) - FAILED: {}", id.chars().take(8).collect::<String>(), e);
             stats.failed += 1;
         }
     }
@@ -143,11 +143,11 @@ async fn test_list_memories(
     match client.call_tool("list_memories", args).await {
         Ok(_) => {
             let filter = memory_type.unwrap_or("all");
-            crate::teeprintln!("  ✓ list_memories({}) - SUCCESS", filter);
+            crate::teeprintln!("  [OK] list_memories({}) - SUCCESS", filter);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ list_memories({:?}) - FAILED: {}", memory_type, e);
+            crate::teeprintln!("  [FAIL] list_memories({:?}) - FAILED: {}", memory_type, e);
             stats.failed += 1;
         }
     }
