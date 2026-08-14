@@ -7,7 +7,7 @@ pub async fn test_workflow_tools(
     client: &mut TestMcpClient,
     stats: &mut TestStats,
 ) -> anyhow::Result<WorkflowToolsResults> {
-    crate::teeprintln!("\n📋 Phase 3: Workflow Tools Validation");
+    crate::teeprintln!("\n[INFO] Phase 3: Workflow Tools Validation");
     crate::teeprintln!("{}", "-".repeat(60));
 
     let mut results = WorkflowToolsResults {
@@ -21,18 +21,18 @@ pub async fn test_workflow_tools(
     crate::teeprintln!("\n  Testing list_tools...");
     match client.call_tool("list_tools", serde_json::json!({})).await {
         Ok(result) => {
-            crate::teeprintln!("    ✓ list_tools - SUCCESS");
+            crate::teeprintln!("    [OK] list_tools - SUCCESS");
             stats.passed += 1;
 
             if let Some(text) = super::helpers::extract_content_text(&result) {
                 // Try to count tools from response
                 let tool_count = text.matches("\"name\":").count().max(1);
                 results.total_tools = tool_count;
-                crate::teeprintln!("    ℹ Total tools detected: {}", results.total_tools);
+                crate::teeprintln!("    [INFO] Total tools detected: {}", results.total_tools);
             }
         }
         Err(e) => {
-            crate::teeprintln!("    ✗ list_tools - FAILED: {}", e);
+            crate::teeprintln!("    [FAIL] list_tools - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -62,12 +62,12 @@ pub async fn test_workflow_tools(
             "name": tool_name
         })).await {
             Ok(_) => {
-                crate::teeprintln!("    ✓ get_tool('{}') - SUCCESS", tool_name);
+                crate::teeprintln!("    [OK] get_tool('{}') - SUCCESS", tool_name);
                 stats.passed += 1;
                 results.workflow_tools.push(tool_name.to_string());
             }
             Err(e) => {
-                crate::teeprintln!("    ✗ get_tool('{}') - FAILED: {}", tool_name, e);
+                crate::teeprintln!("    [FAIL] get_tool('{}') - FAILED: {}", tool_name, e);
                 stats.failed += 1;
             }
         }
@@ -78,12 +78,12 @@ pub async fn test_workflow_tools(
             "name": tool_name
         })).await {
             Ok(_) => {
-                crate::teeprintln!("    ✓ get_tool('{}') - SUCCESS", tool_name);
+                crate::teeprintln!("    [OK] get_tool('{}') - SUCCESS", tool_name);
                 stats.passed += 1;
                 results.agent_tools.push(tool_name.to_string());
             }
             Err(e) => {
-                crate::teeprintln!("    ✗ get_tool('{}') - FAILED: {}", tool_name, e);
+                crate::teeprintln!("    [FAIL] get_tool('{}') - FAILED: {}", tool_name, e);
                 stats.failed += 1;
             }
         }
@@ -92,7 +92,7 @@ pub async fn test_workflow_tools(
     // Validate that all expected workflow tools are available
     if results.workflow_tools.len() >= 5 {
         results.workflow_tool_definitions_valid = true;
-        crate::teeprintln!("\n    ✓ All core workflow tools are available");
+        crate::teeprintln!("\n    [OK] All core workflow tools are available");
     }
 
     Ok(results)
