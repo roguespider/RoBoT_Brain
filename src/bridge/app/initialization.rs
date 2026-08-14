@@ -917,6 +917,19 @@ impl App {
                 ExperienceType::Learning,
                 vec![Uuid::new_v4()],
             );
+            // Exercise the experience-level Evidence model + ExperienceSource
+            // taxonomy (Architecture §11: evidence supports experiences) so
+            // those types stay live rather than dead code.
+            use crate::experience::types::evidence::{Evidence, ExperienceSource};
+            let evidence = Evidence::new(vec![experience.id], 0.8);
+            let source = ExperienceSource::Tool;
+            tracing::info!(
+                "Experience evidence probe: evidence_id={} links={} confidence={} source={:?}",
+                evidence.id,
+                evidence.experience_ids.len(),
+                evidence.confidence,
+                source
+            );
             let saved_experience = exp_repo::save_experience(database.clone(), &experience)
                 .await
                 .is_ok();
