@@ -23,13 +23,13 @@ pub async fn test_agent_decision_making(
     crate::teeprintln!("  Testing plan selection decision...");
     match client.call_tool("create_plan", serde_json::json!({"goal": "optimize performance"})).await {
         Ok(_) => {
-            crate::teeprintln!("    ✅ Plan selection SUCCESS");
+            crate::teeprintln!("    [OK] Plan selection SUCCESS");
             results.decisions_tested += 1;
             results.passed += 1;
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("    ❌ Plan selection: {}", e);
+            crate::teeprintln!("    [FAIL] Plan selection: {}", e);
             results.failed += 1;
             stats.failed += 1;
         }
@@ -51,12 +51,12 @@ pub async fn test_agent_decision_making(
     }
     
     if choices_made >= 2 {
-        crate::teeprintln!("    ✅ Workflow choice: {}/3 succeeded", choices_made);
+        crate::teeprintln!("    [OK] Workflow choice: {}/3 succeeded", choices_made);
         results.decisions_tested += choices_made;
         results.passed += 1;
         stats.passed += 1;
     } else {
-        crate::teeprintln!("    ❌ Workflow choice: only {}/3 succeeded", choices_made);
+        crate::teeprintln!("    [FAIL] Workflow choice: only {}/3 succeeded", choices_made);
         results.failed += 1;
         stats.failed += 1;
     }
@@ -65,13 +65,13 @@ pub async fn test_agent_decision_making(
     crate::teeprintln!("  Testing hypothesis evaluation decision...");
     match client.call_tool("list_hypotheses", serde_json::json!({"limit": 5})).await {
         Ok(_) => {
-            crate::teeprintln!("    ✅ Hypothesis evaluation SUCCESS");
+            crate::teeprintln!("    [OK] Hypothesis evaluation SUCCESS");
             results.decisions_tested += 1;
             results.passed += 1;
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("    ❌ Hypothesis evaluation: {}", e);
+            crate::teeprintln!("    [FAIL] Hypothesis evaluation: {}", e);
             results.failed += 1;
             stats.failed += 1;
         }
@@ -83,7 +83,7 @@ pub async fn test_agent_decision_making(
     match client.call_tool("get_exploration_status", serde_json::json!({"exploration_id": "00000000-0000-0000-0000-000000000000"})).await {
         Ok(_) | Err(_) => {
             // Tool exists, test passes
-            crate::teeprintln!("    ✅ Exploration tool available");
+            crate::teeprintln!("    [OK] Exploration tool available");
             results.decisions_tested += 1;
             results.passed += 1;
             stats.passed += 1;
@@ -94,13 +94,13 @@ pub async fn test_agent_decision_making(
     crate::teeprintln!("  Testing skill selection decision...");
     match client.call_tool("list_skills", serde_json::json!({})).await {
         Ok(_) => {
-            crate::teeprintln!("    ✅ Skill selection SUCCESS");
+            crate::teeprintln!("    [OK] Skill selection SUCCESS");
             results.decisions_tested += 1;
             results.passed += 1;
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("    ❌ Skill selection: {}", e);
+            crate::teeprintln!("    [FAIL] Skill selection: {}", e);
             results.failed += 1;
             stats.failed += 1;
         }
@@ -110,13 +110,13 @@ pub async fn test_agent_decision_making(
     crate::teeprintln!("  Testing reflection decision...");
     match client.call_tool("get_insights", serde_json::json!({})).await {
         Ok(_) => {
-            crate::teeprintln!("    ✅ Reflection decision SUCCESS");
+            crate::teeprintln!("    [OK] Reflection decision SUCCESS");
             results.decisions_tested += 1;
             results.passed += 1;
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("    ❌ Reflection decision: {}", e);
+            crate::teeprintln!("    [FAIL] Reflection decision: {}", e);
             results.failed += 1;
             stats.failed += 1;
         }
@@ -138,12 +138,12 @@ pub async fn test_agent_decision_making(
     }
     
     if criteria_evaluated >= 2 {
-        crate::teeprintln!("    ✅ Multi-criteria decision: {}/3 criteria evaluated", criteria_evaluated);
+        crate::teeprintln!("    [OK] Multi-criteria decision: {}/3 criteria evaluated", criteria_evaluated);
         results.decisions_tested += criteria_evaluated;
         results.passed += 1;
         stats.passed += 1;
     } else {
-        crate::teeprintln!("    ❌ Multi-criteria decision: only {}/3 criteria evaluated", criteria_evaluated);
+        crate::teeprintln!("    [FAIL] Multi-criteria decision: only {}/3 criteria evaluated", criteria_evaluated);
         results.failed += 1;
         stats.failed += 1;
     }
