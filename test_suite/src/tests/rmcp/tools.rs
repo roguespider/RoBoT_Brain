@@ -33,13 +33,13 @@ pub async fn test_tool_discovery(
     crate::teeprintln!("  Testing basic tool listing...");
     match client.list_tools().await {
         Ok(tools) => {
-            crate::teeprintln!("    ✅ list_tools SUCCESS - {} tools found", tools.len());
+            crate::teeprintln!("    [OK] list_tools SUCCESS - {} tools found", tools.len());
             results.tools_found = tools.len();
             results.passed += 1;
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("    ❌ list_tools FAILED: {}", e);
+            crate::teeprintln!("    [FAIL] list_tools FAILED: {}", e);
             results.failed += 1;
             stats.failed += 1;
             return Ok(results);
@@ -109,7 +109,7 @@ pub async fn test_tool_discovery(
     }
 
     for (category, count) in &categories {
-        crate::teeprintln!("    ℹ  {} tools: {} found", category, count);
+        crate::teeprintln!("    [INFO]  {} tools: {} found", category, count);
         results.categories_found.push(category.clone());
     }
     results.passed += 1;
@@ -128,10 +128,10 @@ pub async fn test_tool_discovery(
     }
     
     if valid_tools > 0 {
-        crate::teeprintln!("    ✅ {} tools have valid schema structure", valid_tools);
+        crate::teeprintln!("    [OK] {} tools have valid schema structure", valid_tools);
         results.passed += 1;
     } else {
-        crate::teeprintln!("    ⚠️  No tools have complete schema structure");
+        crate::teeprintln!("    [WARN]  No tools have complete schema structure");
         results.failed += 1;
     }
 
@@ -148,16 +148,16 @@ pub async fn test_tool_discovery(
         if categories.contains_key(*category) {
             coverage += 1;
         } else {
-            crate::teeprintln!("    ⚠️  Missing category: {}", category);
+            crate::teeprintln!("    [WARN]  Missing category: {}", category);
         }
     }
     
-    crate::teeprintln!("    ℹ  Category coverage: {}/{}", coverage, expected_categories.len());
+    crate::teeprintln!("    [INFO]  Category coverage: {}/{}", coverage, expected_categories.len());
     if coverage >= 6 {
-        crate::teeprintln!("    ✅ Good category coverage");
+        crate::teeprintln!("    [OK] Good category coverage");
         results.passed += 1;
     } else {
-        crate::teeprintln!("    ⚠️  Limited category coverage");
+        crate::teeprintln!("    [WARN]  Limited category coverage");
         results.failed += 1;
     }
 
@@ -222,7 +222,7 @@ pub async fn test_tool_execution(
         
         match client.call_tool(tool_name, arguments).await {
             Ok(result) => {
-                crate::teeprintln!("      ✅ {} - SUCCESS", tool_name);
+                crate::teeprintln!("      [OK] {} - SUCCESS", tool_name);
                 results.tools_executed += 1;
                 executed_categories.insert(category.to_string());
                 results.passed += 1;
@@ -235,26 +235,26 @@ pub async fn test_tool_execution(
                     .and_then(|t| t.as_str()) 
                 {
                     let snippet = if text.len() > 100 { &text[..100] } else { text };
-                    crate::teeprintln!("      ℹ  Result snippet: {}...", snippet.replace('\n', " ").trim());
+                    crate::teeprintln!("      [INFO]  Result snippet: {}...", snippet.replace('\n', " ").trim());
                 }
             }
             Err(e) => {
                 let error_str = e.to_string();
                 if error_str.contains("method_not_found") || error_str.contains("-32601") {
-                    crate::teeprintln!("      ⚠️  {} - NOT IMPLEMENTED (method not found)", tool_name);
+                    crate::teeprintln!("      [WARN]  {} - NOT IMPLEMENTED (method not found)", tool_name);
                     results.failed += 1;
                     stats.skipped += 1;
                 } else if error_str.contains("tool_not_found") {
-                    crate::teeprintln!("      ⚠️  {} - TOOL NOT FOUND", tool_name);
+                    crate::teeprintln!("      [WARN]  {} - TOOL NOT FOUND", tool_name);
                     results.failed += 1;
                     stats.skipped += 1;
                 } else if error_str.contains("not found") {
                     // Resource not found is expected when testing with fake IDs - tool executed correctly
-                    crate::teeprintln!("      ✅ {} - SUCCESS (resource not found - tool executed correctly)", tool_name);
+                    crate::teeprintln!("      [OK] {} - SUCCESS (resource not found - tool executed correctly)", tool_name);
                     results.tools_executed += 1;
                     executed_categories.insert(category.to_string());
                 } else {
-                    crate::teeprintln!("      ⚠️  {} - ERROR: {}", tool_name, e);
+                    crate::teeprintln!("      [WARN]  {} - ERROR: {}", tool_name, e);
                     results.failed += 1;
                     stats.skipped += 1;
                 }
@@ -265,7 +265,7 @@ pub async fn test_tool_execution(
     results.categories_executed = executed_categories.into_iter().collect();
     
     // Summary
-    crate::teeprintln!("\n  📊 Tool Execution Summary:");
+    crate::teeprintln!("\n  [INFO] Tool Execution Summary:");
     crate::teeprintln!("     Tools Executed: {}", results.tools_executed);
     crate::teeprintln!("     Categories: {:?}", results.categories_executed);
 
