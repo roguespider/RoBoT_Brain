@@ -36,13 +36,13 @@ pub async fn run_mcp_workflow_tests(
     crate::teeprintln!("{}", "=".repeat(80));
 
     // First, test the MCP protocol itself
-    crate::teeprintln!("\n📋 PHASE 0: MCP PROTOCOL VALIDATION");
+    crate::teeprintln!("\n[INFO] PHASE 0: MCP PROTOCOL VALIDATION");
     crate::teeprintln!("{}", "-".repeat(60));
     
     let mcp_protocol_ok = test_mcp_protocol(client, stats).await?;
     
     if !mcp_protocol_ok {
-        crate::teeprintln!("\n⚠️  MCP Protocol tests failed - server may not be properly configured");
+        crate::teeprintln!("\n[WARN]  MCP Protocol tests failed - server may not be properly configured");
         crate::teeprintln!("    The MCP server needs to implement ServerHandler trait methods:");
         crate::teeprintln!("    - list_tools() - for listing available tools");
         crate::teeprintln!("    - call_tool() - for executing tools");
@@ -93,33 +93,33 @@ async fn test_mcp_protocol(
     crate::teeprintln!("  Testing tools/list method...");
     match client.list_tools().await {
         Ok(tools) => {
-            crate::teeprintln!("    ✓ tools/list - SUCCESS ({} tools returned)", tools.len());
+            crate::teeprintln!("    [OK] tools/list - SUCCESS ({} tools returned)", tools.len());
             stats.passed += 1;
             
             // Show what tools are available
             if tools.is_empty() {
-                crate::teeprintln!("    ⚠️  Server returned 0 tools via MCP protocol");
-                crate::teeprintln!("    ℹ  The server claimed 87 tools during initialization");
-                crate::teeprintln!("    ℹ  Issue: list_tools() method not properly implemented");
-                crate::teeprintln!("    ℹ  Root cause: ServerHandler trait list_tools() returns empty");
+                crate::teeprintln!("    [WARN]  Server returned 0 tools via MCP protocol");
+                crate::teeprintln!("    [INFO]  The server claimed 87 tools during initialization");
+                crate::teeprintln!("    [INFO]  Issue: list_tools() method not properly implemented");
+                crate::teeprintln!("    [INFO]  Root cause: ServerHandler trait list_tools() returns empty");
                 
                 // Check if this is a known issue
                 all_ok = false;
             } else {
-                crate::teeprintln!("    ✅ Server returned {} tools", tools.len());
+                crate::teeprintln!("    [OK] Server returned {} tools", tools.len());
                 // Show first few tool names
                 let tool_names: Vec<_> = tools.iter()
                     .filter_map(|t| t.get("name").and_then(|n| n.as_str()))
                     .take(5)
                     .collect();
                 if !tool_names.is_empty() {
-                    crate::teeprintln!("    ℹ  Sample tools: {:?}", tool_names);
+                    crate::teeprintln!("    [INFO]  Sample tools: {:?}", tool_names);
                 }
             }
         }
         Err(e) => {
-            crate::teeprintln!("    ✗ tools/list - FAILED: {}", e);
-            crate::teeprintln!("    ℹ  This is expected if the server uses old MCP protocol");
+            crate::teeprintln!("    [FAIL] tools/list - FAILED: {}", e);
+            crate::teeprintln!("    [INFO]  This is expected if the server uses old MCP protocol");
             stats.failed += 1;
             all_ok = false;
         }
@@ -129,7 +129,7 @@ async fn test_mcp_protocol(
     crate::teeprintln!("  Testing tools/call method...");
     match client.call_tool("get_workflow", serde_json::json!({"purpose": "test"})).await {
         Ok(result) => {
-            crate::teeprintln!("    ✅ tools/call - SUCCESS");
+            crate::teeprintln!("    [OK] tools/call - SUCCESS");
             stats.passed += 1;
             
             // Try to parse the result
@@ -138,19 +138,19 @@ async fn test_mcp_protocol(
                 .and_then(|t| t.get("text"))
                 .and_then(|t| t.as_str())
                 && text.len() < 100 {
-                    crate::teeprintln!("    ℹ  Result: {}", text);
+                    crate::teeprintln!("    [INFO]  Result: {}", text);
                 }
         }
         Err(e) => {
             // Check if it's a method_not_found error
             let error_str = e.to_string();
             if error_str.contains("method_not_found") || error_str.contains("-32601") {
-                crate::teeprintln!("    ✗ tools/call - NOT IMPLEMENTED");
-                crate::teeprintln!("    ⚠️  ROOT CAUSE: ServerHandler::call_tool() not implemented");
-                crate::teeprintln!("    ℹ  The MCP server needs to implement call_tool() method");
-                crate::teeprintln!("    ℹ  This is the PRIMARY BLOCKER for MCP tool testing");
+                crate::teeprintln!("    [FAIL] tools/call - NOT IMPLEMENTED");
+                crate::teeprintln!("    [WARN]  ROOT CAUSE: ServerHandler::call_tool() not implemented");
+                crate::teeprintln!("    [INFO]  The MCP server needs to implement call_tool() method");
+                crate::teeprintln!("    [INFO]  This is the PRIMARY BLOCKER for MCP tool testing");
             } else {
-                crate::teeprintln!("    ✗ tools/call - ERROR: {}", e);
+                crate::teeprintln!("    [FAIL] tools/call - ERROR: {}", e);
             }
             stats.failed += 1;
             all_ok = false;
@@ -159,7 +159,7 @@ async fn test_mcp_protocol(
     
     // Provide summary of what's needed to fix
     if !all_ok {
-        crate::teeprintln!("\n  📋 SUMMARY: MCP Server Fix Required");
+        crate::teeprintln!("\n  [INFO] SUMMARY: MCP Server Fix Required");
         crate::teeprintln!("  ────────────────────────────────────────");
         crate::teeprintln!("  To enable full MCP tool support, implement in src/bridge/rmcp/mod.rs:");
         crate::teeprintln!("");
