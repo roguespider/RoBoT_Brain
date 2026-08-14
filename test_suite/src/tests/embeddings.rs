@@ -62,13 +62,13 @@ pub async fn run_embeddings_tests(
             .and_then(|v| v.get("id").and_then(|i| i.as_str()).map(|s| s.to_string()))
             .unwrap_or_default(),
         Err(e) => {
-            crate::teeprintln!("  ✗ store_memory — {}", e);
+            crate::teeprintln!("  [FAIL] store_memory — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if memory_id.is_empty() {
-        crate::teeprintln!("  ✗ store_memory: no id returned");
+        crate::teeprintln!("  [FAIL] store_memory: no id returned");
         stats.failed += 1;
         return Ok(());
     }
@@ -85,7 +85,7 @@ pub async fn run_embeddings_tests(
         )
         .await;
     if let Err(e) = store_emb {
-        crate::teeprintln!("  ✗ store_embedding — {}", e);
+        crate::teeprintln!("  [FAIL] store_embedding — {}", e);
         stats.failed += 1;
         return Ok(());
     }
@@ -103,13 +103,13 @@ pub async fn run_embeddings_tests(
             .and_then(|v| v.get("found").and_then(|f| f.as_bool()))
             .unwrap_or(false),
         Err(e) => {
-            crate::teeprintln!("  ✗ get_embedding (after store) — {}", e);
+            crate::teeprintln!("  [FAIL] get_embedding (after store) — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if !found {
-        crate::teeprintln!("  ✗ get_embedding: embedding not found after store (memory_id={})", memory_id);
+        crate::teeprintln!("  [FAIL] get_embedding: embedding not found after store (memory_id={})", memory_id);
         stats.failed += 1;
         return Ok(());
     }
@@ -127,13 +127,13 @@ pub async fn run_embeddings_tests(
             .and_then(|v| v.get("deleted").and_then(|d| d.as_bool()))
             .unwrap_or(false),
         Err(e) => {
-            crate::teeprintln!("  ✗ delete_embedding — {}", e);
+            crate::teeprintln!("  [FAIL] delete_embedding — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if !deleted {
-        crate::teeprintln!("  ✗ delete_embedding: not deleted (deleted=false)");
+        crate::teeprintln!("  [FAIL] delete_embedding: not deleted (deleted=false)");
         stats.failed += 1;
         return Ok(());
     }
@@ -152,16 +152,16 @@ pub async fn run_embeddings_tests(
             .map(|f| !f)
             .unwrap_or(false),
         Err(e) => {
-            crate::teeprintln!("  ✗ get_embedding (after delete) — {}", e);
+            crate::teeprintln!("  [FAIL] get_embedding (after delete) — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if not_found {
-        crate::teeprintln!("  ✓ get+delete embedding by memory_id: store->found->delete->not found");
+        crate::teeprintln!("  [OK] get+delete embedding by memory_id: store->found->delete->not found");
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  ✗ get_embedding: still found after delete (expected not found)");
+        crate::teeprintln!("  [FAIL] get_embedding: still found after delete (expected not found)");
         stats.failed += 1;
     }
 
