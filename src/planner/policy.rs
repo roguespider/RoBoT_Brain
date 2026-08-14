@@ -223,21 +223,3 @@ pub struct Policy {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
-#[cfg(test)]
-impl Policy {
-    /// Create a new empty policy
-    pub fn new(name: impl Into<String>) -> Self {
-        Self {
-            id: uuid::Uuid::new_v4().to_string(),
-            name: name.into(),
-            version: "1.0.0".to_string(),
-            rules: Vec::new(),
-            created_at: chrono::Utc::now(),
-        }
-    }
-
-    /// Add a rule to the policy
-    pub fn add_rule(&mut self, rule: PolicyRule) {
-        self.rules.push(rule);
-    }
-}

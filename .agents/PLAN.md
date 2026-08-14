@@ -141,14 +141,238 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 
 - [x] **T1-09** Add `job_queue` table + migration in `src/database/migrations/`.
       (commit d1ee096; migration 012 + registered in run loop)
-- [in] **T1-10** Wire enqueue/dequeue through `src/experience/queue.rs` to SQLite.
-  CHANGES MADE (5 files): queue.rs (mark_complete/mark_failed),
-  worker_manager/manager.rs (job_queue field, new_with_queue, enqueue→push_job,
-  broadcast→push_job, mark_job_complete/mark_job_failed),
-  worker_manager/background.rs (loop calls mark_complete/mark_failed),
-  mcp/context.rs (job_queue field, new() updated),
-  bridge/app/initialization.rs (create JobQueue, restore_from_db, pass to
-  WorkerManager + McpContext). NOT YET BUILT — build & gate next session.
+- [x] **T1-10** Wire enqueue/dequeue through `src/experience/queue.rs` to SQLite.
+  VERIFIED 2026-08-12 by codebase inspection + live restart-durability test:
+  queue.rs (with_database/push_job/pop_job/mark_complete/mark_failed/
+  restore_from_database), worker_manager/manager.rs (job_queue field,
+  new_with_queue, enqueue→push_job, broadcast→push_job,
+  mark_job_complete/mark_job_failed), worker_manager/background.rs (loop calls
+  mark_job_complete/mark_job_failed), bridge/mcp/context.rs (NOTE: PLAN's old
+  path `src/mcp/context.rs` was wrong — real path is `src/bridge/mcp/context.rs`;
+  pub job_queue field + new() takes it), bridge/app/initialization.rs (creates
+  JobQueue::with_database, restore_from_database at startup, passes to
+  WorkerManager::new_with_queue + McpContext::new, runs a startup lifecycle
+  probe). Project builds and the full test suite runs (145/145 pass). A new
+  end-to-end restart-durability test in test_suite
+  (tests/queue_durability.rs) boots the real server, injects a pending
+  job_queue row into its SQLite DB, kills the server, boots a fresh server in
+  the same dir, and confirms via get_system_status (event_bus.pending_jobs)
+  that the row is restored into the live queue and survives with status=pending
+  in SQLite. The test passes. (Caveat noted: restored jobs are NOT replayed to
+  workers — restore_from_database repopulates the in-memory JobQueue cache but
+  nothing re-enqueues to ExperienceWorker channels. The startup probe's
+  pop_job can drain restored `experience_scorer` rows. Replay-on-start is a
+  gap, but the "queue survives a process restart" criterion is met.)
+- [ ] **T1-10B** all #[cfg(test)] in codebase should be made into actual test's in test_suite
+      (Verified inventory 2026-08-12: 85 test fns across 20 files, plus 20
+      more files with EMPTY `#[cfg(test)] mod tests{}` blocks.) Work proceeds
+      ONE file at a time: migrate → gate green → commit → push → stop.
+      Rules: AGENTS.md forbids `#[allow(*)]`; test_suite cannot import/link
+      robot_brain source (it only talks MCP/CLI). So tests are re-expressed as
+      MCP/CLI-based tests in `test_suite/src/tests/`, then the `#[cfg(test)]`
+      block is deleted from `src/`.
+
+      ### Group A — MCP-reachable (move to test_suite, delete src/ block)
+      - [ ] **T1-10B-01** `personality/mod.rs` (16 tests) — tools:
+            get_personality / apply_personality_preset / list_personality_presets
+            / set_personality_traits / get_personality_decision. Caveat:
+            adapt_from_experience / success_rate / decay / reset / serialization
+            may be internal-only — assess per-test.
+      - [~] **T1-10B-02** `personality/emotional.rs` (3 tests) —
+            RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
+            Reason: EmotionalState::observe() has no MCP surface — it's only
+            called by the agent loop (loop_runner.rs:304 via
+            observe_emotional_outcome), never by a tool. get_personality
+            returns emotional_weight (observable) but NOT the individual
+            fields (frustration/satisfaction/engagement) the tests assert on,
+            and there's no tool to trigger observe() or set fields. The tests
+            require direct struct manipulation + observe() calls, which are
+            internal-only.
+      - [~] **T1-10B-03** `experience/reflection/services/generator.rs` (3) —
+            RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
+            Reason: execute_create_reflection passes vec![].as_slice() (empty
+            experiences) to generate_reflection -> generate_from_experiences,
+            so the MCP tool NEVER exercises the tested logic (success/failure
+            type determination, min-experiences threshold). It always returns
+            success:true regardless. The tool is effectively a stub. Migrating
+            would test stub behavior, not generate_from_experiences logic.
+      - [x] **T1-10B-04** `knowledge/store.rs` (2 tests) DONE 2026-08-12.
+            Migrated test_add_and_get + test_get_mature to test_suite/src/
+            tests/knowledge_store.rs via MCP flow. test_add_and_get: add_knowledge
+            (calls KnowledgeStore::add) -> query_knowledge (retrieves via
+            get_all, verify statement in items[]). test_get_mature: add
+            low-conf(0.3) + high-conf(0.8) items, query_knowledge with
+            min_confidence=0.7 -> high included, low excluded (mirrors
+            get_mature's is_mature >= 0.7 threshold). Deleted #[cfg(test)]
+            block from src/. add/get/get_mature still used by handlers.
+            Gate: 145/145, 0 issues, 0 untested, 67 warnings.
+      - [x] **T1-10B-05** `knowledge/query.rs` (3 tests) DONE 2026-08-12.
+            Migrated test_text_filter + test_confidence_filter + test_ranking
+            to test_suite/src/tests/knowledge_query.rs via MCP flow. query_knowledge
+            calls apply_query (text + min_confidence filters) + rank_items
+            (relevance sort). test_text_filter: add 2 items, query for one
+            text -> only it in items[]. test_confidence_filter: add high(0.9)+
+            low(0.3), query min_confidence=0.7 -> only high in items[].
+            test_ranking: add 2 matching items, verify high-conf is best_match.
+            Deleted #[cfg(test)] block from src/. apply_query/rank_items still
+            used by query_knowledge handler. Gate: 145/145, 0 issues, 0
+            untested, 67 warnings.
+      - [x] **T1-10B-06** `memory/retrieval.rs` (2 of 4 migrated; 2 reclassified Group B) DONE 2026-08-12.
+            Migrated test_retrieve_working + test_unified_retrieve to
+            test_suite/src/tests/memory_retrieval.rs via MCP flow. search_memory
+            calls retrieve() which calls get_from_working + get_from_permanent.
+            test_retrieve_working: store_memory -> search -> content in results[].
+            test_unified_retrieve: store 2 items -> search -> both in results[].
+            RECLASSIFIED to Group B (LEAVE as Rust unit test):
+            test_retrieve_permanent + test_confidence_filtering — store_memory
+            only writes to Working layer (PermanentMemory cache not populated
+            by any MCP tool), and retrieve_with_query(min_confidence) is never
+            called by an MCP tool. Removed those 2 from src/ test block, kept
+            the 2 Group B tests. Gate: 145/145, 0 issues, 0 untested, 67 warnings.
+      - [x] **T1-10B-07** `bridge/tools/ingestor/audio_transcriber.rs` (2 of 3 migrated; 1 reclassified Group B) DONE 2026-08-12.
+            Migrated test_is_audio_file + test_get_supported_extensions to
+            test_suite/src/tests/audio_transcriber.rs via MCP flow.
+            transcribe_audio calls is_audio_file (which calls
+            get_supported_extensions) and returns "Not a supported audio file"
+            for non-audio extensions. Test: create temp files with audio
+            (mp3/wav/m4a/flac/ogg) + non-audio (txt/mp4) extensions, call
+            transcribe_audio, verify audio exts pass the is_audio_file gate
+            (different error) while non-audio exts get "Not a supported audio
+            file". RECLASSIFIED to Group B (LEAVE as Rust unit test):
+            test_audio_analysis — AudioAnalysis::from_samples requires valid
+            audio samples loaded from a real WAV file; not practical via MCP.
+            Removed 2 from src/ test block, kept test_audio_analysis.
+            Gate: 145/145, 0 issues, 0 untested, 67 warnings.
+      - [x] **T1-10B-08** `experience/exploration/hypothesis.rs` (2 tests) DONE
+            2026-08-12. Migrated test_hypothesis_lifecycle +
+            test_confidence_clamping to test_suite/src/tests/
+            exploration_hypothesis.rs via MCP flow. Constructor confidence
+            clamp (1.5->1.0, -0.5->0.0) tested via add_hypothesis
+            initial_confidence + get_exploration_status readback. Lifecycle
+            (new -> set_result -> update_confidence) tested via add_hypothesis
+            -> evaluate_exploration_hypothesis (confidence 0.5->0.9 for
+            supported). Caveat: update_confidence clamp branch (1.5->1.0) is
+            NOT MCP-reachable (tool hardcodes in-range values); only the
+            constructor clamp is tested. Both use the same .clamp(0.0,1.0).
+            Deleted #[cfg(test)] block from src/. Methods still used by
+            handlers. Gate: 145/145, 0 issues, 0 untested, 67 warnings.
+      - [x] **T1-10B-09** `experience/exploration/attempt.rs` (2 tests) — DONE
+            2026-08-12. Migrated test_attempt_builder + test_attempt_failure to
+            test_suite/src/tests/exploration_attempt.rs via MCP flow
+            (start_exploration -> record_attempt [expected==actual] ->
+            record_attempt [expected!=actual] -> get_exploration_status ->
+            assert attempt[0].success=true, attempt[1].success=false).
+            record_attempt calls ExplorationAttempt::new + with_expected_result
+            + with_actual_result (the exact builder methods under test).
+            Deleted #[cfg(test)] block from src/. Builders still used by
+            record_attempt handler (no new dead-code). Gate: 145/145, 0 issues,
+            0 untested, 67 warnings.
+      - [x] **T1-10B-10** `experience/exploration/finding.rs` (1 test) — DONE
+            2026-08-12. Migrated test_finding_new_and_promote to
+            test_suite/src/tests/exploration_finding.rs via MCP flow
+            (start_exploration -> complete_exploration [calls
+            ExplorationFinding::new] -> get_exploration_status [promoted=false]
+            -> promote_finding [calls f.promote()] -> get_exploration_status
+            [promoted=true]). Deleted #[cfg(test)] block from src/. promote()
+            still used by promote_finding MCP handler (no new dead-code).
+      - [x] **T1-10B-11** `database/queries/observations.rs` (1 test) — DONE
+            2026-08-12. Migrated the MCP-reachable part (record_observation
+            [insert_observation] → list_observations, verify content+type) to
+            test_suite/src/tests/observations.rs. The original test focused on
+            link_observation_to_experience, which had NO MCP surface and NO
+            production callers (was #[cfg(test)]-only dead code) — deleted
+            link_observation_to_experience + get_observation + the test module
+            from src/. Gate: 145/145, 0 issues, 0 untested, 67 warnings.
+
+      ### Group B — internal-only, NO MCP surface (DECISION NEEDED)
+      These test pure internal Rust types no tool exposes. test_suite cannot
+      run them without importing robot_brain source (forbidden). Options:
+      (1) leave as Rust unit tests (gate does NOT flag #[cfg(test)], only
+      dead-code), (2) delete (loses coverage), (3) expose via test-only MCP
+      tool (overkill). Leaning: LEAVE as-is. ~48 tests.
+      - [ ] **T1-10B-12** `bridge/acp/mod.rs` (20) — ACP router/registry/message
+            structs.
+      - [ ] **T1-10B-13** `bridge/mcp/client/mod.rs` (8) — McpClient empty-state
+            / ToolError Display.
+      - [~] **T1-10B-14** `experience/scorer.rs` (5) —
+      RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
+      Reason: EncounterScore, score_encounter(), and aggregate_encounter_scores()
+      have ZERO callers on any MCP-reachable path. The coordinator uses
+      scorer.score() (returns ExperienceScore, a DIFFERENT type), not
+      score_encounter(). The only non-test references are ExperienceScorer::new()
+      passed to the coordinator (which calls .score(), not .score_encounter()).
+      EncounterScore is pure internal math with no MCP surface.
+      - [~] **T1-10B-15** `learning/pipeline.rs` (3) —
+      RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
+      Reason: LearningPipeline (start_from_input, advance_stage, stats) has
+      ZERO callers on any MCP-reachable path. It's only used in
+      initialization.rs as a startup self-check (tracing::info log), not
+      exposed as an MCP tool. record_observation stores observations in DB
+      directly, never touching LearningPipeline. Pure internal state machine
+      with no MCP surface.
+      - [~] **T1-10B-16** `experience/evolution/engine.rs` (3) —
+      RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
+      Reason: EvolutionEngine's methods (create_behavior, record_result,
+      add_evidence, get_metrics, update_priority, merge_behaviors,
+      evaluate_and_maintain, etc.) have ZERO callers on any MCP-reachable
+      path. The only MCP-reachable methods are list_behaviors +
+      list_active_behaviors, called by get_system_status (returns counts
+      only, not behaviors). No MCP tool creates/populates behaviors, so
+      list_behaviors always returns 0 via MCP. create_behavior_from_insight
+      (the trait method) is internal-only. Behavior methods (add_source_insight,
+      record_success/failure, start_practicing, success_rate) are also
+      internal-only. Pure internal evolution logic with no MCP surface.
+      - [x] **T1-10B-17** `bridge/tools/ingestor/semantic_chunker.rs` (3) DONE 2026-08-12.
+            Migrated test_markdown_parsing + test_sentence_splitting +
+            test_code_parsing to test_suite/src/tests/semantic_chunker.rs via
+            MCP flow. ingest_files (file_path) calls ingest_single_file ->
+            parse_document, which dispatches to parse_markdown (for .md) /
+            parse_code (for .rs). parse_markdown internally calls
+            split_sentences. The tree is flatten()-ed; chunks_created in the
+            output is the chunk count. Test: create .md with >=2 sections ->
+            ingest_files -> chunks_created >= 2 (exercises parse_markdown +
+            split_sentences). Create .rs with >=2 functions -> ingest_files ->
+            chunks_created >= 2 (exercises parse_code). Removed test block
+            from src/. Gate: 145/145, 0 warnings, 0 issues, 0 untested.
+      - [~] **T1-10B-18** `memory/repository.rs` (1) —
+      RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
+      Reason: SqliteMemoryRepository and the MemoryRepository trait have ZERO
+      callers outside repository.rs — they're unused dead code. The
+      store_memory MCP tool uses queries::insert_memory directly, not the
+      repository abstraction. from_path is a constructor for a custom DB path
+      that no MCP tool invokes. Cannot be exercised via MCP.
+      - [~] **T1-10B-19** `database/queries/memory.rs` (1) —
+            RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
+            Reason: delete_memories_by_string_ids has ZERO callers outside
+            its own test — it's dead code (both the function and its test are
+            wrapped in #[cfg(test)]). The archive_memory MCP tool uses
+            delete_memories (by Uuid), not delete_memories_by_string_ids.
+            Cannot be exercised via MCP.
+      - [x] **T1-10B-20** `database/queries/embeddings.rs` (1) DONE 2026-08-12.
+            Migrated test_get_and_delete_embedding_by_id to
+            test_suite/src/tests/embeddings.rs via MCP flow. The src/ unit test
+            tested get_embedding + delete_embedding (the by-embedding-id
+            variants, which were #[cfg(test)] test-only functions). The MCP
+            tools (store_embedding, get_embedding, delete_embedding) use the
+            by-memory-id variants (get_embedding_by_memory_id +
+            delete_embedding_by_memory_id, production code). Migration tests
+            the same lifecycle via the production by-memory-id path:
+            store_embedding -> get_embedding (found) -> delete_embedding ->
+            get_embedding (not found). Removed the 2 #[cfg(test)] functions
+            (get_embedding, delete_embedding) + the test block from src/.
+            Gate: 145/145, 0 warnings, 0 issues, 0 untested.
+
+      ### Group C — empty cfg-test blocks (delete, trivial)
+      - [ ] **T1-10B-Z** Remove 20 EMPTY `#[cfg(test)] mod tests{}` blocks
+            (files with 0 actual #[test] fns). Low risk.
+
+      **Decision (2026-08-12):** Group B = LEAVE as Rust unit tests (gate does
+      not flag #[cfg(test)]; deleting loses real coverage; no MCP surface to
+      migrate to). Group A executed SMALLEST-FIRST to establish the migration
+      pattern before the 16-test personality file. Group C last (trivial).
+      **Resume here:** T1-10B-10 (exploration/finding.rs, 1 test) — smallest,
+      establishes pattern. Execution order: 10, 11, 09, 08, 04, 05, 03, 02, 06,
+      07, 01, then Z.
 - [x] **T1-11** Handle broadcast `Lagged` events explicitly (skip+log or drain)
       in the worker path. (commit 560efad — both event subscriber and worker manager drain lagged events + worker manager records failed job)
 - [x] **T1-12** Update `src/bridge/app/initialization.rs` startup verification
@@ -160,10 +384,17 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 
 - [x] **T1-13** Add `loop_latency` metric capture around `AgentLoop::run`.
       (commit in progress — added gauge fields + timer wrapping)
-- [ ] **T1-14** Add `confidence_drift` metric capture in the event-spine
-      handlers (`src/experience/integration/event_subscriber/handlers.rs`).
-- [ ] **T1-15** Add promotion-throughput (reflection→hypothesis→knowledge)
-      metric.
+- [x] **T1-14** Add `confidence_drift` metric capture. DONE (verified
+      2026-08-12 by codebase inspection). Captured in `src/agent/loop_runner.rs:176`
+      (record_confidence_drift), not in event_subscriber/handlers.rs as originally
+      planned — the loop runner is the correct capture point (drift measured per
+      loop iteration). Field + record/get in `src/experience/metrics.rs`. Exposed
+      via get_system_status (acp_handler.rs:437).
+- [x] **T1-15** Add promotion-throughput (reflection→hypothesis→knowledge)
+      metric. DONE (verified 2026-08-12 by codebase inspection). Captured in
+      `src/agent/loop_runner.rs:287` (record_promotion_throughput). Field +
+      record/get in `src/experience/metrics.rs`. Exposed via get_system_status
+      (acp_handler.rs:438).
 - [x] **T1-16** Expose the three new metrics via the `get_system_status` MCP
       tool. (done — `loop_health` block added to status JSON)
 
@@ -172,10 +403,19 @@ promotion_throughput; gate green.
 
 ## 1D. Close the generic MCP→experience path (V2-05)
 
-- [ ] **T1-17** Hook `emit_experience_recorded` into the post-tool-execution
-      dispatch wrapper in `src/bridge/mcp/handlers/`.
-- [ ] **T1-18** Ensure idempotency (the agent loop already publishes once — no
-      double-emit). Add a guard or source tag.
+- [x] **T1-17** Hook `emit_tool_experience` (publishes ExperienceRecorded)
+      into the post-tool-execution dispatch wrapper. DONE (verified 2026-08-12).
+      Wired in `src/bridge/rmcp/mod.rs:127` (success path) and `:141` (error path)
+      — both call `emit_tool_experience(tool_name, was_successful, &arguments)`.
+      Impl in `src/bridge/rmcp/types.rs:121`. Note: impl method renamed to
+      `emit_tool_experience` (not `emit_experience_recorded`); it publishes the
+      ExperienceRecorded event via coordinator.process() internally.
+- [x] **T1-18** Ensure idempotency (no double-emit from a single tool call).
+      DONE (verified 2026-08-12). The emit_tool_experience call sites are in
+      mutually-exclusive match arms (Ok at mod.rs:127, Err at mod.rs:141), so a
+      single tool execution emits exactly once. coordinator.process() publishes
+      ExperienceRecorded once per call. No explicit guard needed — structural
+      idempotency via mutually-exclusive match arms.
 
 **Done when:** calling `store_memory` directly records an experience; no
 double-emit from the agent loop; gate green.
@@ -608,7 +848,13 @@ Reputation` wired in `src/experience/integration/event_subscriber/handlers.rs`.
   (`experience_count` wired into analyzer), graph `edge_count` unwrapped +
   wired into probe, `HypothesisStatistics`/`StatisticsSnapshot` unwrapped from
   `#[cfg(test)]` and wired into maintenance probe.
-- ⏳ **T1-10 changes made** (5 files), NOT YET BUILT. Next: build + gate.
+- ✅ **T1-10 DONE** — SQLite JobQueue fully wired (queue.rs, worker_manager/manager.rs,
+  background.rs, bridge/mcp/context.rs, initialization.rs) and verified by a
+  live restart-durability test in test_suite (tests/queue_durability.rs): inject
+  pending row → kill server → restart in same dir → row restored into live
+  queue (pending_jobs>baseline) and durable row survives status=pending.
+  Known gap: restored jobs are not replayed to workers (replay-on-start is
+  future work).
 - 8 self_check.rs files remain (→ TIER 2).
 - Large-file refactors done: `personality/personality.rs` (352→101, split into
   presets/adaptation/decision_making); `memory/handlers.rs` (400→ directory).

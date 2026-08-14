@@ -774,14 +774,3 @@ impl Planner {
     }
 }
 
-#[cfg(test)]
-impl Default for Planner {
-    fn default() -> Self {
-        Self {
-            metrics: Arc::new(MetricsCollector::new()),
-            active_plans: Arc::new(RwLock::new(HashMap::new())),
-            policy: Arc::new(tokio::sync::RwLock::new(PlannerPolicy::default())),
-            creativity_check: None,
-        }
-    }
-}

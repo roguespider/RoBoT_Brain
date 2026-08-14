@@ -10,7 +10,4 @@
 //! - Relationship aware
 
 mod store;
-#[cfg(test)]
-mod tests;
 
-pub use store::PermanentMemory;

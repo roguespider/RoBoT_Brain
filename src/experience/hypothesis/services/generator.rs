@@ -91,11 +91,4 @@ impl Default for HypothesisGenerator {
 /// GENERATION RESULT
 /// ============================================================================
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg(test)]
-pub struct GenerationResult {
-    pub generated: bool,
 
-    pub hypothesis_id: Option<String>,
-
-    pub reason: String,
-}

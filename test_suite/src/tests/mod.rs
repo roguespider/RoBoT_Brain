@@ -21,6 +21,17 @@ pub mod cli_tools;
 pub mod rmcp;
 pub mod acp;
 pub mod agent_simulation;
+pub mod queue_durability;
+pub mod exploration_finding;
+pub mod observations;
+pub mod exploration_attempt;
+pub mod exploration_hypothesis;
+pub mod knowledge_store;
+pub mod knowledge_query;
+pub mod memory_retrieval;
+pub mod audio_transcriber;
+pub mod embeddings;
+pub mod semantic_chunker;
 
 pub use memory::run_memory_tests;
 pub use experience::run_experience_tests;

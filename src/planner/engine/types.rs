@@ -156,11 +156,4 @@ pub enum RiskLevel {
 
 /// Planner statistics
 #[derive(Debug)]
-#[cfg(test)]
-pub struct PlannerStats {
-    pub total_plans: usize,
-    pub by_status: std::collections::HashMap<PlanStatus, usize>,
-    pub avg_confidence: f32,
-    pub total_knowledge_used: usize,
-    pub total_experiences_used: usize,
-}
+

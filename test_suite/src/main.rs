@@ -1101,6 +1101,39 @@ async fn main() -> anyhow::Result<()> {
     tests::run_acp_tests(&mut client, &mut stats, None).await?;
     tests::run_agent_simulation_tests(&mut client, &mut stats, None).await?;
 
+    // T1-10: verify the SQLite JobQueue survives a process restart.
+    tests::queue_durability::run_queue_durability_tests(&mut stats).await?;
+
+    // T1-10B-10: migrated finding new+promote unit test (MCP-based).
+    tests::exploration_finding::run_exploration_finding_tests(&mut client, &mut stats).await?;
+
+    // T1-10B-11: migrated observations record+list unit test (MCP-based).
+    tests::observations::run_observations_tests(&mut client, &mut stats).await?;
+
+    // T1-10B-09: migrated attempt builder+success/failure unit test (MCP-based).
+    tests::exploration_attempt::run_exploration_attempt_tests(&mut client, &mut stats).await?;
+
+    // T1-10B-08: migrated hypothesis lifecycle+clamp unit test (MCP-based).
+    tests::exploration_hypothesis::run_exploration_hypothesis_tests(&mut client, &mut stats).await?;
+
+    // T1-10B-04: migrated knowledge store add+get+mature unit test (MCP-based).
+    tests::knowledge_store::run_knowledge_store_tests(&mut client, &mut stats).await?;
+
+    // T1-10B-05: migrated knowledge query text/confidence/ranking unit test (MCP-based).
+    tests::knowledge_query::run_knowledge_query_tests(&mut client, &mut stats).await?;
+
+    // T1-10B-06: migrated memory retrieval working+unified unit test (MCP-based).
+    tests::memory_retrieval::run_memory_retrieval_tests(&mut client, &mut stats).await?;
+
+    // T1-10B-07: migrated audio transcriber is_audio_file + extensions test (MCP-based).
+    tests::audio_transcriber::run_audio_transcriber_tests(&mut client, &mut stats).await?;
+
+    // T1-10B-20: migrated embeddings get+delete by memory_id test (MCP-based).
+    tests::embeddings::run_embeddings_tests(&mut client, &mut stats).await?;
+
+    // T1-10B-17: migrated semantic chunker markdown+code parsing test (MCP-based).
+    tests::semantic_chunker::run_semantic_chunker_tests(&mut client, &mut stats).await?;
+
     // Run CLI-based tool tests (tests robot_brain CLI subcommands)
     teeprintln!(
         "
