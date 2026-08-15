@@ -152,28 +152,20 @@ first; AI Runtime (Candle) comes last as the local provider behind the
       the row survives a process restart -- that test passes, which is only
       possible because T1-09's table exists. Checkbox was stale `[ ]`; flipped
       to `[x]` to reflect the verified state.
-- [ ] **T1-10** Wire enqueue/dequeue through `src/experience/queue.rs` to SQLite.
-  VERIFIED 2026-08-12 by codebase inspection + live restart-durability test:
-  queue.rs (with_database/push_job/pop_job/mark_complete/mark_failed/
-  restore_from_database), worker_manager/manager.rs (job_queue field,
-  new_with_queue, enqueue→push_job, broadcast→push_job,
-  mark_job_complete/mark_job_failed), worker_manager/background.rs (loop calls
-  mark_job_complete/mark_job_failed), bridge/mcp/context.rs (NOTE: PLAN's old
-  path `src/mcp/context.rs` was wrong -- real path is `src/bridge/mcp/context.rs`;
-  pub job_queue field + new() takes it), bridge/app/initialization.rs (creates
-  JobQueue::with_database, restore_from_database at startup, passes to
-  WorkerManager::new_with_queue + McpContext::new, runs a startup lifecycle
-  probe). Project builds and the full test suite runs (145/145 pass). A new
-  end-to-end restart-durability test in test_suite
-  (tests/queue_durability.rs) boots the real server, injects a pending
-  job_queue row into its SQLite DB, kills the server, boots a fresh server in
-  the same dir, and confirms via get_system_status (event_bus.pending_jobs)
-  that the row is restored into the live queue and survives with status=pending
-  in SQLite. The test passes. (Caveat noted: restored jobs are NOT replayed to
-  workers -- restore_from_database repopulates the in-memory JobQueue cache but
-  nothing re-enqueues to ExperienceWorker channels. The startup probe's
-  pop_job can drain restored `experience_scorer` rows. Replay-on-start is a
-  gap, but the "queue survives a process restart" criterion is met.)
+- [x] **T1-10** Wire enqueue/dequeue through `src/experience/queue.rs` to SQLite.
+  VERIFIED 2026-08-14 by codebase inspection (re-verified this session, not
+  trusting the prior note): queue.rs has with_database (ln 90), push_job
+  (ln 108), pop_job (ln 119), mark_complete (ln 176), mark_failed (ln 199),
+  restore_from_database (ln 229). manager.rs: job_queue field (ln 36),
+  new_with_queue (ln 41), enqueue->push_job (ln 99), broadcast_event->
+  push_job (ln 128), mark_job_complete (ln 199), mark_job_failed (ln 211).
+  background.rs loop calls mark_job_complete (ln 29) + mark_job_failed
+  (ln 36,50). initialization.rs: JobQueue::with_database (ln 91,184) +
+  restore_from_database at startup (ln 97,185). Durability test
+  (test_suite/src/tests/queue_durability.rs) passes. Known gap: restored
+  jobs not replayed to workers (replay-on-start is future work), but the
+  "queue survives a process restart" criterion is met. Was stale [ ];
+  flipped to [x].
 - [ ] **T1-10B** all #[cfg(test)] in codebase should be made into actual test's in test_suite
       (Verified inventory 2026-08-12: 85 test fns across 20 files, plus 20
       more files with EMPTY `#[cfg(test)] mod tests{}` blocks.) Work proceeds
