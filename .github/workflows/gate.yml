@@ -1,0 +1,64 @@
+# Gate — the non-bypassable quality wall.
+#
+# This is the ONE enforcement layer with no off option: it runs on GitHub's
+# servers, so the agent cannot `--no-verify` it, unset a hooksPath, or skip it.
+# Every push to wastingtimeandmoney (and every PR targeting it) MUST pass the
+# full verify gate: test_suite auto-builds robot_brain, connects via MCP, runs
+# all tests + code analysis, and enforces 0 warnings / 0 code-issues /
+# 0 untested tools.
+#
+# Pair with branch protection (required status check on `gate`) so non-green
+# code cannot be merged. See AGENTS.md "Quality Gate (MANDATORY)".
+
+name: gate
+
+on:
+  push:
+    branches: [wastingtimeandmoney]
+  pull_request:
+    branches: [wastingtimeandmoney]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  gate:
+    name: Verify gate (build + test + quality wall)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Rust toolchain (stable, edition 2024 needs 1.85+)
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y pkg-config libssl-dev
+
+      - name: Cache cargo registry + build artifacts
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+            target
+            test_suite/target
+          key: gate-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
+          restore-keys: gate-${{ runner.os }}-
+
+      - name: Run the verify gate
+        run: .agents/scripts/gate.sh
+
+      - name: Upload gate report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: gate-report
+          path: |
+            test_suite/test_suite_report.json
+            test_suite/test_suite_output.txt
+          if-no-files-found: ignore

@@ -281,12 +281,12 @@ pub(crate) fn truncate(s: &str, max_len: usize) -> String {
 /// Print issues table (standalone function for early reporting)
 pub fn print_issues_table(issues: &[CodeIssue], source_path: &std::path::Path) {
     if issues.is_empty() {
-        crate::teeprintln!("\n  ✅ No code quality issues detected in source!");
+        crate::teeprintln!("\n  [OK] No code quality issues detected in source!");
         return;
     }
 
     crate::teeprintln!("\n┌{:─<98}┐", "");
-    crate::teeprintln!("│ {:^96} │", "⚠️  CODE QUALITY ISSUES TABLE");
+    crate::teeprintln!("│ {:^96} │", "[WARN]  CODE QUALITY ISSUES TABLE");
     crate::teeprintln!("├{:─<98}┤", "");
     crate::teeprintln!("│");
     for issue in issues {

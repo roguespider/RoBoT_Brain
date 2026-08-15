@@ -36,7 +36,7 @@ pub async fn test_acp_registry(
     crate::teeprintln!("  Testing ACP registry tool availability...");
     match client.call_tool("list_acp_agents", serde_json::json!({})).await {
         Ok(result) => {
-            crate::teeprintln!("    ✅ list_acp_agents SUCCESS");
+            crate::teeprintln!("    [OK] list_acp_agents SUCCESS");
             results.passed += 1;
             stats.passed += 1;
             
@@ -45,17 +45,17 @@ pub async fn test_acp_registry(
                 .and_then(|t| t.get("text"))
                 .and_then(|t| t.as_str()) 
             {
-                crate::teeprintln!("    ℹ  Result: {}", text);
+                crate::teeprintln!("    [INFO]  Result: {}", text);
             }
         }
         Err(e) => {
             let error_str = e.to_string();
             if is_tool_not_found(&error_str) {
-                crate::teeprintln!("    ⏭️  SKIPPED: ACP tools not implemented via MCP");
-                crate::teeprintln!("    ℹ  ACP registry exists but not exposed");
+                crate::teeprintln!("    [SKIP]  SKIPPED: ACP tools not implemented via MCP");
+                crate::teeprintln!("    [INFO]  ACP registry exists but not exposed");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ❌ list_acp_agents ERROR: {}", e);
+                crate::teeprintln!("    [FAIL] list_acp_agents ERROR: {}", e);
                 results.failed += 1;
                 stats.failed += 1;
             }
@@ -66,7 +66,7 @@ pub async fn test_acp_registry(
     crate::teeprintln!("  Testing ACP agent count tool...");
     match client.call_tool("acp_agent_count", serde_json::json!({})).await {
         Ok(result) => {
-            crate::teeprintln!("    ✅ acp_agent_count SUCCESS");
+            crate::teeprintln!("    [OK] acp_agent_count SUCCESS");
             results.passed += 1;
             stats.passed += 1;
             
@@ -75,16 +75,16 @@ pub async fn test_acp_registry(
                 .and_then(|t| t.get("text"))
                 .and_then(|t| t.as_str()) 
             {
-                crate::teeprintln!("    ℹ  Result: {}", text);
+                crate::teeprintln!("    [INFO]  Result: {}", text);
             }
         }
         Err(e) => {
             let error_str = e.to_string();
             if is_tool_not_found(&error_str) {
-                crate::teeprintln!("    ⏭️  SKIPPED: ACP tools not implemented");
+                crate::teeprintln!("    [SKIP]  SKIPPED: ACP tools not implemented");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ❌ acp_agent_count ERROR: {}", e);
+                crate::teeprintln!("    [FAIL] acp_agent_count ERROR: {}", e);
                 results.failed += 1;
                 stats.failed += 1;
             }
@@ -95,7 +95,7 @@ pub async fn test_acp_registry(
     crate::teeprintln!("  Testing ACP router access...");
     match client.call_tool("acp_router", serde_json::json!({})).await {
         Ok(result) => {
-            crate::teeprintln!("    ✅ acp_router SUCCESS");
+            crate::teeprintln!("    [OK] acp_router SUCCESS");
             results.passed += 1;
             stats.passed += 1;
             
@@ -104,16 +104,16 @@ pub async fn test_acp_registry(
                 .and_then(|t| t.get("text"))
                 .and_then(|t| t.as_str()) 
             {
-                crate::teeprintln!("    ℹ  Result: {}", text);
+                crate::teeprintln!("    [INFO]  Result: {}", text);
             }
         }
         Err(e) => {
             let error_str = e.to_string();
             if is_tool_not_found(&error_str) {
-                crate::teeprintln!("    ⏭️  SKIPPED: ACP tools not implemented");
+                crate::teeprintln!("    [SKIP]  SKIPPED: ACP tools not implemented");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ❌ acp_router ERROR: {}", e);
+                crate::teeprintln!("    [FAIL] acp_router ERROR: {}", e);
                 results.failed += 1;
                 stats.failed += 1;
             }
@@ -124,7 +124,7 @@ pub async fn test_acp_registry(
     crate::teeprintln!("  Testing ACP registry access...");
     match client.call_tool("acp_registry", serde_json::json!({})).await {
         Ok(result) => {
-            crate::teeprintln!("    ✅ acp_registry SUCCESS");
+            crate::teeprintln!("    [OK] acp_registry SUCCESS");
             results.passed += 1;
             stats.passed += 1;
             
@@ -133,16 +133,16 @@ pub async fn test_acp_registry(
                 .and_then(|t| t.get("text"))
                 .and_then(|t| t.as_str()) 
             {
-                crate::teeprintln!("    ℹ  Result: {}", text);
+                crate::teeprintln!("    [INFO]  Result: {}", text);
             }
         }
         Err(e) => {
             let error_str = e.to_string();
             if is_tool_not_found(&error_str) {
-                crate::teeprintln!("    ⏭️  SKIPPED: ACP tools not implemented");
+                crate::teeprintln!("    [SKIP]  SKIPPED: ACP tools not implemented");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ❌ acp_registry ERROR: {}", e);
+                crate::teeprintln!("    [FAIL] acp_registry ERROR: {}", e);
                 results.failed += 1;
                 stats.failed += 1;
             }

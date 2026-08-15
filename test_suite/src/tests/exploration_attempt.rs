@@ -54,13 +54,13 @@ pub async fn run_exploration_attempt_tests(
                     .map(|s| s.to_string())
             }),
         Err(e) => {
-            crate::teeprintln!("  ✗ start_exploration — {}", e);
+            crate::teeprintln!("  [FAIL] start_exploration — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     let Some(exploration_id) = exploration_id else {
-        crate::teeprintln!("  ✗ start_exploration — no exploration_id");
+        crate::teeprintln!("  [FAIL] start_exploration — no exploration_id");
         stats.failed += 1;
         return Ok(());
     };
@@ -85,16 +85,16 @@ pub async fn run_exploration_attempt_tests(
             .and_then(|v| v.get("attempt_count").and_then(|c| c.as_i64()))
             .unwrap_or(0),
         Err(e) => {
-            crate::teeprintln!("  ✗ record_attempt (success case) — {}", e);
+            crate::teeprintln!("  [FAIL] record_attempt (success case) — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if count1 == 1 {
-        crate::teeprintln!("  ✓ record_attempt(success) created 1 attempt (new()+builders)");
+        crate::teeprintln!("  [OK] record_attempt(success) created 1 attempt (new()+builders)");
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  ✗ record_attempt(success) count={} (expected 1)", count1);
+        crate::teeprintln!("  [FAIL] record_attempt(success) count={} (expected 1)", count1);
         stats.failed += 1;
         return Ok(());
     }
@@ -117,16 +117,16 @@ pub async fn run_exploration_attempt_tests(
             .and_then(|v| v.get("attempt_count").and_then(|c| c.as_i64()))
             .unwrap_or(0),
         Err(e) => {
-            crate::teeprintln!("  ✗ record_attempt (failure case) — {}", e);
+            crate::teeprintln!("  [FAIL] record_attempt (failure case) — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if count2 == 2 {
-        crate::teeprintln!("  ✓ record_attempt(failure) created 2nd attempt");
+        crate::teeprintln!("  [OK] record_attempt(failure) created 2nd attempt");
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  ✗ record_attempt(failure) count={} (expected 2)", count2);
+        crate::teeprintln!("  [FAIL] record_attempt(failure) count={} (expected 2)", count2);
         stats.failed += 1;
         return Ok(());
     }
@@ -143,13 +143,13 @@ pub async fn run_exploration_attempt_tests(
             .ok()
             .and_then(|v| v.get("attempts").and_then(|a| a.as_array()).cloned()),
         Err(e) => {
-            crate::teeprintln!("  ✗ get_exploration_status — {}", e);
+            crate::teeprintln!("  [FAIL] get_exploration_status — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     let Some(attempts) = attempts else {
-        crate::teeprintln!("  ✗ get_exploration_status — no attempts array");
+        crate::teeprintln!("  [FAIL] get_exploration_status — no attempts array");
         stats.failed += 1;
         return Ok(());
     };
@@ -169,12 +169,12 @@ pub async fn run_exploration_attempt_tests(
         .unwrap_or("");
     if success0 && exp0 == expected_ok && act0 == expected_ok {
         crate::teeprintln!(
-            "  ✓ attempt[0] success=true, expected==actual (with_actual_result match)"
+            "  [OK] attempt[0] success=true, expected==actual (with_actual_result match)"
         );
         stats.passed += 1;
     } else {
         crate::teeprintln!(
-            "  ✗ attempt[0] success={}, expected={:?}, actual={:?} (expected true/match)",
+            "  [FAIL] attempt[0] success={}, expected={:?}, actual={:?} (expected true/match)",
             success0,
             exp0,
             act0
@@ -193,12 +193,12 @@ pub async fn run_exploration_attempt_tests(
         .unwrap_or("");
     if !success1 && act1 == "Still broken" {
         crate::teeprintln!(
-            "  ✓ attempt[1] success=false (with_actual_result mismatch branch)"
+            "  [OK] attempt[1] success=false (with_actual_result mismatch branch)"
         );
         stats.passed += 1;
     } else {
         crate::teeprintln!(
-            "  ✗ attempt[1] success={}, actual={:?} (expected false/Still broken)",
+            "  [FAIL] attempt[1] success={}, actual={:?} (expected false/Still broken)",
             success1,
             act1
         );

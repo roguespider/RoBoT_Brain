@@ -21,24 +21,24 @@ pub fn run() -> Result<()> {
     
     println!();
     println!("{}", output::bold("Cognitive Systems (Architecture §4.03):"));
-    output::list_item(&format!("Experience System {}", output::green("✓")));
-    output::list_item(&format!("Reflection Engine {}", output::green("✓")));
-    output::list_item(&format!("Hypothesis Engine {}", output::green("✓")));
-    output::list_item(&format!("Knowledge System {}", output::green("✓")));
-    output::list_item(&format!("Planning System {}", output::green("✓")));
-    output::list_item(&format!("Policy Engine {}", output::green("✓")));
+    output::list_item(&format!("Experience System {}", output::green("[OK]")));
+    output::list_item(&format!("Reflection Engine {}", output::green("[OK]")));
+    output::list_item(&format!("Hypothesis Engine {}", output::green("[OK]")));
+    output::list_item(&format!("Knowledge System {}", output::green("[OK]")));
+    output::list_item(&format!("Planning System {}", output::green("[OK]")));
+    output::list_item(&format!("Policy Engine {}", output::green("[OK]")));
     
     println!();
     println!("{}", output::bold("Memory System (Architecture §6.3):"));
-    output::list_item(&format!("Working Memory {}", output::green("✓")));
-    output::list_item(&format!("Permanent Memory {}", output::green("✓")));
-    output::list_item(&format!("Memory Retrieval {}", output::green("✓")));
+    output::list_item(&format!("Working Memory {}", output::green("[OK]")));
+    output::list_item(&format!("Permanent Memory {}", output::green("[OK]")));
+    output::list_item(&format!("Memory Retrieval {}", output::green("[OK]")));
     
     println!();
     println!("{}", output::bold("Infrastructure:"));
-    output::list_item(&format!("MCP Bridge {}", output::green("✓")));
-    output::list_item(&format!("Event Bus {}", output::green("✓")));
-    output::list_item(&format!("Database Layer {}", output::green("✓")));
+    output::list_item(&format!("MCP Bridge {}", output::green("[OK]")));
+    output::list_item(&format!("Event Bus {}", output::green("[OK]")));
+    output::list_item(&format!("Database Layer {}", output::green("[OK]")));
     
     Ok(())
 }

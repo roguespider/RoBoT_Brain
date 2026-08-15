@@ -53,7 +53,7 @@ impl fmt::Display for Separator {
 #[macro_export]
 macro_rules! success {
     ($($arg:tt)*) => {
-        println!("\x1b[32m✓\x1b[0m {}", format!($($arg)*))
+        println!("\x1b[32m[OK]\x1b[0m {}", format!($($arg)*))
     };
 }
 
@@ -61,7 +61,7 @@ macro_rules! success {
 #[macro_export]
 macro_rules! error {
     ($($arg:tt)*) => {
-        eprintln!("\x1b[31m✗\x1b[0m {}", format!($($arg)*))
+        eprintln!("\x1b[31m[FAIL]\x1b[0m {}", format!($($arg)*))
     };
 }
 
@@ -69,7 +69,7 @@ macro_rules! error {
 #[macro_export]
 macro_rules! info {
     ($($arg:tt)*) => {
-        println!("\x1b[36mℹ\x1b[0m {}", format!($($arg)*))
+        println!("\x1b[36m[INFO]\x1b[0m {}", format!($($arg)*))
     };
 }
 
@@ -77,28 +77,28 @@ macro_rules! info {
 #[macro_export]
 macro_rules! warn {
     ($($arg:tt)*) => {
-        println!("\x1b[33m⚠\x1b[0m {}", format!($($arg)*))
+        println!("\x1b[33m[WARN]\x1b[0m {}", format!($($arg)*))
     };
 }
 
 /// Success function version
 pub fn success_msg(s: impl fmt::Display) {
-    println!("\x1b[32m✓\x1b[0m {}", s);
+    println!("\x1b[32m[OK]\x1b[0m {}", s);
 }
 
 /// Error function version
 pub fn error_msg(s: impl fmt::Display) {
-    eprintln!("\x1b[31m✗\x1b[0m {}", s);
+    eprintln!("\x1b[31m[FAIL]\x1b[0m {}", s);
 }
 
 /// Info function version
 pub fn info_msg(s: impl fmt::Display) {
-    println!("\x1b[36mℹ\x1b[0m {}", s);
+    println!("\x1b[36m[INFO]\x1b[0m {}", s);
 }
 
 /// Warn function version
 pub fn warn_msg(s: impl fmt::Display) {
-    println!("\x1b[33m⚠\x1b[0m {}", s);
+    println!("\x1b[33m[WARN]\x1b[0m {}", s);
 }
 
 /// Print a table row with columns and widths

@@ -78,20 +78,20 @@ pub async fn run_semantic_chunker_tests(
             .and_then(|v| v.get("chunks_created").and_then(|c| c.as_u64()))
             .unwrap_or(0),
         Err(e) => {
-            crate::teeprintln!("  ✗ ingest_files(md) — {}", e);
+            crate::teeprintln!("  [FAIL] ingest_files(md) — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if md_chunks >= 2 {
         crate::teeprintln!(
-            "  ✓ markdown parsing + sentence splitting: {} chunks (>=2 sections, split_sentences exercised)",
+            "  [OK] markdown parsing + sentence splitting: {} chunks (>=2 sections, split_sentences exercised)",
             md_chunks
         );
         stats.passed += 1;
     } else {
         crate::teeprintln!(
-            "  ✗ markdown parsing: only {} chunks (expected >=2 from parse_markdown + split_sentences)",
+            "  [FAIL] markdown parsing: only {} chunks (expected >=2 from parse_markdown + split_sentences)",
             md_chunks
         );
         stats.failed += 1;
@@ -119,20 +119,20 @@ pub async fn run_semantic_chunker_tests(
             .and_then(|v| v.get("chunks_created").and_then(|c| c.as_u64()))
             .unwrap_or(0),
         Err(e) => {
-            crate::teeprintln!("  ✗ ingest_files(rs) — {}", e);
+            crate::teeprintln!("  [FAIL] ingest_files(rs) — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if code_chunks >= 2 {
         crate::teeprintln!(
-            "  ✓ code parsing: {} chunks (>=2 functions from parse_code)",
+            "  [OK] code parsing: {} chunks (>=2 functions from parse_code)",
             code_chunks
         );
         stats.passed += 1;
     } else {
         crate::teeprintln!(
-            "  ✗ code parsing: only {} chunks (expected >=2 from parse_code)",
+            "  [FAIL] code parsing: only {} chunks (expected >=2 from parse_code)",
             code_chunks
         );
         stats.failed += 1;

@@ -150,24 +150,24 @@ impl TestReport {
         if overall_success {
             crate::teeprintln!(
                 "│ {:^96} │",
-                "🎉 VERDICT: ALL TESTS PASSED - READY FOR PRODUCTION"
+                "[DONE] VERDICT: ALL TESTS PASSED - READY FOR PRODUCTION"
             );
             crate::teeprintln!("├{:─<98}┤", "");
             crate::teeprintln!("│");
             crate::teeprintln!(
-                "│  ✅ All {} functions tested and passed",
+                "│  [OK] All {} functions tested and passed",
                 self.results.len()
             );
-            crate::teeprintln!("│  ✅ No stub patterns or partial implementations detected");
-            crate::teeprintln!("│  ✅ No #[allow(*)] annotations that hide issues");
-            crate::teeprintln!("│  ✅ All sub-functions complete and working");
-            crate::teeprintln!("│  ✅ No compiler errors or warnings");
-            crate::teeprintln!("│  ✅ Full tool coverage (every server tool tested)");
+            crate::teeprintln!("│  [OK] No stub patterns or partial implementations detected");
+            crate::teeprintln!("│  [OK] No #[allow(*)] annotations that hide issues");
+            crate::teeprintln!("│  [OK] All sub-functions complete and working");
+            crate::teeprintln!("│  [OK] No compiler errors or warnings");
+            crate::teeprintln!("│  [OK] Full tool coverage (every server tool tested)");
             crate::teeprintln!("│");
         } else {
             crate::teeprintln!(
                 "│ {:^96} │",
-                "⚠️  VERDICT: TESTS HAVE ISSUES - REVIEW REQUIRED"
+                "[WARN] VERDICT: TESTS HAVE ISSUES - REVIEW REQUIRED"
             );
             crate::teeprintln!("├{:─<98}┤", "");
             crate::teeprintln!("│");
@@ -175,12 +175,12 @@ impl TestReport {
             if !all_passed {
                 let failed = self.failed_count();
                 let errors = self.error_count();
-                crate::teeprintln!("│  ❌ {} tests failed, {} errors", failed, errors);
+                crate::teeprintln!("│  [FAIL] {} tests failed, {} errors", failed, errors);
             }
 
             if !no_code_issues {
                 crate::teeprintln!(
-                    "│  ⚠️  {} code quality issues detected",
+                    "│  [WARN] {} code quality issues detected",
                     self.code_issues.len()
                 );
                 crate::teeprintln!("│     See code issues section above for details");
@@ -188,7 +188,7 @@ impl TestReport {
 
             if !no_lint_issues {
                 crate::teeprintln!(
-                    "│  ⚠️  {} compiler errors, {} warnings",
+                    "│  [WARN] {} compiler errors, {} warnings",
                     self.lint_errors,
                     self.lint_warnings
                 );
@@ -197,7 +197,7 @@ impl TestReport {
 
             if !no_coverage_gap {
                 crate::teeprintln!(
-                    "│  🔎 {} server tool(s) untested (coverage {:.1}%)",
+                    "│  [INFO] {} server tool(s) untested (coverage {:.1}%)",
                     self.coverage.untested_count(),
                     self.coverage.coverage_percent()
                 );

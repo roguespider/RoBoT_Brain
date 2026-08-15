@@ -20,7 +20,7 @@ impl TestReport {
     /// Print full test table
     pub fn print_full_table(&self) {
         crate::teeprintln!("\n┌{:─<98}┐", "");
-        crate::teeprintln!("│ {:^96} │", "📋 FULL TEST RESULTS TABLE");
+        crate::teeprintln!("│ {:^96} │", "[INFO] FULL TEST RESULTS TABLE");
         crate::teeprintln!(
             "├{:─<6}├{:─<20}├{:─<25}├{:─<8}├{:─<10}├{:─<25}┤",
             "─",
@@ -60,11 +60,11 @@ impl TestReport {
             *cat_count += 1;
 
             let status_icon = match result.status {
-                TestStatus::Pass => "✅",
-                TestStatus::Fail => "❌",
-                TestStatus::Error => "💥",
-                TestStatus::Skipped => "⏭️",
-                TestStatus::Blocked => "🚫",
+                TestStatus::Pass => "[OK]",
+                TestStatus::Fail => "[FAIL]",
+                TestStatus::Error => "[FAIL]",
+                TestStatus::Skipped => "[SKIP]",
+                TestStatus::Blocked => "[BLOCKED]",
             };
 
             let status_text = result.status.to_string();
@@ -134,10 +134,10 @@ impl TestReport {
 
         if error_warnings.is_empty() {
             crate::teeprintln!("\n┌{:─<98}┐", "");
-            crate::teeprintln!("│ {:^96} │", "🔧  COMPILER ERRORS & WARNINGS");
+            crate::teeprintln!("│ {:^96} │", "[INFO]  COMPILER ERRORS & WARNINGS");
             crate::teeprintln!("├{:─<98}┤", "");
             crate::teeprintln!("│");
-            crate::teeprintln!("│  ✅ No compiler errors or warnings!");
+            crate::teeprintln!("│  [OK] No compiler errors or warnings!");
             crate::teeprintln!("│");
             crate::teeprintln!("└{:─<98}┘", "");
             return;
@@ -153,7 +153,7 @@ impl TestReport {
             .count();
 
         crate::teeprintln!("\n┌{:─<98}┐", "");
-        crate::teeprintln!("│ {:^96} │", "🔧  COMPILER ERRORS & WARNINGS");
+        crate::teeprintln!("│ {:^96} │", "[INFO]  COMPILER ERRORS & WARNINGS");
         crate::teeprintln!("├{:─<98}┤", "");
         crate::teeprintln!(
             "│  {} error(s), {} warning(s):",
@@ -175,11 +175,11 @@ impl TestReport {
         }
 
         for (file, issues) in &by_file {
-            crate::teeprintln!("│  📄 {}", file);
+            crate::teeprintln!("│  [INFO] {}", file);
             for issue in issues {
                 let level_str = match issue.level {
-                    LintLevel::Error => "❌ ERROR",
-                    LintLevel::Warning => "⚠️  WARN ",
+                    LintLevel::Error => "[FAIL] ERROR",
+                    LintLevel::Warning => "[WARN]  WARN ",
                     _ => continue,
                 };
                 crate::teeprintln!("│    {} line {} [{}]: {}", level_str, issue.line_number, issue.code, issue.message);

@@ -56,11 +56,11 @@ async fn test_record_observation(
     })).await {
         Ok(_) => {
             let truncated = if content.len() > 30 { &content[..30] } else { content };
-            crate::teeprintln!("  ✓ record_observation({}, '{}...') - SUCCESS", observation_type, truncated);
+            crate::teeprintln!("  [OK] record_observation({}, '{}...') - SUCCESS", observation_type, truncated);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ record_observation({}, '{}') - FAILED: {}", observation_type, content, e);
+            crate::teeprintln!("  [FAIL] record_observation({}, '{}') - FAILED: {}", observation_type, content, e);
             stats.failed += 1;
         }
     }
@@ -79,13 +79,13 @@ async fn test_create_hypothesis(
     })).await {
         Ok(result) => {
             let truncated = if hypothesis.len() > 30 { &hypothesis[..30] } else { hypothesis };
-            crate::teeprintln!("  ✓ create_hypothesis('{}...') - SUCCESS", truncated);
+            crate::teeprintln!("  [OK] create_hypothesis('{}...') - SUCCESS", truncated);
             stats.passed += 1;
             // Try to extract hypothesis_id from result
             Ok(extract_id_from_result(&result).or_else(|| Some("test_hypothesis_001".to_string())))
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ create_hypothesis('{}') - FAILED: {}", hypothesis, e);
+            crate::teeprintln!("  [FAIL] create_hypothesis('{}') - FAILED: {}", hypothesis, e);
             stats.failed += 1;
             Ok(None)
         }
@@ -128,11 +128,11 @@ async fn test_add_evidence(
         "strength": strength
     })).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ add_evidence({}, {}) - SUCCESS", direction, strength);
+            crate::teeprintln!("  [OK] add_evidence({}, {}) - SUCCESS", direction, strength);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ add_evidence({}, {}) - FAILED: {}", direction, strength, e);
+            crate::teeprintln!("  [FAIL] add_evidence({}, {}) - FAILED: {}", direction, strength, e);
             stats.failed += 1;
         }
     }
@@ -148,11 +148,11 @@ async fn test_get_hypothesis(
         "hypothesis_id": hypothesis_id
     })).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ get_hypothesis - SUCCESS");
+            crate::teeprintln!("  [OK] get_hypothesis - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ get_hypothesis - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] get_hypothesis - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -168,11 +168,11 @@ async fn test_evaluate_hypothesis(
         "hypothesis_id": hypothesis_id
     })).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ evaluate_hypothesis - SUCCESS");
+            crate::teeprintln!("  [OK] evaluate_hypothesis - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ evaluate_hypothesis - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] evaluate_hypothesis - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -189,11 +189,11 @@ async fn test_extract_knowledge(
         "knowledge_content": "Extracted knowledge from hypothesis"
     })).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ extract_knowledge - SUCCESS");
+            crate::teeprintln!("  [OK] extract_knowledge - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ extract_knowledge - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] extract_knowledge - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -206,11 +206,11 @@ async fn test_list_hypotheses(
 ) -> anyhow::Result<()> {
     match client.call_tool("list_hypotheses", serde_json::json!({})).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ list_hypotheses - SUCCESS");
+            crate::teeprintln!("  [OK] list_hypotheses - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ list_hypotheses - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] list_hypotheses - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -223,11 +223,11 @@ async fn test_list_observations(
 ) -> anyhow::Result<()> {
     match client.call_tool("list_observations", serde_json::json!({})).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ list_observations - SUCCESS");
+            crate::teeprintln!("  [OK] list_observations - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ list_observations - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] list_observations - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -240,11 +240,11 @@ async fn test_get_knowledge(
 ) -> anyhow::Result<()> {
     match client.call_tool("get_knowledge", serde_json::json!({})).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ get_knowledge - SUCCESS");
+            crate::teeprintln!("  [OK] get_knowledge - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ get_knowledge - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] get_knowledge - FAILED: {}", e);
             stats.failed += 1;
         }
     }

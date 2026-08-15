@@ -38,7 +38,7 @@ pub async fn test_acp_messages(
         "payload": {"action": "ping"}
     })).await {
         Ok(result) => {
-            crate::teeprintln!("    ✅ create_acp_message SUCCESS (result keys: {})",
+            crate::teeprintln!("    [OK] create_acp_message SUCCESS (result keys: {})",
                 result.as_object().map(|o| o.len()).unwrap_or(0));
             results.messages_handled += 1;
             results.passed += 1;
@@ -47,10 +47,10 @@ pub async fn test_acp_messages(
         Err(e) => {
             let error_str = e.to_string();
             if is_tool_not_found(&error_str) {
-                crate::teeprintln!("    ⏭️  SKIPPED: ACP message creation not exposed");
+                crate::teeprintln!("    [SKIP]  SKIPPED: ACP message creation not exposed");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ❌ create_acp_message: {}", e);
+                crate::teeprintln!("    [FAIL] create_acp_message: {}", e);
                 results.failed += 1;
                 stats.failed += 1;
             }
@@ -67,7 +67,7 @@ pub async fn test_acp_messages(
         "reply_to": "original_msg_id"
     })).await {
         Ok(_result) => {
-            crate::teeprintln!("    ✅ Message with reply SUCCESS");
+            crate::teeprintln!("    [OK] Message with reply SUCCESS");
             results.messages_handled += 1;
             results.passed += 1;
             stats.passed += 1;
@@ -75,10 +75,10 @@ pub async fn test_acp_messages(
         Err(e) => {
             let error_str = e.to_string();
             if is_tool_not_found(&error_str) {
-                crate::teeprintln!("    ⏭️  SKIPPED: Reply handling not exposed");
+                crate::teeprintln!("    [SKIP]  SKIPPED: Reply handling not exposed");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ❌ Reply handling: {}", e);
+                crate::teeprintln!("    [FAIL] Reply handling: {}", e);
                 results.failed += 1;
                 stats.failed += 1;
             }
@@ -95,7 +95,7 @@ pub async fn test_acp_messages(
         "conversation_id": "conv_123"
     })).await {
         Ok(_) => {
-            crate::teeprintln!("    ✅ Conversation tracking SUCCESS");
+            crate::teeprintln!("    [OK] Conversation tracking SUCCESS");
             results.messages_handled += 1;
             results.passed += 1;
             stats.passed += 1;
@@ -103,10 +103,10 @@ pub async fn test_acp_messages(
         Err(e) => {
             let error_str = e.to_string();
             if is_tool_not_found(&error_str) {
-                crate::teeprintln!("    ⏭️  SKIPPED: Conversation tracking not exposed");
+                crate::teeprintln!("    [SKIP]  SKIPPED: Conversation tracking not exposed");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ❌ Conversation tracking: {}", e);
+                crate::teeprintln!("    [FAIL] Conversation tracking: {}", e);
                 results.failed += 1;
                 stats.failed += 1;
             }
@@ -123,7 +123,7 @@ pub async fn test_acp_messages(
         "payload": {"error": "test_error"}
     })).await {
         Ok(_) => {
-            crate::teeprintln!("    ✅ Error message handling SUCCESS");
+            crate::teeprintln!("    [OK] Error message handling SUCCESS");
             results.messages_handled += 1;
             results.passed += 1;
             stats.passed += 1;
@@ -132,12 +132,12 @@ pub async fn test_acp_messages(
             // Error is expected - router correctly rejects unknown receivers
             let err_str = format!("{}", e);
             if err_str.contains("Unknown receiver") || err_str.contains("not registered") {
-                crate::teeprintln!("    ✅ Error message handling SUCCESS (correctly rejected unknown receiver)");
+                crate::teeprintln!("    [OK] Error message handling SUCCESS (correctly rejected unknown receiver)");
                 results.messages_handled += 1;
                 results.passed += 1;
                 stats.passed += 1;
             } else {
-                crate::teeprintln!("    ⚠️  Error message: {}", e);
+                crate::teeprintln!("    [WARN]  Error message: {}", e);
                 stats.skipped += 1;
             }
         }
@@ -153,7 +153,7 @@ pub async fn test_acp_messages(
         "ttl": 1
     })).await {
         Ok(_) => {
-            crate::teeprintln!("    ✅ TTL message SUCCESS");
+            crate::teeprintln!("    [OK] TTL message SUCCESS");
             results.messages_handled += 1;
             results.passed += 1;
             stats.passed += 1;
@@ -161,10 +161,10 @@ pub async fn test_acp_messages(
         Err(e) => {
             let error_str = e.to_string();
             if is_tool_not_found(&error_str) {
-                crate::teeprintln!("    ⏭️  SKIPPED: TTL not supported");
+                crate::teeprintln!("    [SKIP]  SKIPPED: TTL not supported");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ❌ TTL: {}", e);
+                crate::teeprintln!("    [FAIL] TTL: {}", e);
                 results.failed += 1;
                 stats.failed += 1;
             }

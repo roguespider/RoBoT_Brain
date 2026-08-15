@@ -22,15 +22,15 @@ pub async fn test_list_importable(
                     && let Ok(parsed) = serde_json::from_str::<serde_json::Value>(text) {
                         let count = parsed.get("count").and_then(|c| c.as_i64()).unwrap_or(0);
                         let total = parsed.get("total").and_then(|t| t.as_i64()).unwrap_or(0);
-                        crate::teeprintln!("  ✓ list_importable - SUCCESS (found {} files)", total);
+                        crate::teeprintln!("  [OK] list_importable - SUCCESS (found {} files)", total);
                         stats.passed += 1;
                         return Ok(());
                     }
-            crate::teeprintln!("  ✓ list_importable - SUCCESS");
+            crate::teeprintln!("  [OK] list_importable - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ list_importable - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] list_importable - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -61,17 +61,17 @@ pub async fn test_list_importable_recursive(
                     && let Ok(parsed) = serde_json::from_str::<serde_json::Value>(text) {
                         let total = parsed.get("total").and_then(|t| t.as_i64()).unwrap_or(0);
                         crate::teeprintln!(
-                            "  ✓ list_importable (recursive) - SUCCESS (found {} total files)",
+                            "  [OK] list_importable (recursive) - SUCCESS (found {} total files)",
                             total
                         );
                         stats.passed += 1;
                         return Ok(());
                     }
-            crate::teeprintln!("  ✓ list_importable (recursive) - SUCCESS");
+            crate::teeprintln!("  [OK] list_importable (recursive) - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ list_importable (recursive) - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] list_importable (recursive) - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -88,11 +88,11 @@ pub async fn test_list_ingested_files(
         .await
     {
         Ok(_) => {
-            crate::teeprintln!("  ✓ list_ingested_files - SUCCESS");
+            crate::teeprintln!("  [OK] list_ingested_files - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ list_ingested_files - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] list_ingested_files - FAILED: {}", e);
             stats.failed += 1;
         }
     }

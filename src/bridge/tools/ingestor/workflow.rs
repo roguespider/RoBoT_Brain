@@ -269,7 +269,7 @@ pub async fn execute_delete_ingested_files(
     if confirmation != "yes" && confirmation != "confirm" {
         return Ok(ToolOutput::error(
             format!(
-                "🚫 DELETION BLOCKED - Missing or invalid confirmation.\n\
+                "[BLOCKED] DELETION BLOCKED - Missing or invalid confirmation.\n\
                 \n\
                 Required: confirmation='yes' (exactly, case-insensitive)\n\
                 Received: confirmation='{}'\n\
@@ -277,7 +277,7 @@ pub async fn execute_delete_ingested_files(
                 Files requested for deletion: {}\n\
                 \n\
                 ╔══════════════════════════════════════════════════════════════╗\n\
-                ║  ⚠️  REQUIRED WORKFLOW - MUST FOLLOW EXACTLY:               ║\n\
+                ║  [WARN]  REQUIRED WORKFLOW - MUST FOLLOW EXACTLY:           ║\n\
                 ║  1. Call ingest_files (limit=1) for ONE file                ║\n\
                 ║  2. SUMMARIZE what was ingested (filename, size, chunks)   ║\n\
                 ║  3. ASK USER: 'Can I delete the original file?'            ║\n\
@@ -406,7 +406,7 @@ pub async fn execute_delete_ingested_files(
                 "if_more_files": "Call ingest_files again with limit=1 for the next file",
                 "if_done": "ASK USER: 'All files ingested. Do you want me to do anything else?'",
                 "template": if success > 0 && failed_count == 0 {
-                    "✅ File ingestion workflow complete. To continue: call ingest_files again for next file. Or ask user if done."
+                    "[OK] File ingestion workflow complete. To continue: call ingest_files again for next file. Or ask user if done."
                 } else if success > 0 {
                     "Some files deleted. Check failed list for errors."
                 } else {

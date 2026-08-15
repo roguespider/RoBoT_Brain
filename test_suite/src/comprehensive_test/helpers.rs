@@ -49,10 +49,10 @@ pub fn format_test_result(test_num: usize, requirement: &TestRequirement, status
 /// Get status icon for test result
 pub fn get_status_icon(status: &crate::test_results::TestStatus) -> &'static str {
     match status {
-        crate::test_results::TestStatus::Pass => "✅ PASS",
-        crate::test_results::TestStatus::Fail => "❌ FAIL",
-        crate::test_results::TestStatus::Error => "💥 ERROR",
-        crate::test_results::TestStatus::Skipped => "⏭️  SKIP",
-        crate::test_results::TestStatus::Blocked => "🚫 BLOCK",
+        crate::test_results::TestStatus::Pass => "[OK] PASS",
+        crate::test_results::TestStatus::Fail => "[FAIL] FAIL",
+        crate::test_results::TestStatus::Error => "[FAIL] ERROR",
+        crate::test_results::TestStatus::Skipped => "[SKIP]  SKIP",
+        crate::test_results::TestStatus::Blocked => "[BLOCKED] BLOCK",
     }
 }

@@ -210,11 +210,11 @@ impl LintSummary {
 
             for (file, issues) in &by_file {
                 let relative = file.split("src/").last().unwrap_or(file);
-                crate::teeprintln!("  📄 src/{}", relative);
+                crate::teeprintln!("  [INFO] src/{}", relative);
                 for issue in issues {
                     let level_str = match issue.level {
-                        LintLevel::Error => "❌ ERROR",
-                        LintLevel::Warning => "⚠️  WARN ",
+                        LintLevel::Error => "[FAIL] ERROR",
+                        LintLevel::Warning => "[WARN]  WARN ",
                         LintLevel::Help => "   HELP ",
                         LintLevel::Note => "   NOTE ",
                     };

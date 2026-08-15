@@ -1,73 +1,49 @@
 // src/memory/repository.rs
-//! Memory Repository - Per Architecture §6.3
+//! Memory Repository - Per Architecture §4.06 (Repository Pattern) / §22.14
 //!
-//! Provides persistence layer for memory items using SQLite.
-//! Bridges in-memory structures with database storage.
+//! Isolates persistence behind a repository contract so the cognitive layer
+//! (memory engine, handlers) never touches SQL or table structure directly.
+//!
+//! Correct flow (§22.14):
+//!     Memory Engine → Memory Repository → Database Layer → SQLite
 
 use anyhow::Result;
 
+use crate::database::queries;
 use crate::database::sqlite::SqliteDatabase;
-use crate::memory::types::{MemoryItem, MemoryType};
+use crate::memory::types::MemoryItem;
 
-/// Repository trait for memory persistence (scaffolding for future use)
+/// Repository contract for memory persistence (Architecture §4.06).
+///
+/// The cognitive layer knows only this trait — not SQL, table names, or
+/// connection handling. This lets storage be swapped or tested in isolation.
 pub trait MemoryRepository: Send + Sync {
-    /// Store a memory item
+    /// Persist a memory item (including its tags and relationships).
     fn store(&self, item: &MemoryItem) -> Result<()>;
-
-
-
-
-
-
-
-
-
 }
 
-/// Memory statistics
-#[derive(Debug, Clone)]
-
-/// SQLite implementation of MemoryRepository
+/// SQLite-backed implementation of [`MemoryRepository`].
 pub struct SqliteMemoryRepository {
     db: SqliteDatabase,
 }
 
 impl SqliteMemoryRepository {
-    /// Create a new SQLite memory repository
+    /// Create a new repository wrapping a database handle.
     pub fn new(db: SqliteDatabase) -> Self {
         Self { db }
     }
-
-    /// Create from database path
-    #[cfg(test)]
-    pub fn from_path(path: &std::path::Path) -> Result<Self> {
-        let db = SqliteDatabase::initialize_at(path)?;
-        Ok(Self::new(db))
-    }
-
 }
 
 impl MemoryRepository for SqliteMemoryRepository {
     fn store(&self, item: &MemoryItem) -> Result<()> {
         let conn = self.db.connection()?;
-        conn.execute(
-            "
-            INSERT OR REPLACE INTO memories 
-            (id, content, memory_type, confidence, importance, created_at, updated_at)
-            VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)
-            ",
-            rusqlite::params![
-                item.id.to_string(),
-                item.content,
-                memory_type_to_string(&item.memory_type),
-                item.confidence,
-                item.importance,
-                item.created_at.to_rfc3339(),
-                item.modified_at.to_rfc3339(),
-            ],
-        )?;
 
-        // Store memory tags if any
+        // Insert the memory row via the database query layer (single source
+        // of truth for the memories table schema).
+        let card = crate::database::models::MemoryCard::from(item.clone());
+        queries::insert_memory(&conn, &card)?;
+
+        // Persist tags (Architecture §6.3: Permanent Memory is "relationship aware").
         for tag in &item.tags {
             conn.execute(
                 "INSERT OR IGNORE INTO memory_tags (memory_id, tag) VALUES (?1, ?2)",
@@ -75,49 +51,15 @@ impl MemoryRepository for SqliteMemoryRepository {
             )?;
         }
 
-        // Store relationships if any
+        // Persist relationships to related memories.
         for related_id in &item.related_ids {
             conn.execute(
-                "INSERT OR IGNORE INTO memory_relationships (memory_id, related_id) VALUES (?1, ?2)",
+                "INSERT OR IGNORE INTO memory_relationships (memory_id, related_id) \
+                 VALUES (?1, ?2)",
                 rusqlite::params![item.id.to_string(), related_id.to_string()],
             )?;
         }
 
         Ok(())
-    }
-
-
-}
-
-// ==========================================================
-// HELPERS
-// ==========================================================
-
-fn memory_type_to_string(mt: &MemoryType) -> String {
-    mt.to_string()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_from_path_creates_repository() {
-        let temp_dir = std::env::temp_dir();
-        let db_path = temp_dir.join(format!(
-            "robot_brain_repo_test_{}.db",
-            uuid::Uuid::new_v4()
-        ));
-        let repo = SqliteMemoryRepository::from_path(&db_path).expect("create repository");
-        let item = MemoryItem::new(
-            crate::memory::types::MemoryLayer::Working,
-            MemoryType::Knowledge,
-            "test item".to_string(),
-            "test source".to_string(),
-        );
-        assert!(MemoryRepository::store(&repo, &item).is_ok());
-        drop(repo);
-        let removed = std::fs::remove_file(&db_path);
-        assert!(removed.is_ok());
     }
 }

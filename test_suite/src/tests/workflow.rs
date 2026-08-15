@@ -52,12 +52,12 @@ async fn test_create_workflow(
         Ok(result) => {
             // Try to extract workflow_id from result
             let workflow_id = extract_workflow_id(&result);
-            crate::teeprintln!("  ✓ create_workflow('{}') - SUCCESS", name);
+            crate::teeprintln!("  [OK] create_workflow('{}') - SUCCESS", name);
             stats.passed += 1;
             Ok(workflow_id.or_else(|| Some("test_workflow_001".to_string())))
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ create_workflow('{}') - FAILED: {}", name, e);
+            crate::teeprintln!("  [FAIL] create_workflow('{}') - FAILED: {}", name, e);
             stats.failed += 1;
             Ok(None)
         }
@@ -90,11 +90,11 @@ async fn test_add_workflow_step(
         "action": action
     })).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ add_workflow_step('{}', '{}') - SUCCESS", name, action);
+            crate::teeprintln!("  [OK] add_workflow_step('{}', '{}') - SUCCESS", name, action);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ add_workflow_step('{}', '{}') - FAILED: {}", name, action, e);
+            crate::teeprintln!("  [FAIL] add_workflow_step('{}', '{}') - FAILED: {}", name, action, e);
             stats.failed += 1;
         }
     }
@@ -110,11 +110,11 @@ async fn test_get_workflow_status(
         "workflow_id": workflow_id
     })).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ get_workflow_status - SUCCESS");
+            crate::teeprintln!("  [OK] get_workflow_status - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ get_workflow_status - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] get_workflow_status - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -130,11 +130,11 @@ async fn test_start_workflow(
         "workflow_id": workflow_id
     })).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ start_workflow - SUCCESS");
+            crate::teeprintln!("  [OK] start_workflow - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ start_workflow - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] start_workflow - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -150,11 +150,11 @@ async fn test_pause_workflow(
         "workflow_id": workflow_id
     })).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ pause_workflow - SUCCESS");
+            crate::teeprintln!("  [OK] pause_workflow - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ pause_workflow - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] pause_workflow - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -170,11 +170,11 @@ async fn test_resume_workflow(
         "workflow_id": workflow_id
     })).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ resume_workflow - SUCCESS");
+            crate::teeprintln!("  [OK] resume_workflow - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ resume_workflow - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] resume_workflow - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -190,11 +190,11 @@ async fn test_cancel_workflow(
         "workflow_id": workflow_id
     })).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ cancel_workflow - SUCCESS");
+            crate::teeprintln!("  [OK] cancel_workflow - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ cancel_workflow - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] cancel_workflow - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -210,11 +210,11 @@ async fn test_delete_workflow(
         "workflow_id": workflow_id
     })).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ delete_workflow - SUCCESS");
+            crate::teeprintln!("  [OK] delete_workflow - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ delete_workflow - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] delete_workflow - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -234,11 +234,11 @@ async fn test_list_workflows(
     match client.call_tool("list_workflows", args).await {
         Ok(_) => {
             let s = status.unwrap_or("all");
-            crate::teeprintln!("  ✓ list_workflows({}) - SUCCESS", s);
+            crate::teeprintln!("  [OK] list_workflows({}) - SUCCESS", s);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ list_workflows({:?}) - FAILED: {}", status, e);
+            crate::teeprintln!("  [FAIL] list_workflows({:?}) - FAILED: {}", status, e);
             stats.failed += 1;
         }
     }

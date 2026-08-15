@@ -35,11 +35,11 @@ async fn test_global_search(
         "query": query
     })).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ global_search('{}') - SUCCESS", query);
+            crate::teeprintln!("  [OK] global_search('{}') - SUCCESS", query);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ global_search('{}') - FAILED: {}", query, e);
+            crate::teeprintln!("  [FAIL] global_search('{}') - FAILED: {}", query, e);
             stats.failed += 1;
         }
     }
@@ -52,11 +52,11 @@ async fn test_get_recommendations(
 ) -> anyhow::Result<()> {
     match client.call_tool("get_recommendations", serde_json::json!({})).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ get_recommendations - SUCCESS");
+            crate::teeprintln!("  [OK] get_recommendations - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ get_recommendations - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] get_recommendations - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -72,11 +72,11 @@ async fn test_get_reputation(
         "tool_name": tool_name
     })).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ get_reputation('{}') - SUCCESS", tool_name);
+            crate::teeprintln!("  [OK] get_reputation('{}') - SUCCESS", tool_name);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ get_reputation('{}') - FAILED: {}", tool_name, e);
+            crate::teeprintln!("  [FAIL] get_reputation('{}') - FAILED: {}", tool_name, e);
             stats.failed += 1;
         }
     }

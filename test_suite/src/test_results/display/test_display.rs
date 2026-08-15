@@ -7,7 +7,7 @@ impl TestReport {
     /// Print failed tests details
     pub fn print_failed_tests(&self) {
         crate::teeprintln!("\n┌{:─<98}┐", "");
-        crate::teeprintln!("│ {:^96} │", "❌ FAILED TESTS");
+        crate::teeprintln!("│ {:^96} │", "[FAIL] FAILED TESTS");
         crate::teeprintln!("├{:─<96}:┤", "─");
 
         for result in self.failed_results() {
@@ -27,7 +27,7 @@ impl TestReport {
             if !result.validation_results.is_empty() {
                 crate::teeprintln!("│  Validation Results:");
                 for vr in &result.validation_results {
-                    let status = if vr.passed { "✓" } else { "✗" };
+                    let status = if vr.passed { "[OK]" } else { "[FAIL]" };
                     crate::teeprintln!(
                         "│    {} {} - {}",
                         status,
@@ -52,7 +52,7 @@ impl TestReport {
     /// Print error tests details
     pub fn print_error_tests(&self) {
         crate::teeprintln!("\n┌{:─<98}┐", "");
-        crate::teeprintln!("│ {:^96} │", "💥 ERROR TESTS");
+        crate::teeprintln!("│ {:^96} │", "[FAIL] ERROR TESTS");
         crate::teeprintln!("├{:─<96}:┤", "─");
 
         for result in self.error_results() {

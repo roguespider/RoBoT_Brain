@@ -9,7 +9,7 @@ impl TestReport {
     /// Print code issues table
     pub fn print_code_issues(&self) {
         crate::teeprintln!("\n┌{:─<98}┐", "");
-        crate::teeprintln!("│ {:^96} │", "⚠️  CODE QUALITY ISSUES DETECTED");
+        crate::teeprintln!("│ {:^96} │", "[WARN]  CODE QUALITY ISSUES DETECTED");
         crate::teeprintln!("├{:─<96}:┤", "─");
         crate::teeprintln!("│  The following issues were found in the source code:");
         crate::teeprintln!("│  These may indicate incomplete implementations or technical debt:");

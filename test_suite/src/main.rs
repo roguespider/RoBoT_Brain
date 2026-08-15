@@ -56,21 +56,21 @@ impl TestStats {
         );
         teeprintln!("TEST SUMMARY");
         teeprintln!("{}", "=".repeat(60));
-        teeprintln!("  Passed:  {} ✅", self.passed);
-        teeprintln!("  Failed:  {} ❌", self.failed);
+        teeprintln!("  Passed:  {} [OK]", self.passed);
+        teeprintln!("  Failed:  {} [FAIL]", self.failed);
         teeprintln!("  Skipped: {}", self.skipped);
         teeprintln!("{}", "=".repeat(60));
 
         if self.failed == 0 {
             teeprintln!(
                 "
-🎉 ALL TESTS PASSED! 🎉
+[DONE] ALL TESTS PASSED! [DONE]
 "
             );
         } else {
             teeprintln!(
                 "
-⚠️  SOME TESTS FAILED
+[WARN] SOME TESTS FAILED
 "
             );
         }
@@ -104,13 +104,14 @@ async fn build_server() -> anyhow::Result<PathBuf> {
 
     let robot_brain_dir = paths::project_root();
 
-    // Check for existing binary
-    if let Some(path) = find_server_binary(&robot_brain_dir) {
-        teeprintln!("✓ Server already built at: {}", path.display());
-        return Ok(path);
-    }
-
-    teeprintln!("Building robot_brain...");
+    // ALWAYS rebuild robot_brain, even if the binary already exists. Cargo's
+    // incremental compilation makes the no-op case (no source changes) fast,
+    // but skipping the build when the binary exists means the gate tests
+    // against a STALE binary and never sees source changes — letting
+    // violations (unwrap, cfg-test, warnings) slip through undetected. The
+    // gate's value depends on testing the code as it currently is, not as it
+    // was at some past build.
+    teeprintln!("Rebuilding robot_brain (cargo build --release)...");
 
     let output = AsyncCommand::new("cargo")
         .current_dir(&robot_brain_dir)
@@ -126,6 +127,8 @@ async fn build_server() -> anyhow::Result<PathBuf> {
             stderr
         );
     }
+
+    teeprintln!("[OK] robot_brain rebuilt");
 
     // Find the binary after build
     find_server_binary(&robot_brain_dir).ok_or_else(|| {
@@ -493,8 +496,8 @@ It should be extracted and ingested.
     tar_builder.append(&header, tar_content.as_bytes())?;
     tar_builder.finish()?;
 
-    teeprintln!("✓ Created {} test subdirectories", subdirs.len());
-    teeprintln!("✓ Created test files for all supported file types:");
+    teeprintln!("[OK] Created {} test subdirectories", subdirs.len());
+    teeprintln!("[OK] Created test files for all supported file types:");
     teeprintln!("  - Text files: txt, md, rst, log, xml, html");
     teeprintln!("  - Code files: rs, py, js, ts");
     teeprintln!("  - Config files: yaml, ini, toml, json, jsonl, csv");
@@ -502,9 +505,9 @@ It should be extracted and ingested.
     teeprintln!("  - Subtitles: srt");
     teeprintln!("  - Images: svg (metadata only)");
     teeprintln!("  - Archives: zip, tar.gz");
-    teeprintln!("✓ Test directory: {}", test_env.root_dir.display());
-    teeprintln!("✓ Server: {}", test_env.server_path.display());
-    teeprintln!("✓ Files folder: {}", files_folder.display());
+    teeprintln!("[OK] Test directory: {}", test_env.root_dir.display());
+    teeprintln!("[OK] Server: {}", test_env.server_path.display());
+    teeprintln!("[OK] Files folder: {}", files_folder.display());
 
     Ok(test_env)
 }
@@ -597,7 +600,7 @@ impl TestMcpClient {
             .await?;
         client.read_response_line(5).await?;
 
-        teeprintln!("✓ MCP connection established");
+        teeprintln!("[OK] MCP connection established");
 
         Ok(client)
     }
@@ -1134,6 +1137,9 @@ async fn main() -> anyhow::Result<()> {
     // T1-10B-17: migrated semantic chunker markdown+code parsing test (MCP-based).
     tests::semantic_chunker::run_semantic_chunker_tests(&mut client, &mut stats).await?;
 
+    // T1-10B-01: migrated personality defaults/preset/traits/decision (MCP-based).
+    tests::personality::run_personality_tests(&mut client, &mut stats).await?;
+
     // Run CLI-based tool tests (tests robot_brain CLI subcommands)
     teeprintln!(
         "
@@ -1163,10 +1169,10 @@ async fn main() -> anyhow::Result<()> {
     let json_path = paths::test_suite_dir().join("test_suite_report.json");
     match report.write_json(&json_path) {
         Ok(()) => {
-            teeprintln!("\n✅ JSON report saved to: {}", json_path.display());
+            teeprintln!("\n[OK] JSON report saved to: {}", json_path.display());
         }
         Err(e) => {
-            teeprintln!("\n⚠️  Failed to write JSON report: {}", e);
+            teeprintln!("\n[WARN] Failed to write JSON report: {}", e);
         }
     }
 
@@ -1191,12 +1197,12 @@ async fn main() -> anyhow::Result<()> {
         format!("{}", total_tests)
     );
     teeprintln!(
-        "  │ {:<40} {:>65} ✅ │",
+        "  │ {:<40} {:>63} [OK] │",
         "Passed:",
         format!("{}", stats.passed)
     );
     teeprintln!(
-        "  │ {:<40} {:>65} ❌ │",
+        "  │ {:<40} {:>62} [FAIL] │",
         "Failed:",
         format!("{}", stats.failed)
     );
@@ -1227,17 +1233,17 @@ async fn main() -> anyhow::Result<()> {
     // Exit with error if there are issues
     if report.has_issues() || stats.failed > 0 || report.lint_errors > 0 {
         teeprintln!("\n{}", "═".repeat(120));
-        teeprintln!("  {:^116}", "⚠️  TEST SUITE COMPLETED WITH ISSUES");
+        teeprintln!("  {:^116}", "[WARN] TEST SUITE COMPLETED WITH ISSUES");
         teeprintln!("{}", "═".repeat(120));
         output::flush();
         std::process::exit(1);
     }
 
     teeprintln!("\n{}", "═".repeat(120));
-    teeprintln!("  {:^116}", "🎉 ALL TESTS PASSED - SYSTEM READY!");
+    teeprintln!("  {:^116}", "[DONE] ALL TESTS PASSED - SYSTEM READY!");
     teeprintln!("{}", "═".repeat(120));
-    teeprintln!("\n✅ Text output saved to: {}", output_file.display());
-    teeprintln!("✅ JSON report saved to: {}", json_path.display());
+    teeprintln!("\n[OK] Text output saved to: {}", output_file.display());
+    teeprintln!("[OK] JSON report saved to: {}", json_path.display());
     output::flush();
     Ok(())
 }

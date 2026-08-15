@@ -33,7 +33,7 @@ pub async fn test_acp_agents(
     crate::teeprintln!("  Testing agent listing...");
     match client.call_tool("list_acp_agents", serde_json::json!({})).await {
         Ok(result) => {
-            crate::teeprintln!("    ✅ list_acp_agents SUCCESS");
+            crate::teeprintln!("    [OK] list_acp_agents SUCCESS");
             results.agents_tested += 1;
             results.passed += 1;
             stats.passed += 1;
@@ -43,16 +43,16 @@ pub async fn test_acp_agents(
                 .and_then(|t| t.get("text"))
                 .and_then(|t| t.as_str()) 
             {
-                crate::teeprintln!("    ℹ  Agents: {}", text);
+                crate::teeprintln!("    [INFO]  Agents: {}", text);
             }
         }
         Err(e) => {
             let error_str = e.to_string();
             if is_tool_not_found(&error_str) {
-                crate::teeprintln!("    ⏭️  SKIPPED: ACP agents not exposed via MCP");
+                crate::teeprintln!("    [SKIP]  SKIPPED: ACP agents not exposed via MCP");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ❌ list_acp_agents ERROR: {}", e);
+                crate::teeprintln!("    [FAIL] list_acp_agents ERROR: {}", e);
                 results.failed += 1;
                 stats.failed += 1;
             }
@@ -65,7 +65,7 @@ pub async fn test_acp_agents(
         "agent_id": "system"
     })).await {
         Ok(result) => {
-            crate::teeprintln!("    ✅ get_agent_capabilities SUCCESS");
+            crate::teeprintln!("    [OK] get_agent_capabilities SUCCESS");
             results.agents_tested += 1;
             results.passed += 1;
             stats.passed += 1;
@@ -75,16 +75,16 @@ pub async fn test_acp_agents(
                 .and_then(|t| t.get("text"))
                 .and_then(|t| t.as_str()) 
             {
-                crate::teeprintln!("    ℹ  Capabilities: {}", text);
+                crate::teeprintln!("    [INFO]  Capabilities: {}", text);
             }
         }
         Err(e) => {
             let error_str = e.to_string();
             if is_tool_not_found(&error_str) {
-                crate::teeprintln!("    ⏭️  SKIPPED: Agent capabilities not exposed");
+                crate::teeprintln!("    [SKIP]  SKIPPED: Agent capabilities not exposed");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ❌ get_agent_capabilities: {}", e);
+                crate::teeprintln!("    [FAIL] get_agent_capabilities: {}", e);
                 results.failed += 1;
                 stats.failed += 1;
             }
@@ -95,7 +95,7 @@ pub async fn test_acp_agents(
     crate::teeprintln!("  Testing system agent status...");
     match client.call_tool("get_system_status", serde_json::json!({})).await {
         Ok(result) => {
-            crate::teeprintln!("    ✅ get_system_status SUCCESS");
+            crate::teeprintln!("    [OK] get_system_status SUCCESS");
             results.agents_tested += 1;
             results.passed += 1;
             stats.passed += 1;
@@ -106,16 +106,16 @@ pub async fn test_acp_agents(
                 .and_then(|t| t.as_str()) 
             {
                 let snippet = if text.len() > 150 { &text[..150] } else { text };
-                crate::teeprintln!("    ℹ  Status: {}...", snippet.replace('\n', " ").trim());
+                crate::teeprintln!("    [INFO]  Status: {}...", snippet.replace('\n', " ").trim());
             }
         }
         Err(e) => {
             let error_str = e.to_string();
             if is_tool_not_found(&error_str) {
-                crate::teeprintln!("    ⏭️  SKIPPED: get_system_status not available");
+                crate::teeprintln!("    [SKIP]  SKIPPED: get_system_status not available");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ❌ get_system_status: {}", e);
+                crate::teeprintln!("    [FAIL] get_system_status: {}", e);
                 results.failed += 1;
                 stats.failed += 1;
             }
@@ -130,7 +130,7 @@ pub async fn test_acp_agents(
         "capabilities": ["test_capability"]
     })).await {
         Ok(result) => {
-            crate::teeprintln!("    ✅ register_agent SUCCESS (result keys: {})",
+            crate::teeprintln!("    [OK] register_agent SUCCESS (result keys: {})",
                 result.as_object().map(|o| o.len()).unwrap_or(0));
             results.agents_tested += 1;
             results.passed += 1;
@@ -139,10 +139,10 @@ pub async fn test_acp_agents(
         Err(e) => {
             let error_str = e.to_string();
             if is_tool_not_found(&error_str) {
-                crate::teeprintln!("    ⏭️  SKIPPED: Agent registration not exposed");
+                crate::teeprintln!("    [SKIP]  SKIPPED: Agent registration not exposed");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ❌ register_agent: {}", e);
+                crate::teeprintln!("    [FAIL] register_agent: {}", e);
                 results.failed += 1;
                 stats.failed += 1;
             }
@@ -156,7 +156,7 @@ pub async fn test_acp_agents(
         "instance_id": "test_1"
     })).await {
         Ok(result) => {
-            crate::teeprintln!("    ✅ unregister_agent SUCCESS (result keys: {})",
+            crate::teeprintln!("    [OK] unregister_agent SUCCESS (result keys: {})",
                 result.as_object().map(|o| o.len()).unwrap_or(0));
             results.passed += 1;
             stats.passed += 1;
@@ -164,10 +164,10 @@ pub async fn test_acp_agents(
         Err(e) => {
             let error_str = e.to_string();
             if is_tool_not_found(&error_str) {
-                crate::teeprintln!("    ⏭️  SKIPPED: Agent unregistration not exposed");
+                crate::teeprintln!("    [SKIP]  SKIPPED: Agent unregistration not exposed");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ❌ unregister_agent: {}", e);
+                crate::teeprintln!("    [FAIL] unregister_agent: {}", e);
                 results.failed += 1;
                 stats.failed += 1;
             }

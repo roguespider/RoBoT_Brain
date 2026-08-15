@@ -68,17 +68,38 @@ impl IsoClient {
     }
 
     async fn send(&mut self, method: &str, params: Value) -> anyhow::Result<()> {
-        let req = serde_json::json!({
-            "jsonrpc": "2.0",
-            "id": self.next_id,
-            "method": method,
-            "params": params,
-        });
+        // A JSON-RPC notification (methods under "notifications/*") must NOT
+        // carry an `id`: the server must not reply to it. Assigning an id to a
+        // notification causes the server to echo back a method-not-found error
+        // with that id, which then desynchronizes the request/response pairing
+        // in `call_tool`. So notifications are sent id-less.
+        let req = if method.starts_with("notifications/") {
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "method": method,
+                "params": params,
+            })
+        } else {
+            serde_json::json!({
+                "jsonrpc": "2.0",
+                "id": self.next_id,
+                "method": method,
+                "params": params,
+            })
+        };
         self.next_id += 1;
         let line = format!("{}\n", req);
         self.stdin.write_all(line.as_bytes()).await?;
         self.stdin.flush().await?;
         Ok(())
+    }
+
+    /// Send a request and return the id that was assigned, so callers can
+    /// match the exact response in `recv_until`.
+    async fn send_request(&mut self, method: &str, params: Value) -> anyhow::Result<u64> {
+        let id = self.next_id;
+        self.send(method, params).await?;
+        Ok(id)
     }
 
     async fn recv(&mut self) -> anyhow::Result<Value> {
@@ -91,7 +112,7 @@ impl IsoClient {
     }
 
     async fn initialize(&mut self) -> anyhow::Result<()> {
-        self.send(
+        let id = self.send_request(
             "initialize",
             serde_json::json!({
                 "protocolVersion": "2025-03-26",
@@ -100,10 +121,29 @@ impl IsoClient {
             }),
         )
         .await?;
-        // Consume the initialize response (required to complete the handshake).
-        self.recv().await?;
+        // Consume the initialize response (required to complete the handshake),
+        // matching the exact id we sent so a stray notification/error cannot be
+        // mistaken for it.
+        self.recv_until(id).await?;
+        // notifications/initialized carries no id (see `send`), so the server
+        // does not reply to it.
         self.send("notifications/initialized", Value::Null).await?;
         Ok(())
+    }
+
+    /// Read lines until a JSON-RPC response with the given `id` is found,
+    /// skipping notifications and out-of-band messages. This prevents the
+    /// request/response desync where a stale or stray message is mistaken for
+    /// the reply to the current request.
+    async fn recv_until(&mut self, expected_id: u64) -> anyhow::Result<Value> {
+        loop {
+            let resp = self.recv().await?;
+            if resp.get("id").and_then(|v| v.as_u64()) == Some(expected_id) {
+                return Ok(resp);
+            }
+            // Otherwise it is a notification or a response to a different
+            // request; ignore it and keep reading.
+        }
     }
 
     /// Pass the server's workflow gate (get_workflow -> search_memory) so
@@ -125,17 +165,15 @@ impl IsoClient {
     }
 
     async fn call_tool(&mut self, name: &str, args: Value) -> anyhow::Result<Value> {
-        self.send(
-            "tools/call",
-            serde_json::json!({ "name": name, "arguments": args }),
-        )
-        .await?;
-        loop {
-            let resp = self.recv().await?;
-            if resp.get("id").is_some() {
-                return Ok(resp);
-            }
-        }
+        let id = self
+            .send_request(
+                "tools/call",
+                serde_json::json!({ "name": name, "arguments": args }),
+            )
+            .await?;
+        // Match the exact id we sent so a stale/stray message cannot be
+        // returned in place of this call's response.
+        self.recv_until(id).await
     }
 
     /// Stop the server child process explicitly so the `child` field is used.
@@ -154,7 +192,7 @@ pub async fn run_queue_durability_tests(stats: &mut TestStats) -> anyhow::Result
     crate::teeprintln!("\n--- JobQueue Restart-Durability (T1-10) ---");
 
     let Some(bin) = crate::paths::server_binary() else {
-        crate::teeprintln!("  ✗ queue_durability — server binary not found");
+        crate::teeprintln!("  [FAIL] queue_durability — server binary not found");
         stats.failed += 1;
         return Ok(());
     };
@@ -168,7 +206,7 @@ pub async fn run_queue_durability_tests(stats: &mut TestStats) -> anyhow::Result
     let mut c1 = match IsoClient::start(&server_path).await {
         Ok(c) => c,
         Err(e) => {
-            crate::teeprintln!("  ✗ phase1 start — {}", e);
+            crate::teeprintln!("  [FAIL] phase1 start — {}", e);
             stats.failed += 1;
             return Ok(());
         }
@@ -184,7 +222,7 @@ pub async fn run_queue_durability_tests(stats: &mut TestStats) -> anyhow::Result
         n > 0
     };
     if !table_exists {
-        crate::teeprintln!("  ✗ job_queue table missing after boot");
+        crate::teeprintln!("  [FAIL] job_queue table missing after boot");
         stats.failed += 1;
         return Ok(());
     }
@@ -219,7 +257,7 @@ pub async fn run_queue_durability_tests(stats: &mut TestStats) -> anyhow::Result
     let mut c2 = match IsoClient::start(&server_path).await {
         Ok(c) => c,
         Err(e) => {
-            crate::teeprintln!("  ✗ phase2 start — {}", e);
+            crate::teeprintln!("  [FAIL] phase2 start — {}", e);
             stats.failed += 1;
             return Ok(());
         }
@@ -227,7 +265,7 @@ pub async fn run_queue_durability_tests(stats: &mut TestStats) -> anyhow::Result
     let restored_pending = match pending_jobs(&mut c2).await {
         Ok(n) => n,
         Err(e) => {
-            crate::teeprintln!("  ✗ phase2 get_system_status failed — {}", e);
+            crate::teeprintln!("  [FAIL] phase2 get_system_status failed — {}", e);
             stats.failed += 1;
             c2.shutdown().await;
             return Ok(());
@@ -239,11 +277,11 @@ pub async fn run_queue_durability_tests(stats: &mut TestStats) -> anyhow::Result
     // the in-memory count of pending jobs, which restore_from_database
     // rebuilds from the durable table).
     if restored_pending > baseline {
-        crate::teeprintln!("  ✓ pending job survived process restart (restored > baseline)");
+        crate::teeprintln!("  [OK] pending job survived process restart (restored > baseline)");
         stats.passed += 1;
     } else {
         crate::teeprintln!(
-            "  ✗ pending job did NOT survive restart (restored={}, baseline={})",
+            "  [FAIL] pending job did NOT survive restart (restored={}, baseline={})",
             restored_pending,
             baseline
         );
@@ -263,10 +301,10 @@ pub async fn run_queue_durability_tests(stats: &mut TestStats) -> anyhow::Result
     };
     crate::teeprintln!("  • durable row status after restart = {:?}", row_status);
     if row_status.as_deref() == Some("pending") {
-        crate::teeprintln!("  ✓ durable row intact (status=pending)");
+        crate::teeprintln!("  [OK] durable row intact (status=pending)");
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  ✗ durable row not intact");
+        crate::teeprintln!("  [FAIL] durable row not intact");
         stats.failed += 1;
     }
 

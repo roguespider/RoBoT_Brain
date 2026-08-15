@@ -96,64 +96,64 @@ pub async fn run_cli_tool_tests() -> Vec<CliTestResult> {
     // ========================================
     // MEMORY TOOL TESTS
     // ========================================
-    println!("\n📋 MEMORY TOOL TESTS:");
+    println!("\n[INFO] MEMORY TOOL TESTS:");
     println!("{}", "-".repeat(40));
     
     // Test memory list
     let result = test_command("memory.list", &["memory", "list", "10"]);
-    println!("  memory list: {}", if result.success { "✓ PASS" } else { "✗ FAIL" });
+    println!("  memory list: {}", if result.success { "[OK] PASS" } else { "[FAIL] FAIL" });
     results.push(result);
     
     // Test memory stats
     let result = test_command("memory.stats", &["memory", "stats"]);
-    println!("  memory stats: {}", if result.success { "✓ PASS" } else { "✗ FAIL" });
+    println!("  memory stats: {}", if result.success { "[OK] PASS" } else { "[FAIL] FAIL" });
     results.push(result);
     
     // Test memory search
     let result = test_command("memory.search", &["memory", "search", "test"]);
-    println!("  memory search: {}", if result.success { "✓ PASS" } else { "✗ FAIL" });
+    println!("  memory search: {}", if result.success { "[OK] PASS" } else { "[FAIL] FAIL" });
     results.push(result);
     
     // Test memory add
     let result = test_command("memory.add", &["memory", "add", "Test memory from test_suite"]);
-    println!("  memory add: {}", if result.success { "✓ PASS" } else { "✗ FAIL" });
+    println!("  memory add: {}", if result.success { "[OK] PASS" } else { "[FAIL] FAIL" });
     results.push(result);
     
     // ========================================
     // SYSTEM TOOL TESTS
     // ========================================
-    println!("\n📋 SYSTEM TOOL TESTS:");
+    println!("\n[INFO] SYSTEM TOOL TESTS:");
     println!("{}", "-".repeat(40));
     
     // Test status
     let result = test_command("system.status", &["status"]);
-    println!("  system status: {}", if result.success { "✓ PASS" } else { "✗ FAIL" });
+    println!("  system status: {}", if result.success { "[OK] PASS" } else { "[FAIL] FAIL" });
     results.push(result);
     
     // Test experience
     let result = test_command("system.experience", &["experience"]);
-    println!("  system experience: {}", if result.success { "✓ PASS" } else { "✗ FAIL" });
+    println!("  system experience: {}", if result.success { "[OK] PASS" } else { "[FAIL] FAIL" });
     results.push(result);
     
     // Test config
     let result = test_command("system.config", &["config"]);
-    println!("  system config: {}", if result.success { "✓ PASS" } else { "✗ FAIL" });
+    println!("  system config: {}", if result.success { "[OK] PASS" } else { "[FAIL] FAIL" });
     results.push(result);
     
     // ========================================
     // DATABASE TOOL TESTS
     // ========================================
-    println!("\n📋 DATABASE TOOL TESTS:");
+    println!("\n[INFO] DATABASE TOOL TESTS:");
     println!("{}", "-".repeat(40));
     
     // Test init
     let result = test_command("db.init", &["init"]);
-    println!("  db init: {}", if result.success { "✓ PASS" } else { "✗ FAIL" });
+    println!("  db init: {}", if result.success { "[OK] PASS" } else { "[FAIL] FAIL" });
     results.push(result);
     
     // Test migrate
     let result = test_command("db.migrate", &["migrate"]);
-    println!("  db migrate: {}", if result.success { "✓ PASS" } else { "✗ FAIL" });
+    println!("  db migrate: {}", if result.success { "[OK] PASS" } else { "[FAIL] FAIL" });
     results.push(result);
     
     // ========================================
@@ -167,7 +167,7 @@ pub async fn run_cli_tool_tests() -> Vec<CliTestResult> {
     println!("{}", "=".repeat(80));
     
     for result in &results {
-        let status = if result.success { "✓" } else { "✗" };
+        let status = if result.success { "[OK]" } else { "[FAIL]" };
         let test_type = result.test_name.split('.').next().unwrap_or("unknown");
         println!("  {:12} {:12} {:20} {}", status, test_type, result.test_name, 
             if result.success { "PASS" } else { "FAIL" });

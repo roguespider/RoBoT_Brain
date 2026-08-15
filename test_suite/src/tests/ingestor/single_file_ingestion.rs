@@ -27,22 +27,22 @@ pub async fn test_ingest_single_file_type(
                         let chunks = parsed.get("chunks_created").and_then(|c| c.as_i64()).unwrap_or(0);
 
                         if success && chunks > 0 {
-                            crate::teeprintln!("  ✓ ingest {} (.{}) - SUCCESS ({} chunks)",
+                            crate::teeprintln!("  [OK] ingest {} (.{}) - SUCCESS ({} chunks)",
                                 file_test.file_type, file_test.extension, chunks);
                             stats.passed += 1;
                         } else {
                             let error = parsed.get("error").map(|e| e.to_string()).unwrap_or_default();
-                            crate::teeprintln!("  ⚠ ingest {} (.{}) - returned false (error: {})",
+                            crate::teeprintln!("  [WARN] ingest {} (.{}) - returned false (error: {})",
                                 file_test.file_type, file_test.extension, error);
                             stats.skipped += 1;
                         }
                         return;
                     }
-            crate::teeprintln!("  ✓ ingest {} (.{}) - SUCCESS", file_test.file_type, file_test.extension);
+            crate::teeprintln!("  [OK] ingest {} (.{}) - SUCCESS", file_test.file_type, file_test.extension);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ ingest {} (.{}) - FAILED: {}",
+            crate::teeprintln!("  [FAIL] ingest {} (.{}) - FAILED: {}",
                 file_test.file_type, file_test.extension, e);
             stats.failed += 1;
         }
@@ -67,19 +67,19 @@ pub async fn test_ingest_folder_recursive(
                         let chunks = parsed.get("chunks_created").and_then(|c| c.as_i64()).unwrap_or(0);
 
                         if success {
-                            crate::teeprintln!("  ✓ ingest folder (recursive) - SUCCESS (processed folder)");
+                            crate::teeprintln!("  [OK] ingest folder (recursive) - SUCCESS (processed folder)");
                             stats.passed += 1;
                         } else {
-                            crate::teeprintln!("  ⚠ ingest folder - returned false");
+                            crate::teeprintln!("  [WARN] ingest folder - returned false");
                             stats.skipped += 1;
                         }
                         return;
                     }
-            crate::teeprintln!("  ✓ ingest folder (recursive) - SUCCESS");
+            crate::teeprintln!("  [OK] ingest folder (recursive) - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ ingest folder (recursive) - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] ingest folder (recursive) - FAILED: {}", e);
             stats.failed += 1;
         }
     }

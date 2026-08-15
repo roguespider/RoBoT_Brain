@@ -85,7 +85,7 @@ pub async fn run_audio_transcriber_tests(
         let rejected_as_non_audio = text.contains("Not a supported audio file");
         if rejected_as_non_audio {
             crate::teeprintln!(
-                "  ✗ is_audio_file(.{}): rejected as non-audio (expected to pass gate)",
+                "  [FAIL] is_audio_file(.{}): rejected as non-audio (expected to pass gate)",
                 ext
             );
             all_pass = false;
@@ -112,7 +112,7 @@ pub async fn run_audio_transcriber_tests(
         let rejected_as_non_audio = text.contains("Not a supported audio file");
         if !rejected_as_non_audio {
             crate::teeprintln!(
-                "  ✗ is_audio_file(.{}): NOT rejected as non-audio (expected rejection)",
+                "  [FAIL] is_audio_file(.{}): NOT rejected as non-audio (expected rejection)",
                 ext
             );
             all_pass = false;
@@ -121,11 +121,11 @@ pub async fn run_audio_transcriber_tests(
 
     if all_pass {
         crate::teeprintln!(
-            "  ✓ is_audio_file + get_supported_extensions: audio exts (mp3/wav/m4a/flac/ogg) pass gate, non-audio (txt/mp4) rejected"
+            "  [OK] is_audio_file + get_supported_extensions: audio exts (mp3/wav/m4a/flac/ogg) pass gate, non-audio (txt/mp4) rejected"
         );
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  ✗ is_audio_file: one or more extension checks failed (see above)");
+        crate::teeprintln!("  [FAIL] is_audio_file: one or more extension checks failed (see above)");
         stats.failed += 1;
     }
 

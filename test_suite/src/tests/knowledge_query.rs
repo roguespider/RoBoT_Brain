@@ -78,12 +78,12 @@ pub async fn run_knowledge_query_tests(
         )
         .await;
     if let Err(e) = add_rust {
-        crate::teeprintln!("  ✗ add_knowledge(rust) — {}", e);
+        crate::teeprintln!("  [FAIL] add_knowledge(rust) — {}", e);
         stats.failed += 1;
         return Ok(());
     }
     if let Err(e) = add_python {
-        crate::teeprintln!("  ✗ add_knowledge(python) — {}", e);
+        crate::teeprintln!("  [FAIL] add_knowledge(python) — {}", e);
         stats.failed += 1;
         return Ok(());
     }
@@ -107,17 +107,17 @@ pub async fn run_knowledge_query_tests(
             (rust_found, python_absent)
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ query_knowledge(text filter) — {}", e);
+            crate::teeprintln!("  [FAIL] query_knowledge(text filter) — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if text_rust_found && text_python_absent {
-        crate::teeprintln!("  ✓ text filter: rust item found, python item excluded (apply_query text)");
+        crate::teeprintln!("  [OK] text filter: rust item found, python item excluded (apply_query text)");
         stats.passed += 1;
     } else {
         crate::teeprintln!(
-            "  ✗ text filter: rust_found={}, python_absent={}",
+            "  [FAIL] text filter: rust_found={}, python_absent={}",
             text_rust_found,
             text_python_absent
         );
@@ -154,12 +154,12 @@ pub async fn run_knowledge_query_tests(
         )
         .await;
     if let Err(e) = add_high {
-        crate::teeprintln!("  ✗ add_knowledge(high-conf) — {}", e);
+        crate::teeprintln!("  [FAIL] add_knowledge(high-conf) — {}", e);
         stats.failed += 1;
         return Ok(());
     }
     if let Err(e) = add_low {
-        crate::teeprintln!("  ✗ add_knowledge(low-conf) — {}", e);
+        crate::teeprintln!("  [FAIL] add_knowledge(low-conf) — {}", e);
         stats.failed += 1;
         return Ok(());
     }
@@ -182,17 +182,17 @@ pub async fn run_knowledge_query_tests(
             (hf, la)
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ query_knowledge(confidence filter) — {}", e);
+            crate::teeprintln!("  [FAIL] query_knowledge(confidence filter) — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if high_found && low_absent {
-        crate::teeprintln!("  ✓ confidence filter: high-conf found, low-conf excluded (apply_query min_confidence)");
+        crate::teeprintln!("  [OK] confidence filter: high-conf found, low-conf excluded (apply_query min_confidence)");
         stats.passed += 1;
     } else {
         crate::teeprintln!(
-            "  ✗ confidence filter: high_found={}, low_absent={}",
+            "  [FAIL] confidence filter: high_found={}, low_absent={}",
             high_found,
             low_absent
         );
@@ -230,12 +230,12 @@ pub async fn run_knowledge_query_tests(
         )
         .await;
     if let Err(e) = add_hr {
-        crate::teeprintln!("  ✗ add_knowledge(high-rank) — {}", e);
+        crate::teeprintln!("  [FAIL] add_knowledge(high-rank) — {}", e);
         stats.failed += 1;
         return Ok(());
     }
     if let Err(e) = add_lr {
-        crate::teeprintln!("  ✗ add_knowledge(low-rank) — {}", e);
+        crate::teeprintln!("  [FAIL] add_knowledge(low-rank) — {}", e);
         stats.failed += 1;
         return Ok(());
     }
@@ -258,16 +258,16 @@ pub async fn run_knowledge_query_tests(
                 .is_some_and(|s| s.contains(&format!("HighMatchRank-{}", rank_suffix)))
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ query_knowledge(ranking) — {}", e);
+            crate::teeprintln!("  [FAIL] query_knowledge(ranking) — {}", e);
             stats.failed += 1;
             return Ok(());
         }
     };
     if high_is_best {
-        crate::teeprintln!("  ✓ ranking: high-conf(0.9) is best_match over low-conf(0.3) (rank_items)");
+        crate::teeprintln!("  [OK] ranking: high-conf(0.9) is best_match over low-conf(0.3) (rank_items)");
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  ✗ ranking: high-conf not best_match (expected HighMatchRank first)");
+        crate::teeprintln!("  [FAIL] ranking: high-conf not best_match (expected HighMatchRank first)");
         stats.failed += 1;
     }
 

@@ -15,6 +15,7 @@ use crate::database::sqlite::SqliteDatabase;
 use crate::experience::types::{
     Experience, ExperienceContext, ExperienceOutcome, ExperienceType,
 };
+use crate::memory::repository::{MemoryRepository, SqliteMemoryRepository};
 use crate::memory::types::{MemoryItem, MemoryLayer};
 use crate::memory::WorkingMemory;
 
@@ -92,8 +93,10 @@ pub async fn execute_store_memory(
     let memory_from_exp = MemoryCard::from_experience(&experience);
     queries::insert_memory(&conn, &memory_from_exp)?;
 
-    let memory_card: MemoryCard = memory_item.into();
-    queries::insert_memory(&conn, &memory_card)?;
+    // Persist the memory through the MemoryRepository (Architecture §4.06):
+    // the cognitive layer stores a MemoryItem; the repository hides SQL.
+    let repo = SqliteMemoryRepository::new((**database).clone());
+    MemoryRepository::store(&repo, &memory_item)?;
 
     tracing::info!(
         "Memory stored in Working Memory cache with observation and experience: \

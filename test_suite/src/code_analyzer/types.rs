@@ -38,6 +38,22 @@ pub enum IssueType {
     PublicNeverCalled,
     AlwaysErr,
     PlaceholderReturn,
+    /// `#[cfg(test)]` in robot_brain `src/` — tests must live in
+    /// `test_suite/`, not in the server's source (AGENTS.md "All tests
+    /// live in test_suite (MANDATORY)"). The gate compiles robot_brain in
+    /// release so these blocks are invisible to the compiler; this check
+    /// surfaces them explicitly.
+    CfgTest,
+    /// Decorative emoji in code (AGENTS.md "No emoji / plain-text
+    /// markers"). Arrows (`->` `|` `v` unicode) are permitted for flow
+    /// diagrams; only decorative emoji (check/cross marks, party popper,
+    /// clipboard, warning, etc.) are banned. Plain-text markers replace
+    /// them: `[OK]` `[FAIL]` `[WARN]` `[INFO]` `[BLOCKED]`.
+    Emoji,
+    /// Bare `.unwrap()` or `.expect(...)` in non-test production code
+    /// (AGENTS.md "NO Panics or Crashes": forbidden `.unwrap()`/`.expect()`).
+    /// `.unwrap_or*` variants are allowed and not flagged.
+    Unwrap,
 }
 
 impl std::fmt::Display for IssueType {
@@ -54,6 +70,9 @@ impl std::fmt::Display for IssueType {
             IssueType::PublicNeverCalled => write!(f, "Public Never Called"),
             IssueType::AlwaysErr => write!(f, "Always Returns Err"),
             IssueType::PlaceholderReturn => write!(f, "Placeholder Return"),
+            IssueType::CfgTest => write!(f, "#[cfg(test)]"),
+            IssueType::Emoji => write!(f, "Emoji"),
+            IssueType::Unwrap => write!(f, "unwrap()/expect()"),
         }
     }
 }

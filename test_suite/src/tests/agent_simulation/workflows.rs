@@ -36,13 +36,13 @@ pub async fn test_agent_workflows(
     }
     
     if steps_done >= 2 {
-        crate::teeprintln!("    ✅ Research workflow: {}/3 steps completed", steps_done);
+        crate::teeprintln!("    [OK] Research workflow: {}/3 steps completed", steps_done);
         results.workflows_tested += 1;
         results.steps_completed += steps_done;
         results.passed += 1;
         stats.passed += 1;
     } else {
-        crate::teeprintln!("    ❌ Research workflow: {}/3 steps completed", steps_done);
+        crate::teeprintln!("    [FAIL] Research workflow: {}/3 steps completed", steps_done);
         results.failed += 1;
         stats.failed += 1;
     }
@@ -63,13 +63,13 @@ pub async fn test_agent_workflows(
     }
     
     if steps_done >= 2 {
-        crate::teeprintln!("    ✅ Memory workflow: {}/3 steps completed", steps_done);
+        crate::teeprintln!("    [OK] Memory workflow: {}/3 steps completed", steps_done);
         results.workflows_tested += 1;
         results.steps_completed += steps_done;
         results.passed += 1;
         stats.passed += 1;
     } else {
-        crate::teeprintln!("    ⚠️  Memory workflow: {}/3 steps completed", steps_done);
+        crate::teeprintln!("    [WARN]  Memory workflow: {}/3 steps completed", steps_done);
         results.failed += 1;
         stats.skipped += 1;
     }
@@ -90,13 +90,13 @@ pub async fn test_agent_workflows(
     }
     
     if steps_done >= 2 {
-        crate::teeprintln!("    ✅ Experience workflow: {}/3 steps completed", steps_done);
+        crate::teeprintln!("    [OK] Experience workflow: {}/3 steps completed", steps_done);
         results.workflows_tested += 1;
         results.steps_completed += steps_done;
         results.passed += 1;
         stats.passed += 1;
     } else {
-        crate::teeprintln!("    ⚠️  Experience workflow: {}/3 steps completed", steps_done);
+        crate::teeprintln!("    [WARN]  Experience workflow: {}/3 steps completed", steps_done);
         results.failed += 1;
         stats.skipped += 1;
     }
@@ -117,13 +117,13 @@ pub async fn test_agent_workflows(
     }
     
     if steps_done >= 2 {
-        crate::teeprintln!("    ✅ Planning workflow: {}/3 steps completed", steps_done);
+        crate::teeprintln!("    [OK] Planning workflow: {}/3 steps completed", steps_done);
         results.workflows_tested += 1;
         results.steps_completed += steps_done;
         results.passed += 1;
         stats.passed += 1;
     } else {
-        crate::teeprintln!("    ⚠️  Planning workflow: {}/3 steps completed", steps_done);
+        crate::teeprintln!("    [WARN]  Planning workflow: {}/3 steps completed", steps_done);
         results.failed += 1;
         stats.skipped += 1;
     }
@@ -141,13 +141,13 @@ pub async fn test_agent_workflows(
     }
     
     if steps_done >= 1 {
-        crate::teeprintln!("    ✅ Hypothesis workflow: {}/2 steps completed", steps_done);
+        crate::teeprintln!("    [OK] Hypothesis workflow: {}/2 steps completed", steps_done);
         results.workflows_tested += 1;
         results.steps_completed += steps_done;
         results.passed += 1;
         stats.passed += 1;
     } else {
-        crate::teeprintln!("    ⚠️  Hypothesis workflow: {}/2 steps completed", steps_done);
+        crate::teeprintln!("    [WARN]  Hypothesis workflow: {}/2 steps completed", steps_done);
         results.failed += 1;
         stats.skipped += 1;
     }

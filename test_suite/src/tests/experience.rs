@@ -47,7 +47,7 @@ async fn test_record_experience_with_id(
         "outcome": outcome
     })).await {
         Ok(result) => {
-            crate::teeprintln!("  ✓ record_experience({}, {}) - SUCCESS", title, outcome);
+            crate::teeprintln!("  [OK] record_experience({}, {}) - SUCCESS", title, outcome);
             stats.passed += 1;
             // Extract the ID from the result
             if let Some(id) = result.get("id").and_then(|v| v.as_str()) {
@@ -57,7 +57,7 @@ async fn test_record_experience_with_id(
             }
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ record_experience({}, {}) - FAILED: {}", title, outcome, e);
+            crate::teeprintln!("  [FAIL] record_experience({}, {}) - FAILED: {}", title, outcome, e);
             stats.failed += 1;
             Ok("00000000-0000-0000-0000-000000000000".to_string())
         }
@@ -78,11 +78,11 @@ async fn test_record_experience(
         "outcome": outcome
     })).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ record_experience({}, {}) - SUCCESS", title, outcome);
+            crate::teeprintln!("  [OK] record_experience({}, {}) - SUCCESS", title, outcome);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ record_experience({}, {}) - FAILED: {}", title, outcome, e);
+            crate::teeprintln!("  [FAIL] record_experience({}, {}) - FAILED: {}", title, outcome, e);
             stats.failed += 1;
         }
     }
@@ -98,11 +98,11 @@ async fn test_get_experience(
         "id": id
     })).await {
         Ok(_) => {
-            crate::teeprintln!("  ✓ get_experience({}) - SUCCESS", id);
+            crate::teeprintln!("  [OK] get_experience({}) - SUCCESS", id);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ get_experience({}) - FAILED: {}", id, e);
+            crate::teeprintln!("  [FAIL] get_experience({}) - FAILED: {}", id, e);
             stats.failed += 1;
         }
     }
@@ -122,11 +122,11 @@ async fn test_list_experiences(
     match client.call_tool("list_experiences", args).await {
         Ok(_) => {
             let f = filter.unwrap_or("all");
-            crate::teeprintln!("  ✓ list_experiences({}) - SUCCESS", f);
+            crate::teeprintln!("  [OK] list_experiences({}) - SUCCESS", f);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ list_experiences({:?}) - FAILED: {}", filter, e);
+            crate::teeprintln!("  [FAIL] list_experiences({:?}) - FAILED: {}", filter, e);
             stats.failed += 1;
         }
     }
@@ -146,11 +146,11 @@ async fn test_get_experience_stats(
     match client.call_tool("get_experience_stats", args).await {
         Ok(_) => {
             let t = time_window.unwrap_or("all");
-            crate::teeprintln!("  ✓ get_experience_stats({}) - SUCCESS", t);
+            crate::teeprintln!("  [OK] get_experience_stats({}) - SUCCESS", t);
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ get_experience_stats({:?}) - FAILED: {}", time_window, e);
+            crate::teeprintln!("  [FAIL] get_experience_stats({:?}) - FAILED: {}", time_window, e);
             stats.failed += 1;
         }
     }

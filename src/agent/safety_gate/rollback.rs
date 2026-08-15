@@ -25,10 +25,8 @@ impl RollbackJournal {
 
     /// Record a mutation in the journal. Called before executing a mutating
     /// action so the journal has the entry even if execution crashes.
-    pub fn record(&mut self, action: &str, target_id: String) -> &RollbackEntry {
-        let entry = RollbackEntry::new(action, target_id);
-        self.entries.push(entry);
-        self.entries.last().expect("just pushed")
+    pub fn record(&mut self, action: &str, target_id: String) {
+        self.entries.push(RollbackEntry::new(action, target_id));
     }
 
     /// Roll back all recorded mutations by marking them as reversed.

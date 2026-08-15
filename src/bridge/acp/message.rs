@@ -40,20 +40,6 @@ impl AcpMessage {
         }
     }
 
-    /// Create a new message with custom TTL
-    #[cfg(test)]
-    pub fn with_ttl(
-        sender: AcpAgentId,
-        receiver: AcpAgentId,
-        message_type: AcpMessageType,
-        payload: serde_json::Value,
-        ttl: u32,
-    ) -> Self {
-        let mut msg = Self::new(sender, receiver, message_type, payload);
-        msg.ttl = ttl;
-        msg
-    }
-
     /// Create a reply to this message
     pub fn reply(&self, payload: serde_json::Value) -> AcpMessage {
         let mut reply = Self::new(
@@ -70,34 +56,6 @@ impl AcpMessage {
         reply
     }
 
-    /// Check if message has expired
-    #[cfg(test)]
-    pub fn is_expired(&self) -> bool {
-        self.ttl == 0
-    }
-
-    /// Decrement TTL and return whether message is still valid
-    #[cfg(test)]
-    pub fn decrement_ttl(&mut self) -> bool {
-        if self.ttl > 0 {
-            self.ttl -= 1;
-        }
-        !self.is_expired()
-    }
-
-    /// Forward this message to a new receiver
-    #[cfg(test)]
-    pub fn forward_to(&self, new_receiver: AcpAgentId) -> AcpMessage {
-        let mut forwarded = Self::new(
-            self.sender.clone(),
-            new_receiver,
-            self.message_type.clone(),
-            self.payload.clone(),
-        );
-        forwarded.conversation_id = self.conversation_id.clone();
-        forwarded.reply_to = Some(self.id.clone());
-        forwarded
-    }
 }
 
 /// Agent identifier
@@ -116,34 +74,11 @@ impl AcpAgentId {
         }
     }
 
-    /// Create a new agent ID with a random instance
-    #[cfg(test)]
-    pub fn with_random_instance(agent_type: &str) -> Self {
-        Self {
-            agent_type: agent_type.to_string(),
-            instance_id: Uuid::new_v4().to_string()[..8].to_string(),
-        }
-    }
-
     /// Get the full agent URI
     pub fn uri(&self) -> String {
         format!("acp://{}/{}", self.agent_type, self.instance_id)
     }
 
-    /// Get broadcast address for this agent type
-    #[cfg(test)]
-    pub fn broadcast(agent_type: &str) -> Self {
-        Self {
-            agent_type: agent_type.to_string(),
-            instance_id: "*".to_string(),
-        }
-    }
-
-    /// Check if this is a broadcast ID
-    #[cfg(test)]
-    pub fn is_broadcast(&self) -> bool {
-        self.instance_id == "*"
-    }
 }
 
 impl std::fmt::Display for AcpAgentId {

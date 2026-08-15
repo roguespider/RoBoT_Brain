@@ -22,10 +22,10 @@ pub async fn test_rmcp_sessions(
     // Test 1: Verify client maintains connection
     crate::teeprintln!("  Testing connection persistence...");
     if client.is_running() {
-        crate::teeprintln!("    ✅ Connection maintained");
+        crate::teeprintln!("    [OK] Connection maintained");
         results.passed += 1;
     } else {
-        crate::teeprintln!("    ❌ Connection lost");
+        crate::teeprintln!("    [FAIL] Connection lost");
         results.failed += 1;
         return Ok(results);
     }
@@ -52,11 +52,11 @@ pub async fn test_rmcp_sessions(
     }
     
     if request_count >= 2 {
-        crate::teeprintln!("    ✅ {} sequential requests processed", request_count);
+        crate::teeprintln!("    [OK] {} sequential requests processed", request_count);
         results.sessions_tracked = request_count;
         results.passed += 1;
     } else {
-        crate::teeprintln!("    ⚠️  Only {} requests succeeded", request_count);
+        crate::teeprintln!("    [WARN]  Only {} requests succeeded", request_count);
         results.sessions_tracked = request_count;
         results.failed += 1;
     }
@@ -72,10 +72,10 @@ pub async fn test_rmcp_sessions(
     }
     
     if rapid_success >= 2 {
-        crate::teeprintln!("    ✅ {}/3 rapid requests succeeded", rapid_success);
+        crate::teeprintln!("    [OK] {}/3 rapid requests succeeded", rapid_success);
         results.passed += 1;
     } else {
-        crate::teeprintln!("    ⚠️  Only {}/3 rapid requests succeeded", rapid_success);
+        crate::teeprintln!("    [WARN]  Only {}/3 rapid requests succeeded", rapid_success);
         results.failed += 1;
     }
 
@@ -83,11 +83,11 @@ pub async fn test_rmcp_sessions(
     crate::teeprintln!("  Testing server responsiveness after session...");
     match client.list_tools().await {
         Ok(tools) => {
-            crate::teeprintln!("    ✅ Server still responsive - {} tools available", tools.len());
+            crate::teeprintln!("    [OK] Server still responsive - {} tools available", tools.len());
             results.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("    ❌ Server no longer responsive: {}", e);
+            crate::teeprintln!("    [FAIL] Server no longer responsive: {}", e);
             results.failed += 1;
         }
     }
@@ -95,10 +95,10 @@ pub async fn test_rmcp_sessions(
     // Test 5: Test PID tracking
     crate::teeprintln!("  Testing process tracking...");
     if let Some(pid) = client.pid() {
-        crate::teeprintln!("    ℹ  Server PID: {}", pid);
+        crate::teeprintln!("    [INFO]  Server PID: {}", pid);
         results.passed += 1;
     } else {
-        crate::teeprintln!("    ⚠️  Could not get server PID");
+        crate::teeprintln!("    [WARN]  Could not get server PID");
         results.failed += 1;
     }
 

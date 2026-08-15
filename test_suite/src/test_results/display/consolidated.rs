@@ -17,7 +17,7 @@ impl TestReport {
         crate::teeprintln!("\n┌{:─<98}┐", "");
         crate::teeprintln!(
             "│ {:^96} │",
-            "📋 CONSOLIDATED ISSUES (all problems in one place)"
+            "[INFO] CONSOLIDATED ISSUES (all problems in one place)"
         );
         crate::teeprintln!("├{:─<98}┤", "");
         crate::teeprintln!(

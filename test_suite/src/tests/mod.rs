@@ -32,6 +32,7 @@ pub mod memory_retrieval;
 pub mod audio_transcriber;
 pub mod embeddings;
 pub mod semantic_chunker;
+pub mod personality;
 
 pub use memory::run_memory_tests;
 pub use experience::run_experience_tests;

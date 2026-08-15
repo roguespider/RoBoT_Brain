@@ -85,11 +85,11 @@ pub async fn run_ingestor_tests(
         .await
     {
         Ok(_) => {
-            crate::teeprintln!("  ✓ delete_ingested_files (confirmed) - SUCCESS");
+            crate::teeprintln!("  [OK] delete_ingested_files (confirmed) - SUCCESS");
             stats.passed += 1;
         }
         Err(e) => {
-            crate::teeprintln!("  ✗ delete_ingested_files (confirmed) - FAILED: {}", e);
+            crate::teeprintln!("  [FAIL] delete_ingested_files (confirmed) - FAILED: {}", e);
             stats.failed += 1;
         }
     }

@@ -23,11 +23,11 @@ pub fn run() -> Result<()> {
     println!();
     
     println!("{}", output::bold("Features:"));
-    output::list_item(&format!("Experience System {}", output::green("✓")));
-    output::list_item(&format!("Reflection Engine {}", output::green("✓")));
-    output::list_item(&format!("Learning System {}", output::green("✓")));
-    output::list_item(&format!("MCP Bridge {}", output::green("✓")));
-    output::list_item(&format!("CLI Interface {}", output::green("✓")));
+    output::list_item(&format!("Experience System {}", output::green("[OK]")));
+    output::list_item(&format!("Reflection Engine {}", output::green("[OK]")));
+    output::list_item(&format!("Learning System {}", output::green("[OK]")));
+    output::list_item(&format!("MCP Bridge {}", output::green("[OK]")));
+    output::list_item(&format!("CLI Interface {}", output::green("[OK]")));
     
     Ok(())
 }

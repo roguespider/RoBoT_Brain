@@ -113,8 +113,15 @@ pub async fn register_task_handlers(
                     tracing::info!("Executing scheduled reflection task");
 
                     // Load recent experiences from database
-                    let experiences = crate::database::queries::list_experiences(&database.connection().unwrap(), 100)
-                        .unwrap_or_default();
+                    let experiences = match database.connection() {
+                        Ok(c) => {
+                            crate::database::queries::list_experiences(&c, 100).unwrap_or_default()
+                        }
+                        Err(e) => {
+                            tracing::warn!("Could not open DB for reflection: {}", e);
+                            Vec::new()
+                        }
+                    };
 
                     if experiences.len() >= 3 {
                         // Analyze experiences for patterns
@@ -291,9 +298,13 @@ pub async fn register_task_handlers(
                     tracing::debug!("Executing scheduled reputation decay");
 
                     // Load reputations and apply decay
-                    let reputations =
-                        crate::database::queries::list_reputations(&database.connection().unwrap())
-                            .unwrap_or_default();
+                    let reputations = match database.connection() {
+                        Ok(c) => crate::database::queries::list_reputations(&c).unwrap_or_default(),
+                        Err(e) => {
+                            tracing::warn!("Could not open DB for reputation decay: {}", e);
+                            Vec::new()
+                        }
+                    };
 
                     let mut decayed_count = 0;
                     for mut reputation in reputations {
@@ -304,15 +315,26 @@ pub async fn register_task_handlers(
                         if (original_score - reputation.score).abs() > 0.001 {
                             decayed_count += 1;
                             // Save updated reputation
-                            if let Err(e) = crate::database::queries::insert_reputation(
-                                &database.connection().unwrap(),
-                                &reputation,
-                            ) {
-                                tracing::warn!(
-                                    "Failed to update reputation {}: {}",
-                                    reputation.id,
-                                    e
-                                );
+                            match database.connection() {
+                                Ok(c) => {
+                                    if let Err(e) = crate::database::queries::insert_reputation(
+                                        &c,
+                                        &reputation,
+                                    ) {
+                                        tracing::warn!(
+                                            "Failed to update reputation {}: {}",
+                                            reputation.id,
+                                            e
+                                        );
+                                    }
+                                }
+                                Err(e) => {
+                                    tracing::warn!(
+                                        "Could not open DB to update reputation {}: {}",
+                                        reputation.id,
+                                        e
+                                    );
+                                }
                             }
                         }
                     }

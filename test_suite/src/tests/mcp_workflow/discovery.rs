@@ -8,7 +8,7 @@ pub async fn test_workflow_discovery(
     client: &mut TestMcpClient,
     stats: &mut TestStats,
 ) -> anyhow::Result<WorkflowDiscoveryResults> {
-    crate::teeprintln!("\n📋 Phase 1: Workflow Discovery Tests");
+    crate::teeprintln!("\n[INFO] Phase 1: Workflow Discovery Tests");
     crate::teeprintln!("{}", "-".repeat(60));
 
     let mut results = WorkflowDiscoveryResults {
@@ -30,7 +30,7 @@ pub async fn test_workflow_discovery(
         .await
     {
         Ok(result) => {
-            crate::teeprintln!("    ✓ get_workflow('default') - SUCCESS");
+            crate::teeprintln!("    [OK] get_workflow('default') - SUCCESS");
             stats.passed += 1;
             results.get_workflow_available = true;
             results.default_workflow_retrieved = true;
@@ -42,11 +42,11 @@ pub async fn test_workflow_discovery(
                     || text.contains("guidelines"))
                 {
                     results.workflow_rules_understood = true;
-                    crate::teeprintln!("    ✓ Workflow rules/instructions present in response");
+                    crate::teeprintln!("    [OK] Workflow rules/instructions present in response");
                 }
         }
         Err(e) => {
-            crate::teeprintln!("    ✗ get_workflow('default') - FAILED: {}", e);
+            crate::teeprintln!("    [FAIL] get_workflow('default') - FAILED: {}", e);
             stats.failed += 1;
         }
     }
@@ -71,12 +71,12 @@ pub async fn test_workflow_discovery(
             .await
         {
             Ok(_result) => {
-                crate::teeprintln!("    ✓ get_workflow('{}') - SUCCESS", purpose);
+                crate::teeprintln!("    [OK] get_workflow('{}') - SUCCESS", purpose);
                 stats.passed += 1;
                 results.purpose_based_workflows.push(purpose.to_string());
             }
             Err(e) => {
-                crate::teeprintln!("    ✗ get_workflow('{}') - FAILED: {}", purpose, e);
+                crate::teeprintln!("    [FAIL] get_workflow('{}') - FAILED: {}", purpose, e);
                 stats.failed += 1;
             }
         }

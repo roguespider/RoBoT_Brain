@@ -38,7 +38,7 @@ pub async fn test_acp_router(
         "payload": {"action": "test_route"}
     })).await {
         Ok(result) => {
-            crate::teeprintln!("    ✅ route_acp_message SUCCESS");
+            crate::teeprintln!("    [OK] route_acp_message SUCCESS");
             results.messages_routed += 1;
             results.passed += 1;
             stats.passed += 1;
@@ -48,22 +48,22 @@ pub async fn test_acp_router(
                 .and_then(|t| t.get("text"))
                 .and_then(|t| t.as_str()) 
             {
-                crate::teeprintln!("    ℹ  Result: {}", text);
+                crate::teeprintln!("    [INFO]  Result: {}", text);
             }
         }
         Err(e) => {
             let error_str = e.to_string();
             if is_tool_not_found(&error_str) {
-                crate::teeprintln!("    ⏭️  SKIPPED: ACP routing not exposed via MCP");
-                crate::teeprintln!("    ℹ  ACP router exists in code (src/bridge/acp/router.rs)");
+                crate::teeprintln!("    [SKIP]  SKIPPED: ACP routing not exposed via MCP");
+                crate::teeprintln!("    [INFO]  ACP router exists in code (src/bridge/acp/router.rs)");
                 stats.skipped += 1;
             } else if error_str.contains("Unknown receiver") || error_str.contains("not registered") {
-                crate::teeprintln!("    ⚠️  Message routing works but receiver not found");
-                crate::teeprintln!("    ℹ  This is expected if no agents are registered");
+                crate::teeprintln!("    [WARN]  Message routing works but receiver not found");
+                crate::teeprintln!("    [INFO]  This is expected if no agents are registered");
                 results.passed += 1;
                 stats.passed += 1;
             } else {
-                crate::teeprintln!("    ❌ route_acp_message ERROR: {}", e);
+                crate::teeprintln!("    [FAIL] route_acp_message ERROR: {}", e);
                 results.failed += 1;
                 stats.failed += 1;
             }
@@ -79,7 +79,7 @@ pub async fn test_acp_router(
         "payload": {"action": "broadcast_test"}
     })).await {
         Ok(result) => {
-            crate::teeprintln!("    ✅ Broadcast routing SUCCESS (result keys: {})", 
+            crate::teeprintln!("    [OK] Broadcast routing SUCCESS (result keys: {})", 
                 result.as_object().map(|o| o.len()).unwrap_or(0));
             results.messages_routed += 1;
             results.passed += 1;
@@ -88,16 +88,16 @@ pub async fn test_acp_router(
         Err(e) => {
             let error_str = e.to_string();
             if is_tool_not_found(&error_str) {
-                crate::teeprintln!("    ⏭️  SKIPPED: Broadcast routing not exposed");
+                crate::teeprintln!("    [SKIP]  SKIPPED: Broadcast routing not exposed");
                 stats.skipped += 1;
             } else if error_str.contains("Unknown receiver") || error_str.contains("not registered") {
                 // Broadcast not supported - treat as success since router is working
-                crate::teeprintln!("    ✅ Broadcast routing SUCCESS (feature not supported)");
+                crate::teeprintln!("    [OK] Broadcast routing SUCCESS (feature not supported)");
                 results.messages_routed += 1;
                 results.passed += 1;
                 stats.passed += 1;
             } else {
-                crate::teeprintln!("    ⚠️  Broadcast: {}", e);
+                crate::teeprintln!("    [WARN]  Broadcast: {}", e);
                 stats.skipped += 1;
             }
         }
@@ -113,7 +113,7 @@ pub async fn test_acp_router(
         "ttl": 5
     })).await {
         Ok(_) => {
-            crate::teeprintln!("    ✅ TTL handling works");
+            crate::teeprintln!("    [OK] TTL handling works");
             results.messages_routed += 1;
             results.passed += 1;
             stats.passed += 1;
@@ -121,10 +121,10 @@ pub async fn test_acp_router(
         Err(e) => {
             let error_str = e.to_string();
             if is_tool_not_found(&error_str) {
-                crate::teeprintln!("    ⏭️  SKIPPED: TTL not supported via MCP");
+                crate::teeprintln!("    [SKIP]  SKIPPED: TTL not supported via MCP");
                 stats.skipped += 1;
             } else {
-                crate::teeprintln!("    ⚠️  TTL test: {}", e);
+                crate::teeprintln!("    [WARN]  TTL test: {}", e);
                 stats.skipped += 1;
             }
         }
@@ -149,11 +149,11 @@ pub async fn test_acp_router(
     }
     
     if types_tested >= 2 {
-        crate::teeprintln!("    ✅ {}/{} message types work", types_tested, message_types.len());
+        crate::teeprintln!("    [OK] {}/{} message types work", types_tested, message_types.len());
         results.passed += 1;
         stats.passed += 1;
     } else {
-        crate::teeprintln!("    ⏭️  SKIPPED: Only {}/{} message types available", types_tested, message_types.len());
+        crate::teeprintln!("    [SKIP]  SKIPPED: Only {}/{} message types available", types_tested, message_types.len());
     }
 
     Ok(results)
