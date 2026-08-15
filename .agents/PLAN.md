@@ -141,7 +141,18 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 
 - [x] **T1-09** Add `job_queue` table + migration in `src/database/migrations/`.
       (commit d1ee096; migration 012 + registered in run loop)
-- [x] **T1-10** Wire enqueue/dequeue through `src/experience/queue.rs` to SQLite.
+      VERIFIED 2026-08-14 by codebase inspection: migration file
+      `src/database/migrations/job_queue.rs` creates `CREATE TABLE IF NOT
+      EXISTS job_queue` (id/observer_name/status/last_error/attempts/
+      created_at/updated_at + idx_job_queue_observer_status +
+      idx_job_queue_updated). Registered in run loop at `migrations/mod.rs:55`
+      (version 11 -> 12 branch calls `job_queue::run(conn)`). `run_migrations()`
+      called at startup (`database/sqlite.rs:40`). Runtime proof: the T1-10
+      restart-durability test inserts into the `job_queue` table and asserts
+      the row survives a process restart -- that test passes, which is only
+      possible because T1-09's table exists. Checkbox was stale `[ ]`; flipped
+      to `[x]` to reflect the verified state.
+- [ ] **T1-10** Wire enqueue/dequeue through `src/experience/queue.rs` to SQLite.
   VERIFIED 2026-08-12 by codebase inspection + live restart-durability test:
   queue.rs (with_database/push_job/pop_job/mark_complete/mark_failed/
   restore_from_database), worker_manager/manager.rs (job_queue field,
@@ -173,7 +184,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
       block is deleted from `src/`.
 
       ### Group A -- MCP-reachable (move to test_suite, delete src/ block)
-      - [x] **T1-10B-01** `personality/mod.rs` (16 tests) DONE 2026-08-14.
+      - [ ] **T1-10B-01** `personality/mod.rs` (16 tests) DONE 2026-08-14.
             Migrated 8 MCP-reachable behaviors to
             `test_suite/src/tests/personality.rs` (run_personality_tests):
             default personality (get_personality), apply_preset valid
@@ -205,7 +216,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             tools: get_personality / apply_personality_preset /
             list_personality_presets / set_personality_traits /
             get_personality_decision / format_response.
-      - [x] **T1-10B-02** `personality/emotional.rs` (3 tests) DONE.
+      - [ ] **T1-10B-02** `personality/emotional.rs` (3 tests) DONE.
             Group B (internal-only, no MCP surface) -- the `#[cfg(test)]` block
             was DELETED per the Group B decision (not left in place). Verified
             2026-08-14: emotional.rs has no cfg(test) block and is NOT in the
@@ -227,7 +238,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             emotional_weight is still covered indirectly through
             get_personality (returns the field) and get_personality_decision
             (decide() applies emotional_weight to confidence).
-      - [x] **T1-10B-03** `experience/reflection/services/generator.rs` (3) DONE
+      - [ ] **T1-10B-03** `experience/reflection/services/generator.rs` (3) DONE
             2026-08-14. Group B (internal-only, no MCP surface) -- the
             `#[cfg(test)]` block was DELETED per the Group B decision. The 3
             tests (test_generate_from_multiple_successes,
@@ -249,7 +260,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             satisfy the compiler after assert!(false). Gate: CfgTest 55 -> 54,
             fresh full rebuild verified (libssl-dev reinstalled), 0 emoji,
             145/145, 0 err, 0 untested.
-      - [x] **T1-10B-04** `knowledge/store.rs` (2 tests) DONE 2026-08-12.
+      - [ ] **T1-10B-04** `knowledge/store.rs` (2 tests) DONE 2026-08-12.
             Migrated test_add_and_get + test_get_mature to test_suite/src/
             tests/knowledge_store.rs via MCP flow. test_add_and_get: add_knowledge
             (calls KnowledgeStore::add) -> query_knowledge (retrieves via
@@ -259,7 +270,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             get_mature's is_mature >= 0.7 threshold). Deleted #[cfg(test)]
             block from src/. add/get/get_mature still used by handlers.
             Gate: 145/145, 0 issues, 0 untested, 67 warnings.
-      - [x] **T1-10B-05** `knowledge/query.rs` (3 tests) DONE 2026-08-12.
+      - [ ] **T1-10B-05** `knowledge/query.rs` (3 tests) DONE 2026-08-12.
             Migrated test_text_filter + test_confidence_filter + test_ranking
             to test_suite/src/tests/knowledge_query.rs via MCP flow. query_knowledge
             calls apply_query (text + min_confidence filters) + rank_items
@@ -270,7 +281,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             Deleted #[cfg(test)] block from src/. apply_query/rank_items still
             used by query_knowledge handler. Gate: 145/145, 0 issues, 0
             untested, 67 warnings.
-      - [x] **T1-10B-06** `memory/retrieval.rs` (2 of 4 migrated; 2 reclassified Group B) DONE 2026-08-12, fully closed 2026-08-14.
+      - [ ] **T1-10B-06** `memory/retrieval.rs` (2 of 4 migrated; 2 reclassified Group B) DONE 2026-08-12, fully closed 2026-08-14.
             Migrated test_retrieve_working + test_unified_retrieve to
             test_suite/src/tests/memory_retrieval.rs via MCP flow. search_memory
             calls retrieve() which calls get_from_working + get_from_permanent.
@@ -284,7 +295,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             retrieve() prod fn stays (used by search.rs, query.rs, loop_runner.rs).
             No dead-code warnings (40 unchanged). Gate: CfgTest 52 -> 51, fresh
             full rebuild, 145/145, 0 err, 0 untested, 0 emoji.
-      - [x] **T1-10B-07** `bridge/tools/ingestor/audio_transcriber.rs` (2 of 3 migrated; 1 reclassified Group B) DONE 2026-08-12.
+      - [ ] **T1-10B-07** `bridge/tools/ingestor/audio_transcriber.rs` (2 of 3 migrated; 1 reclassified Group B) DONE 2026-08-12.
             Migrated test_is_audio_file + test_get_supported_extensions to
             test_suite/src/tests/audio_transcriber.rs via MCP flow.
             transcribe_audio calls is_audio_file (which calls
@@ -301,7 +312,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             generate_audio_analysis_text at 515), so no dead-code warnings
             (40 unchanged). Gate: CfgTest 51 -> 50, fresh full rebuild,
             145/145, 0 err, 0 untested, 0 emoji.
-      - [x] **T1-10B-08** `experience/exploration/hypothesis.rs` (2 tests) DONE
+      - [ ] **T1-10B-08** `experience/exploration/hypothesis.rs` (2 tests) DONE
             2026-08-12. Migrated test_hypothesis_lifecycle +
             test_confidence_clamping to test_suite/src/tests/
             exploration_hypothesis.rs via MCP flow. Constructor confidence
@@ -314,7 +325,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             constructor clamp is tested. Both use the same .clamp(0.0,1.0).
             Deleted #[cfg(test)] block from src/. Methods still used by
             handlers. Gate: 145/145, 0 issues, 0 untested, 67 warnings.
-      - [x] **T1-10B-09** `experience/exploration/attempt.rs` (2 tests) -- DONE
+      - [ ] **T1-10B-09** `experience/exploration/attempt.rs` (2 tests) -- DONE
             2026-08-12. Migrated test_attempt_builder + test_attempt_failure to
             test_suite/src/tests/exploration_attempt.rs via MCP flow
             (start_exploration -> record_attempt [expected==actual] ->
@@ -325,7 +336,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             Deleted #[cfg(test)] block from src/. Builders still used by
             record_attempt handler (no new dead-code). Gate: 145/145, 0 issues,
             0 untested, 67 warnings.
-      - [x] **T1-10B-10** `experience/exploration/finding.rs` (1 test) -- DONE
+      - [ ] **T1-10B-10** `experience/exploration/finding.rs` (1 test) -- DONE
             2026-08-12. Migrated test_finding_new_and_promote to
             test_suite/src/tests/exploration_finding.rs via MCP flow
             (start_exploration -> complete_exploration [calls
@@ -333,7 +344,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             -> promote_finding [calls f.promote()] -> get_exploration_status
             [promoted=true]). Deleted #[cfg(test)] block from src/. promote()
             still used by promote_finding MCP handler (no new dead-code).
-      - [x] **T1-10B-11** `database/queries/observations.rs` (1 test) -- DONE
+      - [ ] **T1-10B-11** `database/queries/observations.rs` (1 test) -- DONE
             2026-08-12. Migrated the MCP-reachable part (record_observation
             [insert_observation] → list_observations, verify content+type) to
             test_suite/src/tests/observations.rs. The original test focused on
@@ -348,7 +359,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
       (1) leave as Rust unit tests (gate does NOT flag #[cfg(test)], only
       dead-code), (2) delete (loses coverage), (3) expose via test-only MCP
       tool (overkill). Leaning: LEAVE as-is. ~48 tests.
-      - [x] **T1-10B-12** `bridge/acp/` (mod.rs 4 + message.rs 7 = 11) DONE 2026-08-14.
+      - [ ] **T1-10B-12** `bridge/acp/` (mod.rs 4 + message.rs 7 = 11) DONE 2026-08-14.
             Group B (internal-only, no MCP surface) -- deleted all ACP
             test-only code. (1) acp/mod.rs: removed the `#[cfg(test)] mod
             tests` block (~20 fns) and the 3 `#[cfg(test)] pub mod
@@ -365,7 +376,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             reply + AcpAgentId::new/uri + AcpMessageType stay. No dead-code
             warnings (40 unchanged). Gate: CfgTest 49 -> 38, fresh full
             rebuild, 145/145, 0 err, 0 untested, 0 emoji.
-      - [x] **T1-10B-13** `bridge/mcp/client/mod.rs` (8) DONE 2026-08-14.
+      - [ ] **T1-10B-13** `bridge/mcp/client/mod.rs` (8) DONE 2026-08-14.
             Group B (internal-only, no MCP surface) -- deleted the
             `#[cfg(test)]` block (8 fns: test_client_creation,
             test_list_servers_empty, test_list_tools_empty,
@@ -377,14 +388,14 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             mcp_tools.rs, client/error.rs) so no dead-code warnings (40
             unchanged). Gate: CfgTest 53 -> 52, fresh full rebuild, 145/145,
             0 err, 0 untested, 0 emoji.
-      - [x] **T1-10B-P** `planner/engine/planner.rs` (1) DONE 2026-08-14.
+      - [ ] **T1-10B-P** `planner/engine/planner.rs` (1) DONE 2026-08-14.
             Removed the `#[cfg(test)]`-gated `get_stats` method + its doc
             comment. get_stats referenced an undefined `PlannerStats` (only
             compiled under cfg(test), excluded from release builds) -- dead/
             broken test code with zero callers. Deleted the whole method
             (lines 512-542). Gate: CfgTest 50 -> 49, fresh full rebuild,
             145/145, 0 err, 0 untested, 0 emoji.
-      - [~] **T1-10B-14** `experience/scorer.rs` (5) --
+      - [ ] **T1-10B-14** `experience/scorer.rs` (5) --
       RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
       Reason: EncounterScore, score_encounter(), and aggregate_encounter_scores()
       have ZERO callers on any MCP-reachable path. The coordinator uses
@@ -392,7 +403,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
       score_encounter(). The only non-test references are ExperienceScorer::new()
       passed to the coordinator (which calls .score(), not .score_encounter()).
       EncounterScore is pure internal math with no MCP surface.
-      - [x] **T1-10B-15** `learning/pipeline.rs` (3) DONE 2026-08-14.
+      - [ ] **T1-10B-15** `learning/pipeline.rs` (3) DONE 2026-08-14.
             Group B (internal-only, no MCP surface) -- deleted the
             `#[cfg(test)]` block (3 fns: test_start_pipeline,
             test_advance_stage, test_pipeline_stats). LearningPipeline methods
@@ -402,7 +413,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             so the tests are internal-only. No dead-code warnings introduced
             (40 warns unchanged). Gate: CfgTest 54 -> 53, fresh full rebuild,
             145/145, 0 err, 0 untested, 0 emoji.
-      - [~] **T1-10B-16** `experience/evolution/engine.rs` (3) --
+      - [ ] **T1-10B-16** `experience/evolution/engine.rs` (3) --
       RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
       Reason: EvolutionEngine's methods (create_behavior, record_result,
       add_evidence, get_metrics, update_priority, merge_behaviors,
@@ -414,7 +425,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
       (the trait method) is internal-only. Behavior methods (add_source_insight,
       record_success/failure, start_practicing, success_rate) are also
       internal-only. Pure internal evolution logic with no MCP surface.
-      - [x] **T1-10B-17** `bridge/tools/ingestor/semantic_chunker.rs` (3) DONE 2026-08-12.
+      - [ ] **T1-10B-17** `bridge/tools/ingestor/semantic_chunker.rs` (3) DONE 2026-08-12.
             Migrated test_markdown_parsing + test_sentence_splitting +
             test_code_parsing to test_suite/src/tests/semantic_chunker.rs via
             MCP flow. ingest_files (file_path) calls ingest_single_file ->
@@ -426,21 +437,21 @@ first; AI Runtime (Candle) comes last as the local provider behind the
             split_sentences). Create .rs with >=2 functions -> ingest_files ->
             chunks_created >= 2 (exercises parse_code). Removed test block
             from src/. Gate: 145/145, 0 warnings, 0 issues, 0 untested.
-      - [~] **T1-10B-18** `memory/repository.rs` (1) --
+      - [ ] **T1-10B-18** `memory/repository.rs` (1) --
       RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
       Reason: SqliteMemoryRepository and the MemoryRepository trait have ZERO
       callers outside repository.rs -- they're unused dead code. The
       store_memory MCP tool uses queries::insert_memory directly, not the
       repository abstraction. from_path is a constructor for a custom DB path
       that no MCP tool invokes. Cannot be exercised via MCP.
-      - [~] **T1-10B-19** `database/queries/memory.rs` (1) --
+      - [ ] **T1-10B-19** `database/queries/memory.rs` (1) --
             RECLASSIFIED to Group B (LEAVE as Rust unit test) 2026-08-12.
             Reason: delete_memories_by_string_ids has ZERO callers outside
             its own test -- it's dead code (both the function and its test are
             wrapped in #[cfg(test)]). The archive_memory MCP tool uses
             delete_memories (by Uuid), not delete_memories_by_string_ids.
             Cannot be exercised via MCP.
-      - [x] **T1-10B-20** `database/queries/embeddings.rs` (1) DONE 2026-08-12.
+      - [ ] **T1-10B-20** `database/queries/embeddings.rs` (1) DONE 2026-08-12.
             Migrated test_get_and_delete_embedding_by_id to
             test_suite/src/tests/embeddings.rs via MCP flow. The src/ unit test
             tested get_embedding + delete_embedding (the by-embedding-id
@@ -465,29 +476,29 @@ first; AI Runtime (Candle) comes last as the local provider behind the
       **Resume here:** T1-10B-10 (exploration/finding.rs, 1 test) -- smallest,
       establishes pattern. Execution order: 10, 11, 09, 08, 04, 05, 03, 02, 06,
       07, 01, then Z.
-- [x] **T1-11** Handle broadcast `Lagged` events explicitly (skip+log or drain)
+- [ ] **T1-11** Handle broadcast `Lagged` events explicitly (skip+log or drain)
       in the worker path. (commit 560efad -- both event subscriber and worker manager drain lagged events + worker manager records failed job)
-- [x] **T1-12** Update `src/bridge/app/initialization.rs` startup verification
+- [ ] **T1-12** Update `src/bridge/app/initialization.rs` startup verification
       (comment already removed; verification now reads "Verify durability: a fresh queue instance restores the pending/running rows written above from SQLite").
 
 **Done when:** queue survives a process restart in a manual test; gate green.
 
 ## 1C. Loop-health metrics (V2-12)
 
-- [x] **T1-13** Add `loop_latency` metric capture around `AgentLoop::run`.
+- [ ] **T1-13** Add `loop_latency` metric capture around `AgentLoop::run`.
       (commit in progress -- added gauge fields + timer wrapping)
-- [x] **T1-14** Add `confidence_drift` metric capture. DONE (verified
+- [ ] **T1-14** Add `confidence_drift` metric capture. DONE (verified
       2026-08-12 by codebase inspection). Captured in `src/agent/loop_runner.rs:176`
       (record_confidence_drift), not in event_subscriber/handlers.rs as originally
       planned -- the loop runner is the correct capture point (drift measured per
       loop iteration). Field + record/get in `src/experience/metrics.rs`. Exposed
       via get_system_status (acp_handler.rs:437).
-- [x] **T1-15** Add promotion-throughput (reflection→hypothesis→knowledge)
+- [ ] **T1-15** Add promotion-throughput (reflection→hypothesis→knowledge)
       metric. DONE (verified 2026-08-12 by codebase inspection). Captured in
       `src/agent/loop_runner.rs:287` (record_promotion_throughput). Field +
       record/get in `src/experience/metrics.rs`. Exposed via get_system_status
       (acp_handler.rs:438).
-- [x] **T1-16** Expose the three new metrics via the `get_system_status` MCP
+- [ ] **T1-16** Expose the three new metrics via the `get_system_status` MCP
       tool. (done -- `loop_health` block added to status JSON)
 
 **Done when:** `get_system_status` live shows loop_latency / confidence_drift /
@@ -495,14 +506,14 @@ promotion_throughput; gate green.
 
 ## 1D. Close the generic MCP→experience path (V2-05)
 
-- [x] **T1-17** Hook `emit_tool_experience` (publishes ExperienceRecorded)
+- [ ] **T1-17** Hook `emit_tool_experience` (publishes ExperienceRecorded)
       into the post-tool-execution dispatch wrapper. DONE (verified 2026-08-12).
       Wired in `src/bridge/rmcp/mod.rs:127` (success path) and `:141` (error path)
       -- both call `emit_tool_experience(tool_name, was_successful, &arguments)`.
       Impl in `src/bridge/rmcp/types.rs:121`. Note: impl method renamed to
       `emit_tool_experience` (not `emit_experience_recorded`); it publishes the
       ExperienceRecorded event via coordinator.process() internally.
-- [x] **T1-18** Ensure idempotency (no double-emit from a single tool call).
+- [ ] **T1-18** Ensure idempotency (no double-emit from a single tool call).
       DONE (verified 2026-08-12). The emit_tool_experience call sites are in
       mutually-exclusive match arms (Ok at mod.rs:127, Err at mod.rs:141), so a
       single tool execution emits exactly once. coordinator.process() publishes
@@ -526,7 +537,7 @@ double-emit from the agent loop; gate green.
 
 ### 1E.1 -- Fix the phantom embedding tools (a real wiring defect)
 
-- [x] **T1-19** Fix the 6 phantom embedding tools (`store_embedding`,
+- [ ] **T1-19** Fix the 6 phantom embedding tools (`store_embedding`,
       `get_embedding`, `search_similar`, `list_embeddings`, `delete_embedding`,
       `get_embedding_stats`). **DONE (commit b9b43ff).** Root cause: the memory
       handler maintained three separate tool lists that drifted -- `tool_names()`
@@ -548,31 +559,31 @@ One increment per group. Each adds test entries that call the tool via MCP and
 assert a sane response. Pattern is in `function_registry/` -- copy an existing
 entry, change the tool name + expected fields.
 
-- [x] **T1-20** ACP tools (9): `route_acp_message`, `register_agent`,
+- [ ] **T1-20** ACP tools (9): `route_acp_message`, `register_agent`,
       `unregister_agent`, `list_acp_agents`, `acp_agent_count`, `acp_registry`,
       `acp_router`, `create_acp_message`, `get_agent_capabilities`.
       **DONE (commit 6b7d036).** Added `function_registry/acp_tools.rs`.
-- [x] **T1-21** System/session tools (4): `get_system_status`,
+- [ ] **T1-21** System/session tools (4): `get_system_status`,
       `get_session_state`, `cleanup_sessions`, `get_consumed_resources`.
-- [x] **T1-22** Memory/search extras (3): `archive_memory`, `link_memories`,
+- [ ] **T1-22** Memory/search extras (3): `archive_memory`, `link_memories`,
       `ranked_search`.
-- [x] **T1-23** Knowledge lifecycle (6): `get_knowledge`, `delete_knowledge`,
+- [ ] **T1-23** Knowledge lifecycle (6): `get_knowledge`, `delete_knowledge`,
       `update_knowledge`, `get_related_knowledge`,
       `validate_knowledge_dependencies`, `bump_knowledge_version`.
-- [x] **T1-24** Evidence/observation (3): `get_evidence`, `list_evidence`,
+- [ ] **T1-24** Evidence/observation (3): `get_evidence`, `list_evidence`,
       `list_observations`.
-- [x] **T1-25** Reflection extras (3): `update_reflection`,
+- [ ] **T1-25** Reflection extras (3): `update_reflection`,
       `validate_reflection`, `list_reflections_by_status`.
-- [x] **T1-26** Skills extras (5): `get_skill_metrics`, `clear_skill_metrics`,
+- [ ] **T1-26** Skills extras (5): `get_skill_metrics`, `clear_skill_metrics`,
       `get_unreliable_skills`, `unregister_skill`, `search_skills_by_tag`.
-- [x] **T1-27** Personality (6): `get_personality`, `set_personality_traits`,
+- [ ] **T1-27** Personality (6): `get_personality`, `set_personality_traits`,
       `apply_personality_preset`, `list_personality_presets`,
       `get_personality_decision`, `format_response`.
-- [x] **T1-28** World model (10): `list_world_entities`, `get_world_entity`,
+- [ ] **T1-28** World model (10): `list_world_entities`, `get_world_entity`,
       `upsert_world_entity`, `find_world_entity`, `get_world_model_stats`,
       `get_world_relationships`, `add_world_relationship`,
       `get_world_dependencies`, `get_world_blockers`, `get_consumed_resources`.
-- [x] **T1-29** Agent/workflow extras (2): `run_agent_goal`,
+- [ ] **T1-29** Agent/workflow extras (2): `run_agent_goal`,
       `set_workflow_variable`.
 
   **T1-21..T1-29 DONE (commit 7775ca1).** Implemented together in a single
