@@ -193,7 +193,7 @@ impl ToolHandler for MemoryToolsHandler {
     fn is_healthy(&self) -> bool {
         self.context.database.connection().is_ok()
     }
-    
+
     fn get_tools(&self) -> Vec<rmcp::model::Tool> {
         vec![
             rmcp::model::Tool::new(
@@ -203,10 +203,12 @@ impl ToolHandler for MemoryToolsHandler {
                     "type": "object",
                     "properties": {
                         "content": { "type": "string", "description": "The memory content to store" },
-                        "importance": { "type": "number", "description": "Importance score (0-10)" },
-                        "category": { "type": "string", "description": "Category for the memory" }
+                        "memory_type": { "type": "string", "description": "Type of memory: fact, task, file, conversation, code, decision, event, encounter, experience, or note (default)" },
+                        "confidence": { "type": "number", "description": "Confidence score (0.0-1.0, default 0.5)" },
+                        "importance": { "type": "number", "description": "Importance score (0.0-10.0, default 0.5)" },
+                        "tags": { "type": "array", "description": "Optional tags for the memory", "items": { "type": "string" } }
                     },
-                    "required": ["content"]
+                    "required": ["content", "memory_type"]
                 })),
             ).with_title("Store Memory"),
             rmcp::model::Tool::new(
@@ -345,7 +347,7 @@ impl ToolHandler for MemoryToolsHandler {
             ).with_title("Get Embedding Stats"),
         ]
     }
-    
+
     fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
         async move {
             match name {
