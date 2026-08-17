@@ -274,6 +274,18 @@ impl JobQueue {
         }
         Ok(restored)
     }
+
+    /// Return pending jobs that need dispatch to workers after a process restart.
+    ///
+    /// Only jobs in `Pending` or `Running` status are returned — completed/failed
+    /// jobs have already been processed and should not be re-sent.
+    pub fn pending_jobs(&self) -> Vec<Job> {
+        self.jobs
+            .values()
+            .filter(|j| j.status == JobStatus::Pending || j.status == JobStatus::Running)
+            .cloned()
+            .collect()
+    }
 }
 
 impl Default for JobQueue {

@@ -110,10 +110,17 @@ pub mod definitions {
     pub const LIST_EVIDENCE: &str = "list_evidence";
 
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
+        macro_rules! desc {
+            ($s:expr) => {
+                format!("[WORKFLOW: get_workflow + search_memory first] {}", $s)
+            };
+        }
         vec![
             crate::bridge::mcp::McpTool {
                 name: RECORD_OBSERVATION.to_string(),
-                description: "Record an observation. Observations are the starting point for learning - record successes, failures, patterns, or anomalies.".to_string(),
+                description: desc!(
+                    "Record an observation. Observations are the starting point for learning - record successes, failures, patterns, or anomalies."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -135,7 +142,9 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: CREATE_HYPOTHESIS.to_string(),
-                description: "Create a testable hypothesis from observations. A hypothesis is a statement that can be tested with evidence.".to_string(),
+                description: desc!(
+                    "Create a testable hypothesis from observations. A hypothesis is a statement that can be tested with evidence."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -158,7 +167,9 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: ADD_EVIDENCE.to_string(),
-                description: "Add evidence to a hypothesis. Evidence can support or contradict the hypothesis.".to_string(),
+                description: desc!(
+                    "Add evidence to a hypothesis. Evidence can support or contradict the hypothesis."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -188,7 +199,9 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: GET_HYPOTHESIS.to_string(),
-                description: "Get details of a specific hypothesis including all its evidence.".to_string(),
+                description: desc!(
+                    "Get details of a specific hypothesis including all its evidence."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -202,7 +215,9 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: GET_OBSERVATION.to_string(),
-                description: "Get a specific observation by its ID. Useful for examining individual observations that contributed to hypotheses.".to_string(),
+                description: desc!(
+                    "Get a specific observation by its ID. Useful for examining individual observations that contributed to hypotheses."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -216,7 +231,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: LIST_HYPOTHESES.to_string(),
-                description: "List all hypotheses with optional filters.".to_string(),
+                description: desc!("List all hypotheses with optional filters."),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -237,7 +252,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: LIST_OBSERVATIONS.to_string(),
-                description: "List recorded observations.".to_string(),
+                description: desc!("List recorded observations."),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -254,7 +269,9 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: EVALUATE_HYPOTHESIS.to_string(),
-                description: "Evaluate a hypothesis based on accumulated evidence. Determines if hypothesis is supported, refuted, or needs more testing.".to_string(),
+                description: desc!(
+                    "Evaluate a hypothesis based on accumulated evidence. Determines if hypothesis is supported, refuted, or needs more testing."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -268,7 +285,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: GET_KNOWLEDGE.to_string(),
-                description: "Get learned knowledge that can inform future decisions.".to_string(),
+                description: desc!("Get learned knowledge that can inform future decisions."),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -285,7 +302,9 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: EXTRACT_KNOWLEDGE.to_string(),
-                description: "Extract supported hypothesis as reusable knowledge. Only supported hypotheses can be extracted.".to_string(),
+                description: desc!(
+                    "Extract supported hypothesis as reusable knowledge. Only supported hypotheses can be extracted."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -303,7 +322,9 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: GET_EVIDENCE.to_string(),
-                description: "Get a specific evidence record by its ID. Returns full evidence details including associated hypothesis.".to_string(),
+                description: desc!(
+                    "Get a specific evidence record by its ID. Returns full evidence details including associated hypothesis."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -317,7 +338,9 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: LIST_EVIDENCE.to_string(),
-                description: "List all evidence records across hypotheses with optional filters.".to_string(),
+                description: desc!(
+                    "List all evidence records across hypotheses with optional filters."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {

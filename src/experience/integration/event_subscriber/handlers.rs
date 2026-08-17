@@ -5,11 +5,11 @@
 //! Per Architecture §4.04:
 //! ExperienceRecorded → Reflection observes → Hypothesis evaluates → Knowledge updates → Reputation adjusts
 
-use anyhow::Result;
-use crate::experience::events::{ExperienceEvent, ExperienceEventType};
-use crate::experience::events::payload::EventPayload;
-use crate::experience::types::Experience;
 use super::EventSubscriber;
+use crate::experience::events::payload::EventPayload;
+use crate::experience::events::{ExperienceEvent, ExperienceEventType};
+use crate::experience::types::Experience;
+use anyhow::Result;
 
 impl EventSubscriber {
     /// Process an experience event through the learning pipeline
@@ -87,7 +87,21 @@ impl EventSubscriber {
                         );
                     }
                 }
-                return Ok(());
+            }
+
+            // Also record the experience directly to the database via
+            // ExperienceRecorder (Architecture §07 structured recording).
+            if let Some(recorder) = &self.experience_recorder {
+                if let Err(e) = recorder.record(
+                    experience.experience_type.clone(),
+                    experience.title.clone(),
+                    experience.description.clone(),
+                    experience.context.clone(),
+                    experience.outcome.clone(),
+                    experience.observation_ids.clone(),
+                ) {
+                    tracing::warn!("ExperienceRecorder failed for {}: {}", experience.id, e);
+                }
             }
 
             // Fallback (no learning coordinator wired): drive the available
@@ -116,7 +130,9 @@ impl EventSubscriber {
             // Advance Reflection → Hypothesis (§4.04): a reflection that
             // surfaces a pattern is a candidate hypothesis. Generate one when
             // the reflection carries sufficient confidence.
-            if self.config.auto_hypothesize && reflection.confidence.score >= self.config.reflection_threshold {
+            if self.config.auto_hypothesize
+                && reflection.confidence.score >= self.config.reflection_threshold
+            {
                 let mut experience = Experience::new(
                     format!("Reflection: {}", reflection.description),
                     reflection.description.clone(),
@@ -191,7 +207,11 @@ impl EventSubscriber {
     pub(super) async fn on_hypothesis_validated(&self, event: &ExperienceEvent) -> Result<()> {
         tracing::info!("Processing HypothesisValidated event: {}", event.id);
 
-        if let EventPayload::HypothesisValidation { hypothesis_id, result } = &event.payload {
+        if let EventPayload::HypothesisValidation {
+            hypothesis_id,
+            result,
+        } = &event.payload
+        {
             tracing::debug!("Hypothesis {} validated: {}", hypothesis_id, result);
 
             // Wire metrics for hypothesis validation
@@ -213,7 +233,10 @@ impl EventSubscriber {
             // coordinator is wired, ask it to validate (and potentially promote)
             // the hypothesis. This closes hypothesis → knowledge.
             if let Some(learning_coordinator) = &self.learning_coordinator {
-                match learning_coordinator.validate_hypothesis(hypothesis_id).await {
+                match learning_coordinator
+                    .validate_hypothesis(hypothesis_id)
+                    .await
+                {
                     Ok(validation) => {
                         if validation.promoted_to_knowledge {
                             tracing::info!(
@@ -224,11 +247,7 @@ impl EventSubscriber {
                         }
                     }
                     Err(e) => {
-                        tracing::warn!(
-                            "Hypothesis validation failed for {}: {}",
-                            hypothesis_id,
-                            e
-                        );
+                        tracing::warn!("Hypothesis validation failed for {}: {}", hypothesis_id, e);
                     }
                 }
             }
@@ -272,10 +291,17 @@ impl EventSubscriber {
     pub(super) async fn on_experience_scored(&self, event: &ExperienceEvent) -> Result<()> {
         tracing::debug!("Processing Scored event: {}", event.id);
 
-        if let EventPayload::ScoreRecord { score, experience_id } = &event.payload {
+        if let EventPayload::ScoreRecord {
+            score,
+            experience_id,
+        } = &event.payload
+        {
             // If score exceeds threshold, trigger reflection
             if self.config.auto_reflect && score.confidence >= self.config.reflection_threshold {
-                tracing::info!("High-scoring experience {} triggering reflection", experience_id);
+                tracing::info!(
+                    "High-scoring experience {} triggering reflection",
+                    experience_id
+                );
                 // Reflection will be triggered by the experience recorder
             }
         }

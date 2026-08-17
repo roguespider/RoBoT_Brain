@@ -1,8 +1,5 @@
-
-
 // src/tools/workflow/mod.rs
 //! Workflow-related MCP tools - create, manage, and execute workflows
-
 
 use std::sync::Arc;
 
@@ -93,11 +90,15 @@ pub mod definitions {
     pub const CLEANUP_SESSIONS: &str = "cleanup_sessions";
 
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
+        macro_rules! desc {
+            ($s:expr) => {
+                format!("[WORKFLOW: get_workflow + search_memory first] {}", $s)
+            };
+        }
         vec![
             crate::bridge::mcp::McpTool {
                 name: CREATE_WORKFLOW.to_string(),
-                description: "Create a new workflow with a name and optional description"
-                    .to_string(),
+                description: desc!("Create a new workflow with a name and optional description"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -115,8 +116,9 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: ADD_WORKFLOW_STEP.to_string(),
-                description: "Add a step to an existing workflow. Steps are executed in order."
-                    .to_string(),
+                description: desc!(
+                    "Add a step to an existing workflow. Steps are executed in order."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -142,7 +144,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: GET_WORKFLOW_STATUS.to_string(),
-                description: "Get the current status and details of a workflow".to_string(),
+                description: desc!("Get the current status and details of a workflow"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -156,7 +158,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: LIST_WORKFLOWS.to_string(),
-                description: "List all workflows, optionally filtered by status".to_string(),
+                description: desc!("List all workflows, optionally filtered by status"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -170,9 +172,9 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: START_WORKFLOW.to_string(),
-                description:
+                description: desc!(
                     "Start executing a workflow. The engine will run all steps sequentially."
-                        .to_string(),
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -186,7 +188,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: PAUSE_WORKFLOW.to_string(),
-                description: "Pause a running workflow".to_string(),
+                description: desc!("Pause a running workflow"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -200,7 +202,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: RESUME_WORKFLOW.to_string(),
-                description: "Resume a paused workflow".to_string(),
+                description: desc!("Resume a paused workflow"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -214,7 +216,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: CANCEL_WORKFLOW.to_string(),
-                description: "Cancel a workflow, removing it from execution.".to_string(),
+                description: desc!("Cancel a workflow, removing it from execution."),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -228,7 +230,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: DELETE_WORKFLOW.to_string(),
-                description: "Delete a workflow completely.".to_string(),
+                description: desc!("Delete a workflow completely."),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -242,7 +244,9 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: SET_WORKFLOW_VARIABLE.to_string(),
-                description: "Set a variable on a workflow for use in step parameter substitution.".to_string(),
+                description: desc!(
+                    "Set a variable on a workflow for use in step parameter substitution."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -264,8 +268,9 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: GET_SESSION_STATE.to_string(),
-                description: "Get the current workflow enforcement session state (debugging/admin)"
-                    .to_string(),
+                description: desc!(
+                    "Get the current workflow enforcement session state (debugging/admin)"
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {}
@@ -273,8 +278,9 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: CLEANUP_SESSIONS.to_string(),
-                description: "Clean up expired workflow enforcement sessions and return the count removed"
-                    .to_string(),
+                description: desc!(
+                    "Clean up expired workflow enforcement sessions and return the count removed"
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {}
@@ -330,7 +336,10 @@ pub async fn execute_create_workflow(
     let workflow = engine.create_workflow(input.name, description).await;
     let workflow_json = workflow_to_json(&workflow);
     // Extract id at top level for test compatibility
-    let id = workflow_json.get("id").cloned().unwrap_or(serde_json::Value::Null);
+    let id = workflow_json
+        .get("id")
+        .cloned()
+        .unwrap_or(serde_json::Value::Null);
     ToolOutput::success(serde_json::json!({
         "id": id,
         "name": workflow.name,
@@ -345,7 +354,7 @@ pub async fn execute_add_workflow_step(
 ) -> ToolOutput {
     let name = input.name.clone();
     let action = input.action.clone();
-    
+
     match engine
         .add_step(&input.workflow_id, name.clone(), action.clone())
         .await
@@ -364,9 +373,16 @@ pub async fn execute_add_workflow_step(
             // Auto-create workflow for test compatibility
             let description = format!("Auto-created for step: {}", name);
             // Create workflow and use the returned workflow id
-            let created_workflow = engine.create_workflow(&input.workflow_id, description).await;
+            let created_workflow = engine
+                .create_workflow(&input.workflow_id, description)
+                .await;
             let workflow_id = created_workflow.id.clone();
-            if let Some(step) = engine.add_step(&workflow_id, name, action).await.ok().flatten() {
+            if let Some(step) = engine
+                .add_step(&workflow_id, name, action)
+                .await
+                .ok()
+                .flatten()
+            {
                 ToolOutput::success(serde_json::json!({
                     "success": true,
                     "step": {
@@ -393,7 +409,10 @@ pub async fn execute_get_workflow_status(
     match engine.get_workflow(&input.workflow_id).await {
         Some(workflow) => {
             let workflow_json = workflow_to_json(&workflow);
-            let status = workflow_json.get("status").cloned().unwrap_or(serde_json::Value::Null);
+            let status = workflow_json
+                .get("status")
+                .cloned()
+                .unwrap_or(serde_json::Value::Null);
             ToolOutput::success(serde_json::json!({
                 "success": true,
                 "status": status,
@@ -536,7 +555,10 @@ pub async fn execute_set_workflow_variable(
     input: SetWorkflowVariableInput,
     engine: &Arc<WorkflowEngine>,
 ) -> ToolOutput {
-    match engine.set_variable(&input.workflow_id, input.key.clone(), input.value.clone()).await {
+    match engine
+        .set_variable(&input.workflow_id, input.key.clone(), input.value.clone())
+        .await
+    {
         Ok(()) => ToolOutput::success(serde_json::json!({
             "success": true,
             "workflow_id": input.workflow_id,

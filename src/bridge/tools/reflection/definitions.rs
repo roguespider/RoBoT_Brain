@@ -12,10 +12,15 @@ pub const UPDATE_REFLECTION: &str = "update_reflection";
 
 /// Get all reflection tools
 pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
+    macro_rules! desc {
+        ($s:expr) => {
+            format!("[WORKFLOW: get_workflow + search_memory first] {}", $s)
+        };
+    }
     vec![
         crate::bridge::mcp::McpTool {
             name: GET_INSIGHTS.to_string(),
-            description: "Get actionable insights from reflections".to_string(),
+            description: desc!("Get actionable insights from reflections"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -35,7 +40,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: CREATE_REFLECTION.to_string(),
-            description: "Create a new reflection from experiences".to_string(),
+            description: desc!("Create a new reflection from experiences"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -62,7 +67,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: ANALYZE_PATTERNS.to_string(),
-            description: "Analyze experiences to detect patterns".to_string(),
+            description: desc!("Analyze experiences to detect patterns"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -76,7 +81,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: GET_PATTERNS.to_string(),
-            description: "Get detected patterns".to_string(),
+            description: desc!("Get detected patterns"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -95,7 +100,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: VALIDATE_REFLECTION.to_string(),
-            description: "Validate a reflection for quality and consistency".to_string(),
+            description: desc!("Validate a reflection for quality and consistency"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -109,7 +114,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: LIST_REFLECTIONS_BY_STATUS.to_string(),
-            description: "List reflections filtered by status".to_string(),
+            description: desc!("List reflections filtered by status"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -124,7 +129,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: UPDATE_REFLECTION.to_string(),
-            description: "Update an existing reflection".to_string(),
+            description: desc!("Update an existing reflection"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {

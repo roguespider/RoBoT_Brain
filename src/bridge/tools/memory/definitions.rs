@@ -24,10 +24,15 @@ pub const GET_EMBEDDING_STATS: &str = "get_embedding_stats";
 
 /// All memory-tool descriptors advertised to MCP clients via `tools/list`.
 pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
+    macro_rules! desc {
+        ($s:expr) => {
+            format!("[WORKFLOW: get_workflow + search_memory first] {}", $s)
+        };
+    }
     vec![
         crate::bridge::mcp::McpTool {
             name: STORE_MEMORY.to_string(),
-            description: "Store a new memory in the knowledge base".to_string(),
+            description: desc!("Store a new memory in the knowledge base"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -63,7 +68,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: SEARCH_MEMORY.to_string(),
-            description: "Search memories by content".to_string(),
+            description: desc!("Search memories by content"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -82,7 +87,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: GET_MEMORY.to_string(),
-            description: "Get a specific memory by ID".to_string(),
+            description: desc!("Get a specific memory by ID"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -96,7 +101,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: LIST_MEMORIES.to_string(),
-            description: "List recent memories".to_string(),
+            description: desc!("List recent memories"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -114,7 +119,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: STORE_EMBEDDING.to_string(),
-            description: "Store a vector embedding for semantic memory search".to_string(),
+            description: desc!("Store a vector embedding for semantic memory search"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -138,7 +143,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: GET_EMBEDDING.to_string(),
-            description: "Get an embedding by memory ID".to_string(),
+            description: desc!("Get an embedding by memory ID"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -152,7 +157,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: SEARCH_SIMILAR.to_string(),
-            description: "Search for similar memories using vector similarity".to_string(),
+            description: desc!("Search for similar memories using vector similarity"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -179,7 +184,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: LIST_EMBEDDINGS.to_string(),
-            description: "List all memory embeddings".to_string(),
+            description: desc!("List all memory embeddings"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -193,7 +198,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: DELETE_EMBEDDING.to_string(),
-            description: "Delete an embedding by memory ID".to_string(),
+            description: desc!("Delete an embedding by memory ID"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -207,7 +212,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: GET_EMBEDDING_STATS.to_string(),
-            description: "Get vector index statistics".to_string(),
+            description: desc!("Get vector index statistics"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {}

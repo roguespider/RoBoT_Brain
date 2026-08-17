@@ -5,12 +5,11 @@ use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 use uuid::Uuid;
 
-use crate::knowledge::{
-    apply_query, rank_items,
-    types::{KnowledgeConfidence, KnowledgeSource, KnowledgeStatus, KnowledgeType},
-    KnowledgeItem, KnowledgeQuery, KnowledgeResult, KnowledgeStore,
-};
 use crate::bridge::tools::ToolOutput;
+use crate::knowledge::{
+    KnowledgeItem, KnowledgeQuery, KnowledgeResult, KnowledgeStore, apply_query, rank_items,
+    types::{KnowledgeConfidence, KnowledgeSource, KnowledgeStatus, KnowledgeType},
+};
 
 /// Tool: Add new knowledge
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -167,10 +166,15 @@ pub mod definitions {
     pub const SEARCH_KNOWLEDGE_BY_TAG: &str = "search_knowledge_by_tag";
 
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
+        macro_rules! desc {
+            ($s:expr) => {
+                format!("[WORKFLOW: get_workflow + search_memory first] {}", $s)
+            };
+        }
         vec![
             crate::bridge::mcp::McpTool {
                 name: ADD_KNOWLEDGE.to_string(),
-                description: "Add new validated knowledge to the knowledge base".to_string(),
+                description: desc!("Add new validated knowledge to the knowledge base"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -202,7 +206,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: QUERY_KNOWLEDGE.to_string(),
-                description: "Query the knowledge base for relevant knowledge".to_string(),
+                description: desc!("Query the knowledge base for relevant knowledge"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -232,7 +236,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: RECORD_KNOWLEDGE_APPLICATION.to_string(),
-                description: "Record the result of applying knowledge".to_string(),
+                description: desc!("Record the result of applying knowledge"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -250,7 +254,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: GET_KNOWLEDGE_STATS.to_string(),
-                description: "Get statistics about the knowledge base".to_string(),
+                description: desc!("Get statistics about the knowledge base"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {}
@@ -258,7 +262,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: GET_MATURE_KNOWLEDGE.to_string(),
-                description: "Get all mature (high-confidence) knowledge".to_string(),
+                description: desc!("Get all mature (high-confidence) knowledge"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -271,7 +275,9 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: UPDATE_KNOWLEDGE.to_string(),
-                description: "Update an existing knowledge item (statement, confidence, or tags)".to_string(),
+                description: desc!(
+                    "Update an existing knowledge item (statement, confidence, or tags)"
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -285,7 +291,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: DELETE_KNOWLEDGE.to_string(),
-                description: "Delete a knowledge item by ID".to_string(),
+                description: desc!("Delete a knowledge item by ID"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -296,7 +302,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: GET_RELATED_KNOWLEDGE.to_string(),
-                description: "Get knowledge items related to a given item via its relations".to_string(),
+                description: desc!("Get knowledge items related to a given item via its relations"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -307,7 +313,9 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: VALIDATE_KNOWLEDGE_DEPENDENCIES.to_string(),
-                description: "Validate all knowledge dependencies and return items with unsatisfied/conflicting deps".to_string(),
+                description: desc!(
+                    "Validate all knowledge dependencies and return items with unsatisfied/conflicting deps"
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {}
@@ -315,7 +323,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: BUMP_KNOWLEDGE_VERSION.to_string(),
-                description: "Bump the version of a knowledge item (major, minor, or patch)".to_string(),
+                description: desc!("Bump the version of a knowledge item (major, minor, or patch)"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -328,7 +336,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: SET_KNOWLEDGE_STATUS.to_string(),
-                description: "Set knowledge status: activate, suspend, or disprove".to_string(),
+                description: desc!("Set knowledge status: activate, suspend, or disprove"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -340,7 +348,9 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: MANAGE_KNOWLEDGE_DEPENDENCY.to_string(),
-                description: "Manage knowledge dependencies: add, remove, get dependencies, or get impact set".to_string(),
+                description: desc!(
+                    "Manage knowledge dependencies: add, remove, get dependencies, or get impact set"
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -354,7 +364,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: ADD_KNOWLEDGE_RELATION.to_string(),
-                description: "Add a relation between two knowledge items".to_string(),
+                description: desc!("Add a relation between two knowledge items"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -368,7 +378,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: SEARCH_KNOWLEDGE_BY_TAG.to_string(),
-                description: "Search knowledge by tag or get items needing review".to_string(),
+                description: desc!("Search knowledge by tag or get items needing review"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -495,11 +505,13 @@ pub async fn execute_query_knowledge(
         })
         .collect();
 
-    let best_match = result.best().map(|item| serde_json::json!({
-        "id": item.id.to_string(),
-        "statement": item.statement,
-        "confidence": item.overall_confidence(),
-    }));
+    let best_match = result.best().map(|item| {
+        serde_json::json!({
+            "id": item.id.to_string(),
+            "statement": item.statement,
+            "confidence": item.overall_confidence(),
+        })
+    });
 
     ToolOutput::success(serde_json::json!({
         "items": items_json,
@@ -743,7 +755,11 @@ pub async fn execute_manage_knowledge_dependency(
         "add" => {
             let dep_id_str = match input.depends_on_id.as_deref() {
                 Some(s) => s,
-                None => return ToolOutput::error("depends_on_id is required for add action".to_string()),
+                None => {
+                    return ToolOutput::error(
+                        "depends_on_id is required for add action".to_string(),
+                    );
+                }
             };
             let dep_id = match Uuid::parse_str(dep_id_str) {
                 Ok(u) => u,
@@ -767,7 +783,11 @@ pub async fn execute_manage_knowledge_dependency(
         "remove" => {
             let dep_id_str = match input.depends_on_id.as_deref() {
                 Some(s) => s,
-                None => return ToolOutput::error("depends_on_id is required for remove action".to_string()),
+                None => {
+                    return ToolOutput::error(
+                        "depends_on_id is required for remove action".to_string(),
+                    );
+                }
             };
             let dep_id = match Uuid::parse_str(dep_id_str) {
                 Ok(u) => u,
@@ -784,11 +804,13 @@ pub async fn execute_manage_knowledge_dependency(
             let deps = knowledge.get_dependencies(&id).await;
             let deps_json: Vec<serde_json::Value> = deps
                 .iter()
-                .map(|d| serde_json::json!({
-                    "depends_on_id": d.depends_on_id.to_string(),
-                    "dependency_type": format!("{:?}", d.dependency_type),
-                    "version_constraint": d.version_constraint,
-                }))
+                .map(|d| {
+                    serde_json::json!({
+                        "depends_on_id": d.depends_on_id.to_string(),
+                        "dependency_type": format!("{:?}", d.dependency_type),
+                        "version_constraint": d.version_constraint,
+                    })
+                })
                 .collect();
             ToolOutput::success(serde_json::json!({
                 "knowledge_id": id.to_string(),
@@ -831,7 +853,9 @@ pub async fn execute_add_knowledge_relation(
         _ => crate::knowledge::types::RelationType::Related,
     };
     let confidence = input.confidence.unwrap_or(0.5);
-    let ok = knowledge.add_relation(id, related_id, relation_type, confidence).await;
+    let ok = knowledge
+        .add_relation(id, related_id, relation_type, confidence)
+        .await;
     ToolOutput::success(serde_json::json!({
         "status": if ok { "added" } else { "failed" },
         "knowledge_id": id.to_string(),
@@ -863,7 +887,11 @@ pub async fn execute_search_knowledge_by_tag(
             })
         })
         .collect();
-    let mode = if input.tag.is_some() { "by_tag" } else { "needing_review" };
+    let mode = if input.tag.is_some() {
+        "by_tag"
+    } else {
+        "needing_review"
+    };
     ToolOutput::success(serde_json::json!({
         "mode": mode,
         "items": items_json,

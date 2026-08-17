@@ -6,9 +6,15 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{RwLock, mpsc};
 
+use chrono::Utc;
+use uuid::Uuid;
+
 use crate::experience::bus::ExperienceBus;
 use crate::experience::events::ExperienceEvent;
+use crate::experience::events::payload::EventPayload;
+use crate::experience::events::types::ExperienceEventType;
 use crate::experience::observer::ExperienceObserver;
+
 use crate::experience::queue::JobQueue;
 pub use crate::experience::worker::WorkerStats;
 use crate::experience::worker::{ExperienceWorker, ObserverJob};
@@ -95,10 +101,7 @@ impl WorkerManager {
         // Persist the job to the durable queue before sending via channel
         let event_id = event.id.to_string();
         {
-            let mut q = self
-                .job_queue
-                .lock()
-                .unwrap_or_else(|e| e.into_inner());
+            let mut q = self.job_queue.lock().unwrap_or_else(|e| e.into_inner());
             q.push_job(&event_id, observer_name);
         }
 
@@ -215,5 +218,55 @@ impl WorkerManager {
             .map_err(|e| anyhow::anyhow!("Queue lock poisoned: {}", e))?;
         q.fail_job(job_id, error);
         Ok(())
+    }
+
+    /// Dispatch restored jobs back to their respective workers after a process
+    /// restart. After `restore_from_database()` reloads jobs from SQLite, this
+    /// method sends synthetic events through each worker's channel so that jobs
+    /// that were in-flight when the process died get processed again.
+    pub async fn dispatch_restored_jobs(&self) {
+        let q = self.job_queue.lock().unwrap_or_else(|e| e.into_inner());
+        let jobs = q.pending_jobs();
+        if jobs.is_empty() {
+            return;
+        }
+
+        tracing::info!("Dispatching {} restored job(s) to workers", jobs.len());
+
+        let workers = self.workers.read().await;
+
+        for job in jobs {
+            if let Some(handle) = workers.get(&job.observer_name) {
+                let synthetic = ExperienceEvent {
+                    id: Uuid::parse_str(&job.id).unwrap_or_else(|_| Uuid::new_v4()),
+                    experience_id: Uuid::parse_str(&job.id).unwrap_or_else(|_| Uuid::new_v4()),
+                    timestamp: Utc::now(),
+                    event_type: ExperienceEventType::System,
+                    payload: EventPayload::Experience {
+                        experience_id: Uuid::parse_str(&job.id).unwrap_or_else(|_| Uuid::new_v4()),
+                    },
+                };
+                let observer_job = ObserverJob::new(synthetic);
+                if handle.sender.send(observer_job).await.is_err() {
+                    tracing::warn!(
+                        "Failed to dispatch restored job {} to observer {}: channel closed or full",
+                        job.id,
+                        job.observer_name
+                    );
+                } else {
+                    tracing::debug!(
+                        "Dispatched restored job {} to observer {}",
+                        job.id,
+                        job.observer_name
+                    );
+                }
+            } else {
+                tracing::warn!(
+                    "No worker found for observer {} when dispatching restored job {}",
+                    job.observer_name,
+                    job.id
+                );
+            }
+        }
     }
 }

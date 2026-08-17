@@ -1,7 +1,6 @@
 // src/bridge/acp/system_agent.rs
 //! System agent implementation for handling ACP messages
 
-
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
@@ -47,11 +46,6 @@ impl SystemAgent {
 
         Self { id, capabilities }
     }
-
-    pub fn agent_id(&self) -> &AcpAgentId {
-        &self.id
-    }
-
 }
 
 impl Default for SystemAgent {
@@ -95,19 +89,13 @@ impl WorkerAgent {
     pub fn new() -> Self {
         let id = AcpAgentId::new("worker", "1");
 
-        let capabilities = vec![
-            SystemCapability {
-                name: "task_processing".to_string(),
-                description: "Processes task requests".to_string(),
-                version: "1.0".to_string(),
-            },
-        ];
+        let capabilities = vec![SystemCapability {
+            name: "task_processing".to_string(),
+            description: "Processes task requests".to_string(),
+            version: "1.0".to_string(),
+        }];
 
         Self { id, capabilities }
-    }
-
-    pub fn agent_id(&self) -> &AcpAgentId {
-        &self.id
     }
 }
 

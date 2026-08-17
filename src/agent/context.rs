@@ -17,6 +17,18 @@ use crate::planner::Planner;
 
 use super::safety_gate::SafetyGate;
 
+/// Persistence-related subsystems used by the agent loop.
+pub struct PersistenceDeps {
+    /// Validated knowledge store (Architecture §2.3).
+    pub knowledge_store: Arc<KnowledgeStore>,
+    /// Experience coordinator — used to publish the outcome event that drives
+    /// the §4.04 learning spine. `process()` scores the experience and
+    /// publishes `ExperienceRecorded` once (P0 V2-02).
+    pub coordinator: Arc<ExperienceCoordinator>,
+    /// Direct database handle for persisting processed experiences.
+    pub database: Arc<SqliteDatabase>,
+}
+
 /// All subsystems the goal-driven agent loop composes (Architecture §5.7).
 ///
 /// Every field is a shared handle (`Arc`) to an existing, already-initialized
@@ -26,14 +38,8 @@ pub struct AgentDeps {
     pub planner: Arc<Planner>,
     /// Unified retrieval across working + permanent memory (Architecture §3).
     pub memory_retrieval: Arc<MemoryRetrieval>,
-    /// Validated knowledge store (Architecture §2.3).
-    pub knowledge_store: Arc<KnowledgeStore>,
-    /// Experience coordinator — used to publish the outcome event that drives
-    /// the §4.04 learning spine. `process()` scores the experience and
-    /// publishes `ExperienceRecorded` once (P0 V2-02).
-    pub coordinator: Arc<ExperienceCoordinator>,
-    /// Direct database handle for persisting processed experiences.
-    pub database: Arc<SqliteDatabase>,
+    /// Persistence-related subsystems (knowledge, coordinator, database).
+    pub persistence: PersistenceDeps,
     /// Safety gate that may block an action before execution (TASK-V2-07).
     pub safety_gate: Arc<SafetyGate>,
     /// Personality — provides emotional weighting that nudges confidence and
@@ -59,9 +65,11 @@ impl AgentDeps {
         Self {
             planner,
             memory_retrieval,
-            knowledge_store,
-            coordinator,
-            database,
+            persistence: PersistenceDeps {
+                knowledge_store,
+                coordinator,
+                database,
+            },
             safety_gate,
             personality,
             metrics,

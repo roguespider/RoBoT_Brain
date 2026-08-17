@@ -2,7 +2,6 @@
 
 // Evidence for behavior evaluation
 
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -36,22 +35,22 @@ pub struct EvolutionEvidence {
 pub enum EvidenceType {
     /// Direct application result
     ApplicationResult,
-    
+
     /// Comparison with alternative approaches
     Comparison,
-    
+
     /// Expert feedback
     ExpertFeedback,
-    
+
     /// Automated test result
     TestResult,
-    
+
     /// User satisfaction rating
     UserRating,
-    
+
     /// Observational data
     Observation,
-    
+
     /// Historical analysis
     Historical,
 }
@@ -61,10 +60,10 @@ pub enum EvidenceType {
 pub enum EvidenceVerdict {
     /// Supports the behavior
     Supports,
-    
+
     /// Contradicts the behavior
     Contradicts,
-    
+
     /// Neutral/inconclusive
     Neutral,
 }
@@ -96,29 +95,45 @@ impl EvolutionEvidence {
         evidence_type: EvidenceType,
         description: impl Into<String>,
     ) -> Self {
-        Self::new(id, behavior_id, evidence_type, description, EvidenceVerdict::Supports)
+        Self::new(
+            id,
+            behavior_id,
+            evidence_type,
+            description,
+            EvidenceVerdict::Supports,
+        )
     }
 
     /// Create contradicting evidence
-    #[cfg(test)]
     pub fn contradicting(
         id: impl Into<String>,
         behavior_id: impl Into<String>,
         evidence_type: EvidenceType,
         description: impl Into<String>,
     ) -> Self {
-        Self::new(id, behavior_id, evidence_type, description, EvidenceVerdict::Contradicts)
+        Self::new(
+            id,
+            behavior_id,
+            evidence_type,
+            description,
+            EvidenceVerdict::Contradicts,
+        )
     }
 
     /// Create neutral evidence
-    #[cfg(test)]
     pub fn neutral(
         id: impl Into<String>,
         behavior_id: impl Into<String>,
         evidence_type: EvidenceType,
         description: impl Into<String>,
     ) -> Self {
-        Self::new(id, behavior_id, evidence_type, description, EvidenceVerdict::Neutral)
+        Self::new(
+            id,
+            behavior_id,
+            evidence_type,
+            description,
+            EvidenceVerdict::Neutral,
+        )
     }
 
     /// Set confidence level and return self (builder-style)
@@ -127,4 +142,3 @@ impl EvolutionEvidence {
         self
     }
 }
-

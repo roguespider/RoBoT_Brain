@@ -1,14 +1,11 @@
-
-
 // src/tools/planner/mod.rs
 //! Planner MCP tools - task decomposition and execution
 
-
-use std::sync::Arc;
 use serde::{Deserialize, Serialize};
+use std::sync::Arc;
 
-use crate::planner::engine::{Planner, Plan, PlanStatus};
 use crate::bridge::tools::ToolOutput;
+use crate::planner::engine::{Plan, PlanStatus, Planner};
 
 /// Tool: Create a new plan
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -83,12 +80,17 @@ pub mod definitions {
     pub const COMPLETE_STEP: &str = "complete_step";
     pub const FAIL_STEP: &str = "fail_step";
     pub const CANCEL_PLAN: &str = "cancel_plan";
-    
+
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
+        macro_rules! desc {
+            ($s:expr) => {
+                format!("[WORKFLOW: get_workflow + search_memory first] {}", $s)
+            };
+        }
         vec![
             crate::bridge::mcp::McpTool {
                 name: CREATE_PLAN.to_string(),
-                description: "Create a new plan from a goal".to_string(),
+                description: desc!("Create a new plan from a goal"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -102,7 +104,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: ADD_PLAN_STEP.to_string(),
-                description: "Add a step to an existing plan".to_string(),
+                description: desc!("Add a step to an existing plan"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -124,7 +126,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: ADD_STEP_DEPENDENCY.to_string(),
-                description: "Add a dependency between steps".to_string(),
+                description: desc!("Add a dependency between steps"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -146,7 +148,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: GET_PLAN.to_string(),
-                description: "Get a plan by ID".to_string(),
+                description: desc!("Get a plan by ID"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -160,7 +162,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: LIST_PLANS.to_string(),
-                description: "List all active plans".to_string(),
+                description: desc!("List all active plans"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -173,7 +175,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: START_PLAN.to_string(),
-                description: "Start executing a plan".to_string(),
+                description: desc!("Start executing a plan"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -187,7 +189,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: COMPLETE_STEP.to_string(),
-                description: "Mark a step as completed".to_string(),
+                description: desc!("Mark a step as completed"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -209,7 +211,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: FAIL_STEP.to_string(),
-                description: "Mark a step as failed".to_string(),
+                description: desc!("Mark a step as failed"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -231,7 +233,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: CANCEL_PLAN.to_string(),
-                description: "Cancel a plan".to_string(),
+                description: desc!("Cancel a plan"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -266,14 +268,14 @@ fn plan_to_json(plan: &Plan) -> serde_json::Value {
 }
 
 /// Execute create plan
-pub async fn execute_create_plan(
-    input: CreatePlanInput,
-    planner: &Arc<Planner>,
-) -> ToolOutput {
+pub async fn execute_create_plan(input: CreatePlanInput, planner: &Arc<Planner>) -> ToolOutput {
     match planner.create_plan(&input.goal).await {
         Ok(plan) => {
             let plan_json = plan_to_json(&plan);
-            let id = plan_json.get("id").cloned().unwrap_or(serde_json::Value::Null);
+            let id = plan_json
+                .get("id")
+                .cloned()
+                .unwrap_or(serde_json::Value::Null);
             ToolOutput::success(serde_json::json!({
                 "status": "created",
                 "id": id,
@@ -285,11 +287,11 @@ pub async fn execute_create_plan(
 }
 
 /// Execute add plan step
-pub async fn execute_add_plan_step(
-    input: AddPlanStepInput,
-    planner: &Arc<Planner>,
-) -> ToolOutput {
-    match planner.add_step(&input.plan_id, &input.description, &input.action).await {
+pub async fn execute_add_plan_step(input: AddPlanStepInput, planner: &Arc<Planner>) -> ToolOutput {
+    match planner
+        .add_step(&input.plan_id, &input.description, &input.action)
+        .await
+    {
         Ok(step) => ToolOutput::success(serde_json::json!({
             "status": "added",
             "id": step.id,
@@ -309,7 +311,10 @@ pub async fn execute_add_step_dependency(
     input: AddStepDependencyInput,
     planner: &Arc<Planner>,
 ) -> ToolOutput {
-    match planner.add_dependency(&input.plan_id, &input.step_id, &input.depends_on).await {
+    match planner
+        .add_dependency(&input.plan_id, &input.step_id, &input.depends_on)
+        .await
+    {
         Ok(()) => ToolOutput::success(serde_json::json!({
             "success": true,
             "status": "added",
@@ -320,10 +325,7 @@ pub async fn execute_add_step_dependency(
 }
 
 /// Execute get plan
-pub async fn execute_get_plan(
-    input: GetPlanInput,
-    planner: &Arc<Planner>,
-) -> ToolOutput {
+pub async fn execute_get_plan(input: GetPlanInput, planner: &Arc<Planner>) -> ToolOutput {
     match planner.get_plan(&input.plan_id).await {
         Some(plan) => ToolOutput::success(serde_json::json!({
             "found": true,
@@ -337,31 +339,31 @@ pub async fn execute_get_plan(
 }
 
 /// Execute list plans
-pub async fn execute_list_plans(
-    input: ListPlansInput,
-    planner: &Arc<Planner>,
-) -> ToolOutput {
+pub async fn execute_list_plans(input: ListPlansInput, planner: &Arc<Planner>) -> ToolOutput {
     let plans = planner.list_plans().await;
-    
+
     let filtered: Vec<_> = if let Some(status) = input.status {
         let status_lower = status.to_lowercase();
-        plans.into_iter().filter(|p| {
-            let s = match status_lower.as_str() {
-                "pending" => PlanStatus::Pending,
-                "in_progress" | "inprogress" => PlanStatus::InProgress,
-                "completed" => PlanStatus::Completed,
-                "failed" => PlanStatus::Failed,
-                "cancelled" => PlanStatus::Cancelled,
-                _ => return true,
-            };
-            p.status == s
-        }).collect()
+        plans
+            .into_iter()
+            .filter(|p| {
+                let s = match status_lower.as_str() {
+                    "pending" => PlanStatus::Pending,
+                    "in_progress" | "inprogress" => PlanStatus::InProgress,
+                    "completed" => PlanStatus::Completed,
+                    "failed" => PlanStatus::Failed,
+                    "cancelled" => PlanStatus::Cancelled,
+                    _ => return true,
+                };
+                p.status == s
+            })
+            .collect()
     } else {
         plans
     };
-    
+
     let result: Vec<_> = filtered.iter().map(plan_to_json).collect();
-    
+
     ToolOutput::success(serde_json::json!({
         "plans": result,
         "count": result.len(),
@@ -369,10 +371,7 @@ pub async fn execute_list_plans(
 }
 
 /// Execute start plan
-pub async fn execute_start_plan(
-    input: StartPlanInput,
-    planner: &Arc<Planner>,
-) -> ToolOutput {
+pub async fn execute_start_plan(input: StartPlanInput, planner: &Arc<Planner>) -> ToolOutput {
     match planner.start_plan(&input.plan_id).await {
         Ok(()) => ToolOutput::success(serde_json::json!({
             "status": "started",
@@ -383,11 +382,11 @@ pub async fn execute_start_plan(
 }
 
 /// Execute complete step
-pub async fn execute_complete_step(
-    input: CompleteStepInput,
-    planner: &Arc<Planner>,
-) -> ToolOutput {
-    match planner.complete_step(&input.plan_id, &input.step_id, input.result).await {
+pub async fn execute_complete_step(input: CompleteStepInput, planner: &Arc<Planner>) -> ToolOutput {
+    match planner
+        .complete_step(&input.plan_id, &input.step_id, input.result)
+        .await
+    {
         Ok(()) => ToolOutput::success(serde_json::json!({
             "status": "completed",
             "plan_id": input.plan_id,
@@ -398,11 +397,11 @@ pub async fn execute_complete_step(
 }
 
 /// Execute fail step
-pub async fn execute_fail_step(
-    input: FailStepInput,
-    planner: &Arc<Planner>,
-) -> ToolOutput {
-    match planner.fail_step(&input.plan_id, &input.step_id, input.error).await {
+pub async fn execute_fail_step(input: FailStepInput, planner: &Arc<Planner>) -> ToolOutput {
+    match planner
+        .fail_step(&input.plan_id, &input.step_id, input.error)
+        .await
+    {
         Ok(()) => ToolOutput::success(serde_json::json!({
             "status": "failed",
             "plan_id": input.plan_id,
@@ -413,10 +412,7 @@ pub async fn execute_fail_step(
 }
 
 /// Execute cancel plan
-pub async fn execute_cancel_plan(
-    input: CancelPlanInput,
-    planner: &Arc<Planner>,
-) -> ToolOutput {
+pub async fn execute_cancel_plan(input: CancelPlanInput, planner: &Arc<Planner>) -> ToolOutput {
     match planner.cancel_plan(&input.plan_id).await {
         Ok(()) => ToolOutput::success(serde_json::json!({
             "success": true,

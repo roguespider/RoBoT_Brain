@@ -98,6 +98,7 @@ impl AgentLoop {
         let memory = self.deps.memory_retrieval.retrieve(&goal.description).await;
         let knowledge = self
             .deps
+            .persistence
             .knowledge_store
             .search(goal.description.as_str())
             .await;
@@ -173,7 +174,10 @@ impl AgentLoop {
         // confidence (T1-14). A persistent large drift signals that emotion is
         // dominating evidence rather than biasing it.
         let drift = (emotion_adjusted - selected.confidence.value).abs();
-        self.deps.metrics.record_confidence_drift(drift as f64).await;
+        self.deps
+            .metrics
+            .record_confidence_drift(drift as f64)
+            .await;
         selected.confidence.value = emotion_adjusted;
 
         // 4. Safety gate (§16). The gate composes four checks: sandbox
@@ -284,7 +288,10 @@ impl AgentLoop {
                     .collector()
                     .get_counter(crate::experience::metrics::metric_names::HYPOTHESES_CONFIRMED)
                     .await;
-                self.deps.metrics.record_promotion_throughput(confirmed as f64).await;
+                self.deps
+                    .metrics
+                    .record_promotion_throughput(confirmed as f64)
+                    .await;
                 Ok(AgentLoopOutcome {
                     goal_id: goal.id,
                     status: goal.status,
@@ -323,10 +330,10 @@ impl AgentLoop {
         experience.outcome = ExperienceOutcome::success();
 
         // process() scores + publishes ExperienceRecorded once (P0 V2-02).
-        let processed = self.deps.coordinator.process(experience);
+        let processed = self.deps.persistence.coordinator.process(experience);
 
         // Persist so the experience is retrievable by future loops.
-        let conn = self.deps.database.connection()?;
+        let conn = self.deps.persistence.database.connection()?;
         let memory = crate::database::models::MemoryCard::from_experience(&processed);
         crate::database::queries::insert_memory(&conn, &memory)?;
 
@@ -348,8 +355,8 @@ impl AgentLoop {
             error: Some(reason),
             duration_ms: None,
         };
-        let processed = self.deps.coordinator.process(experience);
-        let conn = self.deps.database.connection()?;
+        let processed = self.deps.persistence.coordinator.process(experience);
+        let conn = self.deps.persistence.database.connection()?;
         let memory = crate::database::models::MemoryCard::from_experience(&processed);
         crate::database::queries::insert_memory(&conn, &memory)?;
         Ok(processed.id.to_string())
@@ -400,8 +407,8 @@ impl AgentLoop {
             Vec::new(),
         );
         experience.outcome = ExperienceOutcome::failure(reason);
-        let processed = self.deps.coordinator.process(experience);
-        let conn = self.deps.database.connection()?;
+        let processed = self.deps.persistence.coordinator.process(experience);
+        let conn = self.deps.persistence.database.connection()?;
         let memory = crate::database::models::MemoryCard::from_experience(&processed);
         crate::database::queries::insert_memory(&conn, &memory)?;
         Ok(processed.id.to_string())

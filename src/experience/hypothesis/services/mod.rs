@@ -8,7 +8,6 @@
 //!
 //! These modules provide operational capabilities around hypotheses:
 //!
-//! - Repository      -> persistence and retrieval
 //! - Analytics      -> trend analysis
 //! - Generator      -> creating new hypotheses
 //! - Matcher        -> finding relevant hypotheses
@@ -20,6 +19,4 @@
 pub mod analytics;
 pub mod generator;
 pub mod matcher;
-pub mod repository;
 pub mod validator;
-

@@ -80,16 +80,19 @@ impl ExperienceCoordinator {
     }
 
     /// Record that exploration was completed
-    pub fn complete_exploration(&self, id: Uuid) {
+    pub fn complete_exploration(&self, id: &str) {
         use crate::experience::metrics::metric_names;
         let metrics = self.metrics.clone();
+        let exploration_id = Uuid::new_v4();
+        let event = ExperienceEvent::exploration_completed(
+            exploration_id,
+            Uuid::parse_str(id).unwrap_or_default(),
+        );
+        let _ = self.bus.publish(event);
         tokio::spawn(async move {
             metrics
                 .increment(metric_names::EXPLORATIONS_COMPLETED)
                 .await;
         });
-        let exploration_id = Uuid::new_v4();
-        let event = ExperienceEvent::exploration_completed(id, exploration_id);
-        let _ = self.bus.publish(event);
     }
 }

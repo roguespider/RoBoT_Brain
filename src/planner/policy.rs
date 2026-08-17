@@ -1,8 +1,6 @@
 // src/planner/policy.rs
 //! Policy engine for decision-making rules
 
-
-
 use std::sync::Arc;
 
 use serde::{Deserialize, Serialize};
@@ -26,9 +24,18 @@ pub enum PolicyCondition {
     Never,
     IfConfidenceAbove(f32),
     IfConfidenceBelow(f32),
-    IfReputationAbove { target: String, threshold: f32 },
-    IfReputationBelow { target: String, threshold: f32 },
-    IfExperienceCountAbove { experience_type: String, count: usize },
+    IfReputationAbove {
+        target: String,
+        threshold: f32,
+    },
+    IfReputationBelow {
+        target: String,
+        threshold: f32,
+    },
+    IfExperienceCountAbove {
+        experience_type: String,
+        count: usize,
+    },
     IfTaskType(String),
     IfErrorCountAbove(u32),
     Custom(String),
@@ -49,7 +56,6 @@ pub enum PolicyAction {
 
 /// Context for policy evaluation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg(test)]
 pub struct PolicyContext {
     pub task_type: Option<String>,
     pub task_description: Option<String>,
@@ -103,7 +109,6 @@ impl PolicyEngine {
     }
 
     /// Evaluate context against all rules
-    #[cfg(test)]
     pub async fn evaluate(&self, context: &PolicyContext) -> PolicyResult {
         let rules = self.rules.read().await;
 
@@ -125,8 +130,11 @@ impl PolicyEngine {
     }
 
     /// Check if a condition matches the context
-    #[cfg(test)]
-    async fn matches_condition(&self, condition: &PolicyCondition, context: &PolicyContext) -> bool {
+    async fn matches_condition(
+        &self,
+        condition: &PolicyCondition,
+        context: &PolicyContext,
+    ) -> bool {
         match condition {
             PolicyCondition::Always => true,
             PolicyCondition::Never => false,
@@ -140,12 +148,11 @@ impl PolicyEngine {
                 // For now, use context-based reputation check
                 (context.target.as_ref() == Some(target)) && context.confidence < *threshold
             }
-            PolicyCondition::IfExperienceCountAbove { experience_type: _, count } => {
-                context.experience_count > *count
-            }
-            PolicyCondition::IfTaskType(task_type) => {
-                context.task_type.as_ref() == Some(task_type)
-            }
+            PolicyCondition::IfExperienceCountAbove {
+                experience_type: _,
+                count,
+            } => context.experience_count > *count,
+            PolicyCondition::IfTaskType(task_type) => context.task_type.as_ref() == Some(task_type),
             PolicyCondition::IfErrorCountAbove(threshold) => context.error_count > *threshold,
             PolicyCondition::Custom(_) => false,
         }
@@ -202,7 +209,6 @@ impl Default for PolicyEngine {
 
 /// Result of policy evaluation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg(test)]
 pub enum PolicyResult {
     Decision {
         action: PolicyAction,
@@ -214,7 +220,6 @@ pub enum PolicyResult {
 
 /// Policy container with metadata
 #[derive(Debug, Clone, Serialize, Deserialize)]
-#[cfg(test)]
 pub struct Policy {
     pub id: String,
     pub name: String,
@@ -222,4 +227,3 @@ pub struct Policy {
     pub rules: Vec<PolicyRule>,
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
-

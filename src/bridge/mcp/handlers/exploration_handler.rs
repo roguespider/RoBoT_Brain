@@ -1,17 +1,23 @@
 // src/bridge/tools/handlers/exploration_handler.rs
 // Exploration tools handler - handles exploration tools
 
-use crate::bridge::tools::exploration;
 use crate::bridge::mcp::handlers::{HandlerError, HandlerInitResult, ToolHandler};
+use crate::bridge::tools::exploration;
+use crate::experience::coordinator::ExperienceCoordinator;
+use std::sync::Arc;
 
 /// Handler for exploration-related tools
 #[derive(Clone)]
-pub struct ExplorationToolsHandler;
+pub struct ExplorationToolsHandler {
+    coordinator: Arc<ExperienceCoordinator>,
+}
 
 impl ExplorationToolsHandler {
     /// Create a new exploration tools handler
-    pub fn new() -> HandlerInitResult<Self> {
-        Ok(Self)
+    pub fn new(context: Arc<crate::bridge::mcp::McpContext>) -> HandlerInitResult<Self> {
+        Ok(Self {
+            coordinator: context.coordinator.clone(),
+        })
     }
 
     /// Start exploration
@@ -51,7 +57,7 @@ impl ExplorationToolsHandler {
         &self,
         input: exploration::CompleteExplorationInput,
     ) -> crate::bridge::tools::ToolOutput {
-        exploration::execute_complete_exploration(input)
+        exploration::execute_complete_exploration(input, &self.coordinator)
     }
 
     /// Abandon exploration
@@ -174,7 +180,18 @@ impl ToolHandler for ExplorationToolsHandler {
                     "type": "object",
                     "properties": {
                         "exploration_id": { "type": "string", "description": "Exploration ID" },
-                        "findings": { "type": "string", "description": "Key findings" }
+                        "findings": {
+                            "type": "array",
+                            "items": {
+                                "type": "object",
+                                "properties": {
+                                    "description": { "type": "string", "description": "Description of what was discovered" },
+                                    "confidence": { "type": "number", "description": "Confidence in this finding (0.0-1.0)" }
+                                },
+                                "required": ["description"]
+                            },
+                            "description": "Findings from this exploration"
+                        }
                     },
                     "required": ["exploration_id", "findings"]
                 })),
@@ -245,7 +262,12 @@ impl ToolHandler for ExplorationToolsHandler {
         ]
     }
 
-    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
+    fn execute_tool(
+        &self,
+        name: &str,
+        args: serde_json::Value,
+    ) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send
+    {
         async move {
             match name {
                 "start_exploration" => {
@@ -254,18 +276,21 @@ impl ToolHandler for ExplorationToolsHandler {
                     Ok(self.execute_start_exploration(input))
                 }
                 "get_exploration_status" => {
-                    let input: exploration::GetExplorationStatusInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    let input: exploration::GetExplorationStatusInput =
+                        serde_json::from_value(args)
+                            .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
                     Ok(self.execute_get_exploration_status(input))
                 }
                 "pause_exploration" => {
-                    let input: exploration::GetExplorationStatusInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    let input: exploration::GetExplorationStatusInput =
+                        serde_json::from_value(args)
+                            .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
                     Ok(self.execute_pause_exploration(input))
                 }
                 "resume_exploration" => {
-                    let input: exploration::GetExplorationStatusInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    let input: exploration::GetExplorationStatusInput =
+                        serde_json::from_value(args)
+                            .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
                     Ok(self.execute_resume_exploration(input))
                 }
                 "complete_exploration" => {
@@ -274,8 +299,9 @@ impl ToolHandler for ExplorationToolsHandler {
                     Ok(self.execute_complete_exploration(input))
                 }
                 "abandon_exploration" => {
-                    let input: exploration::GetExplorationStatusInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    let input: exploration::GetExplorationStatusInput =
+                        serde_json::from_value(args)
+                            .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
                     Ok(self.execute_abandon_exploration(input))
                 }
                 "record_attempt" => {
@@ -298,7 +324,7 @@ impl ToolHandler for ExplorationToolsHandler {
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
                     Ok(self.execute_promote_finding(input))
                 }
-                _ => Err(HandlerError::ToolNotFound(name.to_string()))
+                _ => Err(HandlerError::ToolNotFound(name.to_string())),
             }
         }
     }

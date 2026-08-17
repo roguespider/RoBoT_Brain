@@ -1,4 +1,3 @@
-
 // src/tools/exploration_tools/definitions.rs
 //! Tool definitions for exploration tools
 
@@ -14,10 +13,17 @@ pub const PROMOTE_FINDING: &str = "promote_finding";
 pub const ABANDON_EXPLORATION: &str = "abandon_exploration";
 
 pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
+    macro_rules! desc {
+        ($s:expr) => {
+            format!("[WORKFLOW: get_workflow + search_memory first] {}", $s)
+        };
+    }
     vec![
         crate::bridge::mcp::McpTool {
             name: START_EXPLORATION.to_string(),
-            description: "Start a new exploration session. Explorations allow RoBoT to actively investigate topics and test hypotheses.".to_string(),
+            description: desc!(
+                "Start a new exploration session. Explorations allow RoBoT to actively investigate topics and test hypotheses."
+            ),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -29,7 +35,9 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: PAUSE_EXPLORATION.to_string(),
-            description: "Pause an active exploration. The exploration can be resumed later.".to_string(),
+            description: desc!(
+                "Pause an active exploration. The exploration can be resumed later."
+            ),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -40,7 +48,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: RESUME_EXPLORATION.to_string(),
-            description: "Resume a paused exploration.".to_string(),
+            description: desc!("Resume a paused exploration."),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -51,7 +59,9 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: GET_EXPLORATION_STATUS.to_string(),
-            description: "Get the current status of an exploration including hypotheses, attempts, and findings.".to_string(),
+            description: desc!(
+                "Get the current status of an exploration including hypotheses, attempts, and findings."
+            ),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -62,7 +72,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: COMPLETE_EXPLORATION.to_string(),
-            description: "Mark an exploration as completed with findings.".to_string(),
+            description: desc!("Mark an exploration as completed with findings."),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -85,7 +95,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: RECORD_ATTEMPT.to_string(),
-            description: "Record an attempt made during exploration.".to_string(),
+            description: desc!("Record an attempt made during exploration."),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -99,7 +109,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: ADD_HYPOTHESIS.to_string(),
-            description: "Add a hypothesis to an exploration for testing.".to_string(),
+            description: desc!("Add a hypothesis to an exploration for testing."),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -112,7 +122,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: EVALUATE_HYPOTHESIS.to_string(),
-            description: "Evaluate a hypothesis with a result.".to_string(),
+            description: desc!("Evaluate a hypothesis with a result."),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -125,7 +135,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: PROMOTE_FINDING.to_string(),
-            description: "Promote a finding to reusable knowledge.".to_string(),
+            description: desc!("Promote a finding to reusable knowledge."),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -137,7 +147,7 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         },
         crate::bridge::mcp::McpTool {
             name: ABANDON_EXPLORATION.to_string(),
-            description: "Abandon an exploration without findings.".to_string(),
+            description: desc!("Abandon an exploration without findings."),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
