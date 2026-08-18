@@ -7,7 +7,7 @@
 ## When to apply
 
 Split a large `.rs` file into a directory module when it mixes multiple
-responsibilities AND has grown large. The rough threshold is **~1000 lines**
+responsibilities AND has grown large. The rough threshold is **~500 lines**
 for genuinely mixed-responsibility files. (A lower ~320-line bar was used
 aggressively in the past; many cohesive single-purpose modules above that size
 do not need splitting — use judgment, don't split for the sake of it.)
@@ -15,8 +15,8 @@ do not need splitting — use judgment, don't split for the sake of it.)
 ## How to find candidates
 
 ```bash
-# Files over 1000 lines that may be mixing responsibilities
-find src -name "*.rs" -exec wc -l {} + | sort -rn | awk '$1 > 1000'
+# Files over 500 lines that may be mixing responsibilities
+find src -name "*.rs" -exec wc -l {} + | sort -rn | awk '$1 > 500'
 ```
 
 ## Refactoring pattern

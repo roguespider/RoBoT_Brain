@@ -7,12 +7,12 @@ use anyhow::Result;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
+use crate::bridge::tools::ToolOutput;
 use crate::database::queries;
 use crate::database::sqlite::SqliteDatabase;
 use crate::experience::coordinator::ExperienceCoordinator;
 use crate::experience::types::{Experience, ExperienceOutcome, ExperienceType, OutcomeKind};
 use crate::experience::worker_manager::WorkerManager;
-use crate::bridge::tools::ToolOutput;
 
 /// Tool: Record an experience
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -70,10 +70,15 @@ pub mod definitions {
     pub const GET_WORKER_COUNT: &str = "get_worker_count";
 
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
+        macro_rules! desc {
+            ($s:expr) => {
+                format!("[WORKFLOW: get_workflow + search_memory first] {}", $s)
+            };
+        }
         vec![
             crate::bridge::mcp::McpTool {
                 name: RECORD_EXPERIENCE.to_string(),
-                description: "Record a new experience from an action or observation".to_string(),
+                description: desc!("Record a new experience from an action or observation"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -105,7 +110,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: GET_EXPERIENCE_STATS.to_string(),
-                description: "Get statistics about recorded experiences".to_string(),
+                description: desc!("Get statistics about recorded experiences"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -119,7 +124,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: LIST_EXPERIENCES.to_string(),
-                description: "List recent experiences".to_string(),
+                description: desc!("List recent experiences"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -137,7 +142,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: GET_EXPERIENCE.to_string(),
-                description: "Get a specific experience by ID".to_string(),
+                description: desc!("Get a specific experience by ID"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -151,7 +156,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: GET_WORKER_STATS.to_string(),
-                description: "Get background worker statistics for observers".to_string(),
+                description: desc!("Get background worker statistics for observers"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -164,7 +169,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: GET_WORKER_COUNT.to_string(),
-                description: "Get the number of active background workers".to_string(),
+                description: desc!("Get the number of active background workers"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {}

@@ -1,8 +1,10 @@
 //! Exploration lifecycle handlers: start, pause, resume, complete, abandon.
 
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::bridge::tools::ToolOutput;
+use crate::experience::coordinator::ExperienceCoordinator;
 use crate::experience::exploration::{Exploration, ExplorationFinding, ExplorationStatus};
 use crate::experience::types::ExperienceContext;
 
@@ -67,7 +69,10 @@ pub fn execute_resume_exploration(input: GetExplorationStatusInput) -> ToolOutpu
     })
 }
 
-pub fn execute_complete_exploration(input: CompleteExplorationInput) -> ToolOutput {
+pub fn execute_complete_exploration(
+    input: CompleteExplorationInput,
+    coordinator: &Arc<ExperienceCoordinator>,
+) -> ToolOutput {
     with_store(|store| {
         ensure_exploration(store, &input.exploration_id);
         match store.get_mut(&input.exploration_id) {
@@ -83,6 +88,15 @@ pub fn execute_complete_exploration(input: CompleteExplorationInput) -> ToolOutp
 
                 exp.complete();
                 let finding_count = exp.findings.len();
+
+                // Wire into the experience coordinator for metric tracking
+                // (Architecture §07: coordinator.process completes the learning
+                // pipeline for exploration outcomes).
+                let coord = coordinator.clone();
+                let exp_id = exp.id.clone();
+                tokio::spawn(async move {
+                    coord.complete_exploration(&exp_id);
+                });
 
                 ToolOutput::success(serde_json::json!({
                     "exploration_id": exp.id,

@@ -2,8 +2,6 @@
 
 //! Type definitions for the hypothesis graph.
 
-
-
 use serde::{Deserialize, Serialize};
 
 use uuid::Uuid;
@@ -65,7 +63,6 @@ impl HypothesisRelationship {
         }
     }
 }
-
 
 /// ============================================================================
 /// GRAPH STATISTICS
@@ -133,7 +130,6 @@ pub struct HypothesisEdge {
 }
 
 impl HypothesisEdge {
-    #[cfg(test)]
     pub fn supports(from: HypothesisId, to: HypothesisId) -> Self {
         Self {
             id: EdgeId::new(),
@@ -144,7 +140,6 @@ impl HypothesisEdge {
         }
     }
 
-    #[cfg(test)]
     pub fn contradicts(from: HypothesisId, to: HypothesisId) -> Self {
         Self {
             id: EdgeId::new(),
@@ -171,4 +166,3 @@ impl HypothesisEdge {
         self
     }
 }
-

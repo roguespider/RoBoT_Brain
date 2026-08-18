@@ -1,4 +1,3 @@
-
 // src/tools/agent/definitions.rs
 // Agent tool definitions
 
@@ -13,6 +12,11 @@ pub const RUN_AGENT_GOAL: &str = "run_agent_goal";
 
 /// Get all agent tool definitions
 pub fn all() -> Vec<McpTool> {
+    macro_rules! desc {
+        ($s:expr) => {
+            format!("[WORKFLOW: get_workflow + search_memory first] {}", $s)
+        };
+    }
     vec![
         McpTool {
             name: GET_WORKFLOW.to_string(),
@@ -29,7 +33,7 @@ pub fn all() -> Vec<McpTool> {
         },
         McpTool {
             name: LIST_TOOLS.to_string(),
-            description: "List all available MCP tools with optional filter".to_string(),
+            description: desc!("List all available MCP tools with optional filter"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -42,7 +46,7 @@ pub fn all() -> Vec<McpTool> {
         },
         McpTool {
             name: GET_TOOL.to_string(),
-            description: "Get detailed information about a specific tool".to_string(),
+            description: desc!("Get detailed information about a specific tool"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -56,7 +60,7 @@ pub fn all() -> Vec<McpTool> {
         },
         McpTool {
             name: CONNECT_MCP_SERVER.to_string(),
-            description: "Connect to an external MCP server via child process".to_string(),
+            description: desc!("Connect to an external MCP server via child process"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -79,7 +83,7 @@ pub fn all() -> Vec<McpTool> {
         },
         McpTool {
             name: CALL_MCP_TOOL.to_string(),
-            description: "Call a tool on a connected MCP server".to_string(),
+            description: desc!("Call a tool on a connected MCP server"),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -97,7 +101,7 @@ pub fn all() -> Vec<McpTool> {
         },
         McpTool {
             name: RUN_AGENT_GOAL.to_string(),
-            description: "Run the goal-driven agent loop (Architecture §5.7). Given a goal, the agent decomposes it into a plan, retrieves supporting memory/knowledge/experiences, evaluates action confidence, checks the safety gate, and records the outcome as a new experience. This closes the cognitive loop: Goal → Plan → Retrieve → Decide → Act → Record → Learn.".to_string(),
+            description: desc!("Run the goal-driven agent loop (Architecture §5.7). Given a goal, the agent decomposes it into a plan, retrieves supporting memory/knowledge/experiences, evaluates action confidence, checks the safety gate, and records the outcome as a new experience. This closes the cognitive loop: Goal → Plan → Retrieve → Decide → Act → Record → Learn."),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {

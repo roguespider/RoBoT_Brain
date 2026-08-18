@@ -1,4 +1,3 @@
-
 // src/tools/ingestor/definitions.rs
 // MCP tool definitions with JSON schemas
 
@@ -11,10 +10,17 @@ pub const DELETE_INGESTED_FILES: &str = "delete_ingested_files";
 pub const TRANSCRIBE_AUDIO: &str = "transcribe_audio";
 
 pub fn all() -> Vec<McpTool> {
+    macro_rules! desc {
+        ($s:expr) => {
+            format!("[WORKFLOW: get_workflow + search_memory first] {}", $s)
+        };
+    }
     vec![
         McpTool {
             name: INGEST_FILES.to_string(),
-            description: "Ingest files from files_to_import folder into memory. When no path is specified, automatically ingests from the files_to_import folder. Returns memory IDs for stored content.".to_string(),
+            description: desc!(
+                "Ingest files from files_to_import folder into memory. When no path is specified, automatically ingests from the files_to_import folder. Returns memory IDs for stored content."
+            ),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -52,7 +58,9 @@ pub fn all() -> Vec<McpTool> {
         },
         McpTool {
             name: LIST_IMPORTABLE.to_string(),
-            description: "List files available for import. Shows files in the files_to_import folder by default.".to_string(),
+            description: desc!(
+                "List files available for import. Shows files in the files_to_import folder by default."
+            ),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -78,7 +86,7 @@ pub fn all() -> Vec<McpTool> {
         },
         McpTool {
             name: TRANSCRIBE_AUDIO.to_string(),
-            description: "Transcribe an audio file to text using Whisper AI.".to_string(),
+            description: desc!("Transcribe an audio file to text using Whisper AI."),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -96,7 +104,7 @@ pub fn all() -> Vec<McpTool> {
         },
         McpTool {
             name: LIST_INGESTED_FILES.to_string(),
-            description: "List files that have been successfully ingested.".to_string(),
+            description: desc!("List files that have been successfully ingested."),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {
@@ -117,7 +125,9 @@ pub fn all() -> Vec<McpTool> {
         },
         McpTool {
             name: DELETE_INGESTED_FILES.to_string(),
-            description: "Delete original files after successful ingestion. Requires confirmation='yes'.".to_string(),
+            description: desc!(
+                "Delete original files after successful ingestion. Requires confirmation='yes'."
+            ),
             input_schema: serde_json::json!({
                 "type": "object",
                 "properties": {

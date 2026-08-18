@@ -18,12 +18,13 @@ pub use runner::start_event_subscriber;
 
 use std::sync::Arc;
 
+use crate::experience::encounter_recorder::ExperienceRecorder;
+use crate::experience::evolution::EvolutionEngine;
+use crate::experience::hypothesis::HypothesisEngine;
+use crate::experience::integration::learning_coordinator::LearningCoordinator;
 use crate::experience::metrics::MetricsCollector;
 use crate::experience::reflection::ReflectionEngine;
-use crate::experience::hypothesis::HypothesisEngine;
-use crate::experience::evolution::EvolutionEngine;
 use crate::experience::reputation::reputation::Reputation;
-use crate::experience::integration::learning_coordinator::LearningCoordinator;
 use crate::knowledge::KnowledgeStore;
 
 /// Event subscriber that coordinates the learning pipeline
@@ -44,6 +45,8 @@ pub struct EventSubscriber {
     evolution_engine: Arc<EvolutionEngine>,
     knowledge_store: Arc<KnowledgeStore>,
     reputation_store: Arc<tokio::sync::RwLock<std::collections::HashMap<String, Reputation>>>,
+    /// Records experiences to the database for structured observation tracking.
+    experience_recorder: Option<Arc<ExperienceRecorder>>,
 }
 
 impl EventSubscriber {
@@ -54,6 +57,7 @@ impl EventSubscriber {
         hypothesis_engine: Arc<HypothesisEngine>,
         evolution_engine: Arc<EvolutionEngine>,
         knowledge_store: Arc<KnowledgeStore>,
+        experience_recorder: Option<Arc<ExperienceRecorder>>,
     ) -> Self {
         Self {
             config: EventSubscriberConfig::default(),
@@ -64,6 +68,7 @@ impl EventSubscriber {
             evolution_engine,
             knowledge_store,
             reputation_store: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
+            experience_recorder,
         }
     }
 
@@ -78,6 +83,7 @@ impl EventSubscriber {
         hypothesis_engine: Arc<HypothesisEngine>,
         evolution_engine: Arc<EvolutionEngine>,
         knowledge_store: Arc<KnowledgeStore>,
+        experience_recorder: Option<Arc<ExperienceRecorder>>,
     ) -> Self {
         Self {
             config: EventSubscriberConfig::default(),
@@ -88,6 +94,7 @@ impl EventSubscriber {
             evolution_engine,
             knowledge_store,
             reputation_store: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
+            experience_recorder,
         }
     }
 
@@ -99,6 +106,7 @@ impl EventSubscriber {
         hypothesis_engine: Arc<HypothesisEngine>,
         evolution_engine: Arc<EvolutionEngine>,
         knowledge_store: Arc<KnowledgeStore>,
+        experience_recorder: Option<Arc<ExperienceRecorder>>,
     ) -> Self {
         Self {
             config,
@@ -109,6 +117,7 @@ impl EventSubscriber {
             evolution_engine,
             knowledge_store,
             reputation_store: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
+            experience_recorder,
         }
     }
 }

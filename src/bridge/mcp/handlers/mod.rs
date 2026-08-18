@@ -72,36 +72,42 @@ impl std::fmt::Display for HandlerError {
 impl std::error::Error for HandlerError {}
 
 /// Trait for tool handlers - each handler manages a category of tools
-/// 
+///
 /// This trait allows McpServerHandler to aggregate all tool handlers
 /// while keeping them isolated. If one handler fails, others continue.
 pub trait ToolHandler: Send + Sync {
     /// Get the category name for this handler
     fn category(&self) -> &str;
-    
+
     /// Get the list of tool names this handler manages
     fn tool_names(&self) -> Vec<String>;
-    
+
     /// Check if this handler is healthy (can process requests)
     fn is_healthy(&self) -> bool;
-    
+
     /// Get all tools this handler manages as MCP Tool definitions
-    /// 
+    ///
     /// Default implementation returns an empty vector.
     /// Override this method to provide actual tool definitions.
     fn get_tools(&self) -> Vec<rmcp::model::Tool> {
         Vec::new()
     }
-    
+
     /// Execute a tool by name with arguments
-    /// 
+    ///
     /// Each handler must implement this to handle its own tool execution.
-    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send;
+    fn execute_tool(
+        &self,
+        name: &str,
+        args: serde_json::Value,
+    ) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send;
 }
 
 /// Convert serde_json::Value to Arc<serde_json::Map<String, serde_json::Value>>
 /// for use in Tool::new()
-pub fn json_to_schema(schema: serde_json::Value) -> std::sync::Arc<serde_json::Map<String, serde_json::Value>> {
+pub fn json_to_schema(
+    schema: serde_json::Value,
+) -> std::sync::Arc<serde_json::Map<String, serde_json::Value>> {
     match schema {
         serde_json::Value::Object(map) => std::sync::Arc::new(map),
         other => {
@@ -179,7 +185,7 @@ impl ToolHandlerCollection {
     }
 
     /// Initialize all handlers with graceful degradation
-    /// 
+    ///
     /// Returns a vector of any errors encountered during initialization.
     /// Handlers that fail to initialize are set to None and the system continues.
     pub fn initialize_all(
@@ -191,7 +197,10 @@ impl ToolHandlerCollection {
         // Initialize each handler, capturing errors but continuing
         match AcpToolsHandler::new(context.clone()) {
             Ok(handler) => {
-                tracing::info!("ACP tools handler initialized with {} tools", handler.tool_names().len());
+                tracing::info!(
+                    "ACP tools handler initialized with {} tools",
+                    handler.tool_names().len()
+                );
                 collection.acp = Some(handler);
             }
             Err(e) => {
@@ -202,7 +211,10 @@ impl ToolHandlerCollection {
 
         match AgentToolsHandler::new(context.clone()) {
             Ok(handler) => {
-                tracing::info!("Agent tools handler initialized with {} tools", handler.tool_names().len());
+                tracing::info!(
+                    "Agent tools handler initialized with {} tools",
+                    handler.tool_names().len()
+                );
                 collection.agent = Some(handler);
             }
             Err(e) => {
@@ -213,40 +225,61 @@ impl ToolHandlerCollection {
 
         match ExperienceToolsHandler::new(context.clone()) {
             Ok(handler) => {
-                tracing::info!("Experience tools handler initialized with {} tools", handler.tool_names().len());
+                tracing::info!(
+                    "Experience tools handler initialized with {} tools",
+                    handler.tool_names().len()
+                );
                 collection.experience = Some(handler);
             }
             Err(e) => {
-                tracing::warn!("Failed to initialize experience tools handler: {}", e.message);
+                tracing::warn!(
+                    "Failed to initialize experience tools handler: {}",
+                    e.message
+                );
                 errors.push(e);
             }
         }
 
-        match ExplorationToolsHandler::new() {
+        match ExplorationToolsHandler::new(context.clone()) {
             Ok(handler) => {
-                tracing::info!("Exploration tools handler initialized with {} tools", handler.tool_names().len());
+                tracing::info!(
+                    "Exploration tools handler initialized with {} tools",
+                    handler.tool_names().len()
+                );
                 collection.exploration = Some(handler);
             }
             Err(e) => {
-                tracing::warn!("Failed to initialize exploration tools handler: {}", e.message);
+                tracing::warn!(
+                    "Failed to initialize exploration tools handler: {}",
+                    e.message
+                );
                 errors.push(e);
             }
         }
 
         match HypothesisToolsHandler::new(context.clone()) {
             Ok(handler) => {
-                tracing::info!("Hypothesis tools handler initialized with {} tools", handler.tool_names().len());
+                tracing::info!(
+                    "Hypothesis tools handler initialized with {} tools",
+                    handler.tool_names().len()
+                );
                 collection.hypothesis = Some(handler);
             }
             Err(e) => {
-                tracing::warn!("Failed to initialize hypothesis tools handler: {}", e.message);
+                tracing::warn!(
+                    "Failed to initialize hypothesis tools handler: {}",
+                    e.message
+                );
                 errors.push(e);
             }
         }
 
         match IngestorToolsHandler::new(context.clone()) {
             Ok(handler) => {
-                tracing::info!("Ingestor tools handler initialized with {} tools", handler.tool_names().len());
+                tracing::info!(
+                    "Ingestor tools handler initialized with {} tools",
+                    handler.tool_names().len()
+                );
                 collection.ingestor = Some(handler);
             }
             Err(e) => {
@@ -257,18 +290,27 @@ impl ToolHandlerCollection {
 
         match KnowledgeToolsHandler::new(context.clone()) {
             Ok(handler) => {
-                tracing::info!("Knowledge tools handler initialized with {} tools", handler.tool_names().len());
+                tracing::info!(
+                    "Knowledge tools handler initialized with {} tools",
+                    handler.tool_names().len()
+                );
                 collection.knowledge = Some(handler);
             }
             Err(e) => {
-                tracing::warn!("Failed to initialize knowledge tools handler: {}", e.message);
+                tracing::warn!(
+                    "Failed to initialize knowledge tools handler: {}",
+                    e.message
+                );
                 errors.push(e);
             }
         }
 
         match MemoryToolsHandler::new(context.clone()) {
             Ok(handler) => {
-                tracing::info!("Memory tools handler initialized with {} tools", handler.tool_names().len());
+                tracing::info!(
+                    "Memory tools handler initialized with {} tools",
+                    handler.tool_names().len()
+                );
                 collection.memory = Some(handler);
             }
             Err(e) => {
@@ -279,18 +321,27 @@ impl ToolHandlerCollection {
 
         match PersonalityToolsHandler::new(context.clone()) {
             Ok(handler) => {
-                tracing::info!("Personality tools handler initialized with {} tools", handler.tool_names().len());
+                tracing::info!(
+                    "Personality tools handler initialized with {} tools",
+                    handler.tool_names().len()
+                );
                 collection.personality = Some(handler);
             }
             Err(e) => {
-                tracing::warn!("Failed to initialize personality tools handler: {}", e.message);
+                tracing::warn!(
+                    "Failed to initialize personality tools handler: {}",
+                    e.message
+                );
                 errors.push(e);
             }
         }
 
         match PlannerToolsHandler::new(context.clone()) {
             Ok(handler) => {
-                tracing::info!("Planner tools handler initialized with {} tools", handler.tool_names().len());
+                tracing::info!(
+                    "Planner tools handler initialized with {} tools",
+                    handler.tool_names().len()
+                );
                 collection.planner = Some(handler);
             }
             Err(e) => {
@@ -301,18 +352,27 @@ impl ToolHandlerCollection {
 
         match ReflectionToolsHandler::new(context.clone()) {
             Ok(handler) => {
-                tracing::info!("Reflection tools handler initialized with {} tools", handler.tool_names().len());
+                tracing::info!(
+                    "Reflection tools handler initialized with {} tools",
+                    handler.tool_names().len()
+                );
                 collection.reflection = Some(handler);
             }
             Err(e) => {
-                tracing::warn!("Failed to initialize reflection tools handler: {}", e.message);
+                tracing::warn!(
+                    "Failed to initialize reflection tools handler: {}",
+                    e.message
+                );
                 errors.push(e);
             }
         }
 
         match SearchToolsHandler::new(context.clone()) {
             Ok(handler) => {
-                tracing::info!("Search tools handler initialized with {} tools", handler.tool_names().len());
+                tracing::info!(
+                    "Search tools handler initialized with {} tools",
+                    handler.tool_names().len()
+                );
                 collection.search = Some(handler);
             }
             Err(e) => {
@@ -323,7 +383,10 @@ impl ToolHandlerCollection {
 
         match SkillsToolsHandler::new(context.clone()) {
             Ok(handler) => {
-                tracing::info!("Skills tools handler initialized with {} tools", handler.tool_names().len());
+                tracing::info!(
+                    "Skills tools handler initialized with {} tools",
+                    handler.tool_names().len()
+                );
                 collection.skills = Some(handler);
             }
             Err(e) => {
@@ -334,7 +397,10 @@ impl ToolHandlerCollection {
 
         match WorkflowToolsHandler::new(context.clone()) {
             Ok(handler) => {
-                tracing::info!("Workflow tools handler initialized with {} tools", handler.tool_names().len());
+                tracing::info!(
+                    "Workflow tools handler initialized with {} tools",
+                    handler.tool_names().len()
+                );
                 collection.workflow = Some(handler);
             }
             Err(e) => {
@@ -345,18 +411,27 @@ impl ToolHandlerCollection {
 
         match WorldModelToolsHandler::new(context.clone()) {
             Ok(handler) => {
-                tracing::info!("World-model tools handler initialized with {} tools", handler.tool_names().len());
+                tracing::info!(
+                    "World-model tools handler initialized with {} tools",
+                    handler.tool_names().len()
+                );
                 collection.world_model = Some(handler);
             }
             Err(e) => {
-                tracing::warn!("Failed to initialize world-model tools handler: {}", e.message);
+                tracing::warn!(
+                    "Failed to initialize world-model tools handler: {}",
+                    e.message
+                );
                 errors.push(e);
             }
         }
 
         let total_tools = collection.count_tools();
-        tracing::info!("Tool handlers initialization complete: {} total tools loaded, {} errors", 
-            total_tools, errors.len());
+        tracing::info!(
+            "Tool handlers initialization complete: {} total tools loaded, {} errors",
+            total_tools,
+            errors.len()
+        );
 
         (collection, errors)
     }
@@ -364,21 +439,51 @@ impl ToolHandlerCollection {
     /// Count total number of tools across all handlers
     pub fn count_tools(&self) -> usize {
         let mut count = 0;
-        if let Some(ref h) = self.acp { count += h.tool_names().len(); }
-        if let Some(ref h) = self.agent { count += h.tool_names().len(); }
-        if let Some(ref h) = self.experience { count += h.tool_names().len(); }
-        if let Some(ref h) = self.exploration { count += h.tool_names().len(); }
-        if let Some(ref h) = self.hypothesis { count += h.tool_names().len(); }
-        if let Some(ref h) = self.ingestor { count += h.tool_names().len(); }
-        if let Some(ref h) = self.knowledge { count += h.tool_names().len(); }
-        if let Some(ref h) = self.memory { count += h.tool_names().len(); }
-        if let Some(ref h) = self.personality { count += h.tool_names().len(); }
-        if let Some(ref h) = self.planner { count += h.tool_names().len(); }
-        if let Some(ref h) = self.reflection { count += h.tool_names().len(); }
-        if let Some(ref h) = self.search { count += h.tool_names().len(); }
-        if let Some(ref h) = self.skills { count += h.tool_names().len(); }
-        if let Some(ref h) = self.workflow { count += h.tool_names().len(); }
-        if let Some(ref h) = self.world_model { count += h.tool_names().len(); }
+        if let Some(ref h) = self.acp {
+            count += h.tool_names().len();
+        }
+        if let Some(ref h) = self.agent {
+            count += h.tool_names().len();
+        }
+        if let Some(ref h) = self.experience {
+            count += h.tool_names().len();
+        }
+        if let Some(ref h) = self.exploration {
+            count += h.tool_names().len();
+        }
+        if let Some(ref h) = self.hypothesis {
+            count += h.tool_names().len();
+        }
+        if let Some(ref h) = self.ingestor {
+            count += h.tool_names().len();
+        }
+        if let Some(ref h) = self.knowledge {
+            count += h.tool_names().len();
+        }
+        if let Some(ref h) = self.memory {
+            count += h.tool_names().len();
+        }
+        if let Some(ref h) = self.personality {
+            count += h.tool_names().len();
+        }
+        if let Some(ref h) = self.planner {
+            count += h.tool_names().len();
+        }
+        if let Some(ref h) = self.reflection {
+            count += h.tool_names().len();
+        }
+        if let Some(ref h) = self.search {
+            count += h.tool_names().len();
+        }
+        if let Some(ref h) = self.skills {
+            count += h.tool_names().len();
+        }
+        if let Some(ref h) = self.workflow {
+            count += h.tool_names().len();
+        }
+        if let Some(ref h) = self.world_model {
+            count += h.tool_names().len();
+        }
         count
     }
 
@@ -405,69 +510,159 @@ impl ToolHandlerCollection {
     /// Get all tools from all handlers as MCP Tool definitions
     pub fn get_all_tools(&self) -> Vec<rmcp::model::Tool> {
         let mut tools = Vec::new();
-        if let Some(ref h) = self.acp { tools.extend(h.get_tools()); }
-        if let Some(ref h) = self.agent { tools.extend(h.get_tools()); }
-        if let Some(ref h) = self.experience { tools.extend(h.get_tools()); }
-        if let Some(ref h) = self.exploration { tools.extend(h.get_tools()); }
-        if let Some(ref h) = self.hypothesis { tools.extend(h.get_tools()); }
-        if let Some(ref h) = self.ingestor { tools.extend(h.get_tools()); }
-        if let Some(ref h) = self.knowledge { tools.extend(h.get_tools()); }
-        if let Some(ref h) = self.memory { tools.extend(h.get_tools()); }
-        if let Some(ref h) = self.personality { tools.extend(h.get_tools()); }
-        if let Some(ref h) = self.planner { tools.extend(h.get_tools()); }
-        if let Some(ref h) = self.reflection { tools.extend(h.get_tools()); }
-        if let Some(ref h) = self.search { tools.extend(h.get_tools()); }
-        if let Some(ref h) = self.skills { tools.extend(h.get_tools()); }
-        if let Some(ref h) = self.workflow { tools.extend(h.get_tools()); }
-        if let Some(ref h) = self.world_model { tools.extend(h.get_tools()); }
+        if let Some(ref h) = self.acp {
+            tools.extend(h.get_tools());
+        }
+        if let Some(ref h) = self.agent {
+            tools.extend(h.get_tools());
+        }
+        if let Some(ref h) = self.experience {
+            tools.extend(h.get_tools());
+        }
+        if let Some(ref h) = self.exploration {
+            tools.extend(h.get_tools());
+        }
+        if let Some(ref h) = self.hypothesis {
+            tools.extend(h.get_tools());
+        }
+        if let Some(ref h) = self.ingestor {
+            tools.extend(h.get_tools());
+        }
+        if let Some(ref h) = self.knowledge {
+            tools.extend(h.get_tools());
+        }
+        if let Some(ref h) = self.memory {
+            tools.extend(h.get_tools());
+        }
+        if let Some(ref h) = self.personality {
+            tools.extend(h.get_tools());
+        }
+        if let Some(ref h) = self.planner {
+            tools.extend(h.get_tools());
+        }
+        if let Some(ref h) = self.reflection {
+            tools.extend(h.get_tools());
+        }
+        if let Some(ref h) = self.search {
+            tools.extend(h.get_tools());
+        }
+        if let Some(ref h) = self.skills {
+            tools.extend(h.get_tools());
+        }
+        if let Some(ref h) = self.workflow {
+            tools.extend(h.get_tools());
+        }
+        if let Some(ref h) = self.world_model {
+            tools.extend(h.get_tools());
+        }
         tools
     }
 
     /// Get a single tool by name from any handler
     pub fn get_tool(&self, name: &str) -> Option<rmcp::model::Tool> {
-        if let Some(tool) = self.acp.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+        if let Some(tool) = self
+            .acp
+            .as_ref()
+            .and_then(|h| h.get_tools().into_iter().find(|t| t.name == name))
+        {
             return Some(tool);
         }
-        if let Some(tool) = self.agent.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+        if let Some(tool) = self
+            .agent
+            .as_ref()
+            .and_then(|h| h.get_tools().into_iter().find(|t| t.name == name))
+        {
             return Some(tool);
         }
-        if let Some(tool) = self.experience.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+        if let Some(tool) = self
+            .experience
+            .as_ref()
+            .and_then(|h| h.get_tools().into_iter().find(|t| t.name == name))
+        {
             return Some(tool);
         }
-        if let Some(tool) = self.exploration.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+        if let Some(tool) = self
+            .exploration
+            .as_ref()
+            .and_then(|h| h.get_tools().into_iter().find(|t| t.name == name))
+        {
             return Some(tool);
         }
-        if let Some(tool) = self.hypothesis.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+        if let Some(tool) = self
+            .hypothesis
+            .as_ref()
+            .and_then(|h| h.get_tools().into_iter().find(|t| t.name == name))
+        {
             return Some(tool);
         }
-        if let Some(tool) = self.ingestor.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+        if let Some(tool) = self
+            .ingestor
+            .as_ref()
+            .and_then(|h| h.get_tools().into_iter().find(|t| t.name == name))
+        {
             return Some(tool);
         }
-        if let Some(tool) = self.knowledge.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+        if let Some(tool) = self
+            .knowledge
+            .as_ref()
+            .and_then(|h| h.get_tools().into_iter().find(|t| t.name == name))
+        {
             return Some(tool);
         }
-        if let Some(tool) = self.memory.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+        if let Some(tool) = self
+            .memory
+            .as_ref()
+            .and_then(|h| h.get_tools().into_iter().find(|t| t.name == name))
+        {
             return Some(tool);
         }
-        if let Some(tool) = self.personality.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+        if let Some(tool) = self
+            .personality
+            .as_ref()
+            .and_then(|h| h.get_tools().into_iter().find(|t| t.name == name))
+        {
             return Some(tool);
         }
-        if let Some(tool) = self.planner.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+        if let Some(tool) = self
+            .planner
+            .as_ref()
+            .and_then(|h| h.get_tools().into_iter().find(|t| t.name == name))
+        {
             return Some(tool);
         }
-        if let Some(tool) = self.reflection.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+        if let Some(tool) = self
+            .reflection
+            .as_ref()
+            .and_then(|h| h.get_tools().into_iter().find(|t| t.name == name))
+        {
             return Some(tool);
         }
-        if let Some(tool) = self.search.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+        if let Some(tool) = self
+            .search
+            .as_ref()
+            .and_then(|h| h.get_tools().into_iter().find(|t| t.name == name))
+        {
             return Some(tool);
         }
-        if let Some(tool) = self.skills.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+        if let Some(tool) = self
+            .skills
+            .as_ref()
+            .and_then(|h| h.get_tools().into_iter().find(|t| t.name == name))
+        {
             return Some(tool);
         }
-        if let Some(tool) = self.workflow.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+        if let Some(tool) = self
+            .workflow
+            .as_ref()
+            .and_then(|h| h.get_tools().into_iter().find(|t| t.name == name))
+        {
             return Some(tool);
         }
-        if let Some(tool) = self.world_model.as_ref().and_then(|h| h.get_tools().into_iter().find(|t| t.name == name)) {
+        if let Some(tool) = self
+            .world_model
+            .as_ref()
+            .and_then(|h| h.get_tools().into_iter().find(|t| t.name == name))
+        {
             return Some(tool);
         }
         None

@@ -530,7 +530,7 @@ impl ToolHandler for AcpToolsHandler {
         vec![
             rmcp::model::Tool::new(
                 "list_acp_agents",
-                "List all registered ACP agents",
+                "[WORKFLOW: get_workflow + search_memory first] List all registered ACP agents",
                 json_to_schema(serde_json::json!({
                     "type": "object",
                     "properties": {}
@@ -538,7 +538,7 @@ impl ToolHandler for AcpToolsHandler {
             ).with_title("List ACP Agents"),
             rmcp::model::Tool::new(
                 "acp_agent_count",
-                "Get count of registered ACP agents",
+                "[WORKFLOW: get_workflow + search_memory first] Get count of registered ACP agents",
                 json_to_schema(serde_json::json!({
                     "type": "object",
                     "properties": {}
@@ -546,7 +546,7 @@ impl ToolHandler for AcpToolsHandler {
             ).with_title("ACP Agent Count"),
             rmcp::model::Tool::new(
                 "acp_router",
-                "Get ACP router information",
+                "[WORKFLOW: get_workflow + search_memory first] Get ACP router information",
                 json_to_schema(serde_json::json!({
                     "type": "object",
                     "properties": {}
@@ -554,7 +554,7 @@ impl ToolHandler for AcpToolsHandler {
             ).with_title("Get ACP Router"),
             rmcp::model::Tool::new(
                 "acp_registry",
-                "Get ACP registry information",
+                "[WORKFLOW: get_workflow + search_memory first] Get ACP registry information",
                 json_to_schema(serde_json::json!({
                     "type": "object",
                     "properties": {}
@@ -562,7 +562,7 @@ impl ToolHandler for AcpToolsHandler {
             ).with_title("Get ACP Registry"),
             rmcp::model::Tool::new(
                 "create_acp_message",
-                "Create an ACP message without routing it",
+                "[WORKFLOW: get_workflow + search_memory first] Create an ACP message without routing it",
                 json_to_schema(serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -590,7 +590,7 @@ impl ToolHandler for AcpToolsHandler {
             ).with_title("Create ACP Message"),
             rmcp::model::Tool::new(
                 "route_acp_message",
-                "Route an ACP message to an agent",
+                "[WORKFLOW: get_workflow + search_memory first] Route an ACP message to an agent",
                 json_to_schema(serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -618,7 +618,7 @@ impl ToolHandler for AcpToolsHandler {
             ).with_title("Route ACP Message"),
             rmcp::model::Tool::new(
                 "get_agent_capabilities",
-                "Get capabilities of an ACP agent",
+                "[WORKFLOW: get_workflow + search_memory first] Get capabilities of an ACP agent",
                 json_to_schema(serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -629,7 +629,7 @@ impl ToolHandler for AcpToolsHandler {
             ).with_title("Get Agent Capabilities"),
             rmcp::model::Tool::new(
                 "get_system_status",
-                "Get ACP system status",
+                "[WORKFLOW: get_workflow + search_memory first] Get ACP system status",
                 json_to_schema(serde_json::json!({
                     "type": "object",
                     "properties": {}
@@ -637,7 +637,7 @@ impl ToolHandler for AcpToolsHandler {
             ).with_title("Get System Status"),
             rmcp::model::Tool::new(
                 "register_agent",
-                "Register a new ACP agent",
+                "[WORKFLOW: get_workflow + search_memory first] Register a new ACP agent",
                 json_to_schema(serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -650,7 +650,7 @@ impl ToolHandler for AcpToolsHandler {
             ).with_title("Register Agent"),
             rmcp::model::Tool::new(
                 "unregister_agent",
-                "Unregister an ACP agent",
+                "[WORKFLOW: get_workflow + search_memory first] Unregister an ACP agent",
                 json_to_schema(serde_json::json!({
                     "type": "object",
                     "properties": {

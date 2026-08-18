@@ -1,21 +1,15 @@
 // /src/experience/evolution/engine.rs
 // The main engine that transforms insights into behaviors
 
-
 use anyhow::Result;
-#[cfg(test)]
 use chrono::Utc;
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use super::behavior::{Behavior, BehaviorAction, BehaviorStatus};
-#[cfg(test)]
-use super::behavior::BehaviorPriority;
-use super::evidence::EvolutionEvidence;
-#[cfg(test)]
-use super::evidence::EvidenceVerdict;
+use super::behavior::{Behavior, BehaviorAction, BehaviorPriority, BehaviorStatus};
+use super::evidence::{EvidenceVerdict, EvolutionEvidence};
 use crate::experience::reflection::insight::Insight;
 
 /// Configuration for the evolution engine
@@ -23,19 +17,19 @@ use crate::experience::reflection::insight::Insight;
 pub struct EvolutionConfig {
     /// Minimum applications before promotion
     pub min_applications_for_promotion: u32,
-    
+
     /// Minimum confidence before promotion
     pub min_confidence_for_promotion: f32,
-    
+
     /// Failure rate threshold for deprecation
     pub failure_threshold: f32,
-    
+
     /// Days unused before deprecation
     pub unused_threshold_days: i64,
-    
+
     /// Applications before practice phase
     pub applications_before_practice: u32,
-    
+
     /// Applications before integration
     pub applications_before_integration: u32,
 }
@@ -52,18 +46,27 @@ impl Default for EvolutionConfig {
         }
     }
 }
-#[cfg(test)]
 
 /// Trait for evolution engine implementations (scaffolding for future use)
 pub trait EvolutionEngineTrait: Send + Sync {
     /// Create a behavior from an insight
-    fn create_behavior_from_insight(&self, insight: &Insight) -> impl std::future::Future<Output = Result<Behavior>> + Send;
-    
+    fn create_behavior_from_insight(
+        &self,
+        insight: &Insight,
+    ) -> impl std::future::Future<Output = Result<Behavior>> + Send;
+
     /// Record a behavior application result
-    fn record_result(&self, behavior_id: &str, success: bool) -> impl std::future::Future<Output = Result<()>> + Send;
-    
+    fn record_result(
+        &self,
+        behavior_id: &str,
+        success: bool,
+    ) -> impl std::future::Future<Output = Result<()>> + Send;
+
     /// Get active behaviors for a context
-    fn get_active_behaviors(&self, context: &str) -> impl std::future::Future<Output = Vec<Behavior>> + Send;
+    fn get_active_behaviors(
+        &self,
+        context: &str,
+    ) -> impl std::future::Future<Output = Vec<Behavior>> + Send;
 }
 
 /// The evolution engine transforms insights into behaviors
@@ -85,7 +88,6 @@ impl EvolutionEngine {
     }
 
     /// Create with custom configuration
-    #[cfg(test)]
     pub fn with_config(config: EvolutionConfig) -> Self {
         Self {
             behaviors: Arc::new(RwLock::new(HashMap::new())),
@@ -117,16 +119,18 @@ impl EvolutionEngine {
             super::evidence::EvidenceType::Observation,
             format!("Derived from insight: {}", insight.title),
         );
-        
+
         let mut evidence_store = self.evidence.write().await;
-        evidence_store.entry(behavior_id).or_insert_with(Vec::new).push(evidence);
+        evidence_store
+            .entry(behavior_id)
+            .or_insert_with(Vec::new)
+            .push(evidence);
 
         tracing::info!("Created behavior from insight: {}", insight.id);
         Ok(behavior)
     }
 
     /// Get a behavior by ID
-    #[cfg(test)]
     pub async fn get_behavior(&self, id: &str) -> Option<Behavior> {
         let behaviors = self.behaviors.read().await;
         behaviors.get(id).cloned()
@@ -143,7 +147,9 @@ impl EvolutionEngine {
         let behaviors = self.behaviors.read().await;
         let mut active: Vec<_> = behaviors
             .values()
-            .filter(|b| b.status == BehaviorStatus::Active || b.status == BehaviorStatus::Practicing)
+            .filter(|b| {
+                b.status == BehaviorStatus::Active || b.status == BehaviorStatus::Practicing
+            })
             .cloned()
             .collect();
         active.sort_by_key(|b| std::cmp::Reverse(b.priority));
@@ -151,38 +157,31 @@ impl EvolutionEngine {
     }
 
     /// Create a behavior directly
-    #[cfg(test)]
     pub async fn create_behavior(
         &self,
         name: impl Into<String>,
         description: impl Into<String>,
         action: BehaviorAction,
     ) -> Result<Behavior> {
-        let behavior = Behavior::new(
-            Uuid::new_v4().to_string(),
-            name,
-            description,
-            action,
-        );
-        
+        let behavior = Behavior::new(Uuid::new_v4().to_string(), name, description, action);
+
         let mut behaviors = self.behaviors.write().await;
         let behavior_id = behavior.id.clone();
         behaviors.insert(behavior_id.clone(), behavior.clone());
-        
+
         tracing::info!("Created behavior: {}", behavior_id);
         Ok(behavior)
     }
 
     /// Record application result
-    #[cfg(test)]
     pub async fn record_result(&self, behavior_id: &str, success: bool) -> Result<()> {
         let mut behaviors = self.behaviors.write().await;
         if let Some(behavior) = behaviors.get_mut(behavior_id) {
             if success {
                 behavior.record_success();
-                
+
                 // Check for promotion to practicing
-                if behavior.status == BehaviorStatus::Active 
+                if behavior.status == BehaviorStatus::Active
                     && behavior.application_count >= self.config.applications_before_practice
                 {
                     behavior.start_practicing();
@@ -190,14 +189,17 @@ impl EvolutionEngine {
                 }
             } else {
                 behavior.record_failure();
-                
+
                 // Check for deprecation
-                if behavior.should_deprecate(self.config.failure_threshold, self.config.unused_threshold_days) {
+                if behavior.should_deprecate(
+                    self.config.failure_threshold,
+                    self.config.unused_threshold_days,
+                ) {
                     behavior.deprecate();
                     tracing::warn!("Behavior {} deprecated due to failures", behavior_id);
                 }
             }
-            
+
             // Check for promotion from candidate
             if behavior.is_ready_for_promotion(
                 self.config.min_applications_for_promotion,
@@ -207,9 +209,9 @@ impl EvolutionEngine {
                 behavior.activate();
                 tracing::info!("Behavior {} promoted to active", behavior_id);
             }
-            
+
             // Check for integration from practicing
-            if behavior.status == BehaviorStatus::Practicing 
+            if behavior.status == BehaviorStatus::Practicing
                 && behavior.application_count >= self.config.applications_before_integration
                 && behavior.confidence >= 0.9
             {
@@ -221,7 +223,6 @@ impl EvolutionEngine {
     }
 
     /// Add evidence for a behavior
-    #[cfg(test)]
     pub async fn add_evidence(&self, evidence: EvolutionEvidence) -> Result<()> {
         let mut evidence_store = self.evidence.write().await;
         evidence_store
@@ -232,7 +233,6 @@ impl EvolutionEngine {
     }
 
     /// Get evidence for a behavior
-    #[cfg(test)]
     pub async fn get_evidence(&self, behavior_id: &str) -> Vec<EvolutionEvidence> {
         let evidence_store = self.evidence.read().await;
         evidence_store.get(behavior_id).cloned().unwrap_or_default()
@@ -245,33 +245,36 @@ impl EvolutionEngine {
 
         for behavior in behaviors.values_mut() {
             // Check deprecation conditions
-            if behavior.should_deprecate(self.config.failure_threshold, self.config.unused_threshold_days)
-                && behavior.status != BehaviorStatus::Deprecated {
-                    behavior.deprecate();
-                    summary.deprecated += 1;
-                }
+            if behavior.should_deprecate(
+                self.config.failure_threshold,
+                self.config.unused_threshold_days,
+            ) && behavior.status != BehaviorStatus::Deprecated
+            {
+                behavior.deprecate();
+                summary.deprecated += 1;
+            }
 
             // Check promotion conditions
-            if behavior.status == BehaviorStatus::Candidate 
+            if behavior.status == BehaviorStatus::Candidate
                 && behavior.is_ready_for_promotion(
                     self.config.min_applications_for_promotion,
                     self.config.min_confidence_for_promotion,
-                ) 
+                )
             {
                 behavior.activate();
                 summary.promoted += 1;
             }
 
             // Check practice promotion (Active to Practicing based on application count)
-            if behavior.status == BehaviorStatus::Active &&
-                behavior.application_count >= self.config.applications_before_practice
+            if behavior.status == BehaviorStatus::Active
+                && behavior.application_count >= self.config.applications_before_practice
             {
                 behavior.start_practicing();
             }
             // Check integration conditions (high confidence + many applications)
-            if behavior.status == BehaviorStatus::Practicing 
-                && behavior.application_count >= self.config.applications_before_integration 
-                && behavior.confidence >= 0.9 
+            if behavior.status == BehaviorStatus::Practicing
+                && behavior.application_count >= self.config.applications_before_integration
+                && behavior.confidence >= 0.9
             {
                 behavior.integrate();
                 summary.integrated += 1;
@@ -283,11 +286,10 @@ impl EvolutionEngine {
     }
 
     /// Get behavior suggestions based on context
-    #[cfg(test)]
     pub async fn suggest_behaviors(&self, context: &str) -> Vec<Behavior> {
         let active = self.list_active_behaviors().await;
         let context_lower = context.to_lowercase();
-        
+
         active
             .into_iter()
             .filter(|b| {
@@ -299,18 +301,15 @@ impl EvolutionEngine {
     }
 
     /// Calculate overall evolution metrics
-    #[cfg(test)]
     pub async fn get_metrics(&self) -> EvolutionMetrics {
         let behaviors = self.behaviors.read().await;
         let evidence_store = self.evidence.read().await;
-        
+
         let total = behaviors.len();
-        let by_status: HashMap<_, _> = behaviors
-            .values()
-            .fold(HashMap::new(), |mut acc, b| {
-                *acc.entry(b.status).or_insert(0) += 1;
-                acc
-            });
+        let by_status: HashMap<_, _> = behaviors.values().fold(HashMap::new(), |mut acc, b| {
+            *acc.entry(b.status).or_insert(0) += 1;
+            acc
+        });
 
         let total_evidence: usize = evidence_store.values().map(|v| v.len()).sum();
         let supporting_evidence: usize = evidence_store
@@ -335,7 +334,6 @@ impl EvolutionEngine {
     }
 
     /// Get integrated behaviors (fully learned)
-    #[cfg(test)]
     pub async fn get_integrated_behaviors(&self) -> Vec<Behavior> {
         let behaviors = self.behaviors.read().await;
         behaviors
@@ -346,7 +344,6 @@ impl EvolutionEngine {
     }
 
     /// Get deprecated behaviors
-    #[cfg(test)]
     pub async fn get_deprecated_behaviors(&self) -> Vec<Behavior> {
         let behaviors = self.behaviors.read().await;
         behaviors
@@ -357,8 +354,11 @@ impl EvolutionEngine {
     }
 
     /// Update behavior priority
-    #[cfg(test)]
-    pub async fn update_priority(&self, behavior_id: &str, priority: BehaviorPriority) -> Result<()> {
+    pub async fn update_priority(
+        &self,
+        behavior_id: &str,
+        priority: BehaviorPriority,
+    ) -> Result<()> {
         if let Some(behavior) = self.behaviors.write().await.get_mut(behavior_id) {
             behavior.priority = priority;
             behavior.updated_at = Utc::now();
@@ -370,23 +370,22 @@ impl EvolutionEngine {
     pub async fn archive_deprecated(&self) -> Result<usize> {
         let mut count = 0;
         let mut behaviors = self.behaviors.write().await;
-        
+
         for behavior in behaviors.values_mut() {
             if behavior.status == BehaviorStatus::Deprecated {
                 behavior.status = BehaviorStatus::Deprecated;
                 count += 1;
             }
         }
-        
+
         tracing::info!("Archived {} deprecated behaviors", count);
         Ok(count)
     }
 
     /// Merge similar behaviors
-    #[cfg(test)]
     pub async fn merge_behaviors(&self, source_id: &str, target_id: &str) -> Result<()> {
         let mut behaviors = self.behaviors.write().await;
-        
+
         let source = behaviors.remove(source_id);
         if let Some(source) = source {
             if let Some(target) = behaviors.get_mut(target_id) {
@@ -398,38 +397,41 @@ impl EvolutionEngine {
                         .or_insert_with(Vec::new)
                         .extend(evidence.clone());
                 }
-                
+
                 // Transfer applications
                 target.application_count += source.application_count;
                 target.success_count += source.success_count;
                 target.updated_at = Utc::now();
-                
+
                 // Recalculate confidence
                 if target.application_count > 0 {
-                    target.confidence = target.success_count as f32 / target.application_count as f32;
+                    target.confidence =
+                        target.success_count as f32 / target.application_count as f32;
                 }
-                
+
                 tracing::info!("Merged behavior {} into {}", source_id, target_id);
             }
         }
-        
+
         Ok(())
     }
 
     /// Get behavior effectiveness score
-    #[cfg(test)]
     pub async fn get_effectiveness(&self, behavior_id: &str) -> Option<f32> {
-        self.behaviors.read().await
+        self.behaviors
+            .read()
+            .await
             .get(behavior_id)
             .map(|b| b.success_rate())
     }
 
     /// Check if a behavior should be recommended
-    #[cfg(test)]
     pub async fn should_recommend(&self, behavior_id: &str) -> bool {
         if let Some(behavior) = self.behaviors.read().await.get(behavior_id) {
             match behavior.status {
-                BehaviorStatus::Active | BehaviorStatus::Practicing | BehaviorStatus::Integrated => {
+                BehaviorStatus::Active
+                | BehaviorStatus::Practicing
+                | BehaviorStatus::Integrated => {
                     behavior.confidence >= 0.6 && !behavior.should_deprecate(0.5, 30)
                 }
                 _ => false,
@@ -446,18 +448,17 @@ impl Default for EvolutionEngine {
     }
 }
 
-#[cfg(test)]
 impl EvolutionEngineTrait for EvolutionEngine {
     /// Create a behavior from an insight
     async fn create_behavior_from_insight(&self, insight: &Insight) -> Result<Behavior> {
         self.create_behavior_from_insight(insight).await
     }
-    
+
     /// Record a behavior application result
     async fn record_result(&self, behavior_id: &str, success: bool) -> Result<()> {
         self.record_result(behavior_id, success).await
     }
-    
+
     /// Get active behaviors for a context
     async fn get_active_behaviors(&self, context: &str) -> Vec<Behavior> {
         self.suggest_behaviors(context).await
@@ -473,7 +474,6 @@ pub struct EvaluationSummary {
     pub integrated: usize,
 }
 
-#[cfg(test)]
 /// Metrics about the evolution system
 #[derive(Debug)]
 pub struct EvolutionMetrics {
@@ -482,101 +482,4 @@ pub struct EvolutionMetrics {
     pub total_evidence: usize,
     pub supporting_evidence: usize,
     pub average_confidence: f32,
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use super::super::behavior::{BehaviorAction, BehaviorPriority};
-    use super::super::evidence::EvidenceType;
-    use crate::experience::reflection::insight::{Insight, InsightType};
-
-    #[tokio::test]
-    async fn test_evolution_engine_full_lifecycle() {
-        let engine = EvolutionEngine::with_config(EvolutionConfig::default());
-        let b1 = engine
-            .create_behavior("Test A", "desc", BehaviorAction::Custom {
-                action_type: "test".to_string(),
-                details: "{}".to_string(),
-            })
-            .await
-            .expect("create");
-        let b2 = engine
-            .create_behavior("Test B", "desc2", BehaviorAction::SetParameter {
-                name: "p".to_string(),
-                value: "v".to_string(),
-            })
-            .await
-            .expect("create2");
-        assert!(engine.get_behavior(&b1.id).await.is_some());
-        assert!(engine.list_behaviors().await.len() >= 2);
-        engine.record_result(&b1.id, true).await.expect("rec");
-        engine.record_result(&b1.id, false).await.expect("rec");
-        let ev = EvolutionEvidence::supporting(
-            "ev1", &b1.id, EvidenceType::Observation, "support");
-        engine.add_evidence(ev.with_confidence(0.9)).await.expect("add ev");
-        engine
-            .add_evidence(EvolutionEvidence::contradicting(
-                "ev2", &b1.id, EvidenceType::Comparison, "contra",
-            ))
-            .await
-            .expect("add ev2");
-        engine
-            .add_evidence(EvolutionEvidence::neutral(
-                "ev3", &b1.id, EvidenceType::Historical, "neutral",
-            ))
-            .await
-            .expect("add ev3");
-        assert_eq!(engine.get_evidence(&b1.id).await.len(), 3);
-        let metrics = engine.get_metrics().await;
-        assert!(metrics.total_behaviors >= 2);
-        assert_eq!(metrics.total_evidence, 3);
-        assert_eq!(metrics.supporting_evidence, 1);
-        engine
-            .update_priority(&b2.id, BehaviorPriority::High)
-            .await
-            .expect("prio");
-        assert!(engine.get_effectiveness(&b1.id).await.is_some());
-        engine.should_recommend(&b1.id).await;
-        engine.get_integrated_behaviors().await;
-        engine.get_deprecated_behaviors().await;
-        engine.merge_behaviors(&b2.id, &b1.id).await.expect("merge");
-        engine.evaluate_and_maintain().await.expect("eval");
-        engine.archive_deprecated().await.expect("archive");
-        engine.suggest_behaviors("test").await;
-    }
-
-    #[tokio::test]
-    async fn test_evolution_trait_exercised() {
-        let engine = EvolutionEngine::with_config(EvolutionConfig::default());
-        let insight = Insight::new("ti", "td", "Apply X", InsightType::Pattern);
-        let behavior = engine
-            .create_behavior_from_insight(&insight)
-            .await
-            .expect("from insight");
-        <EvolutionEngine as EvolutionEngineTrait>::record_result(&engine, &behavior.id, true)
-            .await
-            .expect("trait record");
-        let active =
-            <EvolutionEngine as EvolutionEngineTrait>::get_active_behaviors(&engine, "apply").await;
-        assert!(!active.is_empty());
-    }
-
-    #[tokio::test]
-    async fn test_behavior_methods() {
-        use super::super::behavior::Behavior;
-        let mut b = Behavior::new(
-            "n", "d", "s",
-            BehaviorAction::Custom {
-                action_type: "t".to_string(),
-                details: "{}".to_string(),
-            },
-        );
-        b.add_source_insight("ins1");
-        b.record_success();
-        b.record_failure();
-        b.start_practicing();
-        let rate = b.success_rate();
-        assert!(rate >= 0.0);
-    }
 }

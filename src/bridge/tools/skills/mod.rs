@@ -3,8 +3,8 @@
 //! Per Architecture §15: Skills represent reusable capabilities discovered through experience
 
 use crate::bridge::mcp::McpContext;
-use crate::skills::registry::{ExecutionContext, Skill, SkillCategory, SkillMetadata, SkillSource};
 use crate::bridge::tools::ToolOutput;
+use crate::skills::registry::{ExecutionContext, Skill, SkillCategory, SkillMetadata, SkillSource};
 use anyhow::Result;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -127,10 +127,17 @@ pub mod definitions {
     pub const UNREGISTER_SKILL: &str = "unregister_skill";
 
     pub fn all() -> Vec<McpTool> {
+        macro_rules! desc {
+            ($s:expr) => {
+                format!("[WORKFLOW: get_workflow + search_memory first] {}", $s)
+            };
+        }
         vec![
             McpTool {
                 name: REGISTER_SKILL.to_string(),
-                description: "Register a new skill in the skill registry. Skills represent reusable capabilities.".to_string(),
+                description: desc!(
+                    "Register a new skill in the skill registry. Skills represent reusable capabilities."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -151,7 +158,9 @@ pub mod definitions {
             },
             McpTool {
                 name: DISCOVER_SKILL.to_string(),
-                description: "Create a skill discovered from an experience. Per Architecture §15: Skills emerge from experience.".to_string(),
+                description: desc!(
+                    "Create a skill discovered from an experience. Per Architecture §15: Skills emerge from experience."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -165,7 +174,9 @@ pub mod definitions {
             },
             McpTool {
                 name: GET_SKILL.to_string(),
-                description: "Get details of a specific skill including mastery level, usage statistics, and prerequisites.".to_string(),
+                description: desc!(
+                    "Get details of a specific skill including mastery level, usage statistics, and prerequisites."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -176,7 +187,9 @@ pub mod definitions {
             },
             McpTool {
                 name: LIST_SKILLS.to_string(),
-                description: "List all registered skills, optionally filtered by category or enabled status.".to_string(),
+                description: desc!(
+                    "List all registered skills, optionally filtered by category or enabled status."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -188,7 +201,9 @@ pub mod definitions {
             },
             McpTool {
                 name: UPDATE_SKILL_MASTERY.to_string(),
-                description: "Update skill mastery based on execution outcome. Records success or failure for the skill.".to_string(),
+                description: desc!(
+                    "Update skill mastery based on execution outcome. Records success or failure for the skill."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -200,7 +215,9 @@ pub mod definitions {
             },
             McpTool {
                 name: GET_SKILL_RECOMMENDATIONS.to_string(),
-                description: "Get skill recommendations based on readiness and usage patterns. Per Architecture §15.".to_string(),
+                description: desc!(
+                    "Get skill recommendations based on readiness and usage patterns. Per Architecture §15."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -211,7 +228,9 @@ pub mod definitions {
             },
             McpTool {
                 name: EXECUTE_SKILL.to_string(),
-                description: "Execute a skill with provided task and parameters. Per Architecture §15: Skill::execute(&context).".to_string(),
+                description: desc!(
+                    "Execute a skill with provided task and parameters. Per Architecture §15: Skill::execute(&context)."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -225,7 +244,9 @@ pub mod definitions {
             },
             McpTool {
                 name: GET_SKILL_STATS.to_string(),
-                description: "Get comprehensive statistics about the skill registry including mastery distribution.".to_string(),
+                description: desc!(
+                    "Get comprehensive statistics about the skill registry including mastery distribution."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {}
@@ -233,7 +254,9 @@ pub mod definitions {
             },
             McpTool {
                 name: APPLY_SKILL_DECAY.to_string(),
-                description: "Apply mastery decay to unused skills. Per Architecture §15: Skills include decay.".to_string(),
+                description: desc!(
+                    "Apply mastery decay to unused skills. Per Architecture §15: Skills include decay."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -243,7 +266,9 @@ pub mod definitions {
             },
             McpTool {
                 name: ENABLE_DISABLE_SKILL.to_string(),
-                description: "Enable or disable a skill. Disabled skills cannot be executed.".to_string(),
+                description: desc!(
+                    "Enable or disable a skill. Disabled skills cannot be executed."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -255,7 +280,7 @@ pub mod definitions {
             },
             McpTool {
                 name: SEARCH_SKILLS.to_string(),
-                description: "Search skills by query, category, or minimum mastery level.".to_string(),
+                description: desc!("Search skills by query, category, or minimum mastery level."),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -268,7 +293,9 @@ pub mod definitions {
             },
             McpTool {
                 name: GET_SKILL_METRICS.to_string(),
-                description: "Get execution metrics for a specific skill or all skills. Returns success rate, avg duration, stability, and reliability.".to_string(),
+                description: desc!(
+                    "Get execution metrics for a specific skill or all skills. Returns success rate, avg duration, stability, and reliability."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -278,7 +305,9 @@ pub mod definitions {
             },
             McpTool {
                 name: GET_UNRELIABLE_SKILLS.to_string(),
-                description: "List skills that have been marked as unreliable based on execution metrics.".to_string(),
+                description: desc!(
+                    "List skills that have been marked as unreliable based on execution metrics."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {}
@@ -286,7 +315,7 @@ pub mod definitions {
             },
             McpTool {
                 name: CLEAR_SKILL_METRICS.to_string(),
-                description: "Clear execution metrics for a specific skill or all skills.".to_string(),
+                description: desc!("Clear execution metrics for a specific skill or all skills."),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -296,7 +325,9 @@ pub mod definitions {
             },
             McpTool {
                 name: SEARCH_SKILLS_BY_TAG.to_string(),
-                description: "Search skills by tag. Returns all skills matching the given tag.".to_string(),
+                description: desc!(
+                    "Search skills by tag. Returns all skills matching the given tag."
+                ),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -307,7 +338,7 @@ pub mod definitions {
             },
             McpTool {
                 name: UNREGISTER_SKILL.to_string(),
-                description: "Unregister a skill from the registry by its ID.".to_string(),
+                description: desc!("Unregister a skill from the registry by its ID."),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -571,8 +602,7 @@ pub async fn execute_execute_skill(
     );
     // Pass any known knowledge ids through the knowledge-context builder.
     if !skill.metadata.tags.is_empty() {
-        exec_context =
-            exec_context.with_knowledge_context(skill.metadata.tags.clone());
+        exec_context = exec_context.with_knowledge_context(skill.metadata.tags.clone());
     }
     if let Some(secs) = input.time_limit_secs {
         exec_context = exec_context.with_time_limit(secs);
@@ -596,7 +626,10 @@ pub async fn execute_execute_skill(
         "duration_ms": exec_result.duration_ms,
     });
 
-    let updated_skill = context.skills.get(&input.skill_id).await
+    let updated_skill = context
+        .skills
+        .get(&input.skill_id)
+        .await
         .ok_or_else(|| anyhow::anyhow!("Skill {} not found after execution", input.skill_id))?;
 
     Ok(ToolOutput::success(serde_json::json!({
@@ -614,10 +647,7 @@ pub async fn execute_get_skill_stats(
 ) -> Result<ToolOutput> {
     let stats = context.skills.get_discovery_stats().await;
     let mastered = context.skills.get_mastered_skills(0.0).await;
-    let most_successful = context
-        .skills
-        .get_most_successful(5)
-        .await;
+    let most_successful = context.skills.get_most_successful(5).await;
 
     Ok(ToolOutput::success(serde_json::json!({
         "stats": {
@@ -796,9 +826,7 @@ pub async fn execute_get_skill_metrics(
             .collect();
         let ranked: Vec<serde_json::Value> = by_rate
             .iter()
-            .map(|(id, rate)| {
-                serde_json::json!({"skill_id": id, "success_rate": rate})
-            })
+            .map(|(id, rate)| serde_json::json!({"skill_id": id, "success_rate": rate}))
             .collect();
         Ok(ToolOutput::success(serde_json::json!({
             "metrics": metrics,
@@ -810,9 +838,7 @@ pub async fn execute_get_skill_metrics(
 
 /// Execute get_unreliable_skills tool
 /// Exercises SkillExecutor::get_unreliable_skills (Architecture §15).
-pub async fn execute_get_unreliable_skills(
-    context: &McpContext,
-) -> Result<ToolOutput> {
+pub async fn execute_get_unreliable_skills(context: &McpContext) -> Result<ToolOutput> {
     let unreliable = context.skill_executor.get_unreliable_skills();
     Ok(ToolOutput::success(serde_json::json!({
         "unreliable_skills": unreliable,

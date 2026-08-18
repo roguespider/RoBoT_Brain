@@ -91,9 +91,7 @@ impl App {
             crate::experience::queue::JobQueue::with_database(database.clone()),
         ));
         {
-            let mut q = job_queue
-                .lock()
-                .unwrap_or_else(|e| e.into_inner());
+            let mut q = job_queue.lock().unwrap_or_else(|e| e.into_inner());
             if let Err(e) = q.restore_from_database() {
                 tracing::warn!("JobQueue restore failed: {}", e);
             }
@@ -134,6 +132,12 @@ impl App {
         worker_manager.register_observer(metrics_observer).await?;
         tracing::info!("MetricsObserver registered with WorkerManager");
 
+        // Dispatch any jobs that were in-flight when the process last stopped.
+        // These were restored into the queue by `restore_from_database()` above;
+        // this sends synthetic events through each worker's channel so the
+        // observers can process them again (Architecture §22.5).
+        worker_manager.dispatch_restored_jobs().await;
+
         // Start worker manager background task - subscribes to bus and enqueues jobs
         // Uses the canonical start_worker_manager entry point (Architecture §22).
         // The returned JoinHandle is intentionally dropped: the task runs for the
@@ -164,9 +168,7 @@ impl App {
         // (Architecture §23.5 Task Queue). Push a probe job, confirm it
         // persists, then restore from a fresh instance to prove durability.
         {
-            let mut q = job_queue
-                .lock()
-                .unwrap_or_else(|e| e.into_inner());
+            let mut q = job_queue.lock().unwrap_or_else(|e| e.into_inner());
             q.push_job("startup-queue-probe", "experience_scorer");
             let popped = q.pop_job("experience_scorer");
             let popped_ok = popped.is_some();
@@ -668,6 +670,7 @@ impl App {
             hypothesis_engine_for_subscriber.clone(),
             evolution_engine.clone(),
             knowledge_store.clone(),
+            Some(experience_recorder.clone()),
         );
         let event_subscriber = Arc::new(event_subscriber_inner);
 
@@ -787,12 +790,16 @@ impl App {
         // Reflector/InsightProducer/ValidatableReflection extensibility traits).
         {
             use crate::experience::reflection::engine::ReflectionEngine;
-            use crate::experience::reflection::insight::{Insight, InsightType, KnowledgeMaturity, MaturityHistory};
+            use crate::experience::reflection::insight::{
+                Insight, InsightType, KnowledgeMaturity, MaturityHistory,
+            };
             use crate::experience::reflection::reflection::{
                 EvidenceId, InsightId, Lesson, Reflection, ReflectionEvidence, ReflectionInsight,
             };
             use crate::experience::reflection::review::ReflectionReview;
-            use crate::experience::reflection::{InsightProducer, Reflector, ValidatableReflection, ReflectionType, ReflectionStatus};
+            use crate::experience::reflection::{
+                InsightProducer, ReflectionStatus, ReflectionType, Reflector, ValidatableReflection,
+            };
 
             let engine = ReflectionEngine::new();
 
@@ -846,10 +853,7 @@ impl App {
             // Exercise the type aliases (EvidenceId/InsightId) by constructing
             // values of those alias types from real model data.
             let evidence_id: EvidenceId = evidence.experience_id.clone();
-            let insight_id: InsightId = insight
-                .as_ref()
-                .map(|i| i.id.clone())
-                .unwrap_or_default();
+            let insight_id: InsightId = insight.as_ref().map(|i| i.id.clone()).unwrap_or_default();
 
             // Exercise Reflection::is_actionable + the extensibility traits
             // (Reflector / InsightProducer / ValidatableReflection).
@@ -859,7 +863,8 @@ impl App {
                 "startup reflection probe",
             );
             let actionable = probe_reflection.is_actionable();
-            let reflection_summary = Reflector::reflect(&probe_reflection, "startup".to_string()).unwrap_or_default();
+            let reflection_summary =
+                Reflector::reflect(&probe_reflection, "startup".to_string()).unwrap_or_default();
             let probe_insight = Insight::new(
                 uuid::Uuid::new_v4().to_string(),
                 "probe insight",
@@ -1200,17 +1205,14 @@ impl App {
         // Register a default Inform broadcast handler so broadcast-style ACP
         // messages are observed even when no agent-specific handler exists.
         acp_router
-            .register_handler(
-                crate::bridge::acp::message::AcpMessageType::Inform,
-                |msg| {
-                    tracing::info!(
-                        "ACP Inform broadcast received from {}: {}",
-                        msg.sender,
-                        msg.payload
-                    );
-                    Ok(None)
-                },
-            )
+            .register_handler(crate::bridge::acp::message::AcpMessageType::Inform, |msg| {
+                tracing::info!(
+                    "ACP Inform broadcast received from {}: {}",
+                    msg.sender,
+                    msg.payload
+                );
+                Ok(None)
+            })
             .map_err(|e| anyhow::anyhow!("Failed to register ACP Inform handler: {}", e))?;
 
         // Register system agents

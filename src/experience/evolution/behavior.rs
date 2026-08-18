@@ -2,7 +2,6 @@
 
 // Represents a behavior that can be adopted by the agent
 
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -54,24 +53,30 @@ pub struct Behavior {
 pub enum BehaviorAction {
     /// Prefer this approach/tool
     PreferTool { tool_name: String, reason: String },
-    
+
     /// Avoid this approach/tool
     AvoidTool { tool_name: String, reason: String },
-    
+
     /// Use this workflow pattern
-    UseWorkflow { workflow: String, conditions: Vec<String> },
-    
+    UseWorkflow {
+        workflow: String,
+        conditions: Vec<String>,
+    },
+
     /// Set this parameter/setting
     SetParameter { name: String, value: String },
-    
+
     /// Apply this heuristic
     ApplyHeuristic { rule: String, priority: u8 },
-    
+
     /// Change confidence threshold
     AdjustThreshold { metric: String, threshold: f32 },
-    
+
     /// Custom action
-    Custom { action_type: String, details: String },
+    Custom {
+        action_type: String,
+        details: String,
+    },
 }
 
 /// Current lifecycle state of a behavior
@@ -79,16 +84,16 @@ pub enum BehaviorAction {
 pub enum BehaviorStatus {
     /// Candidate awaiting evaluation
     Candidate,
-    
+
     /// Active and available for use
     Active,
-    
+
     /// Currently in practice
     Practicing,
-    
+
     /// Deprecated and should not be used
     Deprecated,
-    
+
     /// Fully integrated into agent behavior
     Integrated,
 }
@@ -130,7 +135,6 @@ impl Behavior {
     }
 
     /// Add a source insight
-    #[cfg(test)]
     pub fn add_source_insight(&mut self, insight_id: impl Into<String>) {
         let id = insight_id.into();
         if !self.source_insights.contains(&id) {
@@ -140,7 +144,6 @@ impl Behavior {
     }
 
     /// Record a successful application
-    #[cfg(test)]
     pub fn record_success(&mut self) {
         self.application_count += 1;
         self.success_count += 1;
@@ -150,7 +153,6 @@ impl Behavior {
     }
 
     /// Record a failed application
-    #[cfg(test)]
     pub fn record_failure(&mut self) {
         self.application_count += 1;
         self.last_applied = Some(Utc::now());
@@ -159,8 +161,7 @@ impl Behavior {
     }
 
     /// Recalculate confidence based on success rate
-    #[cfg(test)]
-    fn recalculate_confidence(&mut self) {
+    pub(crate) fn recalculate_confidence(&mut self) {
         if self.application_count > 0 {
             let success_rate = self.success_count as f32 / self.application_count as f32;
             // Weight by number of applications (more data = more confidence)
@@ -228,4 +229,3 @@ impl Behavior {
         }
     }
 }
-

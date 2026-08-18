@@ -1,17 +1,14 @@
-
-
 // src/tools/search/mod.rs
 // Search-related MCP tools
-
 
 use std::sync::Arc;
 
 use anyhow::Result;
 use serde::{Deserialize, Serialize};
 
+use crate::bridge::tools::ToolOutput;
 use crate::database::queries;
 use crate::database::sqlite::SqliteDatabase;
-use crate::bridge::tools::ToolOutput;
 
 /// Tool: Full-text search across all data
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -39,12 +36,17 @@ pub mod definitions {
     pub const GLOBAL_SEARCH: &str = "global_search";
     pub const GET_RECOMMENDATIONS: &str = "get_recommendations";
     pub const GET_REPUTATION: &str = "get_reputation";
-    
+
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
+        macro_rules! desc {
+            ($s:expr) => {
+                format!("[WORKFLOW: get_workflow + search_memory first] {}", $s)
+            };
+        }
         vec![
             crate::bridge::mcp::McpTool {
                 name: GLOBAL_SEARCH.to_string(),
-                description: "Search across all memories, experiences, and reflections".to_string(),
+                description: desc!("Search across all memories, experiences, and reflections"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -68,7 +70,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: GET_RECOMMENDATIONS.to_string(),
-                description: "Get recommendations based on learned patterns".to_string(),
+                description: desc!("Get recommendations based on learned patterns"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -86,7 +88,7 @@ pub mod definitions {
             },
             crate::bridge::mcp::McpTool {
                 name: GET_REPUTATION.to_string(),
-                description: "Get reputation score for a tool".to_string(),
+                description: desc!("Get reputation score for a tool"),
                 input_schema: serde_json::json!({
                     "type": "object",
                     "properties": {
@@ -109,14 +111,14 @@ pub async fn execute_global_search(
 ) -> Result<ToolOutput> {
     let limit = input.limit.unwrap_or(20);
     let conn = database.connection()?;
-    
+
     // Search memories
     let memories = queries::search_memory(&conn, &input.query, limit)?;
-    
+
     // Categorize results
     let mut memory_results = Vec::new();
     let mut experience_results = Vec::new();
-    
+
     for m in memories {
         let item = serde_json::json!({
             "id": m.id.to_string(),
@@ -125,14 +127,14 @@ pub async fn execute_global_search(
             "confidence": m.confidence,
             "created_at": m.created_at.to_rfc3339()
         });
-        
+
         if m.memory_type.to_string() == "experience" {
             experience_results.push(item);
         } else {
             memory_results.push(item);
         }
     }
-    
+
     let total = memory_results.len() + experience_results.len();
 
     Ok(ToolOutput::success(serde_json::json!({
@@ -153,10 +155,10 @@ pub async fn execute_get_recommendations(
 ) -> Result<ToolOutput> {
     let limit = input.limit.unwrap_or(5);
     let conn = database.connection()?;
-    
+
     // Get recent experiences with high confidence
     let experiences = queries::search_memory(&conn, "Experience:", 100)?;
-    
+
     // Filter high-confidence experiences for recommendations
     let recommendations: Vec<serde_json::Value> = experiences
         .into_iter()
@@ -184,10 +186,10 @@ pub async fn execute_get_reputation(
     database: &Arc<SqliteDatabase>,
 ) -> Result<ToolOutput> {
     let conn = database.connection()?;
-    
+
     // Search for mentions of the tool
     let results = queries::search_memory(&conn, &input.tool_name, 100)?;
-    
+
     // Calculate simple reputation based on mentions
     let total_uses = results.len();
     let high_confidence = results.iter().filter(|r| r.confidence >= 0.7).count();
