@@ -111,6 +111,22 @@ async fn build_server() -> anyhow::Result<PathBuf> {
     // violations (unwrap, cfg-test, warnings) slip through undetected. The
     // gate's value depends on testing the code as it currently is, not as it
     // was at some past build.
+    teeprintln!("Cleaning robot_brain build artifacts (cargo clean)...");
+    let clean_output = AsyncCommand::new("cargo")
+        .current_dir(&robot_brain_dir)
+        .args(["clean"])
+        .output()
+        .await?;
+
+    if !clean_output.status.success() {
+        let stderr = String::from_utf8_lossy(&clean_output.stderr);
+        anyhow::bail!(
+            "Failed to clean robot_brain:
+{}",
+            stderr
+        );
+    }
+
     teeprintln!("Rebuilding robot_brain (cargo build --release)...");
 
     let output = AsyncCommand::new("cargo")
