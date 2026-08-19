@@ -397,6 +397,24 @@ impl AcpToolsHandler {
             .map(|q| q.pending_count())
             .unwrap_or(0);
 
+        // Get evolution metrics (async)
+        let metrics = self.context.evolution.get_metrics().await;
+        let integrated = self.context.evolution.get_integrated_behaviors().await;
+        let deprecated = self.context.evolution.get_deprecated_behaviors().await;
+        // For get_effectiveness and should_recommend, use the first integrated
+        // behavior ID if available; otherwise report null.
+        let first_integrated_id = integrated.first().map(|b| b.id.clone());
+        let effectiveness = if let Some(ref fid) = first_integrated_id {
+            self.context.evolution.get_effectiveness(fid).await
+        } else {
+            None
+        };
+        let should_recommend = if let Some(ref fid) = first_integrated_id {
+            self.context.evolution.should_recommend(fid).await
+        } else {
+            false
+        };
+
         Ok(crate::bridge::tools::ToolOutput::success(
             serde_json::json!({
                 "status": "running",
@@ -421,6 +439,28 @@ impl AcpToolsHandler {
                 "evolution": {
                     "total_behaviors": behavior_count,
                     "active_behaviors": active_behaviors,
+                    "metrics": {
+                        "total_behaviors": metrics.total_behaviors,
+                        "behaviors_by_status": metrics.behaviors_by_status,
+                        "total_evidence": metrics.total_evidence,
+                        "supporting_evidence": metrics.supporting_evidence,
+                        "average_confidence": metrics.average_confidence,
+                    },
+                    "integrated_behavior_count": integrated.len(),
+                    "integrated_behaviors": integrated
+                        .iter()
+                        .map(|b| serde_json::json!({
+                            "id": b.id,
+                            "name": b.name,
+                            "description": b.description,
+                            "confidence": b.confidence,
+                            "application_count": b.application_count,
+                            "success_count": b.success_count,
+                        }))
+                        .collect::<Vec<_>>(),
+                    "deprecated_behavior_count": deprecated.len(),
+                    "first_integrated_effectiveness": effectiveness,
+                    "first_integrated_should_recommend": should_recommend,
                 },
                 "policy": {
                     "rules": policy_rules,

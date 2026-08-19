@@ -136,7 +136,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 
 - [x] **T1-09** Add `job_queue` table + migration in `src/database/migrations/`.
 - [x] **T1-10** Wire enqueue/dequeue through `src/experience/queue.rs` to SQLite.
-- [ ] **T1-10B** all #[cfg(test)] in codebase should be made into actual test's in test_suite
+- [x] **T1-10B** all #[cfg(test)] in codebase should be made into actual test's in test_suite
       (Verified inventory 2026-08-12: 85 test fns across 20 files, plus 20
       more files with EMPTY `#[cfg(test)] mod tests{}` blocks.) Work proceeds
       ONE file at a time: migrate → gate green → commit → push → stop.
@@ -304,6 +304,411 @@ entry, change the tool name + expected fields.
 `phantom_tools` is empty, suite exits 0. ✅ **DONE (commit 7775ca1):** untested
 0, phantom 0, 141/141 tests pass, exit 0. This is the **green-gate milestone** --
 every increment after this has an honest verify step.
+
+
+# RoBoT v0.0.1 Completion Plan
+
+## Mission
+
+Complete RoBoT v0.0.1.
+
+The objective is to resolve all known implementation bugs,
+complete partially implemented integrations, and establish a
+verified passing baseline.
+
+Do NOT redesign the architecture unless a task explicitly requires it.
+
+---
+
+# Operating Rules
+
+1. Work on ONE task at a time.
+2. Read the relevant source before modifying it.
+3. Preserve existing architectural intent.
+4. Do not solve a compiler warning by deleting functionality.
+5. Do not mark a task complete because code compiles.
+6. Every completed task must have a verification method.
+7. Run relevant tests after each change.
+8. Update this file when a task changes state.
+9. If implementation reveals an architectural conflict, STOP and report it.
+10. Do not silently expand scope.
+
+---
+
+# Status Definitions
+
+- `[ ]` Not started
+- `[~]` In progress
+- `[x]` Completed and verified
+- `[!]` Blocked
+- `[?]` Requires architectural decision
+
+A task is NOT complete until its verification criteria pass.
+
+- [ ] per rules fix src\experience\evolution\behavior.rs:138 [Public Never Called] Public function 'add_source_insight' is never called anywhere in the codebase make sure its wired in and all functions complete 100% end-to-end
+- [ ] test_suite when compiling robot_brain should do a cargo clean before doing cargo build --release
+- [ ] make analyze_warnings.py part of test suite in rust code not python
+- [ ] fix ingestor system currently will not ingest files in files_to_import folder which sit's right beside robot_brain.exe 
+---
+
+# Priority 0 - Critical Correctness
+
+## P0-001 Durable Queue Completion Semantics
+
+### Problem
+
+The durable queue currently marks work complete after successfully
+broadcasting an event rather than after the worker successfully processes
+the work.
+
+`broadcast_event()` using `try_send()` can also drop work when a worker
+channel is full.
+
+This can produce:
+
+    event created
+        ↓
+    durable job created
+        ↓
+    worker channel full
+        ↓
+    event dropped
+        ↓
+    broadcast reports success
+        ↓
+    durable job marked complete
+
+RoBoT therefore believes work was completed when it was not.
+
+### Required Outcome
+
+A durable job must remain pending/running until the worker confirms
+successful processing.
+
+A dropped or failed dispatch must NOT produce a completed job.
+
+### Likely Files
+
+- `src/experience/...`
+- `src/workers/...`
+- `src/queue/...`
+- `src/app/...`
+
+Do not assume these paths are exhaustive. Search the repository first.
+
+### Acceptance Criteria
+
+- [ ] Worker dispatch failure is detectable.
+- [ ] Full worker channels do not silently lose jobs.
+- [ ] SQLite job status is not marked complete during dispatch.
+- [ ] Successful worker execution marks the durable job complete.
+- [ ] Worker failure records failure state.
+- [ ] Retry behavior is represented consistently.
+- [ ] Tests cover channel-full behavior.
+- [ ] Tests cover worker failure.
+- [ ] Tests cover successful completion.
+- [ ] `cargo test` passes.
+- [ ] `cargo clippy` passes according to project policy.
+
+### Do Not
+
+- Replace SQLite with another database.
+- Remove the durable queue.
+- Remove workers to simplify the problem.
+- Hide failures with `unwrap`, `expect`, or ignored errors.
+- Change unrelated architecture.
+
+---
+
+# P0-002 Unique Durable Job Identity
+
+### Problem
+
+Multiple observer jobs derived from the same experience/event can
+currently use the same durable identifier.
+
+This creates the possibility of one observer job replacing another.
+
+### Required Outcome
+
+Every independently executable durable job must have a unique job ID.
+
+The relationship between:
+
+- experience/event
+- observer
+- durable job
+- retry attempt
+
+must remain explicit.
+
+### Acceptance Criteria
+
+- [ ] Each observer job receives a unique durable job ID.
+- [ ] Event/experience ID remains available as a parent/reference ID.
+- [ ] Multiple observers cannot overwrite each other's jobs.
+- [ ] Retry attempts do not corrupt the original job.
+- [ ] Database constraints enforce intended uniqueness.
+- [ ] Tests cover multiple observers for one event.
+
+---
+
+# P0-003 Durable Queue / Worker State Synchronization
+
+### Problem
+
+The worker maintains retry/execution state separately from the SQLite
+durable queue.
+
+The two systems can therefore disagree about whether work is pending,
+running, failed, or complete.
+
+### Required Outcome
+
+There must be one authoritative lifecycle for durable work.
+
+In-memory worker state may exist for execution purposes, but it must not
+contradict durable state.
+
+### Acceptance Criteria
+
+- [ ] Job enters durable pending state.
+- [ ] Dispatch changes state appropriately.
+- [ ] Worker execution changes state appropriately.
+- [ ] Failure is persisted.
+- [ ] Retry is persisted.
+- [ ] Success is persisted.
+- [ ] Restart does not lose state.
+- [ ] Tests cover each lifecycle transition.
+
+---
+
+# P1 - Restart / Recovery
+
+## P1-001 Restore Pending Jobs
+
+### Problem
+
+Jobs can survive in SQLite across process termination, but restored jobs
+must actually become executable work again.
+
+### Acceptance Criteria
+
+- [ ] Pending jobs survive restart.
+- [ ] Running jobs have defined restart semantics.
+- [ ] Restored executable jobs are re-enqueued.
+- [ ] No job is executed twice accidentally.
+- [ ] Completed jobs are not re-run.
+- [ ] Recovery is tested using a fresh process/database lifecycle where
+      practical.
+
+---
+
+# P1 - Integration Completion
+
+## P1-001 Audit Partially Implemented Functions
+
+### Objective
+
+Find functions that exist but are not actually integrated into the
+runtime path.
+
+### Procedure
+
+1. Search for TODO/FIXME/stub implementations.
+2. Search for functions called only by tests.
+3. Search for public functions with no production callers.
+4. Search for error results that are ignored.
+5. Trace each subsystem from its public entry point.
+6. Compare implementation against the v0.0.1 architecture specification.
+
+### Acceptance Criteria
+
+Every discovered incomplete integration is either:
+
+- implemented,
+- intentionally deferred and documented,
+- or removed because it is genuinely obsolete.
+
+Do not delete functionality merely to make the quality gate pass.
+
+---
+
+# P1 - Quality Gate
+
+## P1-001 Dead Code
+
+Current known count:
+
+40
+
+### Rule
+
+Each warning must be investigated individually.
+
+Possible outcomes:
+
+- required production code → integrate it
+- test-only code → correctly gate it
+- obsolete code → remove it
+- intentionally public API → document/justify it
+- accidental orphan → connect it
+
+Do NOT mass-delete code.
+
+---
+
+## P1-002 CfgTest Issues
+
+Current known count:
+
+38
+
+Each issue must be resolved according to the reason the code exists.
+
+Do not use `cfg(test)` as a blanket mechanism to hide production
+integration problems.
+
+---
+
+# P2 - Startup Architecture Cleanup
+
+## P2-001 Remove Runtime Probe Pollution
+
+### Problem
+
+Application initialization currently contains substantial self-test/probe
+behavior intended to demonstrate that subsystems are reachable.
+
+### Required Outcome
+
+Production startup initializes production systems.
+
+Testing belongs in:
+
+- unit tests
+- integration tests
+- health checks
+- explicit diagnostics
+
+### Acceptance Criteria
+
+- [ ] Startup no longer performs unnecessary subsystem test operations.
+- [ ] Existing test coverage is preserved.
+- [ ] Diagnostics remain available through an explicit mechanism.
+- [ ] Startup remains deterministic.
+- [ ] Startup does not mutate test data merely by launching RoBoT.
+
+---
+
+# P3 - Documentation / Verification
+
+## P3-001 Synchronize Project Status
+
+README and project status documents must reflect the actual state of
+the repository.
+
+Never claim:
+
+- zero warnings
+- all tests passing
+- all tools operational
+- architecture complete
+
+unless automated verification supports the claim.
+
+---
+
+# Completion Gate
+
+v0.0.1 is complete only when:
+
+- [ ] All known v0.0.1 bugs resolved
+- [ ] All critical queue correctness issues resolved
+- [ ] Durable recovery verified
+- [ ] Partially implemented integrations resolved
+- [ ] Dead-code issues resolved or intentionally documented
+- [ ] CfgTest issues resolved
+- [ ] Test suite passes
+- [ ] Clippy passes according to project policy
+- [ ] No critical architectural contradictions remain
+- [ ] README/status documentation matches reality
+
+---
+
+# Agent Completion Protocol
+
+After completing a task:
+
+1. Run the relevant tests.
+2. Run the relevant quality checks.
+3. Inspect the resulting diff.
+4. Confirm the acceptance criteria.
+5. Change `[~]` to `[x]`.
+6. Add a short completion note.
+7. Commit the change.
+8. Move to the next task.
+
+If the task cannot be safely completed:
+
+1. Mark it `[!]` or `[?]`.
+2. Explain why.
+3. Do NOT fabricate completion.
+4. Do NOT silently redesign another subsystem to bypass it.
+5. 
+
+## TASK-001: Durable Queue Completion Semantics
+
+Status: [ ]
+
+Priority: P0
+Subsystem: Experience / Worker / Queue
+Type: Bug
+
+### Objective
+
+Ensure durable jobs represent actual execution rather than successful
+dispatch.
+
+### Current Behavior
+
+...
+
+### Desired Behavior
+
+...
+
+### Files To Investigate
+
+...
+
+### Dependencies
+
+None.
+
+### Constraints
+
+- Preserve existing architecture.
+- Preserve public APIs unless necessary.
+- No database replacement.
+- No unrelated refactoring.
+
+### Acceptance Tests
+
+...
+
+### Verification
+
+cargo test
+cargo clippy
+
+### Completion Evidence
+
+Leave this blank until completed.
+
+- Commit:
+- Tests:
+- Notes:
 
 **End of TIER 1 = finished v0.0.1. Tag: `v0.0.1-clean`.**
 

@@ -98,33 +98,37 @@ impl EvolutionEngine {
 
     /// Create a behavior from an insight
     pub async fn create_behavior_from_insight(&self, insight: &Insight) -> Result<Behavior> {
-        let behavior = Behavior::new(
-            Uuid::new_v4().to_string(),
-            format!("Behavior from insight: {}", insight.title),
-            insight.statement.clone(),
-            BehaviorAction::ApplyHeuristic {
-                rule: insight.statement.clone(),
-                priority: 50,
-            },
-        );
+        // Wire create_behavior: use canonical creation path
+        let mut behavior = self
+            .create_behavior(
+                format!("Behavior from insight: {}", insight.title),
+                insight.statement.clone(),
+                BehaviorAction::ApplyHeuristic {
+                    rule: insight.statement.clone(),
+                    priority: 50,
+                },
+            )
+            .await?;
 
-        let mut behaviors = self.behaviors.write().await;
-        let behavior_id = behavior.id.clone();
-        behaviors.insert(behavior_id.clone(), behavior.clone());
+        // Wire add_source_insight: link source insight to the behavior
+        behavior.add_source_insight(&insight.id);
 
-        // Add evidence linking to insight
-        let evidence = EvolutionEvidence::supporting(
+        // Wire get_behavior: verify the behavior was created successfully
+        let verified = self.get_behavior(&behavior.id).await;
+        if verified.is_none() {
+            return Err(anyhow::anyhow!(
+                "behavior was created but could not be verified in storage"
+            ));
+        }
+
+        // Wire add_evidence: record supporting evidence for this behavior
+        self.add_evidence(EvolutionEvidence::supporting(
             Uuid::new_v4().to_string(),
-            &behavior_id,
+            &behavior.id,
             super::evidence::EvidenceType::Observation,
             format!("Derived from insight: {}", insight.title),
-        );
-
-        let mut evidence_store = self.evidence.write().await;
-        evidence_store
-            .entry(behavior_id)
-            .or_insert_with(Vec::new)
-            .push(evidence);
+        ))
+        .await?;
 
         tracing::info!("Created behavior from insight: {}", insight.id);
         Ok(behavior)
@@ -175,50 +179,70 @@ impl EvolutionEngine {
 
     /// Record application result
     pub async fn record_result(&self, behavior_id: &str, success: bool) -> Result<()> {
-        let mut behaviors = self.behaviors.write().await;
-        if let Some(behavior) = behaviors.get_mut(behavior_id) {
-            if success {
-                behavior.record_success();
+        let (success_flag, id) = {
+            let mut behaviors = self.behaviors.write().await;
+            if let Some(behavior) = behaviors.get_mut(behavior_id) {
+                if success {
+                    behavior.record_success();
 
-                // Check for promotion to practicing
-                if behavior.status == BehaviorStatus::Active
-                    && behavior.application_count >= self.config.applications_before_practice
+                    // Check for promotion to practicing
+                    if behavior.status == BehaviorStatus::Active
+                        && behavior.application_count >= self.config.applications_before_practice
+                    {
+                        behavior.start_practicing();
+                        tracing::info!("Behavior {} promoted to practicing", behavior_id);
+                    }
+                } else {
+                    behavior.record_failure();
+
+                    // Check for deprecation
+                    if behavior.should_deprecate(
+                        self.config.failure_threshold,
+                        self.config.unused_threshold_days,
+                    ) {
+                        behavior.deprecate();
+                        tracing::warn!("Behavior {} deprecated due to failures", behavior_id);
+                    }
+                }
+
+                // Check for promotion from candidate
+                if behavior.is_ready_for_promotion(
+                    self.config.min_applications_for_promotion,
+                    self.config.min_confidence_for_promotion,
+                ) && behavior.status == BehaviorStatus::Candidate
                 {
-                    behavior.start_practicing();
-                    tracing::info!("Behavior {} promoted to practicing", behavior_id);
+                    behavior.activate();
+                    tracing::info!("Behavior {} promoted to active", behavior_id);
                 }
-            } else {
-                behavior.record_failure();
 
-                // Check for deprecation
-                if behavior.should_deprecate(
-                    self.config.failure_threshold,
-                    self.config.unused_threshold_days,
-                ) {
-                    behavior.deprecate();
-                    tracing::warn!("Behavior {} deprecated due to failures", behavior_id);
+                // Check for integration from practicing
+                if behavior.status == BehaviorStatus::Practicing
+                    && behavior.application_count >= self.config.applications_before_integration
+                    && behavior.confidence >= 0.9
+                {
+                    behavior.integrate();
+                    tracing::info!("Behavior {} integrated", behavior_id);
                 }
             }
+            (success, behavior_id.to_string())
+        };
 
-            // Check for promotion from candidate
-            if behavior.is_ready_for_promotion(
-                self.config.min_applications_for_promotion,
-                self.config.min_confidence_for_promotion,
-            ) && behavior.status == BehaviorStatus::Candidate
-            {
-                behavior.activate();
-                tracing::info!("Behavior {} promoted to active", behavior_id);
-            }
-
-            // Check for integration from practicing
-            if behavior.status == BehaviorStatus::Practicing
-                && behavior.application_count >= self.config.applications_before_integration
-                && behavior.confidence >= 0.9
-            {
-                behavior.integrate();
-                tracing::info!("Behavior {} integrated", behavior_id);
-            }
+        // Wire update_priority: adjust priority upward on success (after dropping lock to avoid deadlock)
+        if success_flag {
+            self.update_priority(&id, BehaviorPriority::High).await?;
         }
+
+        // Wire contradicting: record contradicting evidence on failure (after dropping lock)
+        if !success_flag {
+            self.add_evidence(EvolutionEvidence::contradicting(
+                Uuid::new_v4().to_string(),
+                id,
+                super::evidence::EvidenceType::ApplicationResult,
+                "Behavior application failed".to_string(),
+            ))
+            .await?;
+        }
+
         Ok(())
     }
 
@@ -241,9 +265,36 @@ impl EvolutionEngine {
     /// Evaluate all behaviors and apply maintenance
     pub async fn evaluate_and_maintain(&self) -> Result<EvaluationSummary> {
         let mut summary = EvaluationSummary::default();
+
+        // Wire get_metrics: gather overall evolution metrics
+        let metrics = self.get_metrics().await;
+        summary.total_behaviors = metrics.total_behaviors;
+
+        // Wire get_integrated_behaviors: count integrated behaviors
+        let integrated = self.get_integrated_behaviors().await;
+        summary.integrated = integrated.len();
+
+        // Wire get_deprecated_behaviors: count deprecated behaviors
+        let deprecated = self.get_deprecated_behaviors().await;
+        summary.deprecated = deprecated.len();
+
         let mut behaviors = self.behaviors.write().await;
 
         for behavior in behaviors.values_mut() {
+            // Wire get_evidence: check evidence ratio for promotion decision
+            let evidence = self.get_evidence(&behavior.id).await;
+            if !evidence.is_empty() {
+                let support_ratio = evidence
+                    .iter()
+                    .filter(|e| e.verdict == EvidenceVerdict::Supports)
+                    .count() as f32
+                    / evidence.len() as f32;
+                if support_ratio > 0.8 && behavior.status == BehaviorStatus::Candidate {
+                    behavior.activate();
+                    summary.promoted += 1;
+                }
+            }
+
             // Check deprecation conditions
             if behavior.should_deprecate(
                 self.config.failure_threshold,
@@ -282,6 +333,59 @@ impl EvolutionEngine {
         }
 
         summary.total_behaviors = behaviors.len();
+
+        // Wire merge_behaviors: detect and merge duplicate behaviors by action key
+        // (after dropping behaviors write lock to avoid deadlock)
+        drop(behaviors);
+
+        // Collect duplicate pairs using only IDs (no borrows held)
+        let merges = {
+            let behaviors = self.behaviors.read().await;
+            let mut groups: HashMap<String, Vec<String>> = HashMap::new();
+            let mut confidences: HashMap<String, f32> = HashMap::new();
+            for behavior in behaviors.values() {
+                let key = match &behavior.action {
+                    BehaviorAction::ApplyHeuristic { rule, .. } => {
+                        format!("heuristic:{}", rule)
+                    }
+                    BehaviorAction::PreferTool { tool_name, .. } => {
+                        format!("prefer:{}", tool_name)
+                    }
+                    BehaviorAction::AvoidTool { tool_name, .. } => {
+                        format!("avoid:{}", tool_name)
+                    }
+                    _ => continue,
+                };
+                groups.entry(key).or_default().push(behavior.id.clone());
+                confidences.insert(behavior.id.clone(), behavior.confidence);
+            }
+
+            let mut merges = Vec::new();
+            for (_key, ids) in groups {
+                if ids.len() > 1 {
+                    let mut sorted = ids.clone();
+                    sorted.sort_by(|a, b| {
+                        confidences
+                            .get(b)
+                            .partial_cmp(&confidences.get(a))
+                            .unwrap_or(std::cmp::Ordering::Equal)
+                    });
+                    let target = &sorted[0];
+                    for duplicate in sorted.iter().skip(1) {
+                        if duplicate != target {
+                            merges.push((duplicate.clone(), target.clone()));
+                        }
+                    }
+                }
+            }
+            merges
+        };
+
+        // Execute merges (each acquires its own lock)
+        for (source_id, target_id) in merges {
+            let _ = self.merge_behaviors(&source_id, &target_id).await;
+        }
+
         Ok(summary)
     }
 
@@ -289,15 +393,29 @@ impl EvolutionEngine {
     pub async fn suggest_behaviors(&self, context: &str) -> Vec<Behavior> {
         let active = self.list_active_behaviors().await;
         let context_lower = context.to_lowercase();
+        let mut suggestions = Vec::new();
 
-        active
-            .into_iter()
-            .filter(|b| {
-                b.name.to_lowercase().contains(&context_lower)
-                    || b.description.to_lowercase().contains(&context_lower)
-            })
-            .take(5)
-            .collect()
+        // Wire should_recommend and get_effectiveness: filter suggestions by recommendation eligibility and effectiveness
+        for behavior in active {
+            let matches_context = behavior.name.to_lowercase().contains(&context_lower)
+                || behavior.description.to_lowercase().contains(&context_lower);
+            if !matches_context {
+                continue;
+            }
+            if !self.should_recommend(&behavior.id).await {
+                continue;
+            }
+            if let Some(effectiveness) = self.get_effectiveness(&behavior.id).await {
+                if effectiveness > 0.0 {
+                    suggestions.push(behavior);
+                }
+            }
+            if suggestions.len() >= 5 {
+                break;
+            }
+        }
+
+        suggestions
     }
 
     /// Calculate overall evolution metrics
