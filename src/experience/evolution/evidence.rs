@@ -105,7 +105,7 @@ impl EvolutionEvidence {
     }
 
     /// Create contradicting evidence
-    pub fn contradicting(
+    pub(crate) fn contradicting(
         id: impl Into<String>,
         behavior_id: impl Into<String>,
         evidence_type: EvidenceType,
