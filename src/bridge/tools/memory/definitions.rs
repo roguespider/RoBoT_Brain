@@ -42,8 +42,8 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
                     },
                     "memory_type": {
                         "type": "string",
-                        "description": "Type of memory: note, fact, task, file, conversation, code, decision, event",
-                        "enum": ["note", "fact", "task", "file", "conversation", "code", "decision", "event"]
+                        "description": "Type of memory: note, fact, task, file, conversation, code, decision, event, encounter, experience",
+                        "enum": ["note", "fact", "task", "file", "conversation", "code", "decision", "event", "encounter", "experience"]
                     },
                     "confidence": {
                         "type": "number",
