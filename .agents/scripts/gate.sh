@@ -33,6 +33,8 @@ ok()   { printf "${GRN}=== %s OK ===${RST}\n" "$1"; }
 step "1/1" "test_suite (build + connect + test + code analysis)"
 (
     cd test_suite
+    # Clean robot_brain before building to ensure a fresh build.
+    cargo clean -p robot_brain || true
     if ! cargo build --release; then
         fail "test_suite build failed"
     fi
