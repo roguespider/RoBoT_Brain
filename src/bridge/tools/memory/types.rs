@@ -88,3 +88,9 @@ pub struct ListEmbeddingsInput {
 pub struct DeleteEmbeddingInput {
     pub memory_id: String,
 }
+
+/// Tool: Delete memory by ID input
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct DeleteMemoryInput {
+    pub memory_id: String,
+}

@@ -109,6 +109,10 @@ bzip2 = "0.5"
 # xz2: xz/lzma compression/decompression
 xz2 = "0.1"
 
+# ============== PDF Parsing ==============
+# pdf-extract: Proper PDF text extraction (handles compressed streams, encodings)
+pdf-extract = "0.12"
+
 # ============== Schema Generation ==============
 # schemars: JSON Schema generation from Rust types
 schemars = "1.0"

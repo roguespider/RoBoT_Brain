@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::bridge::tools::ToolOutput;
+use crate::database::models::MemoryCard;
 use crate::database::queries;
 use crate::database::sqlite::SqliteDatabase;
 use crate::experience::coordinator::ExperienceCoordinator;
@@ -50,6 +51,22 @@ pub struct GetExperienceInput {
     pub id: String,
 }
 
+/// Tool: Add evidence to an experience
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct AddEvidenceToExperienceInput {
+    /// Experience UUID
+    pub experience_id: String,
+    /// Evidence UUID to add
+    pub evidence_id: String,
+}
+
+/// Tool: Archive an experience
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct ArchiveExperienceInput {
+    /// Experience UUID to archive
+    pub experience_id: String,
+}
+
 // ============================================================================
 // Background Worker Tools
 // ============================================================================
@@ -66,6 +83,8 @@ pub mod definitions {
     pub const GET_EXPERIENCE_STATS: &str = "get_experience_stats";
     pub const LIST_EXPERIENCES: &str = "list_experiences";
     pub const GET_EXPERIENCE: &str = "get_experience";
+    pub const ADD_EVIDENCE_TO_EXPERIENCE: &str = "add_evidence_to_experience";
+    pub const ARCHIVE_EXPERIENCE: &str = "archive_experience";
     pub const GET_WORKER_STATS: &str = "get_worker_stats";
     pub const GET_WORKER_COUNT: &str = "get_worker_count";
 
@@ -152,6 +171,38 @@ pub mod definitions {
                         }
                     },
                     "required": ["id"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: ADD_EVIDENCE_TO_EXPERIENCE.to_string(),
+                description: desc!("Add evidence to a recorded experience"),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "experience_id": {
+                            "type": "string",
+                            "description": "Experience UUID"
+                        },
+                        "evidence_id": {
+                            "type": "string",
+                            "description": "Evidence UUID to add to this experience"
+                        }
+                    },
+                    "required": ["experience_id", "evidence_id"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: ARCHIVE_EXPERIENCE.to_string(),
+                description: desc!("Archive an experience (soft-delete, not destroy)"),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "experience_id": {
+                            "type": "string",
+                            "description": "Experience UUID to archive"
+                        }
+                    },
+                    "required": ["experience_id"]
                 }),
             },
             crate::bridge::mcp::McpTool {
@@ -414,6 +465,83 @@ pub async fn execute_get_worker_stats(
         "stats": stats,
         "worker_count": worker_manager.worker_count().await
     })))
+}
+
+/// Execute add evidence to experience tool
+pub async fn execute_add_evidence_to_experience(
+    input: AddEvidenceToExperienceInput,
+    database: &Arc<SqliteDatabase>,
+) -> Result<ToolOutput> {
+    let experience_uuid = Uuid::parse_str(&input.experience_id)
+        .map_err(|e| anyhow::anyhow!("Invalid experience UUID: {}", e))?;
+    let evidence_uuid = Uuid::parse_str(&input.evidence_id)
+        .map_err(|e| anyhow::anyhow!("Invalid evidence UUID: {}", e))?;
+
+    let conn = database.connection()?;
+    let memory = queries::get_memory(&conn, experience_uuid)?
+        .ok_or_else(|| anyhow::anyhow!("Experience not found: {}", experience_uuid))?;
+
+    // Convert MemoryCard back to Experience to call add_evidence
+    let experience = MemoryCard::into_experience(memory.clone());
+
+    // Validate the experience is not already committed (Architecture §07 invariant)
+    if experience.committed {
+        return Ok(ToolOutput::success(serde_json::json!({
+            "success": false,
+            "message": "Cannot add evidence to a committed experience (immutable)"
+        })));
+    }
+
+    // Call the add_evidence method on Experience
+    let mut mutable_experience = experience.clone();
+    mutable_experience.add_evidence(evidence_uuid);
+
+    // Upsert the memory card with the modified experience
+    let updated_memory = MemoryCard::from_experience(&mutable_experience);
+    queries::insert_memory(&conn, &updated_memory)?;
+
+    Ok(ToolOutput::success(serde_json::json!({
+        "success": true,
+        "message": "Evidence added to experience",
+        "experience_id": experience_uuid.to_string(),
+        "evidence_id": evidence_uuid.to_string(),
+        "evidence_count": mutable_experience.evidence_count
+    })))
+}
+
+/// Execute archive experience tool
+pub async fn execute_archive_experience(
+    input: ArchiveExperienceInput,
+    database: &Arc<SqliteDatabase>,
+) -> Result<ToolOutput> {
+    let experience_uuid = Uuid::parse_str(&input.experience_id)
+        .map_err(|e| anyhow::anyhow!("Invalid experience UUID: {}", e))?;
+
+    let conn = database.connection()?;
+    let memory = queries::get_memory(&conn, experience_uuid)?
+        .ok_or_else(|| anyhow::anyhow!("Experience not found: {}", experience_uuid))?;
+
+    let experience = MemoryCard::into_experience(memory.clone());
+
+    // Call the archive method on Experience
+    let mut mutable_experience = experience.clone();
+    match mutable_experience.archive() {
+        Ok(()) => {
+            // Upsert the memory card with the archived experience
+            let archived_memory = MemoryCard::from_experience(&mutable_experience);
+            queries::insert_memory(&conn, &archived_memory)?;
+
+            Ok(ToolOutput::success(serde_json::json!({
+                "success": true,
+                "message": "Experience archived successfully",
+                "experience_id": experience_uuid.to_string()
+            })))
+        }
+        Err(e) => Ok(ToolOutput::success(serde_json::json!({
+            "success": false,
+            "message": e
+        }))),
+    }
 }
 
 /// Execute get worker count tool

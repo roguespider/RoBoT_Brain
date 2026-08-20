@@ -17,7 +17,9 @@ use crate::experience::observer::ExperienceObserver;
 
 use crate::experience::queue::JobQueue;
 pub use crate::experience::worker::WorkerStats;
-use crate::experience::worker::{ExperienceWorker, ObserverJob};
+use crate::experience::worker::{
+    ExperienceWorker, ObserverJob, OnCompleteCallback, OnFailedCallback,
+};
 
 /// Maximum jobs that can be queued per observer
 const MAX_QUEUE_DEPTH: usize = 100;
@@ -30,6 +32,40 @@ struct WorkerHandle {
     stats: Arc<WorkerStats>,
 }
 
+/// In-memory registry mapping unique job IDs to their parent experience IDs.
+/// This prevents ID collisions when multiple observers share the same event
+/// (P0-002) and allows the worker callbacks to mark the correct job in the queue.
+struct JobRegistry {
+    /// Maps job_id -> experience_id
+    mapping: Mutex<HashMap<String, String>>,
+}
+
+impl JobRegistry {
+    fn new() -> Self {
+        Self {
+            mapping: Mutex::new(HashMap::new()),
+        }
+    }
+
+    /// Register a job ID with its experience ID reference.
+    fn register(&self, job_id: &str, experience_id: &str) {
+        self.mapping
+            .lock()
+            .map(|mut m| {
+                m.insert(job_id.to_string(), experience_id.to_string());
+            })
+            .ok();
+    }
+
+    /// Look up the experience ID for a given job ID.
+    fn get_experience_id(&self, job_id: &str) -> Option<String> {
+        self.mapping
+            .lock()
+            .ok()
+            .and_then(|m| m.get(job_id).cloned())
+    }
+}
+
 /// Manages workers for all registered observers
 /// Routes events from bus to appropriate worker channels
 /// Jobs are persisted to SQLite via the JobQueue for durability.
@@ -40,6 +76,8 @@ pub struct WorkerManager {
     workers: Arc<RwLock<HashMap<String, WorkerHandle>>>,
     /// Durable job queue backed by SQLite
     job_queue: Arc<Mutex<JobQueue>>,
+    /// Maps unique job IDs to experience IDs for tracking completion
+    job_registry: Arc<JobRegistry>,
 }
 
 impl WorkerManager {
@@ -49,10 +87,13 @@ impl WorkerManager {
             bus,
             workers: Arc::new(RwLock::new(HashMap::new())),
             job_queue,
+            job_registry: Arc::new(JobRegistry::new()),
         }
     }
 
-    /// Register an observer and spawn a worker for it
+    /// Register an observer and spawn a worker for it.
+    /// The worker is configured with completion/failure callbacks that
+    /// mark jobs in the durable queue.
     pub async fn register_observer(&self, observer: Arc<dyn ExperienceObserver>) -> Result<()> {
         let name = observer.name().to_string();
 
@@ -67,8 +108,58 @@ impl WorkerManager {
         // Create channel for this worker
         let (sender, receiver) = mpsc::channel(MAX_QUEUE_DEPTH);
 
-        // Create the worker with sender so it can re-queue retries
-        let worker = ExperienceWorker::new(observer, receiver, sender.clone());
+        // Create callbacks that mark jobs in the durable queue.
+        // Each closure needs its own clone of shared state since `move`
+        // takes ownership of captured variables.
+        let on_complete: OnCompleteCallback = {
+            let jr = self.job_registry.clone();
+            let jq = self.job_queue.clone();
+            let on = name.clone();
+            Arc::new(move |job_id: &str| {
+                if let Some(exp_id) = jr.get_experience_id(job_id) {
+                    tracing::debug!(
+                        "Worker {} completed job {} (experience {})",
+                        on,
+                        job_id,
+                        exp_id
+                    );
+                }
+                let mut q = jq.lock().unwrap_or_else(|e| e.into_inner());
+                q.mark_complete(job_id).unwrap_or_else(|e| {
+                    tracing::warn!("Failed to mark job {} complete: {}", job_id, e);
+                });
+            })
+        };
+
+        let on_failed: OnFailedCallback = {
+            let jr = self.job_registry.clone();
+            let jq = self.job_queue.clone();
+            let on = name.clone();
+            Arc::new(move |job_id: &str, error: String| {
+                if let Some(exp_id) = jr.get_experience_id(job_id) {
+                    tracing::warn!(
+                        "Worker {} permanently failed job {} (experience {}): {}",
+                        on,
+                        job_id,
+                        exp_id,
+                        error
+                    );
+                }
+                let mut q = jq.lock().unwrap_or_else(|e| e.into_inner());
+                q.mark_failed(job_id, error).unwrap_or_else(|e| {
+                    tracing::warn!("Failed to mark job {} failed: {}", job_id, e);
+                });
+            })
+        };
+
+        // Create the worker with callbacks so it reports completion/failure
+        let worker = ExperienceWorker::with_callbacks(
+            observer,
+            receiver,
+            sender.clone(),
+            Some(on_complete),
+            Some(on_failed),
+        );
         let stats = worker.stats();
 
         // Clone name for the async task
@@ -88,7 +179,7 @@ impl WorkerManager {
         Ok(())
     }
 
-    /// Enqueue a job for an observer by name
+    /// Enqueue a job for an observer by name with a unique job ID.
     /// Called by the bus subscriber when events are published.
     /// The job is persisted to SQLite via the JobQueue.
     pub async fn enqueue(&self, observer_name: &str, event: ExperienceEvent) -> Result<()> {
@@ -98,14 +189,22 @@ impl WorkerManager {
             anyhow::anyhow!("No worker registered for observer: {}", observer_name)
         })?;
 
-        // Persist the job to the durable queue before sending via channel
         let event_id = event.id.to_string();
+        let job_id = Uuid::new_v4().to_string();
+
+        // Register the job ID -> experience ID mapping
+        self.job_registry.register(&job_id, &event_id);
+
+        // Persist the job to the durable queue before sending via channel
         {
             let mut q = self.job_queue.lock().unwrap_or_else(|e| e.into_inner());
-            q.push_job(&event_id, observer_name);
+            q.push_job_with_id(&job_id, &event_id, observer_name);
         }
 
-        let job = ObserverJob::new(event);
+        let job = ObserverJob::with_id(
+            event,
+            Uuid::parse_str(&job_id).unwrap_or_else(|_| Uuid::new_v4()),
+        );
 
         handle
             .sender
@@ -113,35 +212,54 @@ impl WorkerManager {
             .await
             .map_err(|e| anyhow::anyhow!("Failed to enqueue job: {}", e))?;
 
-        tracing::debug!("Enqueued job for observer: {}", observer_name);
+        tracing::debug!("Enqueued job {} for observer: {}", job_id, observer_name);
         Ok(())
     }
 
-    /// Broadcast an event to all interested observers
-    /// Checks each observer's accepts() before enqueueing.
+    /// Broadcast an event to all interested observers.
+    /// Each observer gets a unique job ID (P0-002). Jobs that fail to
+    /// send (channel full) are marked as failed in the durable queue (P0-001).
     /// Jobs are persisted to the JobQueue for durability.
+    ///
+    /// Returns Ok(()) regardless of individual send failures - the dropped
+    /// jobs are marked failed in the queue via the on_broadcast_failure callback.
     pub async fn broadcast_event(&self, event: ExperienceEvent) -> Result<()> {
         let workers = self.workers.read().await;
         let event_type = event.event_type.clone();
         let event_id = event.id.to_string();
 
-        // Persist the job to the durable queue for all workers
+        // Persist unique jobs to the durable queue for all workers
+        let mut dropped_observers = Vec::new();
+
         {
             let mut q = self
                 .job_queue
                 .lock()
                 .map_err(|e| anyhow::anyhow!("Queue lock poisoned: {}", e))?;
             for name in workers.keys() {
-                q.push_job(&event_id, name);
+                let job_id = Uuid::new_v4().to_string();
+                q.push_job_with_id(&job_id, &event_id, name);
+                // Register the mapping so worker callbacks can find it
+                self.job_registry.register(&job_id, &event_id);
+                dropped_observers.push((name.clone(), job_id));
             }
         }
 
         let mut enqueued_count = 0;
 
-        for (name, handle) in workers.iter() {
-            // We can't check accepts() here without the observer reference
-            // So we send to all and let workers filter
-            let job = ObserverJob::new(event.clone());
+        for (name, job_id) in dropped_observers {
+            let handle = match workers.get(&name) {
+                Some(h) => h,
+                None => {
+                    tracing::warn!("Observer {} disappeared during broadcast", name);
+                    continue;
+                }
+            };
+
+            let job = ObserverJob::with_id(
+                event.clone(),
+                Uuid::parse_str(&job_id).unwrap_or_else(|_| Uuid::new_v4()),
+            );
             if handle.sender.try_send(job).is_ok() {
                 enqueued_count += 1;
             } else {
@@ -150,6 +268,13 @@ impl WorkerManager {
                     name,
                     event_type
                 );
+                // Mark the dropped job as failed in the durable queue
+                if let Err(e) = self.mark_job_failed(
+                    &job_id,
+                    "Queue full - job dropped during broadcast".to_string(),
+                ) {
+                    tracing::debug!("Failed to mark dropped job {} as failed: {}", job_id, e);
+                }
             }
         }
 

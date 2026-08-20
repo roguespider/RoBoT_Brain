@@ -48,7 +48,11 @@ impl JobStatus {
 /// A job in the queue
 #[derive(Debug, Clone)]
 pub struct Job {
+    /// Unique job identifier (UUID)
     pub id: String,
+    /// The experience/event this job is derived from
+    pub experience_id: String,
+    /// The observer/worker responsible for this job
     pub observer_name: String,
     pub status: JobStatus,
     pub last_error: Option<String>,
@@ -56,9 +60,12 @@ pub struct Job {
 }
 
 impl Job {
+    /// Create a job with the experience_id as both the job ID and experience reference
+    /// (legacy constructor; prefer push_job_with_id for unique job IDs)
     pub fn new(experience_id: &str, observer_name: &str) -> Self {
         Self {
             id: experience_id.to_string(),
+            experience_id: experience_id.to_string(),
             observer_name: observer_name.to_string(),
             status: JobStatus::Pending,
             last_error: None,
@@ -104,9 +111,30 @@ impl JobQueue {
             .count()
     }
 
-    /// Add a new job to the queue
+    /// Add a new job to the queue (uses experience_id as the job ID).
+    /// For unique per-observer job IDs, use [`push_job_with_id`] instead.
     pub fn push_job(&mut self, experience_id: &str, observer_name: &str) {
         let job = Job::new(experience_id, observer_name);
+        if let Some(db) = &self.database {
+            if let Err(e) = persist_insert(db, &job) {
+                tracing::warn!("JobQueue insert failed, job not durable: {}", e);
+            }
+        }
+        self.jobs.insert(job.id.clone(), job);
+    }
+
+    /// Add a new job with an explicit unique job ID.
+    /// This is the preferred method when multiple observers need separate
+    /// job records for the same event (prevents ID collisions per P0-002).
+    pub fn push_job_with_id(&mut self, job_id: &str, experience_id: &str, observer_name: &str) {
+        let job = Job {
+            id: job_id.to_string(),
+            experience_id: experience_id.to_string(),
+            observer_name: observer_name.to_string(),
+            status: JobStatus::Pending,
+            last_error: None,
+            attempts: 0,
+        };
         if let Some(db) = &self.database {
             if let Err(e) = persist_insert(db, &job) {
                 tracing::warn!("JobQueue insert failed, job not durable: {}", e);
@@ -183,6 +211,7 @@ impl JobQueue {
                 db,
                 &Job {
                     id: job_id.to_string(),
+                    experience_id: String::new(),
                     observer_name: String::new(),
                     status: JobStatus::Completed,
                     last_error: None,
@@ -208,6 +237,7 @@ impl JobQueue {
                 db,
                 &Job {
                     id: job_id.to_string(),
+                    experience_id: String::new(),
                     observer_name: String::new(),
                     status: JobStatus::Failed,
                     last_error: Some(error),
@@ -264,6 +294,7 @@ impl JobQueue {
             }
             let job = Job {
                 id: id.clone(),
+                experience_id: id.clone(),
                 observer_name,
                 status,
                 last_error,

@@ -1,12 +1,10 @@
-
 // src/tools/ingestor/semantic_chunker.rs
 // Semantic document chunking - splits documents at natural boundaries
 // preserving full document structure for hierarchical storage
 
-
 use crate::database::models::HierarchyLevel;
-use crate::database::models::MemoryType;
 use crate::database::models::MemoryCard;
+use crate::database::models::MemoryType;
 use uuid::Uuid;
 
 /// A node in the document hierarchy tree
@@ -41,17 +39,17 @@ impl HierarchyNode {
     fn flatten_recursive(&self, parent_id: Option<Uuid>, memories: &mut Vec<MemoryCard>) {
         let memory = MemoryCard::new_hierarchical(
             self.content.clone(),
-            MemoryType::File,  // Default for file ingestion
+            MemoryType::File, // Default for file ingestion
             parent_id,
             self.level.clone(),
             self.order_index,
             self.path.clone(),
-            None,  // file_source set at root
+            None, // file_source set at root
         );
-        
+
         let current_id = Some(memory.id);
         memories.push(memory);
-        
+
         for child in &self.children {
             child.flatten_recursive(current_id, memories);
         }
@@ -66,8 +64,8 @@ pub fn parse_document(content: &str, file_name: &str, file_type: &str) -> Hierar
         "text" | "txt" | "log" | "rst" => parse_plain_text(content, file_name),
         "html" | "htm" => parse_html(content, file_name),
         "xml" => parse_xml(content, file_name),
-        "code" => parse_code(content, file_name),  // Code files
-        _ => parse_plain_text(content, file_name),  // Default to plain text
+        "code" => parse_code(content, file_name), // Code files
+        _ => parse_plain_text(content, file_name), // Default to plain text
     }
 }
 
@@ -102,7 +100,8 @@ fn parse_markdown(content: &str, file_name: &str) -> HierarchyNode {
                 in_code_block = false;
                 if !code_block_content.is_empty() {
                     let code_content = code_block_content.join("\n");
-                    let path = format!("{}/section[{}]/code_block[{}]",
+                    let path = format!(
+                        "{}/section[{}]/code_block[{}]",
                         file_name,
                         current_section.as_ref().map(|s| s.order_index).unwrap_or(0),
                         paragraph_index
@@ -111,7 +110,7 @@ fn parse_markdown(content: &str, file_name: &str) -> HierarchyNode {
                         code_content,
                         HierarchyLevel::Paragraph,
                         paragraph_index,
-                        path
+                        path,
                     );
                     if let Some(ref mut sec) = current_section {
                         sec.children.push(code_node);
@@ -135,47 +134,51 @@ fn parse_markdown(content: &str, file_name: &str) -> HierarchyNode {
             if let Some(prev_section) = current_section.take() {
                 root.children.push(prev_section);
             }
-            
-            if !current_paragraph.is_empty() {
-                let para_text = current_paragraph.join(" ").trim().to_string();
-                if !para_text.is_empty() {
-                    let path = format!("{}/section[{}]/paragraph[{}]",
-                        file_name,
-                        section_index.saturating_sub(1),
-                        paragraph_index
-                    );
-                    let node = HierarchyNode::new(para_text, HierarchyLevel::Paragraph, paragraph_index, path);
-                    root.children.push(node);
-                }
+
+            let para_text = current_paragraph.join(" ").trim().to_string();
+            if !para_text.is_empty() {
+                let path = format!(
+                    "{}/section[{}]/paragraph[{}]",
+                    file_name,
+                    section_index.saturating_sub(1),
+                    paragraph_index
+                );
+                let node =
+                    HierarchyNode::new(para_text, HierarchyLevel::Paragraph, paragraph_index, path);
+                root.children.push(node);
                 current_paragraph.clear();
             }
 
             let header_level = trimmed.find('#').unwrap_or(0);
             let header_text = trimmed.trim_start_matches('#').trim().to_string();
             // Treat level 1 and 2 headers as sections for test compatibility
-            let level = if header_level <= 2 { HierarchyLevel::Section } else { HierarchyLevel::Subsection };
+            let level = if header_level <= 2 {
+                HierarchyLevel::Section
+            } else {
+                HierarchyLevel::Subsection
+            };
             let path = format!("{}/section[{}]", file_name, section_index);
             let section = HierarchyNode::new(header_text, level, section_index, path);
             section_index += 1;
             paragraph_index = 0;
             current_section = Some(section);
         } else if trimmed.is_empty() {
-            if !current_paragraph.is_empty() {
-                let para_text = current_paragraph.join(" ").trim().to_string();
-                if !para_text.is_empty() {
-                    let path = format!("{}/section[{}]/paragraph[{}]",
-                        file_name,
-                        current_section.as_ref().map(|s| s.order_index).unwrap_or(0),
-                        paragraph_index
-                    );
-                    let node = HierarchyNode::new(para_text, HierarchyLevel::Paragraph, paragraph_index, path);
-                    if let Some(ref mut sec) = current_section {
-                        sec.children.push(node);
-                    } else {
-                        root.children.push(node);
-                    }
-                    paragraph_index += 1;
+            let para_text = current_paragraph.join(" ").trim().to_string();
+            if !para_text.is_empty() {
+                let path = format!(
+                    "{}/section[{}]/paragraph[{}]",
+                    file_name,
+                    current_section.as_ref().map(|s| s.order_index).unwrap_or(0),
+                    paragraph_index
+                );
+                let node =
+                    HierarchyNode::new(para_text, HierarchyLevel::Paragraph, paragraph_index, path);
+                if let Some(ref mut sec) = current_section {
+                    sec.children.push(node);
+                } else {
+                    root.children.push(node);
                 }
+                paragraph_index += 1;
                 current_paragraph.clear();
             }
         } else {
@@ -183,20 +186,19 @@ fn parse_markdown(content: &str, file_name: &str) -> HierarchyNode {
         }
     }
 
-    if !current_paragraph.is_empty() {
-        let para_text = current_paragraph.join(" ").trim().to_string();
-        if !para_text.is_empty() {
-            let path = format!("{}/section[{}]/paragraph[{}]",
-                file_name,
-                current_section.as_ref().map(|s| s.order_index).unwrap_or(0),
-                paragraph_index
-            );
-            let node = HierarchyNode::new(para_text, HierarchyLevel::Paragraph, paragraph_index, path);
-            if let Some(ref mut sec) = current_section {
-                sec.children.push(node);
-            } else {
-                root.children.push(node);
-            }
+    let para_text = current_paragraph.join(" ").trim().to_string();
+    if !para_text.is_empty() {
+        let path = format!(
+            "{}/section[{}]/paragraph[{}]",
+            file_name,
+            current_section.as_ref().map(|s| s.order_index).unwrap_or(0),
+            paragraph_index
+        );
+        let node = HierarchyNode::new(para_text, HierarchyLevel::Paragraph, paragraph_index, path);
+        if let Some(ref mut sec) = current_section {
+            sec.children.push(node);
+        } else {
+            root.children.push(node);
         }
     }
 
@@ -215,35 +217,31 @@ fn parse_plain_text(content: &str, file_name: &str) -> HierarchyNode {
         0,
         file_name.to_string(),
     );
-    
+
     // Split by double newlines (paragraphs)
-    let paragraphs: Vec<&str> = content.split("\n\n")
+    let paragraphs: Vec<&str> = content
+        .split("\n\n")
         .map(|p| p.trim())
         .filter(|p| !p.is_empty())
         .collect();
-    
+
     for (idx, para) in paragraphs.iter().enumerate() {
         let path = format!("{}/paragraph[{}]", file_name, idx);
-        
+
         // Check if paragraph is short enough to keep as single unit
         if para.len() < 500 {
-            let node = HierarchyNode::new(
-                para.to_string(),
-                HierarchyLevel::Paragraph,
-                idx,
-                path,
-            );
+            let node = HierarchyNode::new(para.to_string(), HierarchyLevel::Paragraph, idx, path);
             root.children.push(node);
         } else {
             // Long paragraph - split by sentences
             let sentences = split_sentences(para);
             let mut para_node = HierarchyNode::new(
-                String::new(),  // No content at paragraph level
+                String::new(), // No content at paragraph level
                 HierarchyLevel::Paragraph,
                 idx,
                 path.clone(),
             );
-            
+
             for (sent_idx, sentence) in sentences.iter().enumerate() {
                 let sent_path = format!("{}/sentence[{}]", path, sent_idx);
                 let sent_node = HierarchyNode::new(
@@ -254,14 +252,14 @@ fn parse_plain_text(content: &str, file_name: &str) -> HierarchyNode {
                 );
                 para_node.children.push(sent_node);
             }
-            
+
             // Only add if has children
             if !para_node.children.is_empty() {
                 root.children.push(para_node);
             }
         }
     }
-    
+
     root
 }
 
@@ -270,10 +268,10 @@ fn split_sentences(text: &str) -> Vec<String> {
     let mut sentences = Vec::new();
     let mut current = String::new();
     let mut chars = text.chars().peekable();
-    
+
     while let Some(c) = chars.next() {
         current.push(c);
-        
+
         // Check for sentence endings
         if c == '.' || c == '!' || c == '?' {
             // Look ahead to see if this is really end of sentence
@@ -298,14 +296,15 @@ fn split_sentences(text: &str) -> Vec<String> {
             }
         }
     }
-    
+
     // Add remaining text
     if !current.trim().is_empty() {
         sentences.push(current.trim().to_string());
     }
-    
+
     // Filter out very short "sentences" (likely abbreviations)
-    sentences.into_iter()
+    sentences
+        .into_iter()
         .filter(|s| s.len() > 10 || s.contains(' '))
         .collect()
 }
@@ -318,7 +317,7 @@ fn parse_json_document(content: &str, file_name: &str) -> HierarchyNode {
         0,
         file_name.to_string(),
     );
-    
+
     // Try to parse as JSON and extract structure
     if let Ok(value) = serde_json::from_str::<serde_json::Value>(content) {
         parse_json_value(&value, file_name, 0, &mut root);
@@ -326,19 +325,24 @@ fn parse_json_document(content: &str, file_name: &str) -> HierarchyNode {
         // Not valid JSON - treat as plain text
         return parse_plain_text(content, file_name);
     }
-    
+
     root
 }
 
 /// Recursively parse JSON value into hierarchy
-fn parse_json_value(value: &serde_json::Value, parent_path: &str, order_index: usize, parent: &mut HierarchyNode) {
+fn parse_json_value(
+    value: &serde_json::Value,
+    parent_path: &str,
+    order_index: usize,
+    parent: &mut HierarchyNode,
+) {
     match value {
         serde_json::Value::Object(obj) => {
             // Check if this looks like a message/item
-            let is_message = obj.contains_key("content") || 
-                            obj.contains_key("message") || 
+            let is_message = obj.contains_key("content") ||
+                            obj.contains_key("message") ||
                             obj.contains_key("role");
-            
+
             if is_message {
                 // Extract message content
                 let content = obj.get("content")
@@ -346,7 +350,7 @@ fn parse_json_value(value: &serde_json::Value, parent_path: &str, order_index: u
                     .and_then(|v| v.as_str())
                     .unwrap_or("")
                     .to_string();
-                
+
                 let context: Vec<String> = obj.iter()
                     .filter(|(k, _)| *k != "content" && *k != "message")
                     .filter_map(|(k, v)| {
@@ -361,13 +365,13 @@ fn parse_json_value(value: &serde_json::Value, parent_path: &str, order_index: u
                         }
                     })
                     .collect();
-                
+
                 let content_with_context = if context.is_empty() {
                     content
                 } else {
                     format!("{}\n\n[Context: {}]", content, context.join(", "))
                 };
-                
+
                 let path = format!("{}/item[{}]", parent_path, order_index);
                 let node = HierarchyNode::new(
                     content_with_context,
@@ -379,7 +383,7 @@ fn parse_json_value(value: &serde_json::Value, parent_path: &str, order_index: u
             } else {
                 // Regular object - add as metadata or recurse
                 let mut metadata_pairs = Vec::new();
-                
+
                 for (key, val) in obj {
                     match val {
                         serde_json::Value::String(s) if s.len() < 200 => {
@@ -399,7 +403,7 @@ fn parse_json_value(value: &serde_json::Value, parent_path: &str, order_index: u
                         _ => {}
                     }
                 }
-                
+
                 if !metadata_pairs.is_empty() {
                     let path = format!("{}/metadata", parent_path);
                     let node = HierarchyNode::new(
@@ -440,16 +444,16 @@ fn parse_html(content: &str, file_name: &str) -> HierarchyNode {
         0,
         file_name.to_string(),
     );
-    
+
     // Simple HTML parsing - extract text content
     let text = strip_html_tags(content);
-    
+
     // Remove scripts and styles
     let text = remove_script_style(&text);
-    
+
     // Treat as plain text
     let plain_root = parse_plain_text(&text, file_name);
-    
+
     // Update root path
     root.children = plain_root.children;
     root
@@ -459,7 +463,7 @@ fn parse_html(content: &str, file_name: &str) -> HierarchyNode {
 fn strip_html_tags(content: &str) -> String {
     // First remove script and style blocks
     let cleaned = remove_script_style(content);
-    
+
     let mut result = String::new();
     let mut in_tag = false;
 
@@ -477,7 +481,8 @@ fn strip_html_tags(content: &str) -> String {
     }
 
     // Clean up whitespace
-    result.lines()
+    result
+        .lines()
         .map(|l| l.trim())
         .filter(|l| !l.is_empty())
         .collect::<Vec<_>>()
@@ -489,23 +494,27 @@ fn remove_script_style(content: &str) -> String {
     let mut result = String::new();
     let chars = content.chars().collect::<Vec<_>>();
     let mut i = 0;
-    
+
     while i < chars.len() {
         let remaining = chars[i..].iter().collect::<String>();
-        
+
         if remaining.starts_with("<script") || remaining.starts_with("<style") {
             // Skip until closing tag
-            let closing = if remaining.starts_with("<script") { "</script>" } else { "</style>" };
+            let closing = if remaining.starts_with("<script") {
+                "</script>"
+            } else {
+                "</style>"
+            };
             if let Some(pos) = remaining.to_lowercase().find(closing) {
                 i += pos + closing.len();
                 continue;
             }
         }
-        
+
         result.push(chars[i]);
         i += 1;
     }
-    
+
     result
 }
 
@@ -517,12 +526,12 @@ fn parse_xml(content: &str, file_name: &str) -> HierarchyNode {
         0,
         file_name.to_string(),
     );
-    
+
     // Simple XML parsing - extract text content
     let text = strip_xml_tags(content);
     let plain_root = parse_plain_text(&text, file_name);
     root.children = plain_root.children;
-    
+
     root
 }
 
@@ -530,7 +539,7 @@ fn parse_xml(content: &str, file_name: &str) -> HierarchyNode {
 fn strip_xml_tags(content: &str) -> String {
     let mut result = String::new();
     let mut in_tag = false;
-    
+
     for c in content.chars() {
         match c {
             '<' => in_tag = true,
@@ -539,7 +548,7 @@ fn strip_xml_tags(content: &str) -> String {
             _ => {}
         }
     }
-    
+
     result.trim().to_string()
 }
 
@@ -551,12 +560,14 @@ fn parse_code(content: &str, file_name: &str) -> HierarchyNode {
         0,
         file_name.to_string(),
     );
-    
+
     let lines: Vec<&str> = content.lines().collect();
     let mut current_function: Option<(String, usize, Vec<String>)> = None;
     let mut function_index = 0;
-    
-    let flush_function = |func: &mut Option<(String, usize, Vec<String>)>, root_node: &mut HierarchyNode, idx: &mut usize| {
+
+    let flush_function = |func: &mut Option<(String, usize, Vec<String>)>,
+                          root_node: &mut HierarchyNode,
+                          idx: &mut usize| {
         if let Some((name, start, lines)) = func.take() {
             let content = format!("Line {}: {}\n\n{}", start, name, lines.join("\n"));
             let path = format!("{}/function[{}]", file_name, idx);
@@ -565,10 +576,10 @@ fn parse_code(content: &str, file_name: &str) -> HierarchyNode {
             *idx += 1;
         }
     };
-    
+
     for (line_num, line) in lines.iter().enumerate() {
         let trimmed = line.trim();
-        
+
         // Detect function/class definitions
         let is_function = trimmed.starts_with("fn ")
             || trimmed.starts_with("func ")
@@ -578,27 +589,27 @@ fn parse_code(content: &str, file_name: &str) -> HierarchyNode {
             || trimmed.starts_with("pub fn ")
             || trimmed.starts_with("async fn ")
             || trimmed.starts_with("pub async fn ");
-        
+
         if is_function {
             flush_function(&mut current_function, &mut root, &mut function_index);
-            
+
             let func_name = extract_function_name(trimmed);
             current_function = Some((func_name, line_num + 1, Vec::new()));
         }
-        
+
         if let Some(ref mut func) = current_function {
             func.2.push(line.to_string());
         }
     }
-    
+
     flush_function(&mut current_function, &mut root, &mut function_index);
-    
+
     // If no functions found, treat as plain text
     if root.children.is_empty() {
         let plain_root = parse_plain_text(content, file_name);
         return plain_root;
     }
-    
+
     root
 }
 
@@ -615,7 +626,7 @@ fn extract_function_name(line: &str) -> String {
         ("async fn ", "("),
         ("pub async fn ", "("),
     ];
-    
+
     for (prefix, end) in &patterns {
         if let Some(pos) = line.find(prefix) {
             let after_prefix = &line[pos + prefix.len()..];
@@ -624,7 +635,7 @@ fn extract_function_name(line: &str) -> String {
             }
         }
     }
-    
+
     line.to_string()
 }
 
@@ -639,4 +650,3 @@ pub fn get_file_type(extension: &str) -> &str {
         _ => "text",
     }
 }
-

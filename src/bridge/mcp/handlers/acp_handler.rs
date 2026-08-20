@@ -464,6 +464,8 @@ impl AcpToolsHandler {
                 },
                 "policy": {
                     "rules": policy_rules,
+                    "policy_id": "default-policy",
+                    "policy_version": "1.0.0",
                 },
                 "event_bus": {
                     "subscribers": bus_subscribers,

@@ -1,15 +1,11 @@
-
-
 // src/workflows/enforcement.rs
 //! Workflow enforcement layer - ensures agents follow mandatory workflow steps
-//! 
+//!
 //! This module provides enforcement for the required workflow:
 //! 1. get_workflow - MUST be called first to retrieve workflow rules
 //! 2. search_memory - MUST be called before any substantive action
 //! 3. get_patterns - SHOULD be called for repetitive decisions
 //! 4. Other tools - Only available after mandatory steps
-
-
 
 mod enforcer;
 
@@ -17,14 +13,10 @@ pub use enforcer::WorkflowEnforcer;
 
 use std::time::{Duration, Instant};
 
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// Tools exempt from workflow enforcement — always allowed without prerequisites.
-pub const EXEMPT_TOOLS: &[&str] = &[
-    "get_workflow",
-    "list_tools",
-    "get_tool",
-];
+pub const EXEMPT_TOOLS: &[&str] = &["get_workflow", "list_tools", "get_tool"];
 
 /// Tools that count as a memory search step (satisfy the memory-search requirement).
 pub const MEMORY_SEARCH_TOOLS: &[&str] = &[
@@ -89,6 +81,7 @@ impl SessionState {
             "patterns_reviewed": self.patterns_reviewed,
             "workflow_purpose": self.workflow_purpose,
             "last_memory_search": self.last_memory_search,
+            "session_age_seconds": self.created_at.elapsed().as_secs(),
         })
     }
 }
@@ -117,7 +110,8 @@ impl WorkflowEnforcementError {
     pub fn memory_not_searched() -> Self {
         Self {
             error_code: "MEMORY_NOT_SEARCHED".to_string(),
-            message: "Memory has not been searched. Call search_memory before using other tools.".to_string(),
+            message: "Memory has not been searched. Call search_memory before using other tools."
+                .to_string(),
             required_action: "search_memory".to_string(),
             tools_blocked: Vec::new(),
         }
@@ -133,4 +127,3 @@ impl WorkflowEnforcementError {
         }
     }
 }
-

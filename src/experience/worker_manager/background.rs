@@ -21,23 +21,14 @@ pub fn start_worker_manager(
         loop {
             match receiver.recv().await {
                 Ok(event) => {
-                    // Broadcast to all workers - they will filter based on accepts()
-                    let event_id = event.id;
-                    match manager.broadcast_event(event).await {
-                        Ok(()) => {
-                            // Mark the job as completed in the durable queue
-                            if let Err(e) = manager.mark_job_complete(&event_id.to_string()) {
-                                tracing::debug!("Failed to mark job complete: {}", e);
-                            }
-                        }
-                        Err(e) => {
-                            // Mark the job as failed if broadcast failed
-                            if let Err(mk_err) =
-                                manager.mark_job_failed(&event_id.to_string(), e.to_string())
-                            {
-                                tracing::debug!("Failed to mark job failed: {}", mk_err);
-                            }
-                        }
+                    // Broadcast the event to all workers.
+                    // Each observer gets a unique job ID; dropped jobs are
+                    // marked failed in the queue by broadcast_event itself.
+                    // Worker completion callbacks handle post-processing status.
+                    if let Err(e) = manager.broadcast_event(event).await {
+                        // Broadcast itself failed - log and move on.
+                        // Individual dropped jobs are already marked in the queue.
+                        tracing::error!("Failed to broadcast event: {}", e);
                     }
                 }
                 Err(broadcast::error::RecvError::Lagged(n)) => {

@@ -1,10 +1,12 @@
 // src/bridge/tools/handlers/ingestor_handler.rs
 // Ingestor tools handler - handles file ingestion tools
 
-use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
+use crate::bridge::mcp::handlers::{
+    HandlerError, HandlerInitError, HandlerInitResult, ToolHandler,
+};
 use crate::bridge::tools::ingestor;
-use crate::bridge::mcp::handlers::{HandlerError, HandlerInitError, HandlerInitResult, ToolHandler};
+use std::sync::Arc;
 
 /// Handler for ingestor-related tools
 #[derive(Clone)]
@@ -14,9 +16,7 @@ pub struct IngestorToolsHandler {
 
 impl IngestorToolsHandler {
     /// Create a new ingestor tools handler
-    pub fn new(
-        context: Arc<McpContext>,
-    ) -> HandlerInitResult<Self> {
+    pub fn new(context: Arc<McpContext>) -> HandlerInitResult<Self> {
         // Validate that required dependencies exist
         if context.database.connection().is_err() {
             return Err(HandlerInitError::new(
@@ -164,49 +164,57 @@ impl ToolHandler for IngestorToolsHandler {
         ]
     }
 
-    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
-        async move {
-            match name {
-                "ingest_files" => {
-                    let input: ingestor::IngestFilesInput = serde_json::from_value(args)
-                        .unwrap_or_default();
-                    self.execute_ingest_files(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "list_importable" => {
-                    let input: ingestor::ListImportableInput = serde_json::from_value(args)
-                        .unwrap_or_default();
-                    self.execute_list_importable(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "list_ingested_files" => {
-                    let input: ingestor::ListIngestedFilesInput = serde_json::from_value(args)
-                        .unwrap_or_default();
-                    self.execute_list_ingested_files(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "delete_ingested_files" => {
-                    let input: ingestor::DeleteIngestedFilesInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_delete_ingested_files(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "transcribe_audio" => {
-                    let input: ingestor::TranscribeAudioInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    #[cfg(feature = "audio")]
-                    {
-                        self.execute_transcribe_audio(input).await
-                            .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                    }
-                    #[cfg(not(feature = "audio"))]
-                    {
-                        self.execute_transcribe_audio_disabled(input).await
-                            .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                    }
-                }
-                _ => Err(HandlerError::ToolNotFound(name.to_string()))
+    async fn execute_tool(
+        &self,
+        name: &str,
+        args: serde_json::Value,
+    ) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
+        match name {
+            "ingest_files" => {
+                let input: ingestor::IngestFilesInput =
+                    serde_json::from_value(args).unwrap_or_default();
+                self.execute_ingest_files(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
             }
+            "list_importable" => {
+                let input: ingestor::ListImportableInput =
+                    serde_json::from_value(args).unwrap_or_default();
+                self.execute_list_importable(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "list_ingested_files" => {
+                let input: ingestor::ListIngestedFilesInput =
+                    serde_json::from_value(args).unwrap_or_default();
+                self.execute_list_ingested_files(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "delete_ingested_files" => {
+                let input: ingestor::DeleteIngestedFilesInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_delete_ingested_files(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "transcribe_audio" => {
+                let input: ingestor::TranscribeAudioInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                #[cfg(feature = "audio")]
+                {
+                    self.execute_transcribe_audio(input)
+                        .await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                #[cfg(not(feature = "audio"))]
+                {
+                    self.execute_transcribe_audio_disabled(input)
+                        .await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+            }
+            _ => Err(HandlerError::ToolNotFound(name.to_string())),
         }
     }
 }

@@ -3,14 +3,28 @@
 > This file is the call to action. Read it FIRST, then AGENTS.md, then
 > PLAN.md. Do not start any code change until steps 1-3 are done.
 
-## 1. Read these in full (do not skim)
+## 1. MCP workflow gate (required before any tool call)
+
+Call `get_workflow` first — all MCP tools are blocked until this returns.
+
+## 2. Read these in full (do not skim)
 
 1. This file (`.agents/STARTUP.md`)
 2. `AGENTS.md` — the hard rules (Incremental Workflow, Prerequisites, Build
    Commands, Post-Compile MCP connect, Strict Rust Coding Standards)
 3. `.agents/PLAN.md` — the roadmap + the "Next steps to finish v0.0.1" list
 
-## 2. Run the verify gate (must be green BEFORE any code change)
+## 3. Store session context in memory (Working Memory Protocol)
+
+After reading startup files, call `store_memory` with:
+- `memory_type`: "note"
+- `tags`: ["startup", session date]
+- `content`: Current state summary (what we're working on, gate status, next task)
+
+This ensures session context survives across turns and can be retrieved later.
+After any code change, store a note summarizing what changed.
+
+## 4. Run the verify gate (must be green BEFORE any code change)
 
 > **The wall (use it):** `make gate` runs test_suite, which auto-builds
 > robot_brain, connects via MCP, runs all tests + code analysis, and enforces
@@ -46,7 +60,7 @@ tests pass AND 0 warnings / 0 code-issues / 0 untested tools. If any fails,
 fix the failure before doing anything else. Do not "remember" a prior pass —
 actually run it this session.
 
-## 3. Pick the next task (in order, do not skip ahead)
+## 4. Pick the next task (in order, do not skip ahead)
 
 Open `.agents/PLAN.md`. Find the FIRST unchecked `- [ ]` increment. Work tiers
 in order: TIER 1 (finish v0.0.1) → TIER 2 (reach v0.0.2) → TIER 3 (reach
@@ -68,7 +82,7 @@ v0.0.2.1). Each increment is one ~10-15 min change.
   callers; deleting them in TIER 1 creates dead-code warnings). Do it during
   each system's TIER 2 upgrade. 8 self_check.rs files remain.
 
-## 4. Execute ONE change, then the gate, then stop
+## 5. Execute ONE change, then the gate, then stop
 
 - Make ONE change only (one file or one tightly-coupled set).
 - Re-run the full verify gate (step 2). All three must pass.
@@ -78,13 +92,13 @@ v0.0.2.1). Each increment is one ~10-15 min change.
 - Report the result (what changed, gate status, commit hash).
 - STOP and report to the user. Do not start the next task without confirmation.
 
-## 5. Periodic maintenance (check from time to time, not every session)
+## 6. Periodic maintenance (check from time to time, not every session)
 
 - **Large file refactor** (`.agents/LARGE_FILE_REFACTOR.md`): when an `.rs`
   file hits ~1000 lines mixing responsibilities, split it into a directory
   module per the pattern there. Run the candidates query occasionally.
 
-## 6. Hard rules (from AGENTS.md — non-negotiable)
+## 7. Hard rules (from AGENTS.md — non-negotiable)
 
 - NEVER batch multiple unrelated changes into one commit/step.
 - NO `.unwrap()`, `.expect()`, `panic!()`, `assert!()`, `unreachable!()`.

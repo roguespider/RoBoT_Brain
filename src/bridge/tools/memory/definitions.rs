@@ -19,6 +19,8 @@ pub const SEARCH_SIMILAR: &str = "search_similar";
 pub const LIST_EMBEDDINGS: &str = "list_embeddings";
 /// Tool name: delete an embedding by memory ID.
 pub const DELETE_EMBEDDING: &str = "delete_embedding";
+/// Tool name: delete memory by ID.
+pub const DELETE_MEMORY_BY_ID: &str = "delete_memory_by_id";
 /// Tool name: get vector-index statistics.
 pub const GET_EMBEDDING_STATS: &str = "get_embedding_stats";
 
@@ -205,6 +207,20 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
                     "memory_id": {
                         "type": "string",
                         "description": "The memory UUID"
+                    }
+                },
+                "required": ["memory_id"]
+            }),
+        },
+        crate::bridge::mcp::McpTool {
+            name: DELETE_MEMORY_BY_ID.to_string(),
+            description: desc!("Delete a memory by ID (requires explicit confirmation)"),
+            input_schema: serde_json::json!({
+                "type": "object",
+                "properties": {
+                    "memory_id": {
+                        "type": "string",
+                        "description": "UUID of the memory to delete"
                     }
                 },
                 "required": ["memory_id"]

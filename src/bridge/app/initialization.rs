@@ -169,13 +169,21 @@ impl App {
         // persists, then restore from a fresh instance to prove durability.
         {
             let mut q = job_queue.lock().unwrap_or_else(|e| e.into_inner());
-            q.push_job("startup-queue-probe", "experience_scorer");
+            q.push_job_with_id(
+                "startup-queue-probe",
+                "startup-queue-probe",
+                "experience_scorer",
+            );
             let popped = q.pop_job("experience_scorer");
             let popped_ok = popped.is_some();
             if let Some(job) = popped.as_ref() {
                 q.mark_complete(&job.id).ok();
             }
-            q.push_job("startup-queue-probe-2", "experience_scorer");
+            q.push_job_with_id(
+                "startup-queue-probe-2",
+                "startup-queue-probe-2",
+                "experience_scorer",
+            );
             if let Some(job) = q.pop_job("experience_scorer") {
                 q.mark_failed(&job.id, "transient probe failure".to_string())
                     .ok();
@@ -1187,6 +1195,8 @@ impl App {
                 }
             }
         });
+        // Wire policy engine into planner for policy-based action gating
+        planner.set_policy_engine(policy_engine.clone());
         let planner = Arc::new(planner);
 
         // Create workflow engine with database access and coordinator for event integration

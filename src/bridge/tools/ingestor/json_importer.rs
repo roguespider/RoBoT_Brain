@@ -1,8 +1,6 @@
-
 // src/tools/ingestor/json_importer.rs
 
 // Smart JSON importer that extracts structured data into memories
-
 
 use std::path::Path;
 
@@ -50,23 +48,23 @@ impl ExtractedJsonData {
     /// Convert to memory content string
     pub fn to_memory_content(&self) -> String {
         let mut content = self.content.clone();
-        
+
         if !self.sibling_context.is_empty() {
             content.push_str("\n\n[Context: ");
             content.push_str(&self.sibling_context);
             content.push(']');
         }
-        
+
         if !self.source_field.is_empty() {
             content.push_str("\n\n[Field: ");
             content.push_str(&self.source_field);
             content.push(']');
         }
-        
+
         content.push_str("\n\n[Source: ");
         content.push_str(&self.json_path);
         content.push(']');
-        
+
         content
     }
 }
@@ -98,18 +96,18 @@ pub enum JsonFileType {
 /// Import a JSON file and extract structured data
 pub fn import_json_file(path: &Path, config: Option<JsonImportConfig>) -> Result<JsonImportResult> {
     let config = config.unwrap_or_default();
-    
+
     // Read and parse JSON
     let content = std::fs::read_to_string(path)
         .with_context(|| format!("Failed to read JSON file: {}", path.display()))?;
-    
+
     let value: Value = serde_json::from_str(&content)
         .with_context(|| format!("Failed to parse JSON file: {}", path.display()))?;
-    
+
     // Detect JSON type and extract data
     let mut items = Vec::new();
     let mut warnings = Vec::new();
-    
+
     match detect_json_type(&value) {
         JsonFileType::Conversation => {
             extract_conversation(&value, "", &config, &mut items, &mut warnings)?;
@@ -124,16 +122,13 @@ pub fn import_json_file(path: &Path, config: Option<JsonImportConfig>) -> Result
             extract_generic_json(&value, "", &config, &mut items, &mut warnings, 0)?;
         }
     }
-    
+
     // Log any warnings that occurred during import
     for warning in &warnings {
         tracing::debug!("JSON import warning: {}", warning);
     }
-    
-    Ok(JsonImportResult {
-        items,
-        warnings,
-    })
+
+    Ok(JsonImportResult { items, warnings })
 }
 
 /// Detect the type of JSON file
@@ -145,19 +140,22 @@ fn detect_json_type(value: &Value) -> JsonFileType {
             if obj.contains_key("documents") || obj.contains_key("embeddings") {
                 return JsonFileType::EmbeddingsExport;
             }
-            
+
             // Check for conversation format
-            if obj.contains_key("messages") || obj.contains_key("conversation") || obj.contains_key("chat") {
+            if obj.contains_key("messages")
+                || obj.contains_key("conversation")
+                || obj.contains_key("chat")
+            {
                 return JsonFileType::Conversation;
             }
-            
+
             // Check for array of objects (data)
             if let Some(arr) = obj.values().find_map(|v| v.as_array()) {
                 if !arr.is_empty() && arr.iter().all(|v| v.is_object()) {
                     return JsonFileType::DataArray;
                 }
             }
-            
+
             // Mixed object
             JsonFileType::MixedObject
         }
@@ -166,15 +164,14 @@ fn detect_json_type(value: &Value) -> JsonFileType {
             if !arr.is_empty() {
                 // Check if it's an array of messages (objects with role/content)
                 if arr.iter().all(|v| {
-                    v.is_object() && (
-                        v.get("role").is_some() || 
-                        v.get("content").is_some() ||
-                        v.get("message").is_some()
-                    )
+                    v.is_object()
+                        && (v.get("role").is_some()
+                            || v.get("content").is_some()
+                            || v.get("message").is_some())
                 }) {
                     return JsonFileType::Conversation;
                 }
-                
+
                 // Check if it's an array of similar objects
                 if arr.iter().all(|v| v.is_object()) {
                     return JsonFileType::DataArray;
@@ -205,17 +202,24 @@ fn extract_conversation(
         }
         return Ok(());
     }
-    
+
     // Handle object with messages/conversation field
     let obj = match value {
         Value::Object(o) => o,
         _ => return Ok(()),
     };
-    
+
     // Extract metadata (id, title, etc.)
-    let metadata_fields = ["id", "title", "name", "created_at", "updated_at", "conversation_id"];
+    let metadata_fields = [
+        "id",
+        "title",
+        "name",
+        "created_at",
+        "updated_at",
+        "conversation_id",
+    ];
     let mut metadata_pairs = Vec::new();
-    
+
     for key in metadata_fields {
         if let Some(val) = obj.get(key) {
             if let Some(s) = val.as_str() {
@@ -227,7 +231,7 @@ fn extract_conversation(
             }
         }
     }
-    
+
     // Store metadata as single item if we have any
     if !metadata_pairs.is_empty() && config.include_metadata {
         items.push(ExtractedJsonData {
@@ -237,10 +241,10 @@ fn extract_conversation(
             source_field: String::new(),
         });
     }
-    
+
     // Find messages/conversation arrays
     let message_keys = ["messages", "conversation", "chat", "entries", "history"];
-    
+
     for key in message_keys {
         if let Some(Value::Array(arr)) = obj.get(key) {
             for (idx, msg) in arr.iter().enumerate() {
@@ -253,21 +257,35 @@ fn extract_conversation(
             }
         }
     }
-    
+
     Ok(())
 }
 
 /// Extract a single message item
-fn extract_message_item(item: &Value, path: &str, config: &JsonImportConfig, items: &mut Vec<ExtractedJsonData>) {
+fn extract_message_item(
+    item: &Value,
+    path: &str,
+    config: &JsonImportConfig,
+    items: &mut Vec<ExtractedJsonData>,
+) {
     let obj = match item {
         Value::Object(o) => o,
         _ => return,
     };
-    
+
     // Collect sibling context (role, timestamp, etc.)
     let mut sibling_context = Vec::new();
-    let context_fields = ["role", "speaker", "author", "timestamp", "date", "time", "sender", "id"];
-    
+    let context_fields = [
+        "role",
+        "speaker",
+        "author",
+        "timestamp",
+        "date",
+        "time",
+        "sender",
+        "id",
+    ];
+
     for key in context_fields {
         if let Some(val) = obj.get(key) {
             if let Some(s) = val.as_str() {
@@ -275,39 +293,37 @@ fn extract_message_item(item: &Value, path: &str, config: &JsonImportConfig, ite
             }
         }
     }
-    
+
     let sibling_context_str = sibling_context.join(", ");
-    
+
     // Extract content
     let content_fields = ["content", "text", "message", "body", "description", "value"];
-    
+
     for field in content_fields {
-        if let Some(content_val) = obj.get(field) {
-            if let Some(text) = content_val.as_str() {
-                if text.len() >= config.min_text_length {
-                    items.push(ExtractedJsonData {
-                        content: text.to_string(),
-                        json_path: format!("{}.{}", path, field),
-                        sibling_context: sibling_context_str.clone(),
-                        source_field: field.to_string(),
-                    });
-                    return; // Found content, done
-                }
-            }
+        if let Some(text) = obj.get(field).and_then(|v| v.as_str())
+            && text.len() >= config.min_text_length
+        {
+            items.push(ExtractedJsonData {
+                content: text.to_string(),
+                json_path: format!("{}.{}", path, field),
+                sibling_context: sibling_context_str.clone(),
+                source_field: field.to_string(),
+            });
+            return; // Found content, done
         }
     }
-    
+
     // If no content field found, extract all string fields
     for (key, val) in obj {
-        if let Some(text) = val.as_str() {
-            if text.len() >= config.min_text_length {
-                items.push(ExtractedJsonData {
-                    content: text.to_string(),
-                    json_path: format!("{}.{}", path, key),
-                    sibling_context: sibling_context_str.clone(),
-                    source_field: key.to_string(),
-                });
-            }
+        if let Some(text) = val.as_str()
+            && text.len() >= config.min_text_length
+        {
+            items.push(ExtractedJsonData {
+                content: text.to_string(),
+                json_path: format!("{}.{}", path, key),
+                sibling_context: sibling_context_str.clone(),
+                source_field: key.to_string(),
+            });
         }
     }
 }
@@ -334,19 +350,19 @@ fn extract_data_array(
         }
         _ => return Ok(()),
     };
-    
+
     // Group items by structure to determine extraction strategy
     if arr.is_empty() {
         return Ok(());
     }
-    
+
     // Check if all items have similar structure
     let first_keys: std::collections::HashSet<_> = if let Some(Value::Object(o)) = arr.first() {
         o.keys().collect()
     } else {
         std::collections::HashSet::new()
     };
-    
+
     // Use first_keys for structure validation - check all items have same keys
     let all_have_same_structure = arr.iter().all(|item| {
         if let Value::Object(o) = item {
@@ -356,11 +372,11 @@ fn extract_data_array(
             false
         }
     });
-    
+
     if !all_have_same_structure {
         warnings.push("Items in array have different structures".to_string());
     }
-    
+
     // Determine if it's a key-value list or record list
     let is_key_value = arr.iter().all(|item| {
         if let Value::Object(o) = item {
@@ -369,13 +385,14 @@ fn extract_data_array(
             false
         }
     });
-    
+
     if is_key_value {
         // Extract as key-value pairs
         for (idx, item) in arr.iter().enumerate() {
             if let Value::Object(o) = item {
                 let key = o.get("key").and_then(|v| v.as_str()).unwrap_or("unknown");
-                let val = o.get("value")
+                let val = o
+                    .get("value")
                     .map(|v| {
                         if let Some(s) = v.as_str() {
                             s.to_string()
@@ -384,7 +401,7 @@ fn extract_data_array(
                         }
                     })
                     .unwrap_or_default();
-                
+
                 items.push(ExtractedJsonData {
                     content: format!("{}: {}", key, val),
                     json_path: format!("{}[{}]", path, idx),
@@ -400,7 +417,7 @@ fn extract_data_array(
             extract_object_as_record(item, &item_path, config, items)?;
         }
     }
-    
+
     Ok(())
 }
 
@@ -415,12 +432,21 @@ fn extract_object_as_record(
         Value::Object(o) => o,
         _ => return Ok(()),
     };
-    
+
     // Identify the "main" content field
-    let content_fields = ["name", "title", "description", "content", "text", "summary", "body", "message"];
+    let content_fields = [
+        "name",
+        "title",
+        "description",
+        "content",
+        "text",
+        "summary",
+        "body",
+        "message",
+    ];
     let mut main_content = None;
     let mut main_field = None;
-    
+
     for field in content_fields {
         if let Some(val) = obj.get(field) {
             if let Some(s) = val.as_str() {
@@ -432,9 +458,10 @@ fn extract_object_as_record(
             }
         }
     }
-    
+
     // Collect sibling context (everything except main content)
-    let sibling_context = obj.iter()
+    let sibling_context = obj
+        .iter()
         .filter(|(k, _)| Some(&k[..]) != main_field.as_deref())
         .filter_map(|(k, v)| {
             let val_str = if let Some(s) = v.as_str() {
@@ -448,7 +475,7 @@ fn extract_object_as_record(
         })
         .collect::<Vec<_>>()
         .join(", ");
-    
+
     if let Some((content, field_name)) = main_content.zip(main_field) {
         items.push(ExtractedJsonData {
             content,
@@ -466,7 +493,7 @@ fn extract_object_as_record(
                 }
             }
         }
-        
+
         if !all_text.is_empty() {
             items.push(ExtractedJsonData {
                 content: all_text.join("\n"),
@@ -476,7 +503,7 @@ fn extract_object_as_record(
             });
         }
     }
-    
+
     Ok(())
 }
 
@@ -492,10 +519,10 @@ fn extract_embeddings_export(
         Value::Object(o) => o,
         _ => return Ok(()),
     };
-    
+
     // Extract documents from various formats
     let doc_keys = ["documents", "texts", "content", "chunks", "passages"];
-    
+
     for key in doc_keys {
         if let Some(docs) = obj.get(key) {
             let (docs_array, ids_array, metadatas_array) = if let Value::Array(arr) = docs {
@@ -513,16 +540,16 @@ fn extract_embeddings_export(
             } else {
                 continue;
             };
-            
+
             warnings.push("Extracting documents from embeddings export. Embeddings themselves are not stored.".to_string());
-            
+
             for (idx, doc) in docs_array.iter().enumerate() {
                 let content = doc.as_str().unwrap_or("");
-                
+
                 if content.len() < config.min_text_length {
                     continue;
                 }
-                
+
                 // Get ID if available
                 let id_str = ids_array
                     .as_ref()
@@ -530,14 +557,15 @@ fn extract_embeddings_export(
                     .and_then(|v| v.as_str())
                     .map(|s| format!("id: {}", s))
                     .unwrap_or_default();
-                
+
                 // Get metadata if available
                 let metadata_str = metadatas_array
                     .as_ref()
                     .and_then(|a| a.get(idx))
                     .and_then(|v| {
                         if let Value::Object(o) = v {
-                            let pairs: Vec<_> = o.iter()
+                            let pairs: Vec<_> = o
+                                .iter()
                                 .map(|(k, val)| {
                                     let s = if let Some(str_val) = val.as_str() {
                                         str_val.to_string()
@@ -553,13 +581,14 @@ fn extract_embeddings_export(
                         }
                     })
                     .unwrap_or_default();
-                
-                let sibling_context = [id_str, metadata_str].iter()
+
+                let sibling_context = [id_str, metadata_str]
+                    .iter()
                     .filter(|s| !s.is_empty())
                     .cloned()
                     .collect::<Vec<_>>()
                     .join(", ");
-                
+
                 items.push(ExtractedJsonData {
                     content: content.to_string(),
                     json_path: format!("{}.{}[{}]", path, key, idx),
@@ -569,7 +598,7 @@ fn extract_embeddings_export(
             }
         }
     }
-    
+
     Ok(())
 }
 
@@ -585,14 +614,18 @@ fn extract_generic_json(
     depth: usize,
 ) -> Result<()> {
     if depth > config.max_depth {
-        warnings.push(format!("Max depth {} exceeded at {}", config.max_depth, path));
+        warnings.push(format!(
+            "Max depth {} exceeded at {}",
+            config.max_depth, path
+        ));
         return Ok(());
     }
-    
+
     match value {
         Value::Null => {
             // Store null as a marker item - helps preserve structure awareness
-            if depth > 0 { // Don't add at root level
+            if depth > 0 {
+                // Don't add at root level
                 items.push(ExtractedJsonData {
                     content: "null".to_string(),
                     json_path: path.to_string(),
@@ -639,11 +672,12 @@ fn extract_generic_json(
                     }
                 } else {
                     // Array of primitives - join them
-                    let joined = arr.iter()
+                    let joined = arr
+                        .iter()
                         .filter_map(|v| v.as_str())
                         .collect::<Vec<_>>()
                         .join(", ");
-                    
+
                     if !joined.is_empty() {
                         items.push(ExtractedJsonData {
                             content: joined,
@@ -662,12 +696,12 @@ fn extract_generic_json(
                 } else {
                     format!("{}.{}", path, key)
                 };
-                
+
                 // Recursively extract
                 extract_generic_json(val, &field_path, config, items, warnings, depth + 1)?;
             }
         }
     }
-    
+
     Ok(())
 }

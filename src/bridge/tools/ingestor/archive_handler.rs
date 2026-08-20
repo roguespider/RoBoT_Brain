@@ -21,7 +21,15 @@ pub fn create_archive_temp_dir(archive_name: &str) -> PathBuf {
     let temp_base = get_archive_temp_dir();
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map_or_else(|_| std::time::UNIX_EPOCH.elapsed().unwrap_or_default().as_secs(), |d| d.as_secs());
+        .map_or_else(
+            |_| {
+                std::time::UNIX_EPOCH
+                    .elapsed()
+                    .unwrap_or_default()
+                    .as_secs()
+            },
+            |d| d.as_secs(),
+        );
 
     // Sanitize archive name for directory name
     let sanitized = archive_name.replace(['/', '\\', ':', '*', '?', '"', '<', '>', '|'], "_");
@@ -110,10 +118,10 @@ fn extract_zip(archive_path: &Path, dest: &Path) -> Result<()> {
         if file.name().ends_with('/') {
             fs::create_dir_all(&outpath)?;
         } else {
-            if let Some(p) = outpath.parent() {
-                if !p.exists() {
-                    fs::create_dir_all(p)?;
-                }
+            if let Some(p) = outpath.parent()
+                && !p.exists()
+            {
+                fs::create_dir_all(p)?;
             }
             let mut outfile = fs::File::create(&outpath)?;
             io::copy(&mut file, &mut outfile)?;

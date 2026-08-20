@@ -37,7 +37,7 @@ impl PermanentMemory {
             database: None,
         }
     }
-    
+
     pub async fn store(&self, item: MemoryItem) -> Uuid {
         let id = item.id;
         let mut item = item;
@@ -48,17 +48,26 @@ impl PermanentMemory {
 
         {
             let mut type_index = self.type_index.write().await;
-            type_index.entry(item.memory_type).or_insert_with(Vec::new).push(id);
+            type_index
+                .entry(item.memory_type)
+                .or_insert_with(Vec::new)
+                .push(id);
         }
 
         for tag in &item.tags {
             let mut tag_index = self.tag_index.write().await;
-            tag_index.entry(tag.clone()).or_insert_with(Vec::new).push(id);
+            tag_index
+                .entry(tag.clone())
+                .or_insert_with(Vec::new)
+                .push(id);
         }
 
         for related_id in &item.related_ids {
             let mut graph_index = self.graph_index.write().await;
-            graph_index.entry(id).or_insert_with(Vec::new).push(*related_id);
+            graph_index
+                .entry(id)
+                .or_insert_with(Vec::new)
+                .push(*related_id);
         }
 
         id
@@ -77,7 +86,8 @@ impl PermanentMemory {
     pub async fn search(&self, query: &str) -> Vec<MemoryItem> {
         let query_lower = query.to_lowercase();
         let cache = self.cache.read().await;
-        cache.values()
+        cache
+            .values()
             .filter(|item| {
                 item.status == MemoryStatus::Active
                     && item.content.to_lowercase().contains(&query_lower)
@@ -89,7 +99,7 @@ impl PermanentMemory {
     pub async fn ranked_search(&self, query: &str, limit: usize) -> Vec<(MemoryItem, f32)> {
         let query_lower = query.to_lowercase();
         let cache = self.cache.read().await;
-        
+
         let mut results: Vec<(MemoryItem, f32)> = cache
             .values()
             .filter(|item| item.status == MemoryStatus::Active)
@@ -110,11 +120,15 @@ impl PermanentMemory {
 
     fn calculate_relevance_score(&self, query: &str, item: &MemoryItem) -> f32 {
         let content_lower = item.content.to_lowercase();
-        let exact_match = if content_lower.contains(query) { 1.0 } else { 0.0 };
-        
+        let exact_match = if content_lower.contains(query) {
+            1.0
+        } else {
+            0.0
+        };
+
         let query_words: Vec<&str> = query.split_whitespace().collect();
         let content_words: Vec<&str> = content_lower.split_whitespace().collect();
-        
+
         let mut word_overlap = 0.0;
         for qw in &query_words {
             for cw in &content_words {
@@ -133,14 +147,16 @@ impl PermanentMemory {
         (exact_match * 0.4) + (word_score * 0.3) + (item.confidence * 0.2) + (item.importance * 0.1)
     }
 
-
     pub async fn add_relationship(&self, from_id: &Uuid, to_id: &Uuid) {
         // Update in-memory index
         {
             let mut graph_index = self.graph_index.write().await;
-            graph_index.entry(*from_id).or_insert_with(Vec::new).push(*to_id);
+            graph_index
+                .entry(*from_id)
+                .or_insert_with(Vec::new)
+                .push(*to_id);
         }
-        
+
         // Persist to database
         let relationship = crate::database::models::MemoryRelationship::new(
             *from_id,
@@ -151,16 +167,20 @@ impl PermanentMemory {
             tracing::warn!("Failed to persist relationship to database: {}", e);
         }
     }
-    
+
     /// Save a relationship to the database
-    fn save_relationship_to_db(&self, relationship: &crate::database::models::MemoryRelationship) -> Result<()> {
-        let db = self.database.as_ref()
+    fn save_relationship_to_db(
+        &self,
+        relationship: &crate::database::models::MemoryRelationship,
+    ) -> Result<()> {
+        let db = self
+            .database
+            .as_ref()
             .ok_or_else(|| anyhow::anyhow!("Database not configured"))?;
         let conn = db.connection()?;
         crate::database::queries::insert_memory_relationship(&conn, relationship)?;
         Ok(())
     }
-    
 
     pub async fn archive(&self, id: &Uuid) -> bool {
         let mut cache = self.cache.write().await;
@@ -172,36 +192,110 @@ impl PermanentMemory {
         }
     }
 
+    /// Hard-delete a memory from both cache and database
+    pub async fn delete(&self, id: &Uuid) -> bool {
+        // Remove from cache
+        let mut cache = self.cache.write().await;
+        let in_cache = cache.remove(id).is_some();
 
+        // Remove from type index
+        {
+            let mut type_index = self.type_index.write().await;
+            let mut to_remove = Vec::new();
+            for (mtype, ids) in type_index.iter_mut() {
+                ids.retain(|uuid| uuid != id);
+                if ids.is_empty() {
+                    to_remove.push(*mtype);
+                }
+            }
+            for mtype in to_remove {
+                type_index.remove(&mtype);
+            }
+        }
+
+        // Remove from tag index
+        {
+            let mut tag_index = self.tag_index.write().await;
+            for (_, ids) in tag_index.iter_mut() {
+                ids.retain(|x| x != id);
+            }
+            tag_index.retain(|_, ids| !ids.is_empty());
+        }
+
+        // Remove from graph index
+        {
+            let mut graph_index = self.graph_index.write().await;
+            graph_index.remove(id);
+            // Clean up reverse references
+            for (_, targets) in graph_index.iter_mut() {
+                targets.retain(|t| t != id);
+            }
+            graph_index.retain(|_, targets| !targets.is_empty());
+        }
+
+        // Persist to database
+        if in_cache {
+            if let Some(ref db) = self.database {
+                let conn = match db.connection() {
+                    Ok(c) => c,
+                    Err(e) => {
+                        tracing::warn!("Failed to get database connection for delete: {}", e);
+                        return false;
+                    }
+                };
+                match queries::delete_memory_by_id(&conn, *id) {
+                    Ok(_) => tracing::info!("Deleted memory {} from database", id),
+                    Err(e) => {
+                        tracing::warn!("Failed to delete memory {} from database: {}", id, e);
+                        return false;
+                    }
+                }
+            }
+        }
+
+        true
+    }
 
     /// Load Permanent layer memories from SQLite into the cache
     /// This restores the cache from persistent storage on startup
-    pub async fn load_from_database(&self, db: &Arc<crate::database::sqlite::SqliteDatabase>) -> Result<usize> {
+    pub async fn load_from_database(
+        &self,
+        db: &Arc<crate::database::sqlite::SqliteDatabase>,
+    ) -> Result<usize> {
         let conn = db.connection()?;
         let cards = queries::list_memories_by_layer(&conn, "permanent", self.max_cache_size)?;
 
         let mut count = 0;
         for card in cards {
             let item = MemoryItem::from(&card);
-            
+
             // Store in cache
             let mut cache = self.cache.write().await;
             cache.insert(item.id, item.clone());
-            
+
             // Rebuild indexes
             {
                 let mut type_index = self.type_index.write().await;
-                type_index.entry(item.memory_type).or_insert_with(Vec::new).push(item.id);
+                type_index
+                    .entry(item.memory_type)
+                    .or_insert_with(Vec::new)
+                    .push(item.id);
             }
             for tag in &item.tags {
                 let mut tag_index = self.tag_index.write().await;
-                tag_index.entry(tag.clone()).or_insert_with(Vec::new).push(item.id);
+                tag_index
+                    .entry(tag.clone())
+                    .or_insert_with(Vec::new)
+                    .push(item.id);
             }
             for related_id in &item.related_ids {
                 let mut graph_index = self.graph_index.write().await;
-                graph_index.entry(item.id).or_insert_with(Vec::new).push(*related_id);
+                graph_index
+                    .entry(item.id)
+                    .or_insert_with(Vec::new)
+                    .push(*related_id);
             }
-            
+
             count += 1;
         }
 
@@ -211,7 +305,10 @@ impl PermanentMemory {
 
     /// Checkpoint all cached items to SQLite for persistence
     /// This saves the current state of permanent memory to the database
-    pub async fn checkpoint_to_database(&self, db: &Arc<crate::database::sqlite::SqliteDatabase>) -> Result<usize> {
+    pub async fn checkpoint_to_database(
+        &self,
+        db: &Arc<crate::database::sqlite::SqliteDatabase>,
+    ) -> Result<usize> {
         let items: Vec<MemoryItem> = {
             let cache = self.cache.read().await;
             cache.values().cloned().collect()
@@ -226,7 +323,10 @@ impl PermanentMemory {
             count += 1;
         }
 
-        tracing::debug!("Checkpointed {} items from Permanent memory cache to database", count);
+        tracing::debug!(
+            "Checkpointed {} items from Permanent memory cache to database",
+            count
+        );
         Ok(count)
     }
 }

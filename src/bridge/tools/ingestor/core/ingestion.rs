@@ -240,31 +240,22 @@ pub async fn ingest_single_file(
         });
     }
 
-    // Validate text quality - reject binary garbage for raw text files only.
-    // Document formats (PDF, DOCX, EPUB) have dedicated extractors that handle
-    // binary content, so skip validation for them.
-    let extension = path
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("")
-        .to_lowercase();
-    if crate::bridge::tools::ingestor::file_collector::is_supported_extension(
-        path,
-        &TEXT_EXTENSIONS,
-    ) {
-        let (is_valid, quality_reason) = validate_text_quality(&text);
-        if !is_valid {
-            return Ok(IngestResult {
-                filename,
-                file_path: path.to_string_lossy().to_string(),
-                success: false,
-                chunks_created: 0,
-                chunk_size_used: 0,
-                memory_ids: vec![],
-                error: Some(format!("Content is not readable text: {}", quality_reason)),
-                remaining_count: 0,
-            });
-        }
+    // Rule: reject garbled binary content in ANY ingested file.
+    // Apply validate_text_quality to all extracted text regardless of file type
+    // (text, JSON, PDF, DOCX, EPUB, etc.) to prevent binary corruption from
+    // entering the memory system.
+    let (is_valid, quality_reason) = validate_text_quality(&text);
+    if !is_valid {
+        return Ok(IngestResult {
+            filename,
+            file_path: path.to_string_lossy().to_string(),
+            success: false,
+            chunks_created: 0,
+            chunk_size_used: 0,
+            memory_ids: vec![],
+            error: Some(format!("Content is not readable text: {}", quality_reason)),
+            remaining_count: 0,
+        });
     }
 
     // Get file extension for semantic parsing
@@ -351,10 +342,25 @@ pub async fn ingest_json_file(
         tracing::warn!(file = %filename, warning = %warning, "JSON import warning");
     }
 
-    // Even if items is empty, we try to read the raw file content as fallback
+    // Even if items is empty, we try to read the raw file content as fallback.
+    // Rule: validate_text_quality rejects garbled binary content before storage.
     let items_to_store = if result.items.is_empty() {
         // Try to read raw JSON content as a single fallback item
         if let Ok(raw_content) = std::fs::read_to_string(path) {
+            let (is_valid, reason) = validate_text_quality(&raw_content);
+            if !is_valid {
+                tracing::warn!("JSON file raw content rejected: {} ({})", reason, filename);
+                return Ok(IngestResult {
+                    filename,
+                    file_path: path.to_string_lossy().to_string(),
+                    success: false,
+                    chunks_created: 0,
+                    chunk_size_used: chunk_size,
+                    memory_ids: vec![],
+                    error: Some(format!("Raw content rejected: {}", reason)),
+                    remaining_count: 0,
+                });
+            }
             tracing::info!(
                 "JSON file had no structured items, storing raw content ({} chars)",
                 raw_content.len()

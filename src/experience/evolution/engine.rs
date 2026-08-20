@@ -283,16 +283,18 @@ impl EvolutionEngine {
         for behavior in behaviors.values_mut() {
             // Wire get_evidence: check evidence ratio for promotion decision
             let evidence = self.get_evidence(&behavior.id).await;
-            if !evidence.is_empty() {
-                let support_ratio = evidence
+            let support_ratio = if evidence.is_empty() {
+                0.0
+            } else {
+                evidence
                     .iter()
                     .filter(|e| e.verdict == EvidenceVerdict::Supports)
                     .count() as f32
-                    / evidence.len() as f32;
-                if support_ratio > 0.8 && behavior.status == BehaviorStatus::Candidate {
-                    behavior.activate();
-                    summary.promoted += 1;
-                }
+                    / evidence.len() as f32
+            };
+            if support_ratio > 0.8 && behavior.status == BehaviorStatus::Candidate {
+                behavior.activate();
+                summary.promoted += 1;
             }
 
             // Check deprecation conditions
@@ -361,7 +363,7 @@ impl EvolutionEngine {
             }
 
             let mut merges = Vec::new();
-            for (_key, ids) in groups {
+            for ids in groups.into_values() {
                 if ids.len() > 1 {
                     let mut sorted = ids.clone();
                     sorted.sort_by(|a, b| {
@@ -383,7 +385,7 @@ impl EvolutionEngine {
 
         // Execute merges (each acquires its own lock)
         for (source_id, target_id) in merges {
-            let _ = self.merge_behaviors(&source_id, &target_id).await;
+            self.merge_behaviors(&source_id, &target_id).await?;
         }
 
         Ok(summary)
