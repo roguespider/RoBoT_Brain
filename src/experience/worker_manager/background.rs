@@ -35,8 +35,11 @@ pub fn start_worker_manager(
                     tracing::warn!("Worker manager lagged {} events", n);
                     // Drain the lagged events so we don't re-process the same one,
                     // then record a failed job for the skipped events.
-                    for _ in 0..n {
-                        let _ = receiver.recv().await;
+                    for _i in 0..n {
+                        match receiver.recv().await {
+                            Ok(_event) => {}
+                            Err(_) => break,
+                        }
                     }
                     if let Err(e) = manager.mark_job_failed(
                         &format!("lagged_{}", n),

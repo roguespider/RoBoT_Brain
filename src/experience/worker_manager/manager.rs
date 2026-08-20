@@ -18,7 +18,7 @@ use crate::experience::observer::ExperienceObserver;
 use crate::experience::queue::JobQueue;
 pub use crate::experience::worker::WorkerStats;
 use crate::experience::worker::{
-    ExperienceWorker, ObserverJob, OnCompleteCallback, OnFailedCallback,
+    ExperienceWorker, ObserverJob, OnCompleteCallback, OnFailedCallback, OnRetryCallback,
 };
 
 /// Maximum jobs that can be queued per observer
@@ -152,13 +152,24 @@ impl WorkerManager {
             })
         };
 
-        // Create the worker with callbacks so it reports completion/failure
+        // Retry callback: register the new retry job ID in the registry so
+        // that the on_complete/on_failed callbacks can later find it
+        // (P0-003: durable queue/worker state synchronization).
+        let on_retry: OnRetryCallback = {
+            let jr = self.job_registry.clone();
+            Arc::new(move |new_job_id: &str, _original_job_id: &str| {
+                jr.register(new_job_id, _original_job_id);
+            })
+        };
+
+        // Create the worker with callbacks so it reports completion/failure/retry
         let worker = ExperienceWorker::with_callbacks(
             observer,
             receiver,
             sender.clone(),
             Some(on_complete),
             Some(on_failed),
+            Some(on_retry),
         );
         let stats = worker.stats();
 
@@ -349,6 +360,9 @@ impl WorkerManager {
     /// restart. After `restore_from_database()` reloads jobs from SQLite, this
     /// method sends synthetic events through each worker's channel so that jobs
     /// that were in-flight when the process died get processed again.
+    ///
+    /// Registers each synthetic job ID in the `JobRegistry` so that the worker's
+    /// completion callbacks can later find it (P0-003: durable queue/worker sync).
     pub async fn dispatch_restored_jobs(&self) {
         let q = self.job_queue.lock().unwrap_or_else(|e| e.into_inner());
         let jobs = q.pending_jobs();
@@ -362,6 +376,10 @@ impl WorkerManager {
 
         for job in jobs {
             if let Some(handle) = workers.get(&job.observer_name) {
+                // Register the synthetic job ID in the registry so worker
+                // callbacks can look it up later (P0-003).
+                self.job_registry.register(&job.id, &job.experience_id);
+
                 let synthetic = ExperienceEvent {
                     id: Uuid::parse_str(&job.id).unwrap_or_else(|_| Uuid::new_v4()),
                     experience_id: Uuid::parse_str(&job.id).unwrap_or_else(|_| Uuid::new_v4()),
