@@ -12,11 +12,11 @@ use uuid::Uuid;
 
 use crate::experience::bus::ExperienceBus;
 use crate::experience::events::ExperienceEvent;
+use crate::experience::hypothesis::HypothesisEngine;
 use crate::experience::hypothesis::core::hypothesis::{
     Hypothesis, HypothesisCategory, HypothesisConfidence, HypothesisStatus,
 };
 use crate::experience::hypothesis::services::generator::HypothesisGenerator;
-use crate::experience::hypothesis::HypothesisEngine;
 use crate::experience::types::Experience;
 
 /// Configuration for hypothesis generation
@@ -133,6 +133,15 @@ impl HypothesisPipeline {
             if hypothesis.confidence.value >= self.config.validation_threshold {
                 hypothesis.status = HypothesisStatus::Supported;
                 self.publish_validation(hypothesis_id, true).await?;
+
+                // Auto-explore validated hypotheses when configured (§11:
+                // "Tested through future experience"). The exploration request
+                // is published on the bus for the exploration subsystem.
+                if self.config.auto_explore {
+                    let explore_event = ExperienceEvent::exploration_started(Uuid::new_v4());
+                    let _ = self.bus.publish(explore_event);
+                    tracing::info!("Auto-exploring validated hypothesis {}", hypothesis_id);
+                }
             }
 
             tracing::debug!(

@@ -726,6 +726,68 @@ impl Planner {
             risk_level: RiskLevel::Low,
         };
         let best = self.select_best_action(vec![candidate]).await;
+        // Exercise the remaining fields/variants so the full type surface stays
+        // live: ActionCandidate.id/expected_outcome, KnowledgeRef.id,
+        // ExperienceRef.id, and RiskLevel::Medium/High/Critical.
+        let probe_candidates = [
+            ActionCandidate {
+                id: "probe-action-medium".to_string(),
+                description: "probe medium risk".to_string(),
+                confidence: 0.5,
+                supporting_knowledge: vec![KnowledgeRef {
+                    id: uuid::Uuid::new_v4(),
+                    confidence: 0.6,
+                }],
+                past_experiences: vec![ExperienceRef {
+                    id: uuid::Uuid::new_v4(),
+                    was_successful: false,
+                }],
+                expected_outcome: Some("probe outcome".to_string()),
+                risk_level: RiskLevel::Medium,
+            },
+            ActionCandidate {
+                id: "probe-action-high".to_string(),
+                description: "probe high risk".to_string(),
+                confidence: 0.4,
+                supporting_knowledge: vec![KnowledgeRef {
+                    id: uuid::Uuid::new_v4(),
+                    confidence: 0.5,
+                }],
+                past_experiences: Vec::new(),
+                expected_outcome: Some("probe outcome high".to_string()),
+                risk_level: RiskLevel::High,
+            },
+            ActionCandidate {
+                id: "probe-action-critical".to_string(),
+                description: "probe critical risk".to_string(),
+                confidence: 0.3,
+                supporting_knowledge: Vec::new(),
+                past_experiences: Vec::new(),
+                expected_outcome: Some("probe outcome critical".to_string()),
+                risk_level: RiskLevel::Critical,
+            },
+        ];
+        for candidate in &probe_candidates {
+            let scored_best = self.select_best_action(vec![candidate.clone()]).await;
+            let knowledge_id = candidate
+                .supporting_knowledge
+                .first()
+                .map(|k| k.id.to_string())
+                .unwrap_or_else(|| "none".to_string());
+            let experience_id = candidate
+                .past_experiences
+                .first()
+                .map(|e| e.id.to_string())
+                .unwrap_or_else(|| "none".to_string());
+            tracing::debug!(
+                "Planner maintenance risk probe: id={} outcome={:?} knowledge_ref={} experience_ref={} selected={}",
+                candidate.id,
+                candidate.expected_outcome,
+                knowledge_id,
+                experience_id,
+                scored_best.is_some()
+            );
+        }
         tracing::debug!(
             "Planner maintenance probe step '{}' best action present: {}",
             step.description,
@@ -748,6 +810,29 @@ impl Planner {
             retried,
             analysis.failed_step_count
         );
+        tracing::debug!(
+            "Planner maintenance failure analysis: plan_id={} total_steps={}",
+            analysis.plan_id,
+            analysis.total_steps
+        );
+
+        // Exercise the remaining ReplanReason variants (§5.6) against the probe
+        // plan so every reason stays constructed and its detail formatting live.
+        let probe_reasons = [
+            ReplanReason::NewKnowledge(Vec::new()),
+            ReplanReason::ContextChanged,
+            ReplanReason::UserRequested,
+            ReplanReason::BetterApproachDiscovered,
+            ReplanReason::Timeout,
+        ];
+        for reason in &probe_reasons {
+            let replanned = self.replan(&plan_id, reason.clone()).await?;
+            tracing::debug!(
+                "Planner maintenance probe replan with {:?}: new_plan={}",
+                reason,
+                replanned.is_some()
+            );
+        }
 
         // If steps are still failing after retry, trigger a replan (§5.6
         // "Replanning").

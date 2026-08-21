@@ -47,7 +47,7 @@ impl HypothesisEngine {
             graph: Arc::new(Mutex::new(HypothesisGraph::new())),
         }
     }
-    
+
     /// Create with shared graph for multi-threaded access
     pub fn with_graph(graph: Arc<Mutex<HypothesisGraph>>) -> Self {
         Self {
@@ -58,7 +58,7 @@ impl HypothesisEngine {
     }
 
     /// Process a newly recorded experience.
-    /// 
+    ///
     /// Per Architecture §22 - Hypothesis Evaluation Pipeline:
     /// 1. Extract key insights from experience
     /// 2. Find matching hypotheses using graph traversal
@@ -67,19 +67,22 @@ impl HypothesisEngine {
     /// 5. Update graph relationships
     /// 6. Persist changes
     pub fn process_experience(&mut self, experience: &Experience) -> Result<()> {
-        tracing::debug!("Processing experience for hypothesis evaluation: {}", experience.id);
-        
+        tracing::debug!(
+            "Processing experience for hypothesis evaluation: {}",
+            experience.id
+        );
+
         // 1. Extract insights from experience outcome
         let insights = self.extract_insights(experience);
-        
+
         if insights.is_empty() {
             tracing::debug!("No insights extracted from experience");
             return Ok(());
         }
-        
+
         // 2. Find related hypotheses using the graph
         let related_hypotheses = self.find_related_hypotheses(&insights);
-        
+
         // 3. Evaluate evidence and update graph relationships
         use crate::experience::hypothesis::core::evidence::{
             Evidence, EvidenceRelationship, EvidenceSource, EvidenceStrength,
@@ -164,24 +167,31 @@ impl HypothesisEngine {
             for related_id in &related_hypotheses {
                 if *related_id != hypothesis_id {
                     let relationship = match experience.outcome.kind {
-                        crate::experience::types::OutcomeKind::Success => HypothesisRelationship::Supports,
-                        crate::experience::types::OutcomeKind::Failure => HypothesisRelationship::Contradicts,
+                        crate::experience::types::OutcomeKind::Success => {
+                            HypothesisRelationship::Supports
+                        }
+                        crate::experience::types::OutcomeKind::Failure => {
+                            HypothesisRelationship::Contradicts
+                        }
                         _ => HypothesisRelationship::Related,
                     };
-                    
+
                     match self.graph.lock() {
                         Ok(mut graph) => {
                             graph.add_edge(hypothesis_id.clone(), related_id.clone(), relationship);
                         }
                         Err(poisoned) => {
                             tracing::error!("Graph mutex poisoned during add_edge");
-                            poisoned.into_inner().add_edge(hypothesis_id.clone(), related_id.clone(), relationship);
+                            poisoned.into_inner().add_edge(
+                                hypothesis_id.clone(),
+                                related_id.clone(),
+                                relationship,
+                            );
                         }
                     }
                 }
             }
         }
-        
 
         // Compare and rank the hypotheses evaluated in this pass using the
         // batch simulation APIs (Architecture: simulation-based evaluation).
@@ -217,32 +227,39 @@ impl HypothesisEngine {
                     tracing::error!("Graph mutex poisoned during cycle detection");
                     let cycles = poisoned.into_inner().detect_cycles();
                     if !cycles.is_empty() {
-                        tracing::warn!("Detected {} cycles in hypothesis graph (from recovered mutex)", cycles.len());
+                        tracing::warn!(
+                            "Detected {} cycles in hypothesis graph (from recovered mutex)",
+                            cycles.len()
+                        );
                     }
                 }
             }
         }
-        
+
         // 5. Log graph statistics
         let stats = self.get_graph_stats();
-        tracing::debug!("Hypothesis graph stats: {} nodes, {} edges, {} cycles",
-            stats.node_count, stats.edge_count, stats.cycles);
-        
+        tracing::debug!(
+            "Hypothesis graph stats: {} nodes, {} edges, {} cycles",
+            stats.node_count,
+            stats.edge_count,
+            stats.cycles
+        );
+
         tracing::debug!("Experience processed successfully");
         Ok(())
     }
-    
+
     /// Extract key insights from an experience
     fn extract_insights(&self, experience: &Experience) -> Vec<String> {
         let mut insights = Vec::new();
-        
+
         // Extract context insights from user query
         if let Some(ref user_query) = experience.context.user_query {
             if !user_query.is_empty() {
                 insights.push(user_query.clone());
             }
         }
-        
+
         // Extract context insights from workflow
         if let Some(ref workflow) = experience.context.workflow {
             insights.push(format!("Workflow: {}", workflow.name));
@@ -250,25 +267,29 @@ impl HypothesisEngine {
                 insights.push(format!("Step: {}", step));
             }
         }
-        
+
         // Extract outcome insights
         match experience.outcome.kind {
             crate::experience::types::OutcomeKind::Success => {
                 insights.push("Successful outcome".to_string());
-            },
+            }
             crate::experience::types::OutcomeKind::Failure => {
                 insights.push("Failed outcome".to_string());
-            },
+            }
             _ => {}
         }
-        
+
         insights
     }
-    
+
     /// Find or create a hypothesis for an insight
-    fn find_or_create_hypothesis(&mut self, insight: &str) -> Result<crate::experience::hypothesis::core::hypothesis::HypothesisId> {
-        let hypothesis_id = crate::experience::hypothesis::core::hypothesis::HypothesisId(insight.to_string());
-        
+    fn find_or_create_hypothesis(
+        &mut self,
+        insight: &str,
+    ) -> Result<crate::experience::hypothesis::core::hypothesis::HypothesisId> {
+        let hypothesis_id =
+            crate::experience::hypothesis::core::hypothesis::HypothesisId(insight.to_string());
+
         match self.graph.lock() {
             Ok(mut graph) => {
                 graph.add_node(hypothesis_id.clone());
@@ -278,19 +299,25 @@ impl HypothesisEngine {
                 poisoned.into_inner().add_node(hypothesis_id.clone());
             }
         }
-        
+
         Ok(hypothesis_id)
     }
-    
+
     /// Find hypotheses related to the given insights
-    fn find_related_hypotheses(&self, insights: &[String]) -> Vec<crate::experience::hypothesis::core::hypothesis::HypothesisId> {
+    fn find_related_hypotheses(
+        &self,
+        insights: &[String],
+    ) -> Vec<crate::experience::hypothesis::core::hypothesis::HypothesisId> {
         let mut related = Vec::new();
-        
+
         let graph_result = self.graph.lock();
         match graph_result {
             Ok(graph) => {
                 for insight in insights {
-                    let hypothesis_id = crate::experience::hypothesis::core::hypothesis::HypothesisId(insight.to_string());
+                    let hypothesis_id =
+                        crate::experience::hypothesis::core::hypothesis::HypothesisId(
+                            insight.to_string(),
+                        );
                     let connected = graph.find_connected(&hypothesis_id);
                     related.extend(connected);
                 }
@@ -299,13 +326,16 @@ impl HypothesisEngine {
                 tracing::error!("Graph mutex poisoned during find_related_hypotheses");
                 let graph = poisoned.into_inner();
                 for insight in insights {
-                    let hypothesis_id = crate::experience::hypothesis::core::hypothesis::HypothesisId(insight.to_string());
+                    let hypothesis_id =
+                        crate::experience::hypothesis::core::hypothesis::HypothesisId(
+                            insight.to_string(),
+                        );
                     let connected = graph.find_connected(&hypothesis_id);
                     related.extend(connected);
                 }
             }
         }
-        
+
         related
     }
 
@@ -313,7 +343,7 @@ impl HypothesisEngine {
     pub fn get_graph(&self) -> Arc<Mutex<HypothesisGraph>> {
         Arc::clone(&self.graph)
     }
-    
+
     /// Get graph statistics
     pub fn get_graph_stats(&self) -> crate::experience::hypothesis::support::graph::GraphStats {
         match self.graph.lock() {
@@ -328,7 +358,7 @@ impl HypothesisEngine {
     /// Perform periodic maintenance.
     pub fn maintenance(&mut self) -> Result<()> {
         tracing::info!("Running hypothesis engine maintenance");
-        
+
         {
             let graph = self.get_graph();
             let graph_result = graph.lock();
@@ -351,12 +381,16 @@ impl HypothesisEngine {
                 }
             }
         }
-        
+
         // Log current graph stats
         let stats = self.get_graph_stats();
-        tracing::info!("Hypothesis graph stats: {} nodes, {} edges, {} cycles",
-            stats.node_count, stats.edge_count, stats.cycles);
-        
+        tracing::info!(
+            "Hypothesis graph stats: {} nodes, {} edges, {} cycles",
+            stats.node_count,
+            stats.edge_count,
+            stats.cycles
+        );
+
         Ok(())
     }
 
@@ -364,7 +398,9 @@ impl HypothesisEngine {
     /// §8.4/§11). Runs the support/contradiction/dependency adjacency, the SCC
     /// and topological-order analyses, and the graph builder probe so the
     /// hypothesis-graph API stays wired to a real caller rather than dead.
-    fn run_graph_diagnostics(graph: &crate::experience::hypothesis::support::graph::HypothesisGraph) {
+    fn run_graph_diagnostics(
+        graph: &crate::experience::hypothesis::support::graph::HypothesisGraph,
+    ) {
         use crate::experience::hypothesis::core::hypothesis::HypothesisId;
         use crate::experience::hypothesis::support::graph::graph_builder::GraphBuilder;
 
@@ -374,10 +410,7 @@ impl HypothesisEngine {
             tracing::warn!("Hypothesis graph has {} non-trivial SCCs", nontrivial);
         }
         if let Some(order) = graph.topological_sort() {
-            tracing::debug!(
-                "Hypothesis graph topological order: {} nodes",
-                order.len()
-            );
+            tracing::debug!("Hypothesis graph topological order: {} nodes", order.len());
         }
         for node in &graph.nodes {
             let id = &node.hypothesis_id;
@@ -406,7 +439,11 @@ impl HypothesisEngine {
             .add_contradiction(HypothesisId("c".to_string()), HypothesisId("d".to_string()))
             .add_dependency(HypothesisId("e".to_string()), HypothesisId("f".to_string()))
             .add_related(HypothesisId("g".to_string()), HypothesisId("h".to_string()))
-            .add_support_weighted(HypothesisId("w1".to_string()), HypothesisId("w2".to_string()), 0.8)
+            .add_support_weighted(
+                HypothesisId("w1".to_string()),
+                HypothesisId("w2".to_string()),
+                0.8,
+            )
             .build();
         tracing::debug!(
             "Graph builder probe: {} nodes, {} edges",
@@ -422,10 +459,39 @@ impl HypothesisEngine {
         }
         let removed = probe.remove_node(&HypothesisId("a".to_string()));
         tracing::debug!("Probe remove_node('a'): {}", removed);
+        // Exercise clear() on a throwaway graph so the reset path stays live.
+        let mut disposable = GraphBuilder::new()
+            .add_node(HypothesisId("clear-a".to_string()))
+            .add_support(
+                HypothesisId("clear-a".to_string()),
+                HypothesisId("clear-b".to_string()),
+            )
+            .build();
+        disposable.clear();
+        tracing::debug!(
+            "Graph clear probe: nodes={} edges={}",
+            disposable.node_count(),
+            disposable.edge_count()
+        );
         // Exercise the relationship + edge/node metadata builders so the
         // scaffolded graph type API stays wired to a real caller.
-        use crate::experience::hypothesis::support::graph::{HypothesisEdge, NodeMetadata};
+        use crate::experience::hypothesis::support::graph::{
+            HypothesisEdge, HypothesisNode, NodeMetadata,
+        };
         let probe_id = HypothesisId("probe".to_string());
+        // Exercise HypothesisNode::new and the HypothesisEdge::supports /
+        // ::contradicts constructors so the full graph-type surface stays live.
+        let probe_node = HypothesisNode::new(probe_id.clone());
+        let support_edge =
+            HypothesisEdge::supports(probe_id.clone(), HypothesisId("s1".to_string()));
+        let contra_edge =
+            HypothesisEdge::contradicts(probe_id.clone(), HypothesisId("c1".to_string()));
+        tracing::debug!(
+            "Graph type probes: node={} support_edge={:?} contra_edge={:?}",
+            probe_node.hypothesis_id.0,
+            support_edge.relationship,
+            contra_edge.relationship
+        );
         let edge = HypothesisEdge::depends_on(probe_id.clone(), probe_id.clone());
         let meta = NodeMetadata::default()
             .with_position(0.0, 0.0)
@@ -482,8 +548,8 @@ impl HypothesisEngine {
         let text_matches = matcher.match_text("probe", &probes);
         tracing::debug!("Hypothesis text matches: {}", text_matches.len());
         // Exercise experience-driven hypothesis matching (Architecture §8.1).
-        use crate::experience::types::experience::Experience;
         use crate::experience::types::ExperienceType;
+        use crate::experience::types::experience::Experience;
         use uuid::Uuid;
         let probe_experience = Experience::new(
             "probe".to_string(),
@@ -492,10 +558,7 @@ impl HypothesisEngine {
             vec![Uuid::new_v4()],
         );
         let exp_matches = matcher.match_experience(&probe_experience, &probes);
-        tracing::debug!(
-            "Hypothesis experience matches: {}",
-            exp_matches.len()
-        );
+        tracing::debug!("Hypothesis experience matches: {}", exp_matches.len());
         let validator = HypothesisValidator::new();
         for window in probes.windows(2) {
             if let Some(conflict) = validator.check_conflict(&window[0], &window[1]) {
@@ -524,8 +587,7 @@ impl HypothesisEngine {
                 pattern_hypothesis.id.0
             );
         }
-        let planner = HypothesisPlanner::new()
-            .with_confidence_threshold(0.5);
+        let planner = HypothesisPlanner::new().with_confidence_threshold(0.5);
         let prioritized = planner.get_prioritized_actions(&probes);
         tracing::debug!(
             "Hypothesis planner prioritized {} actions",

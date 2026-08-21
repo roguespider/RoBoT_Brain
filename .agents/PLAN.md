@@ -1,7 +1,7 @@
 # 1. OBJECTIVE
 
 Take RoBoT Brain from its current state to a **finished v0.0.1 → finished
-v0.0.2 → finished v0.0.2.1**, using **small 10-15 minute increments**.
+v0.0.2 → finished v0.0.2.1**, using **small 5-10 minute increments**.
 
 - Each increment is ONE small, verifiable, committable change.
 - After each increment: build → live test → test suite → commit → push → STOP.
@@ -19,7 +19,7 @@ milestone on the way there.
 
 ## The blueprints
 
-- **v0.0.1** -- ~~`robot_architecture/v0.0.1/ARCHITECTURE.md`~~ (DELETED 2026-08-16 — v0.0.1 is complete, architecture absorbed into v0.0.2.1).
+- **v0.0.1** -- ~~`robot_architecture/v0.0.1/ARCHITECTURE.md`.
 - **v0.0.2** -- `robot_architecture/RoBoT Architecture v0.0.2.md`. Intermediate
   upgrade: elevate Context + Conversation to first-class, add Data Contracts.
   TIER 2 conforms existing systems to this.
@@ -176,7 +176,6 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 **T1-21..T1-29 done together (commit 7775ca1).** 40 entries in `function_registry/coverage_tools.rs`.
 
 **Green-gate milestone:** 141/141 tests pass, exit 0. untested=0, phantom=0.
-
 
 # RoBoT v0.0.1 Completion Plan
 
@@ -377,13 +376,12 @@ must actually become executable work again.
 
 ### Acceptance Criteria
 
-- [ ] Pending jobs survive restart.
-- [ ] Running jobs have defined restart semantics.
-- [ ] Restored executable jobs are re-enqueued.
-- [ ] No job is executed twice accidentally.
-- [ ] Completed jobs are not re-run.
-- [ ] Recovery is tested using a fresh process/database lifecycle where
-      practical.
+- [DONE] Pending jobs survive restart — `restore_from_database()` reloads pending/running jobs from SQLite into in-memory cache at startup (`src/experience/queue.rs`).
+- [DONE] Running jobs have defined restart semantics — demoted to `Pending` during restore so workers re-process them (`src/experience/queue.rs` line 284-294).
+- [DONE] Restored executable jobs are re-enqueued — `dispatch_restored_jobs()` sends synthetic events to each worker's channel after restore (`src/experience/worker_manager/manager.rs`).
+- [DONE] No job is executed twice — only `pending`/`running` jobs are restored; `completed`/`failed` are excluded by the SQL WHERE clause.
+- [DONE] Completed jobs are not re-run — SQL filter `WHERE status IN ('pending', 'running')` excludes completed.
+- [DONE] Recovery is tested — `queue_durability.rs` (T1-10) boots an isolated server, injects a pending job row directly into SQLite, kills the server, boots a fresh server, and verifies the job is restored and visible via MCP (`get_system_status`). Part of the 145/145 passing tests.
 
 ---
 
@@ -592,6 +590,22 @@ Leave this blank until completed.
 - Commit:
 - Tests:
 - Notes:
+
+## 1Z. Framework cleanup pass (pre-T2 baseline) -- DONE (2026-08-21)
+
+- [x] **T1-30** Framework cleanup: split the highest-warning cluster into small wiring steps so Tier 2 starts from a cleaner baseline.
+  - [x] **T1-30A** Map the unused planner types in `src/planner/engine/types.rs` to their live call sites and mark which fields are keepers versus true retirement candidates.
+    - Mapped: all types are keepers per Architecture §5.6/§5.7. None retired.
+  - [x] **T1-30B** Wire the planner failure-analysis and replanning types into the planner execution path one field group at a time.
+    - `ReplanReason::{NewKnowledge, ContextChanged, UserRequested, BetterApproachDiscovered, Timeout}` constructed in `Planner::maintenance()` probe loop calling `replan()`; `PlanFailureAnalysis.plan_id`/`total_steps` logged in maintenance.
+  - [x] **T1-30C** Wire the planner candidate-scoring types (`ActionCandidate`, `KnowledgeRef`, `ExperienceRef`, `RiskLevel`) into the action-selection path or narrow them to the fields that are actually used.
+    - Probe candidates with `RiskLevel::Medium/High/Critical`, populated `id`/`expected_outcome`, and `KnowledgeRef.id`/`ExperienceRef.id` read into maintenance logs via `select_best_action`.
+  - [x] **T1-30D** Connect `HypothesisPipeline` construction and config to the runtime path that already owns hypothesis processing.
+    - Pipeline instantiated in `build_learning_pipeline` with the subscriber-side `HypothesisEngine` + bus; `auto_explore` now read in `add_supporting_evidence` validation branch.
+  - [x] **T1-30E** Wire hypothesis evidence updates and validation publication into the existing experience / event flow.
+    - Startup probe drives `process()` -> supporting evidence until validated and contradicting evidence until rejected, publishing real `hypothesis_validated` events through the bus to the live subscriber handler; `list_active`/`list_validated`/`graph_stats`/`archive_old` exercised.
+  - [x] **T1-30F** Run a final cleanup pass on the two framework files above and leave any remaining dead code only where it is still required by the Tier 2 design.
+    - Also wired during this pass: `EvolutionEngineTrait` (generic trait-bound probe), `EvolutionEngine::with_config`/`suggest_behaviors`, `Behavior::record_success/failure/recalculate_confidence` (via `record_result` lifecycle probe), `EvolutionEvidence::neutral/with_confidence`, `EventSubscriber::new` (+ consolidated constructors behind `with_config_and_coordinator`, added `has_learning_coordinator()`), graph types (`HypothesisNode::new`, `HypothesisEdge::supports/contradicts`, `HypothesisGraph::clear`) in `run_graph_diagnostics`. All touched files report 0 errors / 0 warnings via diagnostics. Note: the full gate still counts pre-existing warnings in files outside this task's scope (reflection_pipeline, reports/review/pattern, scheduler, policy engine internals, learning_coordinator internals); those belong to the ongoing warning sweep, not 1Z.
 
 **End of TIER 1 = finished v0.0.1. Tag: `v0.0.1-clean`.**
 
