@@ -1,10 +1,10 @@
 // src/bridge/tools/handlers/planner_handler.rs
 // Planner tools handler - handles task planning and execution
 
-use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
-use crate::bridge::tools::planner;
 use crate::bridge::mcp::handlers::{HandlerError, HandlerInitResult, ToolHandler};
+use crate::bridge::tools::planner;
+use std::sync::Arc;
 
 /// Handler for planner-related tools
 #[derive(Clone)]
@@ -14,9 +14,7 @@ pub struct PlannerToolsHandler {
 
 impl PlannerToolsHandler {
     /// Create a new planner tools handler
-    pub fn new(
-        context: Arc<McpContext>,
-    ) -> HandlerInitResult<Self> {
+    pub fn new(context: Arc<McpContext>) -> HandlerInitResult<Self> {
         // Planner is available - async validation happens at runtime
         Ok(Self { context })
     }

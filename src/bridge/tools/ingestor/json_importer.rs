@@ -150,11 +150,10 @@ fn detect_json_type(value: &Value) -> JsonFileType {
             }
 
             // Check for array of objects (data)
-            if let Some(arr) = obj.values().find_map(|v| v.as_array()) {
-                if !arr.is_empty() && arr.iter().all(|v| v.is_object()) {
+            if let Some(arr) = obj.values().find_map(|v| v.as_array())
+                && !arr.is_empty() && arr.iter().all(|v| v.is_object()) {
                     return JsonFileType::DataArray;
                 }
-            }
 
             // Mixed object
             JsonFileType::MixedObject
@@ -287,11 +286,10 @@ fn extract_message_item(
     ];
 
     for key in context_fields {
-        if let Some(val) = obj.get(key) {
-            if let Some(s) = val.as_str() {
+        if let Some(val) = obj.get(key)
+            && let Some(s) = val.as_str() {
                 sibling_context.push(format!("{}: {}", key, s));
             }
-        }
     }
 
     let sibling_context_str = sibling_context.join(", ");
@@ -448,15 +446,13 @@ fn extract_object_as_record(
     let mut main_field = None;
 
     for field in content_fields {
-        if let Some(val) = obj.get(field) {
-            if let Some(s) = val.as_str() {
-                if s.len() >= config.min_text_length {
+        if let Some(val) = obj.get(field)
+            && let Some(s) = val.as_str()
+                && s.len() >= config.min_text_length {
                     main_content = Some(s.to_string());
                     main_field = Some(field.to_string());
                     break;
                 }
-            }
-        }
     }
 
     // Collect sibling context (everything except main content)
@@ -487,11 +483,10 @@ fn extract_object_as_record(
         // No main content field - extract all string fields
         let mut all_text = Vec::new();
         for (key, val) in obj {
-            if let Some(text) = val.as_str() {
-                if text.len() >= config.min_text_length {
+            if let Some(text) = val.as_str()
+                && text.len() >= config.min_text_length {
                     all_text.push(format!("{}: {}", key, text));
                 }
-            }
         }
 
         if !all_text.is_empty() {

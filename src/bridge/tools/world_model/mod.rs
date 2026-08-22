@@ -129,7 +129,7 @@ pub async fn execute_upsert_entity(
     if let Some(c) = input.confidence {
         entity = entity.with_confidence(c);
     }
-    if let Some(props) = input.properties.and_then(|p| p.as_object().map(std::clone::Clone::clone)) {
+    if let Some(props) = input.properties.and_then(|p| p.as_object().cloned()) {
         for (key, value) in props {
             let val_str = match value {
                 serde_json::Value::String(s) => s,

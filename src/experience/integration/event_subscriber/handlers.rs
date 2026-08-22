@@ -91,17 +91,17 @@ impl EventSubscriber {
 
             // Also record the experience directly to the database via
             // ExperienceRecorder (Architecture §07 structured recording).
-            if let Some(recorder) = &self.experience_recorder {
-                if let Err(e) = recorder.record(
+            if let Some(recorder) = &self.experience_recorder
+                && let Err(e) = recorder.record(
                     experience.experience_type.clone(),
                     experience.title.clone(),
                     experience.description.clone(),
                     experience.context.clone(),
                     experience.outcome.clone(),
                     experience.observation_ids.clone(),
-                ) {
-                    tracing::warn!("ExperienceRecorder failed for {}: {}", experience.id, e);
-                }
+                )
+            {
+                tracing::warn!("ExperienceRecorder failed for {}: {}", experience.id, e);
             }
 
             // Fallback (no learning coordinator wired): drive the available
@@ -249,6 +249,14 @@ impl EventSubscriber {
                     Err(e) => {
                         tracing::warn!("Hypothesis validation failed for {}: {}", hypothesis_id, e);
                     }
+                }
+            } else {
+                // Fallback (no learning coordinator wired): promote the
+                // validated hypothesis into the knowledge store directly so
+                // the §4.04 Validation → Knowledge step still advances.
+                if let Some(hypothesis) = self.lookup_hypothesis(hypothesis_id).await {
+                    self.update_knowledge_from_hypothesis(&hypothesis, result)
+                        .await?;
                 }
             }
         }

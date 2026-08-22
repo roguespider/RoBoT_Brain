@@ -157,8 +157,8 @@ impl WorkerManager {
         // (P0-003: durable queue/worker state synchronization).
         let on_retry: OnRetryCallback = {
             let jr = self.job_registry.clone();
-            Arc::new(move |new_job_id: &str, _original_job_id: &str| {
-                jr.register(new_job_id, _original_job_id);
+            Arc::new(move |new_job_id: &str, original_job_id: &str| {
+                jr.register(new_job_id, original_job_id);
             })
         };
 

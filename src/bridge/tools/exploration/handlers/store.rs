@@ -17,8 +17,8 @@ where
     F: FnOnce(&mut HashMap<String, Exploration>) -> R,
 {
     match EXPLORATION_STORE.write() {
-        Ok(mut store) => f(&mut *store),
-        Err(poisoned) => f(&mut *poisoned.into_inner()),
+        Ok(mut store) => f(&mut store),
+        Err(poisoned) => f(&mut poisoned.into_inner()),
     }
 }
 

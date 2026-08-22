@@ -41,8 +41,8 @@ impl ReflectionToolsHandler {
         &self,
         input: reflection::AnalyzePatternsInput,
     ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
-        let result = reflection::execute_analyze_patterns(input, &self.context.reflection).await;
-        result
+        
+        reflection::execute_analyze_patterns(input, &self.context.reflection).await
     }
 
     /// Get patterns

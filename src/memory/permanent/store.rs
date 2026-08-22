@@ -234,8 +234,8 @@ impl PermanentMemory {
         }
 
         // Persist to database
-        if in_cache {
-            if let Some(ref db) = self.database {
+        if in_cache
+            && let Some(ref db) = self.database {
                 let conn = match db.connection() {
                     Ok(c) => c,
                     Err(e) => {
@@ -251,7 +251,6 @@ impl PermanentMemory {
                     }
                 }
             }
-        }
 
         true
     }

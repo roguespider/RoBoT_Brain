@@ -407,11 +407,10 @@ impl EvolutionEngine {
             if !self.should_recommend(&behavior.id).await {
                 continue;
             }
-            if let Some(effectiveness) = self.get_effectiveness(&behavior.id).await {
-                if effectiveness > 0.0 {
+            if let Some(effectiveness) = self.get_effectiveness(&behavior.id).await
+                && effectiveness > 0.0 {
                     suggestions.push(behavior);
                 }
-            }
             if suggestions.len() >= 5 {
                 break;
             }
@@ -507,8 +506,8 @@ impl EvolutionEngine {
         let mut behaviors = self.behaviors.write().await;
 
         let source = behaviors.remove(source_id);
-        if let Some(source) = source {
-            if let Some(target) = behaviors.get_mut(target_id) {
+        if let Some(source) = source
+            && let Some(target) = behaviors.get_mut(target_id) {
                 // Transfer evidence from source to target
                 if let Some(evidence) = self.evidence.read().await.get(source_id) {
                     let mut evidence_store = self.evidence.write().await;
@@ -531,7 +530,6 @@ impl EvolutionEngine {
 
                 tracing::info!("Merged behavior {} into {}", source_id, target_id);
             }
-        }
 
         Ok(())
     }

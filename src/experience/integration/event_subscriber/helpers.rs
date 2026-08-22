@@ -29,8 +29,8 @@ impl EventSubscriber {
 
         // Use hypothesis engine to process the experience
         // If high-scoring, create a behavior via evolution engine
-        if let Some(score) = &experience.score {
-            if score.confidence > 0.7 {
+        if let Some(score) = &experience.score
+            && score.confidence > 0.7 {
                 // Create an insight from the high-confidence experience
                 let mut insight = crate::experience::reflection::insight::Insight::new(
                     uuid::Uuid::new_v4().to_string(),
@@ -51,7 +51,6 @@ impl EventSubscriber {
                     behavior.is_ok()
                 );
             }
-        }
 
         // Record current hypothesis graph state for diagnostics so the stored
         // hypothesis engine remains an active participant (Architecture §11).

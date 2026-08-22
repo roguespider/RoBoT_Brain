@@ -706,11 +706,10 @@ pub async fn execute_bump_knowledge_version(
         "patch" => crate::knowledge::store::VersionBumpType::Patch,
         _ => crate::knowledge::store::VersionBumpType::Minor,
     };
-    if let Some(init_ver) = input.initial_version.as_deref() {
-        if knowledge.get_version_info(&id).await.is_none() {
+    if let Some(init_ver) = input.initial_version.as_deref()
+        && knowledge.get_version_info(&id).await.is_none() {
             knowledge.init_version(id, init_ver).await;
         }
-    }
     let ok = knowledge.bump_version(&id, bump_type).await;
     let new_version = knowledge.get_version_info(&id).await;
     ToolOutput::success(serde_json::json!({

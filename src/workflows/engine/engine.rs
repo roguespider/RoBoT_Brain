@@ -145,24 +145,22 @@ impl WorkflowEngine {
 
             // Check step references are valid
             for step in &workflow.steps {
-                if let Some(ref on_success) = step.on_success {
-                    if !workflow.steps.iter().any(|s| &s.id == on_success) {
+                if let Some(ref on_success) = step.on_success
+                    && !workflow.steps.iter().any(|s| &s.id == on_success) {
                         anyhow::bail!(
                             "Step {} references non-existent success target: {}",
                             step.id,
                             on_success
                         );
                     }
-                }
-                if let Some(ref on_failure) = step.on_failure {
-                    if !workflow.steps.iter().any(|s| &s.id == on_failure) {
+                if let Some(ref on_failure) = step.on_failure
+                    && !workflow.steps.iter().any(|s| &s.id == on_failure) {
                         anyhow::bail!(
                             "Step {} references non-existent failure target: {}",
                             step.id,
                             on_failure
                         );
                     }
-                }
             }
 
             return Ok(true);
@@ -218,24 +216,22 @@ impl WorkflowEngine {
     /// Pause workflow execution
     pub async fn pause(&self, workflow_id: &str) -> Result<()> {
         let mut workflows = self.workflows.write().await;
-        if let Some(workflow) = workflows.get_mut(workflow_id) {
-            if workflow.status == WorkflowStatus::Running {
+        if let Some(workflow) = workflows.get_mut(workflow_id)
+            && workflow.status == WorkflowStatus::Running {
                 workflow.status = WorkflowStatus::Paused;
                 self.metrics.increment("workflows.paused").await;
             }
-        }
         Ok(())
     }
 
     /// Resume paused workflow
     pub async fn resume(&self, workflow_id: &str) -> Result<()> {
         let mut workflows = self.workflows.write().await;
-        if let Some(workflow) = workflows.get_mut(workflow_id) {
-            if workflow.status == WorkflowStatus::Paused {
+        if let Some(workflow) = workflows.get_mut(workflow_id)
+            && workflow.status == WorkflowStatus::Paused {
                 workflow.status = WorkflowStatus::Running;
                 self.metrics.increment("workflows.resumed").await;
             }
-        }
         Ok(())
     }
 

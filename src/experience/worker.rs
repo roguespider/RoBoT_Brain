@@ -116,25 +116,6 @@ pub struct ExperienceWorker {
 }
 
 impl ExperienceWorker {
-    /// Create a worker without callbacks (legacy constructor).
-    /// Jobs completed/failed by this worker will not be tracked in the durable queue.
-    pub fn new(
-        observer: Arc<dyn ExperienceObserver>,
-        receiver: mpsc::Receiver<ObserverJob>,
-        sender: mpsc::Sender<ObserverJob>,
-    ) -> Self {
-        let observer_name = observer.name().to_string();
-        Self {
-            observer,
-            receiver,
-            sender,
-            stats: Arc::new(WorkerStats::new(observer_name)),
-            on_complete: None,
-            on_failed: None,
-            on_retry: None,
-        }
-    }
-
     /// Create a worker with completion/failure/retry callbacks.
     /// The callbacks receive the unique job_id and are invoked when a job
     /// completes successfully, fails permanently (after all retries exhausted),

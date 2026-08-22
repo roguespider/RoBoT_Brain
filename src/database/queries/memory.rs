@@ -102,7 +102,7 @@ pub fn get_memory(conn: &Connection, id: Uuid) -> Result<Option<MemoryCard>> {
         ",
     )?;
 
-    let result = stmt.query_row([id.to_string()], |row| map_row_to_memory_card(row));
+    let result = stmt.query_row([id.to_string()], map_row_to_memory_card);
 
     match result {
         Ok(memory) => Ok(Some(memory)),

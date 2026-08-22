@@ -1,6 +1,7 @@
 // src/bridge/app/initialization/mod.rs
 //! Application initialization logic
 
+pub mod agent_loop;
 pub mod candidates;
 pub mod core;
 pub mod db;
@@ -12,16 +13,19 @@ pub mod job_queue;
 pub mod learning;
 pub mod learning_pipeline;
 pub mod lineage_tracker;
+pub mod mcp_context;
 pub mod memory_scheduler;
+pub mod policy;
+pub mod sub_health_log;
 pub mod workers;
+pub mod workflow_acp;
 pub mod working_memory;
 
 use std::sync::Arc;
 
 use anyhow::Result;
 
-use crate::bridge::acp::{AcpRegistry, AcpRouter};
-use crate::bridge::mcp::{McpClient, McpContext};
+use crate::bridge::mcp::McpClient;
 use crate::bridge::rmcp::run_stdio_server;
 
 use crate::experience::integration::event_subscriber::start_event_subscriber;
@@ -33,8 +37,7 @@ use super::{
     personality, route_acp_message, set_personality_traits, should_explore, should_take_risk,
     should_use_creativity,
 };
-use crate::planner::{Planner, PolicyEngine};
-use crate::workflows::engine::WorkflowEngine;
+use crate::planner::PolicyEngine;
 
 use super::state::App;
 
@@ -145,145 +148,50 @@ impl App {
         exploration_repo::verify_exploration_repository().await;
 
         // Create planning system (Architecture §4.03.5, §10)
-        let mut planner = Planner::new(metrics.collector());
         let policy_engine = Arc::new(PolicyEngine::new());
 
-        // Load default policy rules
-        policy_engine.load_defaults().await;
-        tracing::info!("Policy engine loaded with default rules");
+        // Policy engine: load defaults and verify management
+        policy::setup_policy_engine(&policy_engine).await;
 
-        // Verify policy management methods work at startup (Architecture §4.03.5).
-        // This exercises remove_rule/enable_rule/disable_rule/list_rules so they
-        // remain live rather than dead code, and confirms the rule store is
-        // writable before serving requests.
-        {
-            let probe = crate::planner::policy::PolicyRule {
-                id: "startup-probe".to_string(),
-                name: "Startup Probe".to_string(),
-                description: "Transient rule used to verify policy management".to_string(),
-                priority: 1,
-                condition: crate::planner::policy::PolicyCondition::Always,
-                action: crate::planner::policy::PolicyAction::Defer,
-                enabled: true,
-            };
-            policy_engine.add_rule(probe).await;
-            let before = policy_engine.list_rules().await;
-            policy_engine.disable_rule("startup-probe").await;
-            policy_engine.enable_rule("startup-probe").await;
-            policy_engine.remove_rule("startup-probe").await;
-            let after = policy_engine.list_rules().await;
-            tracing::info!(
-                "Policy management verified: rules before={} after={} (probe removed={})",
-                before.len(),
-                after.len(),
-                !after.iter().any(|r| r.id == "startup-probe")
+        // Build planner, workflow engine, and ACP router/registry.
+        // Pass the core MetricsCollector (the one the ExperienceCoordinator
+        // records into) so planner/workflow metrics land in the same store.
+        let (planner, workflow_engine, acp_router, acp_registry) =
+            workflow_acp::setup_planner_workflow_acp(
+                &core_metrics,
+                &database,
+                &coordinator,
+                &policy_engine,
+                &shared_personality,
             );
-
-            // Exercise the current-policy package accessors so they stay live:
-            // read via the RwLock accessor and the async snapshot getter.
-            let package_snapshot = policy_engine.current_policy().read().await.clone();
-            let package_get = policy_engine.get_policy().await;
-            tracing::info!(
-                "Policy package verified: id={} version={} rules_snapshot={} rules_get={} \
-                 consistent={}",
-                package_get.id,
-                package_get.version,
-                package_snapshot.rules.len(),
-                package_get.rules.len(),
-                package_snapshot.id == package_get.id
-                    && package_snapshot.rules.len() == package_get.rules.len()
-            );
-        }
-
-        // Wire personality creativity into planner for decision-making
-        let shared_personality_clone = shared_personality.clone();
-        planner.set_creativity_check(move |complexity: f32| {
-            match shared_personality_clone.lock() {
-                Ok(guard) => guard.should_use_creativity(complexity),
-                Err(poisoned) => {
-                    tracing::error!("Personality mutex poisoned in creativity check");
-                    poisoned.into_inner().should_use_creativity(complexity)
-                }
-            }
-        });
-        // Wire policy engine into planner for policy-based action gating
-        planner.set_policy_engine(policy_engine.clone());
-        let planner = Arc::new(planner);
-
-        // Create workflow engine with database access and coordinator for event integration
-        // This ensures workflow experiences flow to WorkerManager and EventSubscriber
-        let workflow_engine = Arc::new(WorkflowEngine::with_database_and_coordinator(
-            metrics.collector(),
-            database.clone(),
-            coordinator.clone(),
-        ));
-        tracing::info!("Workflow engine initialized with coordinator");
-
-        // Create ACP router and registry
-        let acp_registry = Arc::new(AcpRegistry::new());
-        let acp_router = Arc::new(AcpRouter::new(acp_registry.clone()));
-
-        // Register a default Inform broadcast handler so broadcast-style ACP
-        // messages are observed even when no agent-specific handler exists.
-        acp_router
-            .register_handler(crate::bridge::acp::message::AcpMessageType::Inform, |msg| {
-                tracing::info!(
-                    "ACP Inform broadcast received from {}: {}",
-                    msg.sender,
-                    msg.payload
-                );
-                Ok(None)
-            })
-            .map_err(|e| anyhow::anyhow!("Failed to register ACP Inform handler: {}", e))?;
-
-        // Register system agents
-        let system_agent = crate::bridge::acp::system_agent::create_system_agent();
-        let worker_agent = crate::bridge::acp::system_agent::create_worker_agent();
-        acp_registry
-            .register(system_agent)
-            .map_err(|e| anyhow::anyhow!("Failed to register system agent: {}", e))?;
-        acp_registry
-            .register(worker_agent)
-            .map_err(|e| anyhow::anyhow!("Failed to register worker agent: {}", e))?;
-        tracing::info!("ACP system agents registered (system:main, worker:1)");
 
         // Create MCP context with all systems
-
-        // World Model (Architecture §14, TASK-V2-06): typed entity-relationship
-        // graph representing how the world works. Empty at startup; populated
-        // as the system observes entities and relationships.
         let world_model = Arc::new(crate::world_model::WorldModel::new());
-
-        // Workflow enforcement engine (Architecture §22 workflow gate).
-        // Shared between McpContext (for admin tools) and McpServerHandler
-        // (for per-request enforcement checks).
         let enforcer = Arc::new(crate::workflows::enforcement::WorkflowEnforcer::new());
-
-        let mcp_context = Arc::new(McpContext::new(
-            database.clone(),
-            job_queue.clone(),
-            bus.clone(),
-            coordinator.clone(),
-            worker_manager.clone(),
-            reflection_engine.clone(),
-            evolution_engine.clone(),
-            scheduler.clone(),
-            metrics.clone(),
-            knowledge_store.clone(),
-            planner.clone(),
-            policy_engine.clone(),
-            working_memory_core.clone(),
-            permanent_memory.clone(),
-            memory_retrieval.clone(),
-            workflow_engine.clone(),
-            skills_registry.clone(),
-            acp_router.clone(),
-            acp_registry.clone(),
-            shared_personality.clone(),
-            Arc::new(crate::agent::SafetyGate::new()),
-            world_model.clone(),
-            enforcer.clone(),
-        ));
+        let mcp_context = mcp_context::create_mcp_context(
+            database,
+            job_queue,
+            bus,
+            coordinator,
+            worker_manager,
+            reflection_engine,
+            evolution_engine,
+            scheduler,
+            metrics,
+            knowledge_store,
+            planner,
+            policy_engine,
+            working_memory_core,
+            permanent_memory,
+            memory_retrieval,
+            workflow_engine,
+            skills_registry,
+            Arc::clone(&acp_router),
+            acp_registry,
+            Arc::clone(&shared_personality),
+            Arc::clone(&world_model),
+            enforcer,
+        );
 
         // Register MCP tools
         crate::bridge::tools::register_tools();
@@ -316,44 +224,19 @@ impl App {
 
         tracing::info!("RoBoT initialized successfully");
 
-        // Goal-driven agent loop (Architecture §5.7, TASK-V2-04). Composes the
-        // already-initialized planner, memory retrieval, knowledge store,
-        // coordinator and database into a single cognitive loop that closes
-        // Goal → Plan → Retrieve → Decide → Act → Record.
-        let agent_safety_gate = mcp_context.safety_gate.clone();
-        let agent_deps = crate::agent::AgentDeps::new(
-            mcp_context.planner.clone(),
-            mcp_context.memory_retrieval.clone(),
-            mcp_context.knowledge.clone(),
-            mcp_context.coordinator.clone(),
-            mcp_context.database.clone(),
-            agent_safety_gate,
-            shared_personality.clone(),
-            mcp_context.metrics.clone(),
-        );
-        let agent_loop = Arc::new(crate::agent::AgentLoop::new(agent_deps));
-
-        // Run the agent self-check so the loop path stays live (Architecture
-        // §5.7). This exercises goal → plan → retrieve → decide → record
-        // against an in-memory fixture at startup.
-        // V2-09: agent self_check removed
-        // V2-09: agent self_check log removed
-
-        // World Model self-check removed (TASK-V2-09): the world-model APIs
-        // are now exercised at runtime by world-model MCP tools
-        // (upsert_entity, add_relationship, get_entity, etc.).
-
-        Ok(Self {
+        // Goal-driven agent loop + App struct (Architecture §5.7)
+        let app = agent_loop::create_app(
+            mcp_context,
+            shared_personality,
             hypothesis_engine,
             experience_recorder,
             reflection_pipeline,
             memory_pipeline,
-            mcp_context,
-            personality: shared_personality,
             acp_router,
-            agent_loop,
             world_model,
-        })
+        );
+
+        Ok(app)
     }
 
     /// Start the runtime.
@@ -458,57 +341,8 @@ impl App {
         let metrics_summary = crate::experience::metrics::run_metrics_self_check().await;
         tracing::info!("{}", metrics_summary);
 
-        // Log subsystem health for engines held by App that are otherwise
-        // only accessed during construction (Architecture: observability).
-        let graph_stats = self
-            .hypothesis_engine
-            .lock()
-            .map(|g| g.get_graph_stats())
-            .unwrap_or_else(
-                |_| crate::experience::hypothesis::support::graph::GraphStats {
-                    node_count: 0,
-                    edge_count: 0,
-                    support_edges: 0,
-                    contradict_edges: 0,
-                    depends_edges: 0,
-                    related_edges: 0,
-                    cycles: 0,
-                },
-            );
-        tracing::info!(
-            "Hypothesis engine ready: {} nodes / {} edges",
-            graph_stats.node_count,
-            graph_stats.edge_count
-        );
-        let patterns = self
-            .reflection_pipeline
-            .analyze_patterns(&[])
-            .await
-            .unwrap_or_default();
-        tracing::info!(
-            "Reflection pipeline ready: {} baseline patterns",
-            patterns.len()
-        );
-        let wm_entities = self
-            .world_model
-            .entities_of_kind(crate::world_model::types::EntityKind::Goal)
-            .await;
-        tracing::info!(
-            "World model ready: {} goal entities tracked",
-            wm_entities.len()
-        );
-        tracing::info!(
-            "Experience recorder alive: {} strong refs",
-            std::sync::Arc::strong_count(&self.experience_recorder)
-        );
-        tracing::info!(
-            "Memory pipeline alive: {} strong refs",
-            std::sync::Arc::strong_count(&self.memory_pipeline)
-        );
-        tracing::info!(
-            "Agent loop alive: {} strong refs",
-            std::sync::Arc::strong_count(&self.agent_loop)
-        );
+        // Subsystem health logging
+        sub_health_log::log_subsystem_health(&self).await;
 
         // Start background scheduler worker
         let scheduler = self.mcp_context.scheduler.clone();

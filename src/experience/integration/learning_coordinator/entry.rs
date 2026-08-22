@@ -117,20 +117,18 @@ impl<'a> EntryMethods<'a> {
         self.metrics.increment("learning.experiences.scored").await;
 
         // Step 2: Generate reflection (if threshold met)
-        if self.config.auto_reflect && score >= self.config.reflection_threshold {
-            if let Ok(reflection) = hypothesis_methods.generate_reflection(experience).await {
+        if self.config.auto_reflect && score >= self.config.reflection_threshold
+            && let Ok(reflection) = hypothesis_methods.generate_reflection(experience).await {
                 result.reflection_id = Some(reflection.id);
                 self.metrics.increment("learning.reflections.generated").await;
             }
-        }
 
         // Step 3: Generate hypotheses (if enabled)
-        if self.config.auto_hypothesize {
-            if let Ok(ids) = hypothesis_methods.generate_hypotheses(experience).await {
+        if self.config.auto_hypothesize
+            && let Ok(ids) = hypothesis_methods.generate_hypotheses(experience).await {
                 result.hypothesis_ids = ids;
                 self.metrics.increment("learning.hypotheses.generated").await;
             }
-        }
 
         // Step 4: Update knowledge from high-value experiences
         if score >= 0.8 {
@@ -293,11 +291,9 @@ impl<'a> EntryMethods<'a> {
             .iter()
             .next()
             .map(|(k, v)| (k.clone(), v.score))
-        {
-            if let Some(score) = reputation_manager.get_reputation(&probe_source).await {
+            && let Some(score) = reputation_manager.get_reputation(&probe_source).await {
                 tracing::info!("Maintenance reputation probe: {} score={}", probe_source, score);
             }
-        }
 
         // 5. Generalize from recent experiences and transfer knowledge across
         // domains (Architecture §9: generalization + transfer learning).

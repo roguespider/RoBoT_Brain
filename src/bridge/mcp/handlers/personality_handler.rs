@@ -4,15 +4,12 @@
 
 use std::sync::Arc;
 
-use crate::bridge::mcp::handlers::{
-    HandlerError, HandlerInitResult, ToolHandler,
-};
 use crate::bridge::mcp::McpContext;
+use crate::bridge::mcp::handlers::{HandlerError, HandlerInitResult, ToolHandler};
 use crate::bridge::tools::personality::{
     ApplyPersonalityPresetInput, FormatResponseInput, GetPersonalityDecisionInput,
-    SetPersonalityTraitsInput,
-    execute_apply_personality_preset, execute_format_response, execute_get_personality,
-    execute_get_personality_decision, execute_list_personality_presets,
+    SetPersonalityTraitsInput, execute_apply_personality_preset, execute_format_response,
+    execute_get_personality, execute_get_personality_decision, execute_list_personality_presets,
     execute_set_personality_traits,
 };
 
@@ -29,27 +26,43 @@ impl PersonalityToolsHandler {
         Ok(Self { context })
     }
 
-    pub async fn execute_get_personality(&self) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    pub async fn execute_get_personality(
+        &self,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         execute_get_personality(&self.context).await
     }
 
-    pub async fn execute_set_personality_traits(&self, input: SetPersonalityTraitsInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    pub async fn execute_set_personality_traits(
+        &self,
+        input: SetPersonalityTraitsInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         execute_set_personality_traits(input, &self.context).await
     }
 
-    pub async fn execute_apply_personality_preset(&self, input: ApplyPersonalityPresetInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    pub async fn execute_apply_personality_preset(
+        &self,
+        input: ApplyPersonalityPresetInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         execute_apply_personality_preset(input, &self.context).await
     }
 
-    pub async fn execute_list_personality_presets(&self) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    pub async fn execute_list_personality_presets(
+        &self,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         execute_list_personality_presets(&self.context).await
     }
 
-    pub async fn execute_get_personality_decision(&self, input: GetPersonalityDecisionInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    pub async fn execute_get_personality_decision(
+        &self,
+        input: GetPersonalityDecisionInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         execute_get_personality_decision(input, &self.context).await
     }
 
-    pub async fn execute_format_response(&self, input: FormatResponseInput) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    pub async fn execute_format_response(
+        &self,
+        input: FormatResponseInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         execute_format_response(input, &self.context).await
     }
 }

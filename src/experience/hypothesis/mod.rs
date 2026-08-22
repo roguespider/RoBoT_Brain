@@ -254,11 +254,10 @@ impl HypothesisEngine {
         let mut insights = Vec::new();
 
         // Extract context insights from user query
-        if let Some(ref user_query) = experience.context.user_query {
-            if !user_query.is_empty() {
+        if let Some(ref user_query) = experience.context.user_query
+            && !user_query.is_empty() {
                 insights.push(user_query.clone());
             }
-        }
 
         // Extract context insights from workflow
         if let Some(ref workflow) = experience.context.workflow {
@@ -428,11 +427,10 @@ impl HypothesisEngine {
             }
         }
         // Probe the path finder and the builder + node-count introspection.
-        if let (Some(a), Some(b)) = (graph.nodes.first(), graph.nodes.get(1)) {
-            if let Some(path) = graph.find_path(&a.hypothesis_id, &b.hypothesis_id) {
+        if let (Some(a), Some(b)) = (graph.nodes.first(), graph.nodes.get(1))
+            && let Some(path) = graph.find_path(&a.hypothesis_id, &b.hypothesis_id) {
                 tracing::debug!("Path probe between first two nodes: {} hops", path.len());
             }
-        }
         let mut probe = GraphBuilder::new()
             .add_node(HypothesisId("probe".to_string()))
             .add_support(HypothesisId("a".to_string()), HypothesisId("b".to_string()))

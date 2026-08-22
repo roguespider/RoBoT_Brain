@@ -106,7 +106,7 @@ pub async fn execute_list_memories(
     let working_count = working_items.len();
 
     let conn = database.connection()?;
-    let db_memories = queries::search_memory(&conn, "", limit as usize)?;
+    let db_memories = queries::search_memory(&conn, "", limit)?;
     let db_ids: std::collections::HashSet<_> = db_memories.iter().map(|m| m.id).collect();
     let working_ids: std::collections::HashSet<_> = working_items.iter().map(|m| m.id).collect();
 

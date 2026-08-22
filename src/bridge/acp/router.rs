@@ -4,7 +4,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 use super::message::{AcpMessage, AcpMessageType};
 
@@ -37,15 +37,15 @@ impl AcpRouter {
 
         // Check for custom handlers first
         let type_name = format!("{:?}", message.message_type);
-        if let Ok(handlers) = self.handlers.read() {
-            if let Some(handler) = handlers.get(&type_name) {
-                tracing::trace!(
-                    "ACP routing {:?} to custom handler (expects_reply={})",
-                    message.message_type,
-                    expects_reply
-                );
-                return handler(message);
-            }
+        if let Ok(handlers) = self.handlers.read()
+            && let Some(handler) = handlers.get(&type_name)
+        {
+            tracing::trace!(
+                "ACP routing {:?} to custom handler (expects_reply={})",
+                message.message_type,
+                expects_reply
+            );
+            return handler(message);
         }
 
         // Route to registered agent
@@ -80,4 +80,3 @@ impl AcpRouter {
         Ok(())
     }
 }
-

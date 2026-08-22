@@ -138,6 +138,7 @@ pub use world_model_handler::WorldModelToolsHandler;
 
 /// Collection of all tool handlers with graceful degradation
 #[derive(Clone)]
+#[derive(Default)]
 pub struct ToolHandlerCollection {
     pub acp: Option<AcpToolsHandler>,
     pub agent: Option<AgentToolsHandler>,
@@ -156,27 +157,6 @@ pub struct ToolHandlerCollection {
     pub world_model: Option<WorldModelToolsHandler>,
 }
 
-impl Default for ToolHandlerCollection {
-    fn default() -> Self {
-        Self {
-            acp: None,
-            agent: None,
-            experience: None,
-            exploration: None,
-            hypothesis: None,
-            ingestor: None,
-            knowledge: None,
-            memory: None,
-            personality: None,
-            planner: None,
-            reflection: None,
-            search: None,
-            skills: None,
-            workflow: None,
-            world_model: None,
-        }
-    }
-}
 
 impl ToolHandlerCollection {
     /// Create a new empty collection

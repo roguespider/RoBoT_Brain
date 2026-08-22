@@ -72,11 +72,10 @@ impl ReflectionEngine {
             }
 
             // Auto-validate if threshold met
-            if validation.score >= self.config.auto_validate_threshold {
-                if let Some(ref mut r) = reflection {
+            if validation.score >= self.config.auto_validate_threshold
+                && let Some(ref mut r) = reflection {
                     r.validate();
                 }
-            }
 
             // Save to repository
             if let Some(ref r) = reflection {
@@ -363,11 +362,10 @@ impl ReflectionEngine {
                 looked_up += 1;
             }
             // Exercise the contradiction accessor for untrusted insights (§4.06).
-            if !insight.is_trusted() {
-                if self.contradict_insight(&insight.id).await.is_ok() {
+            if !insight.is_trusted()
+                && self.contradict_insight(&insight.id).await.is_ok() {
                     contradicted += 1;
                 }
-            }
         }
         let mut decayed = 0usize;
         let mut merged = 0usize;
@@ -394,8 +392,8 @@ impl ReflectionEngine {
                 // Merge consecutive patterns of the same type to consolidate
                 // duplicate evidence (§9 generalization); strip a known-dup
                 // evidence id to exercise the remove_evidence accessor.
-                if i + 1 < all_patterns.len() {
-                    if let Some(next) = self.get_pattern(&all_patterns[i + 1].id).await {
+                if i + 1 < all_patterns.len()
+                    && let Some(next) = self.get_pattern(&all_patterns[i + 1].id).await {
                         let mut merged_p = p.clone();
                         if let Some(dup) = next.evidence.first() {
                             merged_p.remove_evidence(dup);
@@ -409,7 +407,6 @@ impl ReflectionEngine {
                         );
                         merged += 1;
                     }
-                }
             }
         }
         // Reconcile archived reflections: delete reflections the repository
@@ -420,11 +417,10 @@ impl ReflectionEngine {
         let mut deleted = 0usize;
         for reflection in self.list_by_status(ReflectionStatus::Archived).await {
             // Only delete reflections the stricter validator also rejects.
-            if !strict.is_valid(&reflection) {
-                if self.delete_reflection(&reflection.id).await.is_ok() {
+            if !strict.is_valid(&reflection)
+                && self.delete_reflection(&reflection.id).await.is_ok() {
                     deleted += 1;
                 }
-            }
         }
         tracing::info!(
             "Reflection maintenance: {} trusted insights confirmed, {} insights looked up, \

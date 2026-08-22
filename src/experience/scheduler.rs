@@ -1,5 +1,3 @@
-
-
 // /src/experience/scheduler.rs
 //! Background job scheduler for learning tasks
 //!
@@ -22,8 +20,6 @@
 //! - Weekly: Run on specific days
 //! - Once: Run once at specific time
 //! - Manual: Manual trigger only
-
-
 
 use std::pin::Pin;
 use std::sync::Arc;
@@ -275,14 +271,13 @@ impl Scheduler {
     /// Re-enable a disabled task
     pub async fn enable_task(&self, id: &str) -> Result<()> {
         let conn = self.database.connection()?;
-        if let Some(mut task) = queries::get_scheduled_task(&conn, id)? {
-            if task.status == TaskStatus::Disabled {
+        if let Some(mut task) = queries::get_scheduled_task(&conn, id)?
+            && task.status == TaskStatus::Disabled {
                 task.status = TaskStatus::Scheduled;
                 task.failure_count = 0;
                 task.next_run = Self::calculate_next_run(&task.schedule);
                 queries::insert_scheduled_task(&conn, &task)?;
             }
-        }
         Ok(())
     }
 
@@ -374,28 +369,10 @@ impl Scheduler {
         let tasks = queries::list_scheduled_tasks(&conn)?;
         let total = tasks.len();
 
-        let by_status: std::collections::HashMap<TaskStatus, usize> =
-            tasks
-                .iter()
-                .fold(std::collections::HashMap::new(), |mut acc, t| {
-                    *acc.entry(t.status).or_insert(0) += 1;
-                    acc
-                });
-
-        let by_type: std::collections::HashMap<TaskType, usize> =
-            tasks
-                .iter()
-                .fold(std::collections::HashMap::new(), |mut acc, t| {
-                    *acc.entry(t.task_type).or_insert(0) += 1;
-                    acc
-                });
-
         let total_failures: u32 = tasks.iter().map(|t| t.failure_count).sum();
 
         Ok(SchedulerStats {
             total_tasks: total,
-            tasks_by_status: by_status,
-            tasks_by_type: by_type,
             total_failures,
         })
     }
@@ -421,15 +398,14 @@ impl Scheduler {
             }
 
             // Periodically log stats (every 10 cycles = 5 minutes)
-            if cycle_count.is_multiple_of(10) {
-                if let Ok(stats) = self.get_stats().await {
+            if cycle_count.is_multiple_of(10)
+                && let Ok(stats) = self.get_stats().await {
                     tracing::debug!(
                         "Scheduler stats: {} total tasks, {} failures",
                         stats.total_tasks,
                         stats.total_failures
                     );
                 }
-            }
 
             // Periodically cleanup disabled tasks older than 7 days (every 20 cycles = 10 minutes)
             if cycle_count.is_multiple_of(20) {
@@ -443,11 +419,10 @@ impl Scheduler {
         if let Ok(tasks) = self.list_tasks().await {
             let cutoff = Utc::now() - chrono::Duration::days(7);
             for task in tasks {
-                if task.status == TaskStatus::Disabled && task.created_at < cutoff {
-                    if let Err(e) = self.delete_task(&task.id).await {
+                if task.status == TaskStatus::Disabled && task.created_at < cutoff
+                    && let Err(e) = self.delete_task(&task.id).await {
                         tracing::warn!("Failed to cleanup old task {}: {}", task.id, e);
                     }
-                }
             }
         }
     }
@@ -470,8 +445,6 @@ impl<T: Fn() -> F + Send + Sync, F: std::future::Future<Output = Result<()>> + S
 #[derive(Debug)]
 pub struct SchedulerStats {
     pub total_tasks: usize,
-    pub tasks_by_status: std::collections::HashMap<TaskStatus, usize>,
-    pub tasks_by_type: std::collections::HashMap<TaskType, usize>,
     pub total_failures: u32,
 }
 
@@ -479,17 +452,21 @@ pub struct SchedulerStats {
 pub async fn setup_memory_consolidation_task(scheduler: &Scheduler) -> Result<()> {
     // Check if task already exists
     let existing = scheduler.list_tasks().await?;
-    let has_consolidation = existing.iter().any(|t| t.task_type == TaskType::MemoryConsolidation);
-    
+    let has_consolidation = existing
+        .iter()
+        .any(|t| t.task_type == TaskType::MemoryConsolidation);
+
     if !has_consolidation {
         // Create memory consolidation task - runs every hour
-        scheduler.create_task(
-            "Memory Consolidation",
-            TaskType::MemoryConsolidation,
-            TaskSchedule::Interval { seconds: 3600 }, // Run every hour
-        ).await?;
+        scheduler
+            .create_task(
+                "Memory Consolidation",
+                TaskType::MemoryConsolidation,
+                TaskSchedule::Interval { seconds: 3600 }, // Run every hour
+            )
+            .await?;
         tracing::info!("Scheduled memory consolidation task (hourly)");
     }
-    
+
     Ok(())
 }

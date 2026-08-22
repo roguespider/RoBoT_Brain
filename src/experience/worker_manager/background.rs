@@ -35,15 +35,26 @@ pub fn start_worker_manager(
                     tracing::warn!("Worker manager lagged {} events", n);
                     // Drain the lagged events so we don't re-process the same one,
                     // then record a failed job for the skipped events.
-                    for _i in 0..n {
+                    let mut drained = 0usize;
+                    let mut dropped_event_ids: Vec<uuid::Uuid> = Vec::new();
+                    for _ in 0..n {
                         match receiver.recv().await {
-                            Ok(_event) => {}
+                            Ok(event) => {
+                                // The event is intentionally discarded: it was
+                                // superseded while we were lagging. Record its ID
+                                // so the failure record reports what was dropped.
+                                dropped_event_ids.push(event.id);
+                                drained += 1;
+                            }
                             Err(_) => break,
                         }
                     }
                     if let Err(e) = manager.mark_job_failed(
                         &format!("lagged_{}", n),
-                        format!("Worker manager lagged {} events", n),
+                        format!(
+                            "Worker manager lagged {} events (drained {}, dropped: {:?})",
+                            n, drained, dropped_event_ids
+                        ),
                     ) {
                         tracing::debug!("Failed to mark lagged job: {}", e);
                     }

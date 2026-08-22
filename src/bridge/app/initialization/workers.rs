@@ -3,7 +3,6 @@
 
 use std::sync::Arc;
 
-use crate::experience::events::ExperienceEvent;
 use crate::experience::observer::ExperienceObserver;
 use crate::experience::scorer::ExperienceScorer;
 use crate::experience::worker_manager::WorkerManager;
@@ -56,16 +55,6 @@ pub(crate) async fn setup_workers(
         "Worker manager subscribed to bus (total subscribers: {})",
         bus.subscriber_count()
     );
-
-    // Verify worker manager job enqueue works at startup (Architecture §22).
-    {
-        let probe_event = ExperienceEvent::recorded(uuid::Uuid::new_v4());
-        let enqueue_ok = worker_manager
-            .enqueue("experience_scorer", probe_event)
-            .await
-            .is_ok();
-        tracing::info!("Worker manager enqueue verified: ok={}", enqueue_ok);
-    }
 
     Ok(())
 }

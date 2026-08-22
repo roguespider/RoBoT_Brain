@@ -115,11 +115,10 @@ impl JobQueue {
     /// For unique per-observer job IDs, use [`push_job_with_id`] instead.
     pub fn push_job(&mut self, experience_id: &str, observer_name: &str) {
         let job = Job::new(experience_id, observer_name);
-        if let Some(db) = &self.database {
-            if let Err(e) = persist_insert(db, &job) {
+        if let Some(db) = &self.database
+            && let Err(e) = persist_insert(db, &job) {
                 tracing::warn!("JobQueue insert failed, job not durable: {}", e);
             }
-        }
         self.jobs.insert(job.id.clone(), job);
     }
 
@@ -135,11 +134,10 @@ impl JobQueue {
             last_error: None,
             attempts: 0,
         };
-        if let Some(db) = &self.database {
-            if let Err(e) = persist_insert(db, &job) {
+        if let Some(db) = &self.database
+            && let Err(e) = persist_insert(db, &job) {
                 tracing::warn!("JobQueue insert failed, job not durable: {}", e);
             }
-        }
         self.jobs.insert(job.id.clone(), job);
     }
 
@@ -192,11 +190,10 @@ impl JobQueue {
     fn mark_running(&mut self, job_id: &str) {
         if let Some(job) = self.jobs.get_mut(job_id) {
             job.status = JobStatus::Running;
-            if let Some(db) = &self.database {
-                if let Err(e) = persist_update(db, job) {
+            if let Some(db) = &self.database
+                && let Err(e) = persist_update(db, job) {
                     tracing::warn!("JobQueue running persist failed: {}", e);
                 }
-            }
         }
     }
 
@@ -206,8 +203,8 @@ impl JobQueue {
         if let Some(job) = self.jobs.get_mut(job_id) {
             job.status = JobStatus::Completed;
         }
-        if let Some(db) = db {
-            if let Err(e) = persist_update(
+        if let Some(db) = db
+            && let Err(e) = persist_update(
                 db,
                 &Job {
                     id: job_id.to_string(),
@@ -220,7 +217,6 @@ impl JobQueue {
             ) {
                 tracing::warn!("JobQueue mark_complete persist failed: {}", e);
             }
-        }
         Ok(())
     }
 
@@ -232,8 +228,8 @@ impl JobQueue {
             job.last_error = Some(error.clone());
             job.attempts += 1;
         }
-        if let Some(db) = db {
-            if let Err(e) = persist_update(
+        if let Some(db) = db
+            && let Err(e) = persist_update(
                 db,
                 &Job {
                     id: job_id.to_string(),
@@ -246,7 +242,6 @@ impl JobQueue {
             ) {
                 tracing::warn!("JobQueue mark_failed persist failed: {}", e);
             }
-        }
         Ok(())
     }
 

@@ -252,13 +252,12 @@ impl KnowledgeStore {
     /// Promote item to active status
     pub async fn activate(&self, id: Uuid) -> bool {
         let mut items = self.items.write().await;
-        if let Some(item) = items.get_mut(&id) {
-            if item.status == KnowledgeStatus::New || item.status == KnowledgeStatus::Validating {
+        if let Some(item) = items.get_mut(&id)
+            && (item.status == KnowledgeStatus::New || item.status == KnowledgeStatus::Validating) {
                 item.status = KnowledgeStatus::Active;
                 item.updated_at = chrono::Utc::now();
                 return true;
             }
-        }
         false
     }
 

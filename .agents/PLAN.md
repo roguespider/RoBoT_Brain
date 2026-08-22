@@ -474,11 +474,11 @@ Testing belongs in:
 
 ### Acceptance Criteria
 
-- [ ] Startup no longer performs unnecessary subsystem test operations.
-- [ ] Existing test coverage is preserved.
-- [ ] Diagnostics remain available through an explicit mechanism.
-- [ ] Startup remains deterministic.
-- [ ] Startup does not mutate test data merely by launching RoBoT.
+- [ ] **P2-001A** - Startup no longer performs unnecessary subsystem test operations.
+- [ ] **P2-001B** - Existing test coverage is preserved.
+- [ ] **P2-001C** - Diagnostics remain available through an explicit mechanism.
+- [ ] **P2-001D** - Startup remains deterministic.
+- [ ] **P2-001E** - Startup does not mutate test data merely by launching RoBoT.
 
 ---
 
