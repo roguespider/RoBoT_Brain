@@ -60,7 +60,7 @@ tests pass AND 0 warnings / 0 code-issues / 0 untested tools. If any fails,
 fix the failure before doing anything else. Do not "remember" a prior pass —
 actually run it this session.
 
-## 4. Pick the next task (in order, do not skip ahead)
+## 5. Pick the next task (in order, do not skip ahead)
 
 Open `.agents/PLAN.md`. Find the FIRST unchecked `- [ ]` increment. Work tiers
 in order: TIER 1 (finish v0.0.1) → TIER 2 (reach v0.0.2) → TIER 3 (reach
@@ -82,7 +82,7 @@ v0.0.2.1). Each increment is one ~10-15 min change.
   callers; deleting them in TIER 1 creates dead-code warnings). Do it during
   each system's TIER 2 upgrade. 8 self_check.rs files remain.
 
-## 5. Execute ONE change, then the gate, then stop
+## 6. Execute ONE change, then the gate, then stop
 
 - Make ONE change only (one file or one tightly-coupled set).
 - Re-run the full verify gate (step 2). All three must pass.
@@ -92,13 +92,13 @@ v0.0.2.1). Each increment is one ~10-15 min change.
 - Report the result (what changed, gate status, commit hash).
 - STOP and report to the user. Do not start the next task without confirmation.
 
-## 6. Periodic maintenance (check from time to time, not every session)
+## 7. Periodic maintenance (check from time to time, not every session)
 
 - **Large file refactor** (`.agents/LARGE_FILE_REFACTOR.md`): when an `.rs`
   file hits ~1000 lines mixing responsibilities, split it into a directory
   module per the pattern there. Run the candidates query occasionally.
 
-## 7. Hard rules (from AGENTS.md — non-negotiable)
+## 8. Hard rules (from AGENTS.md — non-negotiable)
 
 - NEVER batch multiple unrelated changes into one commit/step.
 - NO `.unwrap()`, `.expect()`, `panic!()`, `assert!()`, `unreachable!()`.
