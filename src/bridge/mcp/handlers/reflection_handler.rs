@@ -185,8 +185,7 @@ impl ToolHandler for ReflectionToolsHandler {
         ]
     }
 
-    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
-        async move {
+    async fn execute_tool(&self, name: &str, args: serde_json::Value) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
             match name {
                 "get_insights" => {
                     let input: reflection::GetInsightsInput = serde_json::from_value(args)
@@ -232,6 +231,5 @@ impl ToolHandler for ReflectionToolsHandler {
                 }
                 _ => Err(HandlerError::ToolNotFound(name.to_string()))
             }
-        }
     }
 }

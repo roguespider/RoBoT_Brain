@@ -20,7 +20,7 @@ pub struct EntryMethods<'a> {
     pub hypothesis_engine: &'a Arc<crate::experience::hypothesis::HypothesisEngine>,
     pub reflection_engine: &'a Arc<crate::experience::reflection::ReflectionEngine>,
     pub knowledge_store: &'a Arc<crate::knowledge::KnowledgeStore>,
-    pub reputations: &'a Arc<tokio::sync::RwLock<std::collections::HashMap<String, crate::experience::reputation::reputation::Reputation>>>,
+    pub reputations: &'a Arc<tokio::sync::RwLock<std::collections::HashMap<String, crate::experience::reputation::score::Reputation>>>,
     pub explorations: &'a Arc<tokio::sync::RwLock<std::collections::HashMap<String, crate::experience::exploration::Exploration>>>,
     pub metrics: &'a Arc<crate::experience::metrics::MetricsCollector>,
     pub bus: &'a Arc<crate::experience::bus::ExperienceBus>,

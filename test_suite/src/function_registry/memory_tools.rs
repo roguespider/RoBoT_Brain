@@ -2,7 +2,9 @@
 //!
 //! Defines test requirements for Memory-related MCP tools.
 
-use crate::function_registry::types::{CheckType, DataRequirement, TestRequirement, ValidationCheck};
+use crate::function_registry::types::{
+    CheckType, DataRequirement, TestRequirement, ValidationCheck,
+};
 
 /// Returns test requirements for Memory tools
 pub fn memory_tools() -> Vec<TestRequirement> {
@@ -14,13 +16,11 @@ pub fn memory_tools() -> Vec<TestRequirement> {
             requires_workflow: true,
             requires_data: None,
             expected_behavior: "Stores a basic memory item".to_string(),
-            validation: vec![
-                ValidationCheck {
-                    check_type: CheckType::IsSuccess,
-                    field: "success".to_string(),
-                    expected_value: Some("true".to_string()),
-                },
-            ],
+            validation: vec![ValidationCheck {
+                check_type: CheckType::IsSuccess,
+                field: "success".to_string(),
+                expected_value: Some("true".to_string()),
+            }],
             priority: 1,
         },
         TestRequirement {
@@ -30,13 +30,11 @@ pub fn memory_tools() -> Vec<TestRequirement> {
             requires_workflow: true,
             requires_data: None,
             expected_behavior: "Stores memory with confidence and importance scores".to_string(),
-            validation: vec![
-                ValidationCheck {
-                    check_type: CheckType::IsSuccess,
-                    field: "success".to_string(),
-                    expected_value: Some("true".to_string()),
-                },
-            ],
+            validation: vec![ValidationCheck {
+                check_type: CheckType::IsSuccess,
+                field: "success".to_string(),
+                expected_value: Some("true".to_string()),
+            }],
             priority: 1,
         },
         TestRequirement {
@@ -63,8 +61,9 @@ pub fn memory_tools() -> Vec<TestRequirement> {
             category: "Memory".to_string(),
             requires_workflow: true,
             requires_data: None,
-            expected_behavior: "Retrieves a specific memory by ID (returns found=false for non-existent)"
-                .to_string(),
+            expected_behavior:
+                "Retrieves a specific memory by ID (returns found=false for non-existent)"
+                    .to_string(),
             validation: vec![
                 ValidationCheck {
                     check_type: CheckType::IsSuccess,
@@ -85,7 +84,8 @@ pub fn memory_tools() -> Vec<TestRequirement> {
             category: "Memory".to_string(),
             requires_workflow: true,
             requires_data: None,
-            expected_behavior: "Handles invalid UUID format gracefully (expected error)".to_string(),
+            expected_behavior: "Handles invalid UUID format gracefully (expected error)"
+                .to_string(),
             validation: vec![ValidationCheck {
                 check_type: CheckType::IsSuccess,
                 field: "success".to_string(),
@@ -117,6 +117,21 @@ pub fn memory_tools() -> Vec<TestRequirement> {
             validation: vec![ValidationCheck {
                 check_type: CheckType::HasField,
                 field: "memories".to_string(),
+                expected_value: None,
+            }],
+            priority: 2,
+        },
+        TestRequirement {
+            id: "memory_delete_by_id".to_string(),
+            function_name: "delete_memory_by_id".to_string(),
+            category: "Memory".to_string(),
+            requires_workflow: true,
+            requires_data: None,
+            expected_behavior: "Deletes a memory by ID (requires explicit confirmation)"
+                .to_string(),
+            validation: vec![ValidationCheck {
+                check_type: CheckType::HasField,
+                field: "success".to_string(),
                 expected_value: None,
             }],
             priority: 2,

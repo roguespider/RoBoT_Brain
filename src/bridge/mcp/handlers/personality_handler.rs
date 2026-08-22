@@ -164,8 +164,7 @@ impl ToolHandler for PersonalityToolsHandler {
         ]
     }
 
-    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
-        async move {
+    async fn execute_tool(&self, name: &str, args: serde_json::Value) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
             match name {
                 "get_personality" => {
                     self.execute_get_personality().await
@@ -201,6 +200,5 @@ impl ToolHandler for PersonalityToolsHandler {
                 }
                 _ => Err(HandlerError::ToolNotFound(name.to_string())),
             }
-        }
     }
 }

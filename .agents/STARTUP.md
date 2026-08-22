@@ -66,7 +66,7 @@ Open `.agents/PLAN.md`. Find the FIRST unchecked `- [ ]` increment. Work tiers
 in order: TIER 1 (finish v0.0.1) → TIER 2 (reach v0.0.2) → TIER 3 (reach
 v0.0.2.1). Each increment is one ~10-15 min change.
 
-- **Coverage gate is GREEN** (section 1E done). test_suite exits 0 (141/141 tests
+- **Coverage gate is GREEN** (section 1E done). test_suite exits 0 (145/145 tests
   pass, 0 code issues, 0 warnings, 0 untested, 0 phantom). All 134 server tools
   are covered. Commits: b9b43ff (phantom fix), 6b7d036 (ACP tests), 7775ca1
   (remaining 41 tools).

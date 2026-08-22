@@ -345,7 +345,11 @@ impl EventSubscriber {
         tracing::debug!("Processing EvidenceAdded event: {}", event.id);
 
         if let EventPayload::EvidenceRecord { hypothesis_id, .. } = &event.payload {
-            tracing::debug!("Evidence added for hypothesis: {}", hypothesis_id);
+            // Drive the evidence → hypothesis-confidence update (Architecture
+            // §11) so the subscriber participates in evidence processing even
+            // without a learning coordinator wired.
+            self.update_hypothesis_with_evidence(hypothesis_id, &event.payload)
+                .await?;
         }
 
         Ok(())

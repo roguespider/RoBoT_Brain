@@ -3,7 +3,7 @@
 
 use super::communication::CommunicationStyle;
 use super::decision::{Decision, DecisionApproach, DecisionContext};
-use super::personality::Personality;
+use super::core::Personality;
 
 impl Personality {
     /// Get communication style based on verbosity

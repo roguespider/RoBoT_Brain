@@ -1,6 +1,6 @@
 //! Trait adjustment and experience-based adaptation (Architecture §13).
 
-use super::personality::Personality;
+use super::core::Personality;
 
 impl Personality {
     /// Adjust a specific trait

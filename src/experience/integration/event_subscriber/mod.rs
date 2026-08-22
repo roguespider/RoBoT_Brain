@@ -24,7 +24,7 @@ use crate::experience::hypothesis::HypothesisEngine;
 use crate::experience::integration::learning_coordinator::LearningCoordinator;
 use crate::experience::metrics::MetricsCollector;
 use crate::experience::reflection::ReflectionEngine;
-use crate::experience::reputation::reputation::Reputation;
+use crate::experience::reputation::score::Reputation;
 use crate::knowledge::KnowledgeStore;
 
 /// Event subscriber that coordinates the learning pipeline
@@ -49,6 +49,16 @@ pub struct EventSubscriber {
     experience_recorder: Option<Arc<ExperienceRecorder>>,
 }
 
+/// Grouped subsystem handles for `with_config_and_coordinator`.
+pub struct SubscriberEngines {
+    pub metrics: Arc<MetricsCollector>,
+    pub reflection_engine: Arc<ReflectionEngine>,
+    pub hypothesis_engine: Arc<HypothesisEngine>,
+    pub evolution_engine: Arc<EvolutionEngine>,
+    pub knowledge_store: Arc<KnowledgeStore>,
+    pub experience_recorder: Option<Arc<ExperienceRecorder>>,
+}
+
 impl EventSubscriber {
     /// Create a new event subscriber with dependencies.
     /// Delegates to `with_config_and_coordinator` with default config and no
@@ -64,12 +74,14 @@ impl EventSubscriber {
         Self::with_config_and_coordinator(
             EventSubscriberConfig::default(),
             None,
-            metrics,
-            reflection_engine,
-            hypothesis_engine,
-            evolution_engine,
-            knowledge_store,
-            experience_recorder,
+            SubscriberEngines {
+                metrics,
+                reflection_engine,
+                hypothesis_engine,
+                evolution_engine,
+                knowledge_store,
+                experience_recorder,
+            },
         )
     }
 
@@ -90,12 +102,14 @@ impl EventSubscriber {
         Self::with_config_and_coordinator(
             EventSubscriberConfig::default(),
             Some(learning_coordinator),
-            metrics,
-            reflection_engine,
-            hypothesis_engine,
-            evolution_engine,
-            knowledge_store,
-            experience_recorder,
+            SubscriberEngines {
+                metrics,
+                reflection_engine,
+                hypothesis_engine,
+                evolution_engine,
+                knowledge_store,
+                experience_recorder,
+            },
         )
     }
 
@@ -111,13 +125,16 @@ impl EventSubscriber {
     pub fn with_config_and_coordinator(
         config: EventSubscriberConfig,
         learning_coordinator: Option<Arc<LearningCoordinator>>,
-        metrics: Arc<MetricsCollector>,
-        reflection_engine: Arc<ReflectionEngine>,
-        hypothesis_engine: Arc<HypothesisEngine>,
-        evolution_engine: Arc<EvolutionEngine>,
-        knowledge_store: Arc<KnowledgeStore>,
-        experience_recorder: Option<Arc<ExperienceRecorder>>,
+        engines: SubscriberEngines,
     ) -> Self {
+        let SubscriberEngines {
+            metrics,
+            reflection_engine,
+            hypothesis_engine,
+            evolution_engine,
+            knowledge_store,
+            experience_recorder,
+        } = engines;
         Self {
             config,
             learning_coordinator,

@@ -8,7 +8,7 @@ use uuid::Uuid;
 use crate::experience::bus::ExperienceBus;
 use crate::experience::events::ExperienceEvent;
 use crate::experience::reputation::factors::ReputationFactor;
-use crate::experience::reputation::reputation::Reputation;
+use crate::experience::reputation::score::Reputation;
 use crate::experience::types::Experience;
 use crate::experience::types::outcome::OutcomeKind;
 

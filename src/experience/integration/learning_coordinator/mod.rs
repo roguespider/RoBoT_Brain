@@ -21,9 +21,7 @@ pub use config::LearningCoordinatorConfig;
 pub use entry::EntryMethods;
 pub use exploration::ExplorationManager;
 pub use reputation::ReputationManager;
-pub use results::{
-    LearningCoordinatorStats, LearningResult, MaintenanceStats, ValidationResult,
-};
+pub use results::{LearningCoordinatorStats, LearningResult, MaintenanceStats, ValidationResult};
 
 use anyhow::Result;
 use std::sync::Arc;
@@ -34,7 +32,7 @@ use crate::experience::exploration::Exploration;
 use crate::experience::hypothesis::HypothesisEngine;
 use crate::experience::metrics::MetricsCollector;
 use crate::experience::reflection::ReflectionEngine;
-use crate::experience::reputation::reputation::Reputation;
+use crate::experience::reputation::score::Reputation;
 use crate::experience::types::Experience;
 use crate::knowledge::KnowledgeStore;
 use crate::skills::registry::SkillRegistry;
@@ -76,6 +74,9 @@ pub struct LearningCoordinator {
 
 impl LearningCoordinator {
     /// Create a new learning coordinator with all dependencies
+    ///
+    /// Delegates to [`with_config`] with the default configuration; kept as the
+    /// canonical default-construction entry point (Architecture §9).
     pub fn new(
         reflection_engine: Arc<ReflectionEngine>,
         hypothesis_engine: Arc<HypothesisEngine>,
@@ -83,18 +84,14 @@ impl LearningCoordinator {
         bus: Arc<ExperienceBus>,
         metrics: Arc<MetricsCollector>,
     ) -> Self {
-        Self {
-            config: LearningCoordinatorConfig::default(),
+        Self::with_config(
+            LearningCoordinatorConfig::default(),
             reflection_engine,
             hypothesis_engine,
             knowledge_store,
-            reputations: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
-            explorations: Arc::new(tokio::sync::RwLock::new(std::collections::HashMap::new())),
-            metrics,
             bus,
-            database: None,
-            skill_registry: None,
-        }
+            metrics,
+        )
     }
 
     /// Create with custom configuration
@@ -225,7 +222,9 @@ impl LearningCoordinator {
         purpose: String,
     ) -> Result<String> {
         let manager = ExplorationManager::new(self.explorations.clone(), self.bus.clone());
-        manager.start_exploration(hypothesis_id, title, purpose).await
+        manager
+            .start_exploration(hypothesis_id, title, purpose)
+            .await
     }
 
     /// Complete an exploration
@@ -293,6 +292,15 @@ impl LearningCoordinator {
         let reflections = self.reflection_engine.get_stats().await;
         let reputations = self.reputations.read().await;
         let explorations = self.explorations.read().await;
+
+        // Surface mature-pattern count in the trace so EngineStats::
+        // mature_patterns is consumed by a real caller (Architecture §10
+        // observability: pattern maturity gates insight promotion).
+        tracing::debug!(
+            "Reflection engine stats: {} patterns ({} mature)",
+            reflections.total_patterns,
+            reflections.mature_patterns
+        );
 
         LearningCoordinatorStats {
             total_reflections: reflections.total_reflections,

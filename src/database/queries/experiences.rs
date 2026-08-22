@@ -7,7 +7,7 @@ use uuid::Uuid;
 
 use crate::experience::types::Experience;
 use crate::experience::types::maturity::KnowledgeMaturity;
-use crate::experience::reputation::reputation::Reputation;
+use crate::experience::reputation::score::Reputation;
 
 use super::helpers::parse_time;
 

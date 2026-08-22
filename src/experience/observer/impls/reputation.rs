@@ -10,7 +10,7 @@ use crate::experience::events::ExperienceEvent;
 use crate::experience::events::ExperienceEventType;
 use crate::experience::observer::ExperienceObserver;
 use crate::experience::reputation::factors::ReputationFactor;
-use crate::experience::reputation::reputation::Reputation;
+use crate::experience::reputation::score::Reputation;
 
 /// Reputation Observer implementation
 ///

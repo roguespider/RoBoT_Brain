@@ -79,16 +79,7 @@ impl AgentToolsHandler {
     ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         use crate::agent::{AgentDeps, AgentLoop};
 
-        let deps = AgentDeps::new(
-            self.context.planner.clone(),
-            self.context.memory_retrieval.clone(),
-            self.context.knowledge.clone(),
-            self.context.coordinator.clone(),
-            self.context.database.clone(),
-            self.context.safety_gate.clone(),
-            self.context.personality.clone(),
-            self.context.metrics.clone(),
-        );
+        let deps = AgentDeps::from_context(&self.context, self.context.personality.clone());
         let agent_loop = AgentLoop::new(deps);
 
         let goal = crate::agent::types::AgentGoal::new(&input.goal)

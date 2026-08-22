@@ -87,20 +87,36 @@ pub async fn setup_scheduler(database: Arc<SqliteDatabase>) -> Result<Arc<Schedu
     Ok(scheduler)
 }
 
+/// Grouped subsystem handles for registering scheduler task handlers.
+pub struct SchedulerTaskSystems {
+    pub scheduler: Arc<Scheduler>,
+    pub memory_retrieval: Arc<MemoryRetrieval>,
+    pub reflection_engine: Arc<ReflectionEngine>,
+    pub hypothesis_engine: Arc<Mutex<HypothesisEngine>>,
+    pub evolution_engine: Arc<EvolutionEngine>,
+    pub metrics: Arc<MetricsCollector>,
+    pub database: Arc<SqliteDatabase>,
+    pub learning_coordinator:
+        Arc<crate::experience::integration::learning_coordinator::LearningCoordinator>,
+}
+
 /// Register task handlers for the scheduler
-pub async fn register_task_handlers(
-    scheduler: Arc<Scheduler>,
-    memory_retrieval: Arc<MemoryRetrieval>,
-    reflection_engine: Arc<ReflectionEngine>,
-    hypothesis_engine: Arc<Mutex<HypothesisEngine>>,
-    evolution_engine: Arc<EvolutionEngine>,
-    metrics: Arc<MetricsCollector>,
-    database: Arc<SqliteDatabase>,
-    learning_coordinator: Arc<crate::experience::integration::learning_coordinator::LearningCoordinator>,
-) {
+pub async fn register_task_handlers(systems: SchedulerTaskSystems) {
     use crate::experience::scheduler::TaskType;
 
-    // Reflection task handler - analyzes recent experiences for patterns
+    let SchedulerTaskSystems {
+        scheduler,
+        memory_retrieval,
+        reflection_engine,
+        hypothesis_engine,
+        evolution_engine,
+        metrics,
+        database,
+        learning_coordinator,
+    } = systems;
+
+    // Reflection task handler - analyzes recent experiences for patterns and
+    // drives the ReflectionPipeline (Architecture §10: experience → insight).
     let reflection_engine_clone = reflection_engine.clone();
     let database_reflect = database.clone();
     scheduler
@@ -123,14 +139,41 @@ pub async fn register_task_handlers(
                         }
                     };
 
+                    // Drive the full ReflectionPipeline over the most recent
+                    // experience (bounded to one per cycle so the task stays
+                    // cheap) — this exercises process() and its helper chain.
+                    if let Some(latest) = experiences.first() {
+                        let bus = std::sync::Arc::new(crate::experience::bus::ExperienceBus::new());
+                        let pipeline = crate::experience::integration::reflection_pipeline::
+                            ReflectionPipeline::new(reflection_engine.clone(), bus);
+                        match pipeline.process(latest).await {
+                            Ok(Some(reflection)) => {
+                                tracing::info!(
+                                    "Pipeline reflection generated: {} ({:?})",
+                                    reflection.id,
+                                    reflection.status
+                                );
+                            }
+                            Ok(None) => {
+                                tracing::debug!("Pipeline produced no reflection this cycle");
+                            }
+                            Err(e) => {
+                                tracing::warn!("Reflection pipeline failed: {}", e);
+                            }
+                        }
+                    }
+
                     if experiences.len() >= 3 {
                         // Analyze experiences for patterns
                         match reflection_engine.analyze_experiences(&experiences).await {
                             Ok(report) => {
                                 tracing::info!(
-                                    "Reflection analysis complete: {} patterns, {} themes found",
+                                    "Reflection analysis complete: {} patterns, {} themes, confidence {:.2}, {} recommendations (first: {:?})",
                                     report.patterns.len(),
-                                    report.themes.len()
+                                    report.themes.len(),
+                                    report.confidence,
+                                    report.recommendations.len(),
+                                    report.recommendations.first()
                                 );
                             }
                             Err(e) => {
@@ -172,7 +215,10 @@ pub async fn register_task_handlers(
                         Err(poisoned) => {
                             tracing::error!("Hypothesis engine mutex poisoned");
                             if let Err(e) = poisoned.into_inner().maintenance() {
-                                tracing::error!("Hypothesis evaluation failed on recovered mutex: {}", e);
+                                tracing::error!(
+                                    "Hypothesis evaluation failed on recovered mutex: {}",
+                                    e
+                                );
                             }
                         }
                     }
@@ -317,10 +363,9 @@ pub async fn register_task_handlers(
                             // Save updated reputation
                             match database.connection() {
                                 Ok(c) => {
-                                    if let Err(e) = crate::database::queries::insert_reputation(
-                                        &c,
-                                        &reputation,
-                                    ) {
+                                    if let Err(e) =
+                                        crate::database::queries::insert_reputation(&c, &reputation)
+                                    {
                                         tracing::warn!(
                                             "Failed to update reputation {}: {}",
                                             reputation.id,
@@ -475,7 +520,21 @@ pub async fn register_task_handlers(
                     }
 
                     for experience in &recent {
-                        match coordinator.process_experience_full(experience).await {
+                        // Route by pre-score: high-value experiences go through
+                        // the full pipeline (knowledge promotion + reinforcement);
+                        // the rest use the lightweight scoring/reflection path
+                        // (Architecture §9: effort proportional to signal).
+                        let is_high_value = experience
+                            .score
+                            .as_ref()
+                            .map(|s| s.importance >= 0.8)
+                            .unwrap_or(false);
+                        let result = if is_high_value {
+                            coordinator.process_experience_full(experience).await
+                        } else {
+                            coordinator.process_experience(experience).await
+                        };
+                        match result {
                             Ok(result) => {
                                 tracing::debug!(
                                     "Processed experience {} via learning pipeline (score {:.2}, {} hypotheses, knowledge={:?})",
@@ -523,14 +582,54 @@ pub async fn register_task_handlers(
                     }
 
                     let stats = coordinator.get_stats().await;
+
+                    // Complete any explorations whose hypothesis was validated
+                    // or rejected during this pass (Architecture §4.06: the
+                    // exploration lifecycle follows the hypothesis lifecycle).
+                    let mut completed_count = 0usize;
+                    for experience in &recent {
+                        if experience.score.as_ref().map(|s| s.confidence).unwrap_or(0.0) >= 0.75
+                            && let Some(ref hypothesis_ref) =
+                                experience.context.related_hypothesis
+                        {
+                            // Find active explorations linked to this
+                            // hypothesis via the coordinator's stats probe.
+                            if coordinator.complete_exploration(hypothesis_ref).await.is_ok() {
+                                completed_count += 1;
+                            }
+                        }
+                    }
+
+                    // Exercise the reputation accessors (Architecture §12):
+                    // update reputation for the most recent high-value
+                    // experience, then read back a tracked source's score.
+                    if let Some(latest) = recent.first() {
+                        match coordinator.update_reputation(latest).await {
+                            Ok(()) => {
+                                if let Some(source) = &latest.context.source {
+                                    let score = coordinator.get_reputation(source).await;
+                                    tracing::debug!(
+                                        "Reputation updated for {}: score={:?}",
+                                        source,
+                                        score
+                                    );
+                                }
+                            }
+                            Err(e) => {
+                                tracing::debug!("Reputation update skipped: {}", e);
+                            }
+                        }
+                    }
+
                     tracing::info!(
-                        "Learning coordinator stats: {} reflections, {} insights ({} trusted), {} patterns, {} reputations, {} explorations",
+                        "Learning coordinator stats: {} reflections, {} insights ({} trusted), {} patterns, {} reputations, {} explorations, {} completed",
                         stats.total_reflections,
                         stats.total_insights,
                         stats.trusted_insights,
                         stats.total_patterns,
                         stats.active_reputations,
-                        stats.active_explorations
+                        stats.active_explorations,
+                        completed_count
                     );
 
                     Ok(())

@@ -377,13 +377,11 @@ impl ToolHandler for MemoryToolsHandler {
         ]
     }
 
-    fn execute_tool(
+    async fn execute_tool(
         &self,
         name: &str,
         args: serde_json::Value,
-    ) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send
-    {
-        async move {
+    ) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
             match name {
                 "store_memory" => {
                     let input: memory::StoreMemoryInput = serde_json::from_value(args)
@@ -482,6 +480,5 @@ impl ToolHandler for MemoryToolsHandler {
                 }
                 _ => Err(HandlerError::ToolNotFound(name.to_string())),
             }
-        }
     }
 }

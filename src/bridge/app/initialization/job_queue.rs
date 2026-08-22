@@ -12,6 +12,12 @@ pub(crate) fn verify_job_queue(
     database: &Arc<crate::database::sqlite::SqliteDatabase>,
 ) {
     let mut q = job_queue.lock().unwrap_or_else(|e| e.into_inner());
+    // Exercise the legacy constructor path (Job::new + push_job) alongside the
+    // preferred push_job_with_id so both stay live (P0-002 documents both).
+    q.push_job("startup-queue-legacy-probe", "experience_scorer");
+    if let Some(legacy) = q.pop_job("experience_scorer") {
+        q.complete_job(&legacy.id);
+    }
     q.push_job_with_id(
         "startup-queue-probe",
         "startup-queue-probe",

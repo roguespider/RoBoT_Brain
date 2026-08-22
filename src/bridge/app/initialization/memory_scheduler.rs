@@ -70,14 +70,16 @@ pub(crate) async fn build_memory_scheduler(
 
     // Register task handlers
     crate::bridge::app::scheduler::register_task_handlers(
-        scheduler.clone(),
-        memory_retrieval.clone(),
-        reflection_engine.clone(),
-        hypothesis_engine.clone(),
-        evolution_engine.clone(),
-        metrics.collector(),
-        database.clone(),
-        learning_coordinator.clone(),
+        crate::bridge::app::scheduler::SchedulerTaskSystems {
+            scheduler: scheduler.clone(),
+            memory_retrieval: memory_retrieval.clone(),
+            reflection_engine: reflection_engine.clone(),
+            hypothesis_engine: hypothesis_engine.clone(),
+            evolution_engine: evolution_engine.clone(),
+            metrics: metrics.collector(),
+            database: database.clone(),
+            learning_coordinator: learning_coordinator.clone(),
+        },
     )
     .await;
 

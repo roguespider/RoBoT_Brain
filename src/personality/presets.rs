@@ -3,7 +3,7 @@
 use std::collections::HashMap;
 
 use super::traits::PersonalityTraits;
-use super::personality::Personality;
+use super::core::Personality;
 
 /// Build the default set of personality presets.
 pub fn default_presets() -> HashMap<String, PersonalityTraits> {

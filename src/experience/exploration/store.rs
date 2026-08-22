@@ -11,7 +11,7 @@ use std::collections::HashMap;
 use std::sync::RwLock;
 
 use super::Exploration;
-use super::exploration::ExplorationStatus;
+use super::core::ExplorationStatus;
 
 /// Trait for exploration storage (scaffolding for future use)
 pub trait ExplorationRepository: Send + Sync {

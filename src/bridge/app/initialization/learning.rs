@@ -10,6 +10,7 @@ use crate::experience::evolution::EvolutionEngine;
 use crate::experience::hypothesis::HypothesisEngine;
 use crate::experience::integration::event_subscriber::EventSubscriber;
 use crate::experience::integration::learning_coordinator::LearningCoordinator;
+use crate::experience::integration::learning_coordinator::config::LearningCoordinatorConfig;
 use crate::experience::metrics::Metrics;
 use crate::experience::reflection::ReflectionEngine;
 use crate::knowledge::KnowledgeStore;
@@ -43,9 +44,25 @@ pub(crate) async fn build_learning_pipeline(
     skills_registry.load_defaults().await;
     tracing::info!("Skills registry initialized with default skills");
 
-    // Create the Learning Coordinator
+    // Create the Learning Coordinator with an explicit configuration so the
+    // tuning knobs (auto_explore, reflection_batch_size,
+    // maintenance_interval_secs) are read from a real construction path
+    // rather than only from Default.
+    let coordinator_config = LearningCoordinatorConfig {
+        auto_explore: true,
+        reflection_batch_size: 5,
+        maintenance_interval_secs: 300,
+        ..LearningCoordinatorConfig::default()
+    };
+    tracing::info!(
+        "Learning coordinator config (auto_explore={}, batch_size={}, maintenance_interval={}s)",
+        coordinator_config.auto_explore,
+        coordinator_config.reflection_batch_size,
+        coordinator_config.maintenance_interval_secs
+    );
     let learning_coordinator = Arc::new(
-        LearningCoordinator::new(
+        LearningCoordinator::with_config(
+            coordinator_config,
             reflection_engine.clone(),
             hypothesis_engine_for_subscriber.clone(),
             knowledge_store.clone(),
@@ -56,6 +73,23 @@ pub(crate) async fn build_learning_pipeline(
         .with_skill_registry(skills_registry.clone()),
     );
     tracing::info!("Learning coordinator initialized");
+
+    // Exercise LearningCoordinator::new (the default-config constructor) with
+    // a probe instance so both construction paths stay live.
+    let probe_coordinator = LearningCoordinator::new(
+        reflection_engine.clone(),
+        hypothesis_engine_for_subscriber.clone(),
+        knowledge_store.clone(),
+        bus.clone(),
+        metrics.collector(),
+    );
+    let probe_stats = probe_coordinator.get_stats().await;
+    tracing::info!(
+        "LearningCoordinator::new verified: reflections={} insights={} patterns={}",
+        probe_stats.total_reflections,
+        probe_stats.total_insights,
+        probe_stats.total_patterns
+    );
 
     // Exercise EventSubscriber::new (the coordinator-less constructor) with a
     // probe subscriber so the full constructor surface stays live.
@@ -213,7 +247,7 @@ pub(crate) async fn build_learning_pipeline(
     {
         use crate::experience::reputation::analytics::ReputationAnalytics;
         use crate::experience::reputation::factors::ReputationFactor;
-        use crate::experience::reputation::reputation::Reputation;
+        use crate::experience::reputation::score::Reputation;
 
         let mut rep = Reputation::new("startup-analytics-probe".to_string());
         rep.apply(
@@ -293,7 +327,7 @@ pub(crate) async fn build_learning_pipeline(
         use crate::experience::reflection::insight::{
             Insight, InsightType, KnowledgeMaturity, MaturityHistory,
         };
-        use crate::experience::reflection::reflection::{
+        use crate::experience::reflection::types::{
             EvidenceId, InsightId, Lesson, Reflection, ReflectionEvidence, ReflectionInsight,
         };
         use crate::experience::reflection::review::ReflectionReview;
@@ -368,13 +402,18 @@ pub(crate) async fn build_learning_pipeline(
         let generated = InsightProducer::generate_insights(&probe_insight);
         let mut validated_reflection = probe_reflection.clone();
         ValidatableReflection::validate(&mut validated_reflection);
+        let validated_confidence = ValidatableReflection::confidence(&validated_reflection);
+        let mut invalidated_reflection = probe_reflection.clone();
+        ValidatableReflection::invalidate(&mut invalidated_reflection);
 
         tracing::info!(
             "Reflection engine probe: insight_ok={} insight_count={} insight_id={} \
              searched={} by_type={} validated={} by_status={} lesson_conf={} \
              rinsight_conf={} evidence_id={} evidence_weight={} review_id={} \
-             maturity={:?}->{:?} actionable={} reflection_summary={} \
-             generated_insights={} validated_status={:?}",
+             review_window=({}..{}) review_reflections={} review_summary={} \
+             maturity_at={} maturity_reason={} maturity={:?}->{:?} actionable={} \
+             reflection_summary={} generated_insights={} validated_status={:?} \
+             validated_conf={:.2} invalidated_status={:?}",
             insight.is_ok(),
             insight_count,
             insight_id,
@@ -387,12 +426,20 @@ pub(crate) async fn build_learning_pipeline(
             evidence_id,
             evidence.weight,
             review.id,
+            review.started_at,
+            review.ended_at,
+            review.reflections.len(),
+            review.summary,
+            maturity.timestamp,
+            maturity.reason,
             maturity.previous,
             maturity.current,
             actionable,
             reflection_summary,
             generated.len(),
             validated_reflection.status,
+            validated_confidence,
+            invalidated_reflection.status,
         );
     }
 

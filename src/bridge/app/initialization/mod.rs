@@ -168,7 +168,7 @@ impl App {
         // Create MCP context with all systems
         let world_model = Arc::new(crate::world_model::WorldModel::new());
         let enforcer = Arc::new(crate::workflows::enforcement::WorkflowEnforcer::new());
-        let mcp_context = mcp_context::create_mcp_context(
+        let mcp_context = mcp_context::create_mcp_context(mcp_context::McpContextSystems {
             database,
             job_queue,
             bus,
@@ -186,12 +186,12 @@ impl App {
             memory_retrieval,
             workflow_engine,
             skills_registry,
-            Arc::clone(&acp_router),
+            acp_router: Arc::clone(&acp_router),
             acp_registry,
-            Arc::clone(&shared_personality),
-            Arc::clone(&world_model),
+            shared_personality: Arc::clone(&shared_personality),
+            world_model: Arc::clone(&world_model),
             enforcer,
-        );
+        });
 
         // Register MCP tools
         crate::bridge::tools::register_tools();
@@ -225,7 +225,7 @@ impl App {
         tracing::info!("RoBoT initialized successfully");
 
         // Goal-driven agent loop + App struct (Architecture §5.7)
-        let app = agent_loop::create_app(
+        let app = agent_loop::create_app(agent_loop::AgentLoopSystems {
             mcp_context,
             shared_personality,
             hypothesis_engine,
@@ -234,7 +234,7 @@ impl App {
             memory_pipeline,
             acp_router,
             world_model,
-        );
+        });
 
         Ok(app)
     }

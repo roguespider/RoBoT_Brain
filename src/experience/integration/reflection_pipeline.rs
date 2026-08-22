@@ -14,7 +14,7 @@ use crate::experience::bus::ExperienceBus;
 use crate::experience::events::ExperienceEvent;
 use crate::experience::types::Experience;
 use crate::experience::reflection::{ReflectionEngine, ReflectionType, ReflectionStatus};
-use crate::experience::reflection::reflection::Reflection;
+use crate::experience::reflection::types::Reflection;
 
 /// Reflection pipeline that processes experiences into insights
 pub struct ReflectionPipeline {

@@ -267,9 +267,8 @@ impl ToolHandler for WorkflowToolsHandler {
         ]
     }
 
-    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
+    async fn execute_tool(&self, name: &str, args: serde_json::Value) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
         use crate::bridge::tools::workflow;
-        async move {
             match name {
                 "create_workflow" => {
                     let input: workflow::CreateWorkflowInput = serde_json::from_value(args)
@@ -329,6 +328,5 @@ impl ToolHandler for WorkflowToolsHandler {
                 }
                 other => Err(HandlerError::ToolNotFound(other.to_string())),
             }
-        }
     }
 }

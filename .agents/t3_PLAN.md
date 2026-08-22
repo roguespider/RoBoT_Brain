@@ -33,16 +33,28 @@ Build the base architecture and shared contracts first.
 ## 2. Conversation Engine (Chapter 06)
 Make the user-facing interaction layer explicit and testable.
 
-- [ ] **T3-17** Add the conversation-session identity fields.
-- [ ] **T3-18** Add turn numbering and turn-history consistency rules.
-- [ ] **T3-19** Add user-message storage for the session model.
-- [ ] **T3-20** Add agent-response storage for the session model.
-- [ ] **T3-21** Add learned-note storage for the session model.
-- [ ] **T3-22** Add session start and continue operations.
-- [ ] **T3-23** Add session retrieval operations.
-- [ ] **T3-24** Add intent-understanding behavior before generation or retrieval.
-- [ ] **T3-25** Add response-generation behavior from the cognitive pipeline.
-- [ ] **T3-26** Connect conversation turns to context construction instead of treating chat history as memory.
+- [ ] **TC-01** `ConversationSession` struct -- fields: `session_id`,
+      `turn_number`, `user_messages[]`, `agent_responses[]`, `learnings[]`.
+      In-memory session tracker.
+- [ ] **TC-02** `ConversationEngine` -- in-memory struct with methods:
+      `start_session()`, `add_turn(session_id, user_msg, agent_resp)`,
+      `get_session(session_id)`.
+- [ ] **TC-03** `converse` MCP tool -- takes `message` string, finds or creates
+      session, calls `run_agent_goal(message)`, stores turn, returns response.
+      (This is the entry point users actually use.)
+- [ ] **TC-04** Learning extraction from conversation -- simple function that
+      takes (user_message, agent_response) and returns a list of extracted
+      facts/learnings. Starts with keyword-based pattern matching,
+      upgrades to LLM extraction later.
+- [ ] **TC-05** Wire `extract_learnings` into `converse` -- each extracted
+      learning is stored via existing `store_memory` (memory_type =
+      `preference` or `fact`).
+- [ ] **TC-06** Conversation persistence -- store conversation turns to
+      SQLite (`conversation_turns` table). Simple: `session_id, turn_number,
+      role (user/agent), content, timestamp`.
+
+**Done when:** `converse` tool works end-to-end (user message -> agent loop
+-> response -> conversation stored). Gate green.
 
 ## 3. Context Engine (Chapter 07)
 Build the context subsystem that serves the conversation engine.

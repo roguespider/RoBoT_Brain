@@ -516,11 +516,12 @@ impl AcpToolsHandler {
     ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         let agent_id = AcpAgentId::new(&input.agent_type, &input.instance_id);
 
-        if let Some(..) = self
+        if self
             .context
             .acp_registry
             .unregister(&agent_id)
             .map_err(|e| anyhow::anyhow!("{}", e))?
+            .is_some()
         {
             Ok(crate::bridge::tools::ToolOutput::success(
                 serde_json::json!({
@@ -705,86 +706,83 @@ impl ToolHandler for AcpToolsHandler {
         ]
     }
 
-    fn execute_tool(
+    async fn execute_tool(
         &self,
         name: &str,
         args: serde_json::Value,
-    ) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send
-    {
-        async move {
-            match name {
-                "list_acp_agents" => {
-                    let input: ListAcpAgentsInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_list_acp_agents(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "acp_agent_count" => {
-                    let input: AcpAgentCountInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_acp_agent_count(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "acp_router" => {
-                    let input: GetAcpRouterInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_acp_router(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "acp_registry" => {
-                    let input: GetAcpRegistryInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_acp_registry(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "create_acp_message" => {
-                    let input: CreateAcpMessageInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_create_acp_message(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "route_acp_message" => {
-                    let input: RouteAcpMessageInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_route_acp_message(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "get_agent_capabilities" => {
-                    let input: GetAgentCapabilitiesInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_get_agent_capabilities(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "get_system_status" => {
-                    let input: GetSystemStatusInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_get_system_status(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "register_agent" => {
-                    let input: RegisterAgentInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_register_agent(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "unregister_agent" => {
-                    let input: UnregisterAgentInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_unregister_agent(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                _ => Err(HandlerError::ToolNotFound(name.to_string())),
+    ) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
+        match name {
+            "list_acp_agents" => {
+                let input: ListAcpAgentsInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_list_acp_agents(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
             }
+            "acp_agent_count" => {
+                let input: AcpAgentCountInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_acp_agent_count(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "acp_router" => {
+                let input: GetAcpRouterInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_acp_router(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "acp_registry" => {
+                let input: GetAcpRegistryInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_acp_registry(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "create_acp_message" => {
+                let input: CreateAcpMessageInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_create_acp_message(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "route_acp_message" => {
+                let input: RouteAcpMessageInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_route_acp_message(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "get_agent_capabilities" => {
+                let input: GetAgentCapabilitiesInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_get_agent_capabilities(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "get_system_status" => {
+                let input: GetSystemStatusInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_get_system_status(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "register_agent" => {
+                let input: RegisterAgentInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_register_agent(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "unregister_agent" => {
+                let input: UnregisterAgentInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_unregister_agent(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            _ => Err(HandlerError::ToolNotFound(name.to_string())),
         }
     }
 }

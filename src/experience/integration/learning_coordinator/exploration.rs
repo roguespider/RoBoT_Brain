@@ -17,7 +17,10 @@ pub struct ExplorationManager {
 }
 
 impl ExplorationManager {
-    pub fn new(explorations: Arc<RwLock<std::collections::HashMap<String, Exploration>>>, bus: Arc<ExperienceBus>) -> Self {
+    pub fn new(
+        explorations: Arc<RwLock<std::collections::HashMap<String, Exploration>>>,
+        bus: Arc<ExperienceBus>,
+    ) -> Self {
         Self { explorations, bus }
     }
 
@@ -31,7 +34,7 @@ impl ExplorationManager {
         let exploration_id = Uuid::new_v4().to_string();
 
         // Link exploration to the hypothesis it's investigating
-        let exploration = Exploration::new(
+        let mut exploration = Exploration::new(
             exploration_id.clone(),
             title,
             purpose,
@@ -40,6 +43,9 @@ impl ExplorationManager {
                 ..Default::default()
             },
         );
+        // Activations start immediately: an exploration created by the
+        // coordinator is by definition being pursued (Architecture §4.06).
+        exploration.start();
 
         let mut store = self.explorations.write().await;
         store.insert(exploration_id.clone(), exploration);

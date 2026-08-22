@@ -30,7 +30,6 @@
 //!
 //! The reflection system acts as the robot's "thinking after doing."
 
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 
@@ -38,13 +37,13 @@ pub mod engine;
 pub mod insight;
 pub mod pattern;
 
-pub mod reflection;
 pub mod review;
 pub mod services;
+pub mod types;
 
 // Re-export from submodules
 pub use engine::ReflectionEngine;
-pub use reflection::Reflection;
+pub use types::Reflection;
 
 /// ============================================================================
 /// Reflection Types

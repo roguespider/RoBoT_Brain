@@ -8,9 +8,9 @@ use anyhow::Result;
 
 use super::context::ExecutionContext;
 use super::metrics::ExecutionMetrics;
-use super::registry::SkillRegistry;
 use super::result::ExecutionResult;
 use super::skill::Skill;
+use super::store::SkillRegistry;
 use super::types::SkillCategory;
 
 /// Skill executor for running skills
@@ -36,11 +36,14 @@ impl SkillExecutor {
         context: ExecutionContext,
     ) -> Result<ExecutionResult> {
         let start = Instant::now();
-        
+
         // Get skill
-        let skill = self.registry.get(skill_id).await
+        let skill = self
+            .registry
+            .get(skill_id)
+            .await
             .ok_or_else(|| anyhow::anyhow!("Skill not found: {}", skill_id))?;
-        
+
         // Check prerequisites
         if !skill.prerequisites_met(&[]) {
             return Ok(ExecutionResult::failure(
@@ -51,15 +54,15 @@ impl SkillExecutor {
                 -0.05, // Small penalty
             ));
         }
-        
+
         // Execute the skill logic based on category
         let result = self.execute_by_category(&skill, context).await;
-        
+
         let duration_ms = start.elapsed().as_millis() as u64;
-        
+
         // Record execution
         self.record_execution(skill_id, &result, duration_ms).await;
-        
+
         Ok(result)
     }
 
@@ -70,7 +73,7 @@ impl SkillExecutor {
         context: ExecutionContext,
     ) -> ExecutionResult {
         let start = Instant::now();
-        
+
         // Dispatch based on category
         let output = match skill.metadata.category {
             SkillCategory::FileOperation => {
@@ -83,7 +86,7 @@ impl SkillExecutor {
             SkillCategory::CodeAnalysis => {
                 serde_json::json!({
                     "task": context.task,
-                    "category": "code_analysis", 
+                    "category": "code_analysis",
                     "status": "simulated"
                 })
             }
@@ -134,15 +137,10 @@ impl SkillExecutor {
     }
 
     /// Record execution in registry and update metrics
-    async fn record_execution(
-        &self,
-        skill_id: &str,
-        result: &ExecutionResult,
-        duration_ms: u64,
-    ) {
+    async fn record_execution(&self, skill_id: &str, result: &ExecutionResult, duration_ms: u64) {
         // Update registry
         let _ = self.registry.record_usage(skill_id, result.success).await;
-        
+
         // Update local metrics
         match self.metrics.lock() {
             Ok(mut metrics) => {
@@ -193,7 +191,8 @@ impl SkillExecutor {
     pub fn get_skills_by_success_rate(&self) -> Vec<(String, f32)> {
         match self.metrics.lock() {
             Ok(metrics) => {
-                let mut result: Vec<_> = metrics.iter()
+                let mut result: Vec<_> = metrics
+                    .iter()
                     .map(|(id, m)| (id.clone(), m.success_rate()))
                     .collect();
                 result.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
@@ -202,7 +201,8 @@ impl SkillExecutor {
             Err(poisoned) => {
                 tracing::error!("Metrics mutex poisoned during get_skills_by_success_rate");
                 let metrics = poisoned.into_inner();
-                let mut result: Vec<_> = metrics.iter()
+                let mut result: Vec<_> = metrics
+                    .iter()
                     .map(|(id, m)| (id.clone(), m.success_rate()))
                     .collect();
                 result.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
@@ -214,16 +214,16 @@ impl SkillExecutor {
     /// Get unreliable skills
     pub fn get_unreliable_skills(&self) -> Vec<String> {
         match self.metrics.lock() {
-            Ok(metrics) => {
-                metrics.iter()
-                    .filter(|(_, m)| m.is_unreliable())
-                    .map(|(id, _)| id.clone())
-                    .collect()
-            }
+            Ok(metrics) => metrics
+                .iter()
+                .filter(|(_, m)| m.is_unreliable())
+                .map(|(id, _)| id.clone())
+                .collect(),
             Err(poisoned) => {
                 tracing::error!("Metrics mutex poisoned during get_unreliable_skills");
                 let metrics = poisoned.into_inner();
-                metrics.iter()
+                metrics
+                    .iter()
                     .filter(|(_, m)| m.is_unreliable())
                     .map(|(id, _)| id.clone())
                     .collect()

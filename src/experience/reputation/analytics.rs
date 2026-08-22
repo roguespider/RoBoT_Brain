@@ -1,7 +1,7 @@
 // /src/experience/reputation/analytics.rs
 
 
-use super::reputation::Reputation;
+use super::score::Reputation;
 
 pub struct ReputationAnalytics;
 

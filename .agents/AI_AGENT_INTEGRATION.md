@@ -35,15 +35,6 @@ conversation.send_message("Search memory for Rust patterns")
 conversation.run()
 ```
 
-## Complete Example
-
-See `.agents/examples/robot_brain_agent.py` for a full-featured script:
-
-```bash
-export LLM_API_KEY="your-key"
-python .agents/examples/robot_brain_agent.py -m "Search memory for architecture patterns"
-```
-
 ## Available Tools (~89 total)
 
 | Category | Key Tools |

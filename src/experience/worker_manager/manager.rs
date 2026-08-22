@@ -6,13 +6,10 @@ use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tokio::sync::{RwLock, mpsc};
 
-use chrono::Utc;
 use uuid::Uuid;
 
 use crate::experience::bus::ExperienceBus;
 use crate::experience::events::ExperienceEvent;
-use crate::experience::events::payload::EventPayload;
-use crate::experience::events::types::ExperienceEventType;
 use crate::experience::observer::ExperienceObserver;
 
 use crate::experience::queue::JobQueue;
@@ -30,6 +27,9 @@ struct WorkerHandle {
     sender: mpsc::Sender<ObserverJob>,
     /// Statistics for this worker
     stats: Arc<WorkerStats>,
+    /// Observer dispatch priority (lower runs first, per the
+    /// ExperienceObserver::priority contract)
+    priority: u8,
 }
 
 /// In-memory registry mapping unique job IDs to their parent experience IDs.
@@ -163,6 +163,7 @@ impl WorkerManager {
         };
 
         // Create the worker with callbacks so it reports completion/failure/retry
+        let priority = observer.priority();
         let worker = ExperienceWorker::with_callbacks(
             observer,
             receiver,
@@ -184,7 +185,14 @@ impl WorkerManager {
         });
 
         // Store the handle
-        workers.insert(name.clone(), WorkerHandle { sender, stats });
+        workers.insert(
+            name.clone(),
+            WorkerHandle {
+                sender,
+                stats,
+                priority,
+            },
+        );
 
         tracing::info!("Registered observer: {} with worker", name);
         Ok(())
@@ -193,7 +201,7 @@ impl WorkerManager {
     /// Enqueue a job for an observer by name with a unique job ID.
     /// Called by the bus subscriber when events are published.
     /// The job is persisted to SQLite via the JobQueue.
-    pub async fn enqueue(&self, observer_name: &str, event: ExperienceEvent) -> Result<()> {
+    pub(crate) async fn enqueue(&self, observer_name: &str, event: ExperienceEvent) -> Result<()> {
         let workers = self.workers.read().await;
 
         let handle = workers.get(observer_name).ok_or_else(|| {
@@ -247,7 +255,11 @@ impl WorkerManager {
                 .job_queue
                 .lock()
                 .map_err(|e| anyhow::anyhow!("Queue lock poisoned: {}", e))?;
-            for name in workers.keys() {
+            // Dispatch in priority order (lower value runs first, per the
+            // ExperienceObserver::priority contract).
+            let mut ordered: Vec<&String> = workers.keys().collect();
+            ordered.sort_by_key(|name| workers.get(*name).map(|h| h.priority).unwrap_or(u8::MAX));
+            for name in ordered {
                 let job_id = Uuid::new_v4().to_string();
                 q.push_job_with_id(&job_id, &event_id, name);
                 // Register the mapping so worker callbacks can find it
@@ -335,7 +347,7 @@ impl WorkerManager {
     /// Mark a job as completed after a worker processes it.
     /// Delegates to `JobQueue::complete_job` (the infallible SQLite-aware
     /// path); persist failures are logged inside the queue.
-    pub fn mark_job_complete(&self, job_id: &str) -> Result<()> {
+    pub(crate) fn mark_job_complete(&self, job_id: &str) -> Result<()> {
         let mut q = self
             .job_queue
             .lock()
@@ -364,13 +376,15 @@ impl WorkerManager {
     /// Registers each synthetic job ID in the `JobRegistry` so that the worker's
     /// completion callbacks can later find it (P0-003: durable queue/worker sync).
     pub async fn dispatch_restored_jobs(&self) {
-        let q = self.job_queue.lock().unwrap_or_else(|e| e.into_inner());
-        let jobs = q.pending_jobs();
-        if jobs.is_empty() {
-            return;
-        }
-
-        tracing::info!("Dispatching {} restored job(s) to workers", jobs.len());
+        let jobs = {
+            let q = self.job_queue.lock().unwrap_or_else(|e| e.into_inner());
+            let pending = q.pending_jobs();
+            if pending.is_empty() {
+                return;
+            }
+            tracing::info!("Dispatching {} restored job(s) to workers", pending.len());
+            pending
+        };
 
         let workers = self.workers.read().await;
 
@@ -380,15 +394,9 @@ impl WorkerManager {
                 // callbacks can look it up later (P0-003).
                 self.job_registry.register(&job.id, &job.experience_id);
 
-                let synthetic = ExperienceEvent {
-                    id: Uuid::parse_str(&job.id).unwrap_or_else(|_| Uuid::new_v4()),
-                    experience_id: Uuid::parse_str(&job.id).unwrap_or_else(|_| Uuid::new_v4()),
-                    timestamp: Utc::now(),
-                    event_type: ExperienceEventType::System,
-                    payload: EventPayload::Experience {
-                        experience_id: Uuid::parse_str(&job.id).unwrap_or_else(|_| Uuid::new_v4()),
-                    },
-                };
+                let synthetic = ExperienceEvent::recorded(
+                    Uuid::parse_str(&job.id).unwrap_or_else(|_| Uuid::new_v4()),
+                );
                 let observer_job = ObserverJob::new(synthetic);
                 if handle.sender.send(observer_job).await.is_err() {
                     tracing::warn!(

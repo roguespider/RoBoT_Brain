@@ -2,7 +2,9 @@
 //!
 //! Defines test requirements for Experience-related MCP tools.
 
-use crate::function_registry::types::{CheckType, DataRequirement, TestRequirement, ValidationCheck};
+use crate::function_registry::types::{
+    CheckType, DataRequirement, TestRequirement, ValidationCheck,
+};
 
 /// Returns test requirements for Experience tools
 pub fn experience_tools() -> Vec<TestRequirement> {
@@ -64,6 +66,34 @@ pub fn experience_tools() -> Vec<TestRequirement> {
             validation: vec![ValidationCheck {
                 check_type: CheckType::HasField,
                 field: "total".to_string(),
+                expected_value: None,
+            }],
+            priority: 2,
+        },
+        TestRequirement {
+            id: "experience_add_evidence".to_string(),
+            function_name: "add_evidence_to_experience".to_string(),
+            category: "Experience".to_string(),
+            requires_workflow: true,
+            requires_data: None,
+            expected_behavior: "Adds evidence to a recorded experience".to_string(),
+            validation: vec![ValidationCheck {
+                check_type: CheckType::HasField,
+                field: "success".to_string(),
+                expected_value: None,
+            }],
+            priority: 2,
+        },
+        TestRequirement {
+            id: "experience_archive".to_string(),
+            function_name: "archive_experience".to_string(),
+            category: "Experience".to_string(),
+            requires_workflow: true,
+            requires_data: None,
+            expected_behavior: "Archives an experience (soft-delete, not destroy)".to_string(),
+            validation: vec![ValidationCheck {
+                check_type: CheckType::HasField,
+                field: "success".to_string(),
                 expected_value: None,
             }],
             priority: 2,

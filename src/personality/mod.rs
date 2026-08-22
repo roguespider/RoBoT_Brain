@@ -33,14 +33,14 @@
 
 pub mod adaptation;
 pub mod communication;
+pub mod core;
 pub mod decision;
 pub mod decision_making;
 pub mod emotional;
-pub mod personality;
 pub mod presets;
 pub mod traits;
 
 pub use communication::CommunicationStyle;
+pub use core::Personality;
 pub use decision::{Decision, DecisionApproach, DecisionContext};
-pub use personality::Personality;
 pub use traits::PersonalityTraits;

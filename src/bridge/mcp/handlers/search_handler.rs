@@ -109,8 +109,7 @@ impl ToolHandler for SearchToolsHandler {
         ]
     }
 
-    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
-        async move {
+    async fn execute_tool(&self, name: &str, args: serde_json::Value) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
             match name {
                 "global_search" => {
                     let input: search::GlobalSearchInput = serde_json::from_value(args)
@@ -132,6 +131,5 @@ impl ToolHandler for SearchToolsHandler {
                 }
                 _ => Err(HandlerError::ToolNotFound(name.to_string()))
             }
-        }
     }
 }

@@ -13,14 +13,14 @@
 pub mod context;
 pub mod executor;
 pub mod metrics;
-pub mod registry;
 pub mod result;
 pub mod skill;
+pub mod store;
 pub mod types;
 
 // Re-export types for convenience
 pub use context::ExecutionContext;
 pub use executor::SkillExecutor;
-pub use registry::SkillRegistry;
 pub use skill::Skill;
+pub use store::SkillRegistry;
 pub use types::{SkillCategory, SkillMetadata, SkillSource};

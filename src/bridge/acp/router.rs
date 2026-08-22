@@ -10,12 +10,15 @@ use super::message::{AcpMessage, AcpMessageType};
 
 use super::registry::AcpRegistry;
 
+/// A handler invoked by the router for a message; returns an optional reply.
+type AcpMessageHandler = Box<dyn Fn(AcpMessage) -> Result<Option<AcpMessage>> + Send + Sync>;
+
+type AcpHandlerMap = HashMap<String, AcpMessageHandler>;
+
 /// ACP router for routing messages between agents
 pub struct AcpRouter {
     registry: Arc<AcpRegistry>,
-    handlers: std::sync::RwLock<
-        HashMap<String, Box<dyn Fn(AcpMessage) -> Result<Option<AcpMessage>> + Send + Sync>>,
-    >,
+    handlers: std::sync::RwLock<AcpHandlerMap>,
 }
 
 impl AcpRouter {

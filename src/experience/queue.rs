@@ -113,12 +113,13 @@ impl JobQueue {
 
     /// Add a new job to the queue (uses experience_id as the job ID).
     /// For unique per-observer job IDs, use [`push_job_with_id`] instead.
-    pub fn push_job(&mut self, experience_id: &str, observer_name: &str) {
+    pub(crate) fn push_job(&mut self, experience_id: &str, observer_name: &str) {
         let job = Job::new(experience_id, observer_name);
         if let Some(db) = &self.database
-            && let Err(e) = persist_insert(db, &job) {
-                tracing::warn!("JobQueue insert failed, job not durable: {}", e);
-            }
+            && let Err(e) = persist_insert(db, &job)
+        {
+            tracing::warn!("JobQueue insert failed, job not durable: {}", e);
+        }
         self.jobs.insert(job.id.clone(), job);
     }
 
@@ -135,9 +136,10 @@ impl JobQueue {
             attempts: 0,
         };
         if let Some(db) = &self.database
-            && let Err(e) = persist_insert(db, &job) {
-                tracing::warn!("JobQueue insert failed, job not durable: {}", e);
-            }
+            && let Err(e) = persist_insert(db, &job)
+        {
+            tracing::warn!("JobQueue insert failed, job not durable: {}", e);
+        }
         self.jobs.insert(job.id.clone(), job);
     }
 
@@ -191,9 +193,10 @@ impl JobQueue {
         if let Some(job) = self.jobs.get_mut(job_id) {
             job.status = JobStatus::Running;
             if let Some(db) = &self.database
-                && let Err(e) = persist_update(db, job) {
-                    tracing::warn!("JobQueue running persist failed: {}", e);
-                }
+                && let Err(e) = persist_update(db, job)
+            {
+                tracing::warn!("JobQueue running persist failed: {}", e);
+            }
         }
     }
 
@@ -214,9 +217,10 @@ impl JobQueue {
                     last_error: None,
                     attempts: 0,
                 },
-            ) {
-                tracing::warn!("JobQueue mark_complete persist failed: {}", e);
-            }
+            )
+        {
+            tracing::warn!("JobQueue mark_complete persist failed: {}", e);
+        }
         Ok(())
     }
 
@@ -239,9 +243,10 @@ impl JobQueue {
                     last_error: Some(error),
                     attempts: 1,
                 },
-            ) {
-                tracing::warn!("JobQueue mark_failed persist failed: {}", e);
-            }
+            )
+        {
+            tracing::warn!("JobQueue mark_failed persist failed: {}", e);
+        }
         Ok(())
     }
 

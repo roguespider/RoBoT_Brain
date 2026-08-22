@@ -280,8 +280,7 @@ impl ToolHandler for HypothesisToolsHandler {
         ]
     }
 
-    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
-        async move {
+    async fn execute_tool(&self, name: &str, args: serde_json::Value) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
             match name {
                 "record_observation" => {
                     let input: hypothesis::RecordObservationInput = serde_json::from_value(args)
@@ -351,6 +350,5 @@ impl ToolHandler for HypothesisToolsHandler {
                 }
                 _ => Err(HandlerError::ToolNotFound(name.to_string()))
             }
-        }
     }
 }

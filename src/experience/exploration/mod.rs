@@ -21,16 +21,15 @@
 
 //! ```
 
-
 pub mod attempt;
 
-pub mod exploration;
+pub mod core;
 pub mod finding;
 pub mod hypothesis;
 pub mod store;
 
 // Re-export all exploration types for convenient access
-pub use exploration::{Exploration, ExplorationStatus};
 pub use attempt::ExplorationAttempt;
+pub use core::{Exploration, ExplorationStatus};
 pub use finding::ExplorationFinding;
 pub use hypothesis::{Hypothesis, HypothesisResult};

@@ -3,7 +3,6 @@
 
 use std::sync::Arc;
 
-use crate::agent::SafetyGate;
 use crate::bridge::acp::{AcpRegistry, AcpRouter};
 use crate::bridge::mcp::McpContext;
 use crate::database::sqlite::SqliteDatabase;
@@ -26,57 +25,36 @@ use crate::workflows::enforcement::WorkflowEnforcer;
 use crate::workflows::engine::WorkflowEngine;
 use crate::world_model::WorldModel;
 
+/// Grouped subsystem handles for building the shared `McpContext`.
+pub struct McpContextSystems {
+    pub database: Arc<SqliteDatabase>,
+    pub job_queue: Arc<std::sync::Mutex<JobQueue>>,
+    pub bus: Arc<ExperienceBus>,
+    pub coordinator: Arc<ExperienceCoordinator>,
+    pub worker_manager: Arc<WorkerManager>,
+    pub reflection_engine: Arc<ReflectionEngine>,
+    pub evolution_engine: Arc<EvolutionEngine>,
+    pub scheduler: Arc<Scheduler>,
+    pub metrics: Arc<Metrics>,
+    pub knowledge_store: Arc<KnowledgeStore>,
+    pub planner: Arc<Planner>,
+    pub policy_engine: Arc<PolicyEngine>,
+    pub working_memory_core: Arc<MemWorkingMemory>,
+    pub permanent_memory: Arc<PermanentMemory>,
+    pub memory_retrieval: Arc<MemoryRetrieval>,
+    pub workflow_engine: Arc<WorkflowEngine>,
+    pub skills_registry: Arc<SkillRegistry>,
+    pub acp_router: Arc<AcpRouter>,
+    pub acp_registry: Arc<AcpRegistry>,
+    pub shared_personality: Arc<std::sync::Mutex<crate::personality::Personality>>,
+    pub world_model: Arc<WorldModel>,
+    pub enforcer: Arc<WorkflowEnforcer>,
+}
+
 /// Create the shared McpContext holding all subsystem references.
 ///
 /// Builds the WorldModel and WorkflowEnforcer, then wires all 21 dependencies
 /// into the McpContext.
-pub fn create_mcp_context(
-    database: Arc<SqliteDatabase>,
-    job_queue: Arc<std::sync::Mutex<JobQueue>>,
-    bus: Arc<ExperienceBus>,
-    coordinator: Arc<ExperienceCoordinator>,
-    worker_manager: Arc<WorkerManager>,
-    reflection_engine: Arc<ReflectionEngine>,
-    evolution_engine: Arc<EvolutionEngine>,
-    scheduler: Arc<Scheduler>,
-    metrics: Arc<Metrics>,
-    knowledge_store: Arc<KnowledgeStore>,
-    planner: Arc<Planner>,
-    policy_engine: Arc<PolicyEngine>,
-    working_memory_core: Arc<MemWorkingMemory>,
-    permanent_memory: Arc<PermanentMemory>,
-    memory_retrieval: Arc<MemoryRetrieval>,
-    workflow_engine: Arc<WorkflowEngine>,
-    skills_registry: Arc<SkillRegistry>,
-    acp_router: Arc<AcpRouter>,
-    acp_registry: Arc<AcpRegistry>,
-    shared_personality: Arc<std::sync::Mutex<crate::personality::Personality>>,
-    world_model: Arc<WorldModel>,
-    enforcer: Arc<WorkflowEnforcer>,
-) -> Arc<McpContext> {
-    Arc::new(McpContext::new(
-        database,
-        job_queue,
-        bus,
-        coordinator,
-        worker_manager,
-        reflection_engine,
-        evolution_engine,
-        scheduler,
-        metrics,
-        knowledge_store,
-        planner,
-        policy_engine,
-        working_memory_core,
-        permanent_memory,
-        memory_retrieval,
-        workflow_engine,
-        skills_registry,
-        acp_router,
-        acp_registry,
-        shared_personality,
-        Arc::new(SafetyGate::new()),
-        world_model,
-        enforcer,
-    ))
+pub fn create_mcp_context(systems: McpContextSystems) -> Arc<McpContext> {
+    Arc::new(McpContext::new(systems))
 }

@@ -615,103 +615,19 @@ Leave this blank until completed.
 
 > Goal: every existing subsystem conforms to its v0.0.2 chapter and
 > communicates through Data Contracts. End state = finished v0.0.2.
+> Detailed task list: [`.agents/t2_PLAN.md`](t2_PLAN.md).
 
-## 2A. Data Contracts (Chapter 05)
-
-Create `src/data_contracts/`. Types-only first; wire adapters incrementally.
-
-- [ ] **T2-01** Create `src/data_contracts/` module skeleton (mod.rs, version
-      field, shared traits).
-- [ ] **T2-02** `Observation` struct + serde round-trip unit test.
-- [ ] **T2-03** `ContextPacket` struct + serde round-trip test.
-- [ ] **T2-04** `MemoryRecord` struct + serde round-trip test.
-- [ ] **T2-05** `ExperienceRecord` -- alias/migrate the existing type; serde
-      round-trip test.
-- [ ] **T2-06** `Plan` struct + serde round-trip test.
-- [ ] **T2-07** `Decision` struct + serde round-trip test.
-- [ ] **T2-08** `ExecutionResult` struct + serde round-trip test.
-- [ ] **T2-09** `Reflection` struct + serde round-trip test.
-- [ ] **T2-10** `LearningUpdate` struct + serde round-trip test.
-
-**Done when:** all contracts round-trip through serde; gate green.
-
-## 2B. Memory Engine (Chapters 08 & 14)
-
-- [ ] **T2-11** Add explicit memory lifecycle states + promotion gate
-      (Working → Candidate → Accepted → Permanent → Archived) in `src/memory/`.
-- [ ] **T2-12** Add a confidence field to memories.
-- [ ] **T2-13** Add memory relationship-graph support.
-- [ ] **T2-14** Memory consolidation: merge duplicates, summarize aging
-      low-importance memories, keep anchor memories standalone.
-- [ ] **T2-15** Pruning policy for low-value/aged memories.
-- [ ] **T2-16** Migrate `MemoryRecord` to the data-contract type.
-
-**Done when:** store/search/list/relationship MCP tools work live; gate green.
-
-## 2C. Knowledge Graph (Chapter 20)
-
-- [ ] **T2-17** Add `knowledge_nodes` table + migration.
-- [ ] **T2-18** Add `knowledge_edges` table + migration.
-- [ ] **T2-19** Add relationship confidence on edges.
-- [ ] **T2-20** Entity-resolution pass (merge aliases like "rustc"/"Rust Compiler").
-- [ ] **T2-21** Graph traversal queries (relationship chains).
-- [ ] **T2-22** Graph-extraction pipeline (entity detect → relationship
-      extract → confidence evaluate → graph update → integrate).
-
-**Done when:** graph traversal MCP tool returns relationship chains; gate green.
-
-## 2D. Experience Engine (Chapters 09 & 18)
-
-- [ ] **T2-23** Enrich `ExperienceRecord` field set (goal, plan_id, result,
-      success, execution_time, cost, confidence_change, tool_usage, lessons,
-      related refs).
-- [ ] **T2-24** Add experience categories (conversation/planning/tool/code/...).
-- [ ] **T2-25** Multi-factor success scoring.
-- [ ] **T2-26** Confidence-update propagation to memory/relationships/tools.
-- [ ] **T2-27** Migrate `ExperienceRecord` to the data-contract type.
-
-**Done when:** record/list/insights MCP tools return the enriched fields; gate green.
-
-## 2E. Learning Engine (Chapter 10)
-
-- [ ] **T2-28** Formalize the learning pipeline (reflection → candidate →
-      promotion → consolidation) in `src/learning/`.
-- [ ] **T2-29** Pattern discovery from repeated successful experiences.
-- [ ] **T2-30** Skill emergence from patterns.
-- [ ] **T2-31** Confidence/decay management + generalization over memorization.
-
-**Done when:** before/after learning shows measurable improvement (Ch.30.15);
-gate green.
-
-## 2F. Planning Engine (Chapter 11)
-
-- [ ] **T2-32** Richer `decompose_goal` (more action verbs, better step gen).
-- [ ] **T2-33** Dependency-aware task graphs.
-- [ ] **T2-34** Candidate-plan generation + evaluation.
-- [ ] **T2-35** Dynamic replanning triggers + plan scoring.
-- [ ] **T2-36** Migrate `Plan` to the data-contract type.
-
-**Done when:** create_plan returns real decomposed steps + dependencies; gate green.
-
-## 2G. Skills & Workflows (Chapters 11 & 13)
-
-- [ ] **T2-37** Skills: permissions + performance tracking in
-      `src/skills/registry/`.
-- [ ] **T2-38** Skills: fallback + async/parallel/retry.
-- [ ] **T2-39** Workflows: workflow-level learning + confidence in
-      `src/workflows/engine/`.
-- [ ] **T2-40** Workflows: workflow ranking.
-
-**Done when:** register/discover/execute_skill + workflow tools work live; gate green.
-
-## 2H. World Model & Personality (Chapters 13/14/20)
-
-- [ ] **T2-41** Align `src/world_model/` with the knowledge graph (entities →
-      knowledge_nodes; relationships → edges with confidence).
-- [ ] **T2-42** Finalize `src/personality/` (traits, emotional weight →
-      confidence, presets, adaptation, decision_making, communication).
-
-**Done when:** world_model + 6 personality MCP tools work live; gate green.
+- **2A. Data Contracts** (Chapter 05) -- types, serde round-trips
+- **2B. Memory Engine** (Chapters 08 & 14) -- lifecycle, relationships, pruning
+- **2C. Knowledge Graph** (Chapter 20) -- nodes, edges, entity resolution, extraction
+- **2D. Experience Engine** (Chapters 09 & 18) -- enrichment, scoring, propagation
+- **2E. Learning Engine** (Chapter 10) -- pipeline, patterns, skills, decay
+- **2F. Planning Engine** (Chapter 11) -- decomposition, task graphs, replanning
+- **2G. Skills & Workflows** (Chapters 11 & 13) -- permissions, fallback, ranking
+- **2H. World Model & Personality** (Chapters 13/14/20) -- entities, traits
+- **2.0. Architecture foundations** -- invariants, ownership map, data-flow
+- **2.1. Model integration & coordination** -- AI runtime, MCP/ACP, cognitive layer
+- **2.2. Execution & Tooling** -- controlled actions, tool permissions, isolation
 
 **End of TIER 2 = finished v0.0.2. Tag: `v0.0.2`.**
 
@@ -721,158 +637,29 @@ gate green.
 
 > Goal: every v0.0.2.1 chapter (01-33) has a corresponding implemented module or
 > documented deferral. Build in dependency order; AI Runtime/Multimodal/GUI last.
-> Chapter refs are `robot_architecture/v0.0.2.1/<NN>.md`.
+> Detailed task list: [`.agents/t3_PLAN.md`](t3_PLAN.md).
 
-## 3A. Execution & Tool engines (Chapters 12 & 13)
-
-- [ ] **T3-01** `src/execution/` skeleton -- execution isolation, action
-      authorization (Chapter 12).
-- [ ] **T3-02** Execution: workflow graphs/DAGs + checkpoints.
-- [ ] **T3-03** Execution: result normalization + recovery.
-- [ ] **T3-04** `src/tools/` (Tool Engine) -- capability registration contracts
-      distinct from skills (Chapter 13).
-- [ ] **T3-05** Tool: permissions + input/output contracts + isolation.
-
-## 3B. Conversation Engine (Chapter 06) -- the context system's primary consumer
-
-> Build this BEFORE the Context subsystem. The Conversation Engine is the
-> user-facing tool that drives conversation; Context Memory exists to serve it.
-> Each task is a single file or ~50-100 lines. Gates green independently.
-
-- [ ] **TC-01** `ConversationSession` struct -- fields: `session_id`,
-      `turn_number`, `user_messages[]`, `agent_responses[]`, `learnings[]`.
-      In-memory session tracker.
-- [ ] **TC-02** `ConversationEngine` -- in-memory struct with methods:
-      `start_session()`, `add_turn(session_id, user_msg, agent_resp)`,
-      `get_session(session_id)`.
-- [ ] **TC-03** `converse` MCP tool -- takes `message` string, finds or creates
-      session, calls `run_agent_goal(message)`, stores turn, returns response.
-      (This is the entry point users actually use.)
-- [ ] **TC-04** Learning extraction from conversation -- simple function that
-      takes (user_message, agent_response) and returns a list of extracted
-      facts/learnings. Starts with keyword-based pattern matching,
-      upgrades to LLM extraction later.
-- [ ] **TC-05** Wire `extract_learnings` into `converse` -- each extracted
-      learning is stored via existing `store_memory` (memory_type =
-      `preference` or `fact`).
-- [ ] **TC-06** Conversation persistence -- store conversation turns to
-      SQLite (`conversation_turns` table). Simple: `session_id, turn_number,
-      role (user/agent), content, timestamp`.
-
-**Done when:** `converse` tool works end-to-end (user message → agent loop
-→ response → conversation stored). Gate green.
-
-## 3C. Context subsystem (Chapters 07, 15, 16, 17)
-
-- [ ] **T3-06** `src/context/` (Context Engine) skeleton -- RetrievalPlanner,
-      TokenBudget, TopicTracker, SlidingWindow (Chapter 07).
-- [ ] **T3-07** Context: 4-level memory hierarchy (L0 live, L1 working summary,
-      L2 checkpoints, L3 raw DB) (Chapter 14).
-- [ ] **T3-08** Context Lifecycle: creation/refresh/compaction/checkpoint/
-      expiration/reconstruction (Chapter 15).
-- [ ] **T3-09** Retrieval Pipeline: candidate generation → ranking →
-      confidence/provenance → diversity → budget (Chapter 16).
-- [ ] **T3-10** Prompt Construction: source provenance, instruction hierarchy,
-      model independence, reproducibility (Chapter 17).
-- [ ] **T3-11** Context policies (not every question retrieves memory);
-      per-item context scores.
-
-## 3D. Conversation Engine v2 (Chapter 06) -- context-aware pipeline
-
-> Follows 3B (basic converse) and 3C (context subsystem). Adds context
-> awareness on top of the working base.
-
-- [ ] **T3-12** `src/conversation/context/` -- session-scoped context retrieval
-      that pulls from Context Memory (3B) + Working Memory.
-- [ ] **T3-13** Conversation context assembly -- before calling agent loop,
-      assemble context from session history + retrieved memories.
-- [ ] **T3-14** `converse` v2 -- context-informed response using Context
-      Memory as session context source.
-
-## 3E. Strategic Learning & Confidence (Chapters 18 & 19)
-
-- [ ] **T3-15** Strategic Learning: long-horizon evidence, policy/strategy
-      changes, experiments, validation, rollback (Chapter 18).
-- [ ] **T3-16** Confidence System: evidence, source quality, recency,
-      relationship/skill/workflow confidence, decay (Chapter 19).
-
-## 3F. Storage, Database, Workers (Chapters 21, 22, 23)
-
-- [ ] **T3-17** Storage Architecture: durable persistence, transactions,
-      backups, migrations, recovery, integrity (Chapter 21).
-- [ ] **T3-18** Database Design: schema ownership, migration discipline,
-      indexes, constraints, transactional integrity (Chapter 22).
-- [ ] **T3-19** Background Workers hardening: ownership, queues, retries,
-      idempotency, cancellation, backpressure, supervision, health (Chapter 23).
-
-## 3G. Governance & Safety (Chapters 24, 25, 26)
-
-- [ ] **T3-20** AI Contributor Operating Agreement: human/AI contribution
-      boundaries, review gates, traceability (Chapter 24 -- process + tests).
-- [ ] **T3-21** Security & Trust: identity, authorization, capability
-      security, trust boundaries, memory protection, audit (Chapter 25).
-- [ ] **T3-22** Self-Improvement/Evolution: controlled hypotheses,
-      experiments, promotion gates, rollback, human control (Chapter 26).
-- [ ] **T3-23** Self-Improvement: a hypothesis lifecycle runs
-      confirmed→confidence-increase / rejected→decrease end-to-end.
-
-## 3H. Observability & Control Plane (Chapters 27, 28)
-
-- [ ] **T3-24** Cognitive Monitoring/Observability: traces, correlation,
-      metrics, events, decision evidence, health, retention, privacy
-      (Chapter 27).
-- [ ] **T3-25** Developer Interface/Control Plane: inspection + control,
-      read/write separation, permissions, safe mutation, audit, recovery
-      (Chapter 28).
-- [ ] **T3-26** Control Plane: cognitive traces reconstruct the full request
-      lifecycle; capability-denied actions blocked + audited.
-
-## 3I. Config, Testing, Deployment (Chapters 29, 30, 31)
-
-- [ ] **T3-27** Configuration: layered precedence (defaults → install → system
-      → profile → user → runtime), validation, secrets, profiles, change
-      control (Chapter 29).
-- [ ] **T3-28** Testing: unit/contract/integration/persistence/event/security/
-      failure-injection/recovery/migration/adapter/GUI/e2e-cognitive/regression/
-      property layers (Chapter 30).
-- [ ] **T3-29** Expand `test_suite/`: schema-validation matrix, edge cases,
-      e2e learning loop, performance baselines (the gaps from
-      `.agents/TEST_SUITE_NOTES.md`).
-- [ ] **T3-30** Deployment: reproducible + versioned, validation + rollback,
-      migrations, backup/recovery (Chapter 31).
-
-## 3J. AI Runtime / Model Manager (Chapter 14 + appendix)
-
-- [ ] **T3-31** `InferenceProvider` trait + `src/ai_runtime/` skeleton; cloud
-      provider implementation first.
-- [ ] **T3-32** Model Manager: discovery, metadata, selection, lifecycle.
-- [ ] **T3-33** Candle-based local LLM provider.
-- [ ] **T3-34** Candle-based local embeddings provider.
-- [ ] **T3-35** `inference` MCP tool (routes through the runtime; cloud and
-      local interchangeable behind the trait).
-
-## 3K. Multimodal (Appendix A)
-
-- [ ] **T3-36** Audio Engine: STT (Whisper via Candle) + audio ingest
-      (WAV/MP3/FLAC/OGG/M4A).
-- [ ] **T3-37** Audio Engine: TTS (Piper/Kokoro via Candle).
-- [ ] **T3-38** Vision Engine: OCR + image understanding + screenshot analysis.
-- [ ] **T3-39** `transcribe` / `synthesize` / `ocr` MCP tools (real results).
-
-## 3L. GUI / Dashboard (Chapter 28)
-
-- [ ] **T3-40** `src/control_plane/` API + event stream (runtime stays
-      headless-operable without GUI).
-- [ ] **T3-41** Frontend (separate crate/dir) consuming the event stream;
-      renders real (not fake) system events.
-
-## 3M. Future expansion & roadmap (Chapters 32, 33)
-
-- [ ] **T3-42** Future Expansion gate: new capabilities integrate through
-      stable contracts; document the "does it belong in an existing boundary?"
-      check (Chapter 32).
-- [ ] **T3-43** Capability Roadmap: architectural-gates process documented
-      (Chapter 33).
+- **3.0. Architecture-wide contract** -- ownership, lifecycle, identity, provenance, confidence
+- **3.1. Foundation (Ch 01-05)** -- vision, principles, system overview, data-flow, contracts
+- **3.2. Conversation Engine** (Ch 06) -- session, MCP `converse`, learning extraction
+- **3.3. Context Engine** (Ch 07) -- retrieval, budget, topic tracking, prompt assembly
+- **3.4. Conversation v2** (Ch 06) -- context-aware pipeline
+- **3.5. Memory Engine** (Ch 08) -- short/long-term, promotion, archive
+- **3.6. Experience Engine** (Ch 09) -- storage, outcomes, lessons, failure analysis
+- **3.7. Learning Engine** (Ch 10) -- reflection, patterns, skill improvement
+- **3.8. Planning Engine** (Ch 11) -- goal creation, decomposition, task graphs
+- **3.9. Execution Engine** (Ch 12) -- controlled actions, error recovery
+- **3.10. Tool Engine** (Ch 13) -- capability registration, permissions
+- **3.11. AI Runtime** (Ch 14) -- inference provider, model routing
+- **3.12. Agent Communication** (Ch 15) -- MCP/ACP boundaries, internal messages
+- **3.13. Cognitive Coordination** (Ch 16) -- subsystem orchestration, event rules
+- **3.14. Memory & Knowledge** (Ch 17-20) -- retention, experience links, graph
+- **3.15. Storage & Workers** (Ch 21-23) -- persistence, schema, supervision
+- **3.16. Governance & Safety** (Ch 24-27) -- contribution, trust, audit, evolution
+- **3.17. Interfaces & Config** (Ch 28-31) -- control plane, deployment, testing
+- **3.18. Multimodal** (Appendix A) -- audio, vision
+- **3.19. GUI/Dashboard** (Ch 28) -- event stream frontend
+- **3.20. Future Expansion** (Ch 32-33) -- admission gate, roadmap
 
 **End of TIER 3 = finished v0.0.2.1. Tag: `v0.0.2.1`.**
 

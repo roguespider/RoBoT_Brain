@@ -15,7 +15,7 @@ impl EventSubscriber {
     ) -> Result<()> {
         let mut store = self.reputation_store.write().await;
         let reputation = store.entry(source_id.to_string())
-            .or_insert_with(|| crate::experience::reputation::reputation::Reputation::new(source_id.to_string()));
+            .or_insert_with(|| crate::experience::reputation::score::Reputation::new(source_id.to_string()));
         
         reputation.apply(
             String::new(), // No specific experience
