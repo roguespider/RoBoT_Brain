@@ -509,7 +509,7 @@ v0.0.1 is complete only when:
 - [ ] Durable recovery verified
 - [ ] Partially implemented integrations resolved
 - [ ] Dead-code issues resolved or intentionally documented
-- [ ] CfgTest issues resolved
+- [x] CfgTest issues resolved (verified 2026-08-22: 0 `#[cfg(test)]` in `src/`)
 - [ ] Test suite passes
 - [ ] Clippy passes according to project policy
 - [ ] No critical architectural contradictions remain

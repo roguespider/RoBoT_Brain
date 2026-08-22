@@ -211,7 +211,12 @@
 
 # Gate Status Summary (2026-08-16)
 
-- **v0.0.1 COMPLETE.** All TIER 1 tasks done.
+- **TIER 1 task work: DONE.** All 1B-1E tasks completed and verified.
 - **Coverage:** 145/145 tests, 0 untested, 0 phantom. All 134 MCP tools covered.
-- **Gate RED only on:** `compiler_warnings=144` (too-many-arguments, async-fn, unused-vars), `code_issues=12` (emoji, dead-code).
+- **Gate RED on:** `compiler_warnings=144` (too-many-arguments, async-fn, unused-vars),
+  `code_issues=12` (emoji, dead-code). Gate not green — 144 warnings remain.
+- **Next blocker:** Clear the 144 compiler warnings + 12 code issues (P1-001/P1-002).
+  See PLAN.md P1 sections.
+- **#[cfg(test)] removal: DONE (2026-08-22).** Verified zero `#[cfg(test)]` blocks remain
+  in `robot_brain/src/`. See STARTUP.md rule below. Deleted `.agents/CFG_TEST_REMOVAL_NOTES.md`.
 - Remaining work (TIER 2+): Data Contracts, Context/Conversation engines, Execution/Tool engines, AI Runtime, Multimodal, GUI.

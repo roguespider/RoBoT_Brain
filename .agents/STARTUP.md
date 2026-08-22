@@ -66,18 +66,16 @@ Open `.agents/PLAN.md`. Find the FIRST unchecked `- [ ]` increment. Work tiers
 in order: TIER 1 (finish v0.0.1) → TIER 2 (reach v0.0.2) → TIER 3 (reach
 v0.0.2.1). Each increment is one ~10-15 min change.
 
-- **Coverage gate is GREEN** (section 1E done). test_suite exits 0 (145/145 tests
-  pass, 0 code issues, 0 warnings, 0 untested, 0 phantom). All 134 server tools
-  are covered. Commits: b9b43ff (phantom fix), 6b7d036 (ACP tests), 7775ca1
-  (remaining 41 tools).
-- **TIER 1 is NOT fully done — 10 tasks remain** (sections 1B, 1C, 1D):
-  - **1B. SQLite JobQueue (T1-09..T1-12):** add job_queue table+migration, wire
-    enqueue/dequeue to SQLite, handle Lagged events, update startup verification.
-  - **1C. Loop-health metrics (T1-13..T1-16):** add loop_latency,
-    confidence_drift, promotion_throughput metrics, expose via get_system_status.
-  - **1D. MCP→experience hook (T1-17..T1-18):** hook emit_experience_recorded
-    into post-tool-execution dispatch, ensure idempotency.
-  - Do these in order. Start with T1-09 (SQLite JobQueue migration).
+- **Coverage gate: GREEN on tests, RED on warnings.** 145/145 tests pass,
+  0 code issues, 0 untested, 0 phantom. Gate blocked by **144 compiler warnings**
+  and **12 code issues** (emoji, dead-code). All TIER 1 task work is done.
+  Commits: b9b43ff (phantom fix), 6b7d036 (ACP tests), 7775ca1 (remaining 41 tools).
+- **TIER 1 tasks: ALL DONE.** 1B (SQLite JobQueue), 1C (loop-health metrics),
+  1D (MCP→experience hook) — all completed and verified. See CHANGELOG.md for
+  details on each task.
+- **Remaining blocker: P1 quality gate.** 144 compiler warnings (unused-vars,
+  too-many-arguments, async-fn simplification) and 12 code issues (emoji,
+  dead-code). Fix these to get the gate fully green. See PLAN.md P1-001/P1-002.
 - **Self_check removal is TIER 2 work** (the APIs they exercise have no other
   callers; deleting them in TIER 1 creates dead-code warnings). Do it during
   each system's TIER 2 upgrade. 8 self_check.rs files remain.
@@ -104,6 +102,7 @@ v0.0.2.1). Each increment is one ~10-15 min change.
 - NO `.unwrap()`, `.expect()`, `panic!()`, `assert!()`, `unreachable!()`.
 - NO `todo!()`, `unimplemented!()`.
 - NO `#[allow(...)]` / `#![allow(...)]` anywhere in `src/`.
+- NO `#[cfg(test)]` in `src/`. Tests live in `test_suite/`, not in production source.
 - NO ignored variables (`let _x = ...`, `let _ = ...`, `|_| ...`).
 - NO deleting code to bypass fixes. Follow the Dead Code Resolution Protocol
   (AGENTS.md): implement if the architecture describes it, delete only if

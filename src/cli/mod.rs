@@ -5,7 +5,7 @@ pub mod commands;
 pub mod output;
 
 use anyhow::Result;
-use output::{section_header, bold, list_item};
+use output::{bold, list_item, section_header};
 
 /// Run the CLI with the given arguments
 pub fn run() -> Result<()> {
@@ -15,12 +15,12 @@ pub fn run() -> Result<()> {
 /// Main CLI entry point
 fn cli() -> Result<()> {
     let args: Vec<String> = std::env::args().collect();
-    
+
     if args.len() < 2 {
         print_usage();
         return Ok(());
     }
-    
+
     match args[1].as_str() {
         "server" => commands::server::run(),
         "init" => commands::init::run(),
@@ -29,6 +29,7 @@ fn cli() -> Result<()> {
         "experience" => commands::experience::run(),
         "config" => commands::config::run(),
         "migrate" => commands::migrate::run(),
+        "diagnose" => commands::diagnose::run(),
         "help" | "-h" | "--help" => {
             print_usage();
             Ok(())
@@ -44,7 +45,7 @@ fn cli() -> Result<()> {
 /// Print CLI usage information
 fn print_usage() {
     section_header("RoBoT MCP - Command Line Interface");
-    
+
     println!("{}", bold("Usage:"));
     println!("  robot <command> [options]");
     println!();
@@ -56,6 +57,7 @@ fn print_usage() {
     list_item("experience   - Show experience statistics");
     list_item("config       - Show configuration");
     list_item("migrate      - Run database migrations");
+    list_item("diagnose     - Run explicit subsystem diagnostics");
     list_item("help         - Show this help message");
     println!();
     println!("{}", bold("Memory subcommands:"));
