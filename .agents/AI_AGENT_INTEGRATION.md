@@ -1,10 +1,10 @@
-# OpenHands MCP Integration
+# AI Agent MCP Integration
 
 > Moved here from AGENTS.md on 2026-08-11. This is reference material for wiring
-> an OpenHands agent to use RoBoT Brain as an MCP server. You do NOT need this
-> at session start; consult it when integrating with the OpenHands SDK.
+> an AI agent to use RoBoT Brain as an MCP server. You do NOT need this
+> at session start; consult it when integrating with an MCP-compatible agent SDK.
 
-RoBoT Brain can be used as an MCP server by **OpenHands agents** to access memory, knowledge, planning, and learning tools.
+RoBoT Brain can be used as an MCP server by **any AI agent** to access memory, knowledge, planning, and learning tools.
 
 ## Quick Start
 
@@ -68,7 +68,7 @@ python .agents/examples/robot_brain_agent.py -m "Search memory for architecture 
 
 ## Loading the Skill
 
-This repo includes an OpenHands skill at `.agents/skills/robot-brain/skill.md` that documents all available tools and usage patterns. When working in an OpenHands environment, this skill is automatically loaded and provides context for using robot_brain tools.
+This repo includes an agent skill at `.agents/skills/robot-brain/skill.md` that documents all available tools and usage patterns. When working in an MCP-compatible environment, this skill is automatically loaded and provides context for using robot_brain tools.
 
 ## Tool Filtering
 
@@ -81,4 +81,4 @@ agent = Agent(
 )
 ```
 
-This allows OpenHands to use robot_brain alongside other tools, focusing on specific capabilities as needed.
+This allows any MCP-compatible agent to use robot_brain alongside other tools, focusing on specific capabilities as needed.

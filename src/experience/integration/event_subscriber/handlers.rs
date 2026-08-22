@@ -254,9 +254,32 @@ impl EventSubscriber {
                 // Fallback (no learning coordinator wired): promote the
                 // validated hypothesis into the knowledge store directly so
                 // the §4.04 Validation → Knowledge step still advances.
-                if let Some(hypothesis) = self.lookup_hypothesis(hypothesis_id).await {
-                    self.update_knowledge_from_hypothesis(&hypothesis, result)
-                        .await?;
+                let hypothesis_id_typed =
+                    crate::experience::hypothesis::core::hypothesis::HypothesisId(
+                        hypothesis_id.clone(),
+                    );
+                let graph_arc = self.hypothesis_engine.get_graph();
+                let exists = match graph_arc.lock() {
+                    Ok(graph) => graph.has_node(&hypothesis_id_typed),
+                    Err(poisoned) => {
+                        tracing::error!("Graph mutex poisoned during hypothesis lookup");
+                        poisoned.into_inner().has_node(&hypothesis_id_typed)
+                    }
+                };
+                if exists {
+                    self.update_knowledge_from_hypothesis(
+                        &crate::experience::hypothesis::core::hypothesis::Hypothesis::new(
+                            hypothesis_id.clone(),
+                            hypothesis_id.clone(),
+                        ),
+                        result,
+                    )
+                    .await?;
+                } else {
+                    tracing::debug!(
+                        "Hypothesis {} not present in graph; skipping fallback promotion",
+                        hypothesis_id
+                    );
                 }
             }
         }

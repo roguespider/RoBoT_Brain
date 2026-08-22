@@ -1,16 +1,19 @@
 # RoBoT Brain Examples
 
-This directory contains examples for integrating RoBoT Brain with OpenHands.
+This directory contains examples for integrating RoBoT Brain with an MCP-compatible AI agent.
 
 ## robot_brain_agent.py
 
-A complete Python script that connects an OpenHands agent to RoBoT Brain via MCP protocol.
+A complete Python script that connects an AI agent to RoBoT Brain via MCP protocol.
 
 ### Prerequisites
 
 ```bash
 pip install openhands-sdk openhands-tools
 ```
+
+> Note: This example uses the OpenHands SDK. For other MCP-compatible agents,
+> adapt the connection pattern to your SDK of choice.
 
 ### Usage
 
@@ -34,7 +37,7 @@ python examples/robot_brain_agent.py --robot-brain-path /path/to/robot_brain
 
 ### What It Does
 
-1. Creates an OpenHands Agent with RoBoT Brain as an MCP server
+1. Creates an AI agent (via OpenHands SDK) with RoBoT Brain as an MCP server
 2. The agent can use all ~89 RoBoT Brain tools including:
    - Memory & knowledge management
    - Experience tracking & learning

@@ -287,11 +287,11 @@ responsibilities) into directory modules. Full pattern + candidates query + the
 import-path-migration rule moved to **`.agents/LARGE_FILE_REFACTOR.md`**. Check
 it from time to time; not a session-start rule.
 
-## OpenHands MCP Integration
+## AI Agent MCP Integration
 
-Reference material for wiring an OpenHands agent to RoBoT Brain as an MCP
-server has moved to **`.agents/OPENHANDS_INTEGRATION.md`**. Consult it when
-integrating with the OpenHands SDK; it is not needed for normal build/test/work
+Reference material for wiring an AI agent to RoBoT Brain as an MCP
+server has moved to **`.agents/AI_AGENT_INTEGRATION.md`**. Consult it when
+integrating with an MCP-compatible agent SDK; it is not needed for normal build/test/work
 sessions.
 
 ## test_suite Coverage (FunctionRegistry)
