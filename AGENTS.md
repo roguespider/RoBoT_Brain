@@ -1,5 +1,12 @@
 # RoBoT Brain - Agent Memory
 
+## Working Memory Protocol (MANDATORY)
+- Your working memory is the built-in memory system — use `store_memory` for thinking/reasoning/analysis and `search_memory` for retrieval.
+- Never rely on implicit chat buffer or conversation context between turns. Before every substantive action, store your current state in memory.
+- Store session context with `memory_type: "note"` and relevant tags so it survives across turns and can be retrieved later.
+- Always call `store_memory` before responding — do not rely on implicit conversation context.
+
+
 ## Incremental Workflow Principle (MANDATORY)
 
 **Do one thing, verify it works, push to GitHub, then work on the next thing.**
@@ -116,6 +123,19 @@ cd test_suite && cargo build --release && ./target/release/test_suite
 # Build main binary only (rarely needed — test_suite does this automatically):
 #   cargo build --release -p robot_brain
 ```
+
+## Build Efficiency (parallelize work)
+
+When running builds, **start the build in the background first**, then use the
+waiting time to work on other tasks (reading code, updating memory, planning).
+
+Pattern:
+1. Start `cargo build --release` or `cargo check --release` in background
+2. While waiting, review related code, read documentation, plan next steps
+3. When build completes, review results and continue
+
+For quick compiler feedback (no test execution), prefer `cargo check --release`
+over full builds. This gives faster turnaround on iterative changes.
 
 ## Post-Compile: Connect to robot_brain MCP/ACP
 
@@ -267,11 +287,11 @@ responsibilities) into directory modules. Full pattern + candidates query + the
 import-path-migration rule moved to **`.agents/LARGE_FILE_REFACTOR.md`**. Check
 it from time to time; not a session-start rule.
 
-## OpenHands MCP Integration
+## AI Agent MCP Integration
 
-Reference material for wiring an OpenHands agent to RoBoT Brain as an MCP
-server has moved to **`.agents/OPENHANDS_INTEGRATION.md`**. Consult it when
-integrating with the OpenHands SDK; it is not needed for normal build/test/work
+Reference material for wiring an AI agent to RoBoT Brain as an MCP
+server has moved to **`.agents/AI_AGENT_INTEGRATION.md`**. Consult it when
+integrating with an MCP-compatible agent SDK; it is not needed for normal build/test/work
 sessions.
 
 ## test_suite Coverage (FunctionRegistry)
@@ -358,4 +378,3 @@ When asked "is T1-NN done?" or "is X working 100%?":
 > This file now ends at the hard rules above. Everything status/narrative/
 > reference lives in `.agents/` so it does not bury the rules you must follow
 > every session.
-

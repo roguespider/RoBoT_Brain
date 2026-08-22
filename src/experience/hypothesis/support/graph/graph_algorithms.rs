@@ -144,8 +144,8 @@ impl HypothesisGraph {
                     path,
                     cycles,
                 );
-            } else if recursion_stack.contains(&edge.to.0) {
-                if let Some(start) = path.iter().position(|p| p == &edge.to.0) {
+            } else if recursion_stack.contains(&edge.to.0)
+                && let Some(start) = path.iter().position(|p| p == &edge.to.0) {
                     let cycle: Vec<HypothesisId> = path[start..]
                         .iter()
                         .chain(std::iter::once(&edge.to.0))
@@ -153,7 +153,6 @@ impl HypothesisGraph {
                         .collect();
                     cycles.push(cycle);
                 }
-            }
         }
 
         path.pop();

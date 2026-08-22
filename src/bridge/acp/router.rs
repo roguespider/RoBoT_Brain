@@ -4,18 +4,21 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use anyhow::{anyhow, Result};
+use anyhow::{Result, anyhow};
 
 use super::message::{AcpMessage, AcpMessageType};
 
 use super::registry::AcpRegistry;
 
+/// A handler invoked by the router for a message; returns an optional reply.
+type AcpMessageHandler = Box<dyn Fn(AcpMessage) -> Result<Option<AcpMessage>> + Send + Sync>;
+
+type AcpHandlerMap = HashMap<String, AcpMessageHandler>;
+
 /// ACP router for routing messages between agents
 pub struct AcpRouter {
     registry: Arc<AcpRegistry>,
-    handlers: std::sync::RwLock<
-        HashMap<String, Box<dyn Fn(AcpMessage) -> Result<Option<AcpMessage>> + Send + Sync>>,
-    >,
+    handlers: std::sync::RwLock<AcpHandlerMap>,
 }
 
 impl AcpRouter {
@@ -37,15 +40,15 @@ impl AcpRouter {
 
         // Check for custom handlers first
         let type_name = format!("{:?}", message.message_type);
-        if let Ok(handlers) = self.handlers.read() {
-            if let Some(handler) = handlers.get(&type_name) {
-                tracing::trace!(
-                    "ACP routing {:?} to custom handler (expects_reply={})",
-                    message.message_type,
-                    expects_reply
-                );
-                return handler(message);
-            }
+        if let Ok(handlers) = self.handlers.read()
+            && let Some(handler) = handlers.get(&type_name)
+        {
+            tracing::trace!(
+                "ACP routing {:?} to custom handler (expects_reply={})",
+                message.message_type,
+                expects_reply
+            );
+            return handler(message);
         }
 
         // Route to registered agent
@@ -80,4 +83,3 @@ impl AcpRouter {
         Ok(())
     }
 }
-

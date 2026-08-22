@@ -150,14 +150,13 @@ pub async fn execute_analyze_patterns(
             *type_counts.entry(type_name).or_insert(0) += 1;
         }
         
-        if let Some((most_common, _)) = type_counts.iter().max_by_key(|(_, v)| *v) {
-            if most_common != "Unknown" {
+        if let Some((most_common, _)) = type_counts.iter().max_by_key(|(_, v)| *v)
+            && most_common != "Unknown" {
                 recommendations.push(format!(
                     "Most common pattern type: {}. Consider exploring other pattern types.",
                     most_common
                 ));
             }
-        }
         
         Ok(ToolOutput::success(serde_json::json!({
             "success": true,

@@ -1,8 +1,5 @@
-
-
 // src/bridge/rmcp/types.rs
 // McpServerHandler struct definition
-
 
 use std::sync::Arc;
 use std::sync::atomic::{AtomicU64, Ordering};
@@ -10,11 +7,11 @@ use std::sync::atomic::{AtomicU64, Ordering};
 use anyhow::Result;
 
 use crate::bridge::mcp::McpContext;
-use crate::workflows::enforcement::{WorkflowEnforcer, WorkflowEnforcementError};
-use crate::bridge::mcp::handlers::{ToolHandlerCollection, HandlerInitError};
+use crate::bridge::mcp::handlers::{HandlerInitError, ToolHandlerCollection};
+use crate::workflows::enforcement::{WorkflowEnforcementError, WorkflowEnforcer};
 
 /// MCP Server handler using the rmcp derive macros
-/// 
+///
 /// Architecture:
 /// - McpServerHandler loads MCP core first
 /// - Then initializes all tool handlers independently
@@ -47,21 +44,31 @@ impl McpServerHandler {
     }
 
     /// Initialize all tool handlers with graceful degradation
-    /// 
+    ///
     /// If any handler fails to initialize, it's logged but the system continues.
     /// This ensures that a single broken tool doesn't prevent the MCP server from starting.
     pub fn initialize_handlers(&mut self) {
-        let (handlers, errors) = ToolHandlerCollection::initialize_all(
-            self.context.clone(),
-        );
+        let (handlers, errors) = ToolHandlerCollection::initialize_all(self.context.clone());
         self.handlers = handlers;
         self.handler_errors = errors;
 
         // Log which handler categories are available for diagnostics.
         for cat in [
-            "acp", "agent", "experience", "exploration", "hypothesis",
-            "ingestor", "knowledge", "memory", "personality", "planner", "reflection",
-            "search", "skills", "workflow", "world_model",
+            "acp",
+            "agent",
+            "experience",
+            "exploration",
+            "hypothesis",
+            "ingestor",
+            "knowledge",
+            "memory",
+            "personality",
+            "planner",
+            "reflection",
+            "search",
+            "skills",
+            "workflow",
+            "world_model",
         ] {
             if self.is_handler_available(cat) {
                 tracing::info!(category = cat, "Handler category available");
@@ -76,22 +83,33 @@ impl McpServerHandler {
         format!("session-{}", id)
     }
 
-    pub async fn check_workflow_enforcement(&self, tool_name: &str) -> Result<(), WorkflowEnforcementError> {
-        self.enforcer.check_enforcement(&self.session_id, tool_name).await
+    pub async fn check_workflow_enforcement(
+        &self,
+        tool_name: &str,
+    ) -> Result<(), WorkflowEnforcementError> {
+        self.enforcer
+            .check_enforcement(&self.session_id, tool_name)
+            .await
     }
 
     pub async fn record_tool_execution(&self, tool_name: &str, query: Option<String>) {
-        self.enforcer.record_tool_execution(&self.session_id, tool_name, query).await;
+        self.enforcer
+            .record_tool_execution(&self.session_id, tool_name, query)
+            .await;
     }
 
     /// Record explicit memory search milestone (Architecture §22 workflow gate)
     pub async fn record_memory_searched(&self, query: Option<String>) {
-        self.enforcer.record_memory_searched(&self.session_id, query).await;
+        self.enforcer
+            .record_memory_searched(&self.session_id, query)
+            .await;
     }
 
     /// Record explicit patterns-reviewed milestone
     pub async fn record_patterns_reviewed(&self) {
-        self.enforcer.record_patterns_reviewed(&self.session_id).await;
+        self.enforcer
+            .record_patterns_reviewed(&self.session_id)
+            .await;
     }
 
     /// Get the current session's enforcement state for debugging/admin
@@ -106,7 +124,9 @@ impl McpServerHandler {
 
     /// Update the workflow purpose for the current session
     pub async fn update_workflow_purpose(&self, purpose: String) {
-        self.enforcer.update_workflow_purpose(&self.session_id, purpose).await;
+        self.enforcer
+            .update_workflow_purpose(&self.session_id, purpose)
+            .await;
     }
 
     /// Emit an `ExperienceRecorded` event for a tool execution outcome so the
@@ -124,10 +144,10 @@ impl McpServerHandler {
         success: bool,
         arguments: &serde_json::Value,
     ) {
+        use crate::experience::types::context::ToolContext;
         use crate::experience::types::{
             Experience, ExperienceContext, ExperienceOutcome, ExperienceType,
         };
-        use crate::experience::types::context::ToolContext;
         use std::collections::HashMap;
 
         let outcome = if success {
@@ -166,17 +186,10 @@ impl McpServerHandler {
                 crate::agent::safety_gate::action_risk(tool_name),
                 crate::agent::safety_gate::ActionRisk::Mutate
             );
-        if notable {
-            if let Ok(conn) = self.context.database.connection() {
-                let memory =
-                    crate::database::models::MemoryCard::from_experience(&processed);
-                if let Err(e) = crate::database::queries::insert_memory(&conn, &memory) {
-                    tracing::warn!(
-                        "Failed to persist tool experience for {}: {}",
-                        tool_name,
-                        e
-                    );
-                }
+        if notable && let Ok(conn) = self.context.database.connection() {
+            let memory = crate::database::models::MemoryCard::from_experience(&processed);
+            if let Err(e) = crate::database::queries::insert_memory(&conn, &memory) {
+                tracing::warn!("Failed to persist tool experience for {}: {}", tool_name, e);
             }
         }
     }

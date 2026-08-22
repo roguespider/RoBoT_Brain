@@ -1,11 +1,9 @@
-
 // src/tools/ingestor/text_extractor.rs
 
 // Text extraction from various file formats
 
-
 use std::fs::File;
-use std::io::{BufReader, Read};
+use std::io::Read;
 use std::path::Path;
 
 use anyhow::Result;
@@ -17,7 +15,7 @@ pub fn extract_text(path: &Path) -> Result<String> {
         .and_then(|e| e.to_str())
         .unwrap_or("")
         .to_lowercase();
-    
+
     match extension.as_str() {
         "pdf" => extract_pdf_text(path),
         "docx" => extract_docx_text(path),
@@ -49,26 +47,26 @@ pub fn extract_text(path: &Path) -> Result<String> {
 pub fn extract_image_metadata(path: &Path) -> Result<ImageMetadata> {
     let metadata = std::fs::metadata(path)?;
     let file_size = metadata.len();
-    
+
     let extension = path
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("unknown")
         .to_lowercase();
-    
+
     let filename = path
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("unknown")
         .to_string();
-    
+
     // For SVG, we can try to extract some information
     let svg_info = if extension == "svg" || extension == "svgz" {
         extract_svg_info(path)?
     } else {
         None
     };
-    
+
     Ok(ImageMetadata {
         filename,
         path: path.to_string_lossy().to_string(),
@@ -84,15 +82,15 @@ pub fn extract_image_metadata(path: &Path) -> Result<ImageMetadata> {
 /// Extract information from SVG files
 fn extract_svg_info(path: &Path) -> Result<Option<String>> {
     let content = std::fs::read_to_string(path)?;
-    
+
     // Check if SVG is valid XML
     if !content.trim().starts_with("<?xml") && !content.trim().starts_with("<svg") {
         return Ok(None);
     }
-    
+
     // Try to extract dimensions
     let mut info = String::new();
-    
+
     // Look for width/height
     if let Some(width) = extract_svg_attr(&content, "width") {
         info.push_str(&format!("Width: {}\n", width));
@@ -103,17 +101,21 @@ fn extract_svg_info(path: &Path) -> Result<Option<String>> {
     if let Some(viewbox) = extract_svg_attr(&content, "viewBox") {
         info.push_str(&format!("ViewBox: {}\n", viewbox));
     }
-    
+
     // Count elements
     let rect_count = content.matches("<rect").count();
     let circle_count = content.matches("<circle").count();
     let path_count = content.matches("<path").count();
     let text_count = content.matches("<text").count();
-    
+
     if rect_count > 0 || circle_count > 0 || path_count > 0 || text_count > 0 {
-        info.push_str(&format!("Contains: {} shapes, {} text elements\n", path_count + rect_count + circle_count, text_count));
+        info.push_str(&format!(
+            "Contains: {} shapes, {} text elements\n",
+            path_count + rect_count + circle_count,
+            text_count
+        ));
     }
-    
+
     if info.is_empty() {
         Ok(None)
     } else {
@@ -131,7 +133,7 @@ fn extract_svg_attr(content: &str, attr: &str) -> Option<String> {
             return Some(content[start..start + end].to_string());
         }
     }
-    
+
     // Try single quoted attribute
     let pattern = format!("{}='", attr);
     if let Some(pos) = content.find(&pattern) {
@@ -140,7 +142,7 @@ fn extract_svg_attr(content: &str, attr: &str) -> Option<String> {
             return Some(content[start..start + end].to_string());
         }
     }
-    
+
     None
 }
 
@@ -180,13 +182,13 @@ impl ImageMetadata {
              Size: {}\n",
             self.filename, self.format, self.file_size_human
         );
-        
+
         if let Some(ref svg_info) = self.svg_content_preview {
             content.push_str(&format!("\nSVG Details:\n{}", svg_info));
         }
-        
+
         content.push_str(&format!("\nNote: {}\n", self.note));
-        
+
         content
     }
 }
@@ -195,26 +197,24 @@ impl ImageMetadata {
 fn is_chroma_export(content: &str) -> bool {
     // Chroma exports typically have these fields
     let lower = content.to_lowercase();
-    lower.contains("\"documents\"") && 
-    (lower.contains("\"embeddings\"") || lower.contains("\"metadatas\""))
+    lower.contains("\"documents\"")
+        && (lower.contains("\"embeddings\"") || lower.contains("\"metadatas\""))
 }
 
 /// Extract text from chroma database export
 /// Combines documents with their metadata for proper context
 fn extract_chroma_text(content: &str) -> Result<String> {
     let json: serde_json::Value = serde_json::from_str(content)?;
-    
-    let documents = json.get("documents")
+
+    let documents = json
+        .get("documents")
         .and_then(|d| d.get(0))
         .and_then(|d| d.as_array())
-        .map(|arr| {
-            arr.iter()
-                .filter_map(|v| v.as_str())
-                .collect::<Vec<_>>()
-        })
+        .map(|arr| arr.iter().filter_map(|v| v.as_str()).collect::<Vec<_>>())
         .unwrap_or_default();
-    
-    let metadatas = json.get("metadatas")
+
+    let metadatas = json
+        .get("metadatas")
         .and_then(|m| m.get(0))
         .and_then(|m| m.as_array())
         .map(|arr| {
@@ -223,8 +223,9 @@ fn extract_chroma_text(content: &str) -> Result<String> {
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
-    
-    let ids = json.get("ids")
+
+    let ids = json
+        .get("ids")
         .and_then(|i| i.get(0))
         .and_then(|i| i.as_array())
         .map(|arr| {
@@ -233,7 +234,10 @@ fn extract_chroma_text(content: &str) -> Result<String> {
                     if let Some(s) = v.as_str() {
                         Some(s.to_string())
                     } else if let Some(arr) = v.as_array() {
-                        let parts: Vec<_> = arr.iter().filter_map(|x| x.as_str().map(String::from)).collect();
+                        let parts: Vec<_> = arr
+                            .iter()
+                            .filter_map(|x| x.as_str().map(String::from))
+                            .collect();
                         Some(parts.join(", "))
                     } else {
                         None
@@ -242,80 +246,86 @@ fn extract_chroma_text(content: &str) -> Result<String> {
                 .collect::<Vec<_>>()
         })
         .unwrap_or_default();
-    
+
     if documents.is_empty() {
         anyhow::bail!("No documents found in chroma export");
     }
-    
+
     let mut result = String::new();
     result.push_str("# Chroma Database Export\n\n");
-    
+
     for (i, doc) in documents.iter().enumerate() {
         result.push_str("---\n");
-        
+
         // Add ID if available
         if let Some(id) = ids.get(i) {
             result.push_str(&format!("ID: {}\n", id));
         }
-        
+
         // Add metadata if available
         if let Some(meta) = metadatas.get(i) {
             result.push_str(&format!("Metadata: {}\n", meta));
         }
-        
+
         // Add document content
         result.push_str(&format!("Content:\n{}\n\n", doc));
     }
-    
+
     Ok(result)
 }
 
-/// Extract text from PDF
+/// Extract text from PDF using proper PDF parsing
 pub fn extract_pdf_text(path: &Path) -> Result<String> {
-    let file = File::open(path)?;
-    let mut reader = BufReader::new(file);
-    let mut bytes = Vec::new();
-    reader.read_to_end(&mut bytes)?;
-    
-    let text = String::from_utf8_lossy(&bytes);
+    // Use pdf_extract crate for proper PDF parsing (handles compressed streams, encodings)
+    let pdf_data = std::fs::read(path)?;
+
+    // Extract text by pages to detect empty pages and track page breaks
+    let pages = pdf_extract::extract_text_from_mem_by_pages(pdf_data.as_slice())?;
+    let num_pages = pages.len();
+
+    if num_pages == 0 {
+        anyhow::bail!("PDF contains no pages");
+    }
+
     let mut result = String::new();
-    
-    // Check for embedded images (diagrams)
-    let has_images = detect_pdf_images(&bytes);
-    
-    for line in text.lines() {
-        if line.contains("BT") || line.contains(" Tj") || line.contains(" TJ") {
-            let cleaned = line
-                .replace("BT", "")
-                .replace("ET", "")
-                .replace("(", "")
-                .replace(")", "")
-                .replace("\\n", "\n")
-                .replace("\\t", "\t");
-            if !cleaned.trim().is_empty() {
-                result.push_str(&cleaned);
+
+    for (page_idx, page_text) in pages.iter().enumerate() {
+        if !page_text.trim().is_empty() {
+            if page_idx > 0 {
+                result.push_str("\n--- PAGE BREAK ---\n");
+            }
+            if !result.is_empty() {
                 result.push('\n');
             }
+            result.push_str(page_text);
         }
     }
-    
-    // Add note if PDF has embedded images
+
+    // Check for embedded images (diagrams)
+    let has_images = detect_pdf_images(&pdf_data);
+
     if has_images && !result.trim().is_empty() {
         result.push_str("\n\n---\n");
         result.push_str("NOTE: This PDF contains embedded images/diagrams.\n");
-        result.push_str("The images are not extracted as text, but you can see them in the original PDF.\n");
-        result.push_str("If you need information from diagrams, please view the original PDF file.\n");
+        result.push_str(
+            "The images are not extracted as text, but you can see them in the original PDF.\n",
+        );
+        result.push_str(
+            "If you need information from diagrams, please view the original PDF file.\n",
+        );
     }
-    
+
     if result.trim().is_empty() {
         // PDF has no extractable text but might have images
         if has_images {
-            anyhow::bail!("This PDF contains only images/diagrams with no extractable text. Please view the original PDF file for diagram content.");
+            anyhow::bail!(
+                "This PDF contains only images/diagrams with no extractable text. Please view the original PDF file for diagram content."
+            );
         } else {
             anyhow::bail!("Could not extract text from PDF - file may be scanned/image-based");
         }
     }
-    
+
     Ok(result)
 }
 
@@ -324,28 +334,28 @@ fn detect_pdf_images(bytes: &[u8]) -> bool {
     // Look for image XObject markers in PDF
     // PDF images are typically stored as /Subtype /Image or /XObject /Image
     let content = String::from_utf8_lossy(bytes);
-    
+
     // Common PDF image patterns
     let patterns = [
         "/Subtype /Image",
         "/XObject << /Image",
-        "stream\nI I\n",  // FlateDecode image stream
-        "/DCTDecode",     // JPEG images
+        "stream\nI I\n",   // FlateDecode image stream
+        "/DCTDecode",      // JPEG images
         "/CCITTFaxDecode", // Fax images
-        "/JBIG2Decode",  // JBIG2 images
+        "/JBIG2Decode",    // JBIG2 images
     ];
-    
+
     for pattern in &patterns {
         if content.contains(pattern) {
             return true;
         }
     }
-    
+
     // Check for inline images
     if content.contains("BI") && content.contains("ID") && content.contains("EI") {
         return true;
     }
-    
+
     false
 }
 
@@ -353,19 +363,19 @@ fn detect_pdf_images(bytes: &[u8]) -> bool {
 pub fn extract_docx_text(path: &Path) -> Result<String> {
     let file = File::open(path)?;
     let mut archive = zip::ZipArchive::new(file)?;
-    
+
     let mut content = String::new();
-    
+
     if let Ok(mut doc_file) = archive.by_name("word/document.xml") {
         let mut xml = String::new();
         doc_file.read_to_string(&mut xml)?;
         content = strip_xml_tags(&xml);
     }
-    
+
     if content.trim().is_empty() {
         anyhow::bail!("Could not extract text from DOCX");
     }
-    
+
     Ok(content)
 }
 
@@ -374,11 +384,15 @@ pub fn extract_epub_text(path: &Path) -> Result<String> {
     let file = File::open(path)?;
     let mut archive = zip::ZipArchive::new(file)?;
     let mut content = String::new();
-    
+
     for i in 0..archive.len() {
         if let Ok(file) = archive.by_index(i) {
             let name = file.name().to_string();
-            if name.ends_with(".xhtml") || name.ends_with(".html") || name.ends_with(".htm") || name == "content.opf" {
+            if name.ends_with(".xhtml")
+                || name.ends_with(".html")
+                || name.ends_with(".htm")
+                || name == "content.opf"
+            {
                 let mut html = String::new();
                 let mut f = file;
                 f.read_to_string(&mut html)?;
@@ -387,11 +401,11 @@ pub fn extract_epub_text(path: &Path) -> Result<String> {
             }
         }
     }
-    
+
     if content.trim().is_empty() {
         anyhow::bail!("Could not extract text from EPUB");
     }
-    
+
     Ok(content)
 }
 
@@ -399,7 +413,7 @@ pub fn extract_epub_text(path: &Path) -> Result<String> {
 pub fn strip_xml_tags(xml: &str) -> String {
     let mut result = String::new();
     let mut in_content = true;
-    
+
     let chars = xml.chars().peekable();
     for c in chars {
         if c == '<' {
@@ -410,13 +424,14 @@ pub fn strip_xml_tags(xml: &str) -> String {
             result.push(c);
         }
     }
-    
+
     // Clean up whitespace
-    let lines: Vec<&str> = result.lines()
+    let lines: Vec<&str> = result
+        .lines()
         .map(|l| l.trim())
         .filter(|l| !l.is_empty())
         .collect();
-    
+
     lines.join("\n")
 }
 
@@ -426,21 +441,23 @@ pub fn strip_html_tags(html: &str) -> String {
 }
 
 /// Check if content looks like readable text (not binary garbage)
+/// Rule: Reject files that contain garbled binary content to prevent
+/// corrupt data from being stored as memory.
 /// Returns (is_valid, reason) where is_valid is true if content is readable
 pub fn validate_text_quality(content: &str) -> (bool, String) {
     // Empty content is not valid
     if content.trim().is_empty() {
         return (false, "Content is empty or whitespace only".to_string());
     }
-    
+
     let bytes = content.as_bytes();
     let len = bytes.len();
-    
+
     // Count printable/valid text characters
     let mut printable_count = 0;
     let mut null_count = 0;
     let mut control_count = 0;
-    
+
     for &byte in bytes {
         if byte == 0 {
             null_count += 1;
@@ -451,30 +468,50 @@ pub fn validate_text_quality(content: &str) -> (bool, String) {
             printable_count += 1;
         }
     }
-    
+
     let printable_ratio = printable_count as f64 / len as f64;
-    
+
     // Check for null bytes (strong indicator of binary)
     if null_count > 0 {
-        return (false, format!("Contains {} null bytes (binary content)", null_count));
+        return (
+            false,
+            format!("Contains {} null bytes (binary content)", null_count),
+        );
     }
-    
+
     // Check printable ratio - if less than 70% printable, likely binary
     if printable_ratio < 0.7 {
-        return (false, format!("Only {:.0}% printable characters (likely binary)", printable_ratio * 100.0));
+        return (
+            false,
+            format!(
+                "Only {:.0}% printable characters (likely binary)",
+                printable_ratio * 100.0
+            ),
+        );
     }
-    
+
     // Check for too many control characters
     if control_count > len / 10 {
-        return (false, format!("Too many control characters ({})", control_count));
+        return (
+            false,
+            format!("Too many control characters ({})", control_count),
+        );
     }
-    
+
     // Check for replacement characters (UTF-8 decoding failures)
+    // When read_to_string encounters invalid UTF-8 in binary files,
+    // it substitutes replacement characters (U+FFFD). Normal text has none.
     let replacement_count = content.chars().filter(|c| *c == '\u{FFFD}').count();
-    if replacement_count > len / 100 {
-        return (false, format!("Contains {} replacement characters (encoding errors)", replacement_count));
+    if replacement_count > len / 200 {
+        return (
+            false,
+            format!(
+                "Contains {} replacement characters (binary content detected)",
+                replacement_count
+            ),
+        );
     }
-    
+
     // Content looks valid
     (true, "Valid text content".to_string())
 }

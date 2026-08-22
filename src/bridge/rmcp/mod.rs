@@ -78,7 +78,7 @@ impl ServerHandler for types::McpServerHandler {
         _: RequestContext<rmcp::RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
         let tool_name: &str = &request.name;
-        let arguments = request.arguments.map(|args| serde_json::Value::Object(args))
+        let arguments = request.arguments.map(serde_json::Value::Object)
             .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
 
         // Check workflow enforcement FIRST - agent MUST follow workflows

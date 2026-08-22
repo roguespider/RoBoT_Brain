@@ -14,7 +14,7 @@ use crate::experience::bus::ExperienceBus;
 use crate::experience::events::ExperienceEvent;
 use crate::experience::types::Experience;
 use crate::experience::reflection::{ReflectionEngine, ReflectionType, ReflectionStatus};
-use crate::experience::reflection::reflection::Reflection;
+use crate::experience::reflection::types::Reflection;
 
 /// Reflection pipeline that processes experiences into insights
 pub struct ReflectionPipeline {
@@ -155,11 +155,10 @@ impl ReflectionPipeline {
             }
             OutcomeKind::Failure => {
                 lessons.push("failed_outcome".to_string());
-                if let Some(reason) = &experience.outcome.error {
-                    if !reason.is_empty() {
+                if let Some(reason) = &experience.outcome.error
+                    && !reason.is_empty() {
                         lessons.push(format!("failure_reason:{}", reason));
                     }
-                }
             }
             _ => {}
         }

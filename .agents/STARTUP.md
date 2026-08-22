@@ -3,14 +3,28 @@
 > This file is the call to action. Read it FIRST, then AGENTS.md, then
 > PLAN.md. Do not start any code change until steps 1-3 are done.
 
-## 1. Read these in full (do not skim)
+## 1. MCP workflow gate (required before any tool call)
+
+Call `get_workflow` first — all MCP tools are blocked until this returns.
+
+## 2. Read these in full (do not skim)
 
 1. This file (`.agents/STARTUP.md`)
 2. `AGENTS.md` — the hard rules (Incremental Workflow, Prerequisites, Build
    Commands, Post-Compile MCP connect, Strict Rust Coding Standards)
 3. `.agents/PLAN.md` — the roadmap + the "Next steps to finish v0.0.1" list
 
-## 2. Run the verify gate (must be green BEFORE any code change)
+## 3. Store session context in memory (Working Memory Protocol)
+
+After reading startup files, call `store_memory` with:
+- `memory_type`: "note"
+- `tags`: ["startup", session date]
+- `content`: Current state summary (what we're working on, gate status, next task)
+
+This ensures session context survives across turns and can be retrieved later.
+After any code change, store a note summarizing what changed.
+
+## 4. Run the verify gate (must be green BEFORE any code change)
 
 > **The wall (use it):** `make gate` runs test_suite, which auto-builds
 > robot_brain, connects via MCP, runs all tests + code analysis, and enforces
@@ -46,29 +60,27 @@ tests pass AND 0 warnings / 0 code-issues / 0 untested tools. If any fails,
 fix the failure before doing anything else. Do not "remember" a prior pass —
 actually run it this session.
 
-## 3. Pick the next task (in order, do not skip ahead)
+## 5. Pick the next task (in order, do not skip ahead)
 
 Open `.agents/PLAN.md`. Find the FIRST unchecked `- [ ]` increment. Work tiers
 in order: TIER 1 (finish v0.0.1) → TIER 2 (reach v0.0.2) → TIER 3 (reach
 v0.0.2.1). Each increment is one ~10-15 min change.
 
-- **Coverage gate is GREEN** (section 1E done). test_suite exits 0 (141/141 tests
-  pass, 0 code issues, 0 warnings, 0 untested, 0 phantom). All 134 server tools
-  are covered. Commits: b9b43ff (phantom fix), 6b7d036 (ACP tests), 7775ca1
-  (remaining 41 tools).
-- **TIER 1 is NOT fully done — 10 tasks remain** (sections 1B, 1C, 1D):
-  - **1B. SQLite JobQueue (T1-09..T1-12):** add job_queue table+migration, wire
-    enqueue/dequeue to SQLite, handle Lagged events, update startup verification.
-  - **1C. Loop-health metrics (T1-13..T1-16):** add loop_latency,
-    confidence_drift, promotion_throughput metrics, expose via get_system_status.
-  - **1D. MCP→experience hook (T1-17..T1-18):** hook emit_experience_recorded
-    into post-tool-execution dispatch, ensure idempotency.
-  - Do these in order. Start with T1-09 (SQLite JobQueue migration).
+- **Coverage gate: GREEN on tests, RED on warnings.** 145/145 tests pass,
+  0 code issues, 0 untested, 0 phantom. Gate blocked by **144 compiler warnings**
+  and **12 code issues** (emoji, dead-code). All TIER 1 task work is done.
+  Commits: b9b43ff (phantom fix), 6b7d036 (ACP tests), 7775ca1 (remaining 41 tools).
+- **TIER 1 tasks: ALL DONE.** 1B (SQLite JobQueue), 1C (loop-health metrics),
+  1D (MCP→experience hook) — all completed and verified. See CHANGELOG.md for
+  details on each task.
+- **Remaining blocker: P1 quality gate.** 144 compiler warnings (unused-vars,
+  too-many-arguments, async-fn simplification) and 12 code issues (emoji,
+  dead-code). Fix these to get the gate fully green. See PLAN.md P1-001/P1-002.
 - **Self_check removal is TIER 2 work** (the APIs they exercise have no other
   callers; deleting them in TIER 1 creates dead-code warnings). Do it during
   each system's TIER 2 upgrade. 8 self_check.rs files remain.
 
-## 4. Execute ONE change, then the gate, then stop
+## 6. Execute ONE change, then the gate, then stop
 
 - Make ONE change only (one file or one tightly-coupled set).
 - Re-run the full verify gate (step 2). All three must pass.
@@ -78,18 +90,19 @@ v0.0.2.1). Each increment is one ~10-15 min change.
 - Report the result (what changed, gate status, commit hash).
 - STOP and report to the user. Do not start the next task without confirmation.
 
-## 5. Periodic maintenance (check from time to time, not every session)
+## 7. Periodic maintenance (check from time to time, not every session)
 
 - **Large file refactor** (`.agents/LARGE_FILE_REFACTOR.md`): when an `.rs`
   file hits ~1000 lines mixing responsibilities, split it into a directory
   module per the pattern there. Run the candidates query occasionally.
 
-## 6. Hard rules (from AGENTS.md — non-negotiable)
+## 8. Hard rules (from AGENTS.md — non-negotiable)
 
 - NEVER batch multiple unrelated changes into one commit/step.
 - NO `.unwrap()`, `.expect()`, `panic!()`, `assert!()`, `unreachable!()`.
 - NO `todo!()`, `unimplemented!()`.
 - NO `#[allow(...)]` / `#![allow(...)]` anywhere in `src/`.
+- NO `#[cfg(test)]` in `src/`. Tests live in `test_suite/`, not in production source.
 - NO ignored variables (`let _x = ...`, `let _ = ...`, `|_| ...`).
 - NO deleting code to bypass fixes. Follow the Dead Code Resolution Protocol
   (AGENTS.md): implement if the architecture describes it, delete only if

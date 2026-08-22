@@ -1,10 +1,10 @@
 // src/bridge/tools/handlers/planner_handler.rs
 // Planner tools handler - handles task planning and execution
 
-use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
-use crate::bridge::tools::planner;
 use crate::bridge::mcp::handlers::{HandlerError, HandlerInitResult, ToolHandler};
+use crate::bridge::tools::planner;
+use std::sync::Arc;
 
 /// Handler for planner-related tools
 #[derive(Clone)]
@@ -14,9 +14,7 @@ pub struct PlannerToolsHandler {
 
 impl PlannerToolsHandler {
     /// Create a new planner tools handler
-    pub fn new(
-        context: Arc<McpContext>,
-    ) -> HandlerInitResult<Self> {
+    pub fn new(context: Arc<McpContext>) -> HandlerInitResult<Self> {
         // Planner is available - async validation happens at runtime
         Ok(Self { context })
     }
@@ -229,8 +227,7 @@ impl ToolHandler for PlannerToolsHandler {
         ]
     }
 
-    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
-        async move {
+    async fn execute_tool(&self, name: &str, args: serde_json::Value) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
             match name {
                 "create_plan" => {
                     let input: planner::CreatePlanInput = serde_json::from_value(args)
@@ -279,6 +276,5 @@ impl ToolHandler for PlannerToolsHandler {
                 }
                 _ => Err(HandlerError::ToolNotFound(name.to_string()))
             }
-        }
     }
 }

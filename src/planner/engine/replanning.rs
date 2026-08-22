@@ -46,8 +46,8 @@ pub fn carry_forward_completed_steps(
 
 /// Estimate problem complexity from failure rate
 pub fn estimate_problem_complexity(failed_step_count: usize) -> f32 {
-    let complexity = (failed_step_count as f32 * 0.25).min(1.0);
-    complexity
+    
+    (failed_step_count as f32 * 0.25).min(1.0)
 }
 
 /// Collect completed step IDs from a plan

@@ -40,17 +40,15 @@ impl WorkflowEngine {
             // Memory middleware: read before action
             let memory_context = self.read_memory_before_action(&step.action, &params).await;
 
-            if let Some(ref ctx) = memory_context {
-                if let Some(memories) = ctx.data.get("memories").and_then(|v| v.as_array()) {
-                    if !memories.is_empty() {
+            if let Some(ref ctx) = memory_context
+                && let Some(memories) = ctx.data.get("memories").and_then(|v| v.as_array())
+                    && !memories.is_empty() {
                         tracing::info!(
                             "Found {} relevant memories before action '{}'",
                             memories.len(),
                             step.action
                         );
                     }
-                }
-            }
 
             // Execute the step action
             let result = self.execute_step_action(&step.action, &params).await;

@@ -7,23 +7,23 @@ use std::sync::Arc;
 
 use anyhow::{Context, Result};
 
-use crate::database::models::{MemoryCard, MemoryType};
-use crate::database::sqlite::SqliteDatabase;
-use crate::memory::pipeline::MemoryPipeline;
-use crate::memory::types::MemoryItem;
-use crate::memory::WorkingMemory;
 use crate::bridge::tools::ingestor::archive_handler::{
     create_archive_temp_dir, delete_empty_folders, process_archive,
 };
 use crate::bridge::tools::ingestor::file_collector::{
-    collect_all_files_recursive, AUDIO_EXTENSIONS, IMAGE_EXTENSIONS, JSON_EXTENSIONS,
-    TEXT_EXTENSIONS,
+    AUDIO_EXTENSIONS, IMAGE_EXTENSIONS, JSON_EXTENSIONS, TEXT_EXTENSIONS,
+    collect_all_files_recursive,
 };
-use crate::bridge::tools::ingestor::json_importer::{import_json_file, ExtractedJsonData};
+use crate::bridge::tools::ingestor::json_importer::{ExtractedJsonData, import_json_file};
 use crate::bridge::tools::ingestor::semantic_chunker::{get_file_type, parse_document};
 use crate::bridge::tools::ingestor::text_extractor::{
     extract_image_metadata, extract_text, validate_text_quality,
 };
+use crate::database::models::{MemoryCard, MemoryType};
+use crate::database::sqlite::SqliteDatabase;
+use crate::memory::WorkingMemory;
+use crate::memory::pipeline::MemoryPipeline;
+use crate::memory::types::MemoryItem;
 
 use super::types::IngestResult;
 
@@ -175,7 +175,10 @@ pub async fn ingest_single_file(
     };
 
     // Check if this is an image file - handle separately
-    if crate::bridge::tools::ingestor::file_collector::is_supported_extension(path, IMAGE_EXTENSIONS) {
+    if crate::bridge::tools::ingestor::file_collector::is_supported_extension(
+        path,
+        IMAGE_EXTENSIONS,
+    ) {
         return ingest_image_file(
             path,
             recommended_chunk_size,
@@ -188,11 +191,12 @@ pub async fn ingest_single_file(
 
     // Check if this is a JSON file - use smart JSON importer
     // Note: JSONL files are not valid JSON and should be handled as text
-    let is_json = path.extension()
+    let is_json = path
+        .extension()
         .and_then(|e| e.to_str())
         .map(|e| e.eq_ignore_ascii_case("json"))
         .unwrap_or(false);
-    
+
     if is_json {
         return ingest_json_file(
             path,
@@ -205,7 +209,10 @@ pub async fn ingest_single_file(
     }
 
     // Check if this is an audio file - use Whisper transcription
-    if crate::bridge::tools::ingestor::file_collector::is_supported_extension(path, AUDIO_EXTENSIONS) {
+    if crate::bridge::tools::ingestor::file_collector::is_supported_extension(
+        path,
+        AUDIO_EXTENSIONS,
+    ) {
         return ingest_audio_file(
             path,
             recommended_chunk_size,
@@ -233,7 +240,10 @@ pub async fn ingest_single_file(
         });
     }
 
-    // Validate text quality - reject binary garbage
+    // Rule: reject garbled binary content in ANY ingested file.
+    // Apply validate_text_quality to all extracted text regardless of file type
+    // (text, JSON, PDF, DOCX, EPUB, etc.) to prevent binary corruption from
+    // entering the memory system.
     let (is_valid, quality_reason) = validate_text_quality(&text);
     if !is_valid {
         return Ok(IngestResult {
@@ -332,10 +342,25 @@ pub async fn ingest_json_file(
         tracing::warn!(file = %filename, warning = %warning, "JSON import warning");
     }
 
-    // Even if items is empty, we try to read the raw file content as fallback
+    // Even if items is empty, we try to read the raw file content as fallback.
+    // Rule: validate_text_quality rejects garbled binary content before storage.
     let items_to_store = if result.items.is_empty() {
         // Try to read raw JSON content as a single fallback item
         if let Ok(raw_content) = std::fs::read_to_string(path) {
+            let (is_valid, reason) = validate_text_quality(&raw_content);
+            if !is_valid {
+                tracing::warn!("JSON file raw content rejected: {} ({})", reason, filename);
+                return Ok(IngestResult {
+                    filename,
+                    file_path: path.to_string_lossy().to_string(),
+                    success: false,
+                    chunks_created: 0,
+                    chunk_size_used: chunk_size,
+                    memory_ids: vec![],
+                    error: Some(format!("Raw content rejected: {}", reason)),
+                    remaining_count: 0,
+                });
+            }
             tracing::info!(
                 "JSON file had no structured items, storing raw content ({} chars)",
                 raw_content.len()
@@ -507,8 +532,10 @@ pub async fn ingest_audio_file(
     db: Arc<SqliteDatabase>,
     working_memory: Arc<WorkingMemory>,
 ) -> Result<IngestResult> {
-    use crate::bridge::tools::ingestor::audio_transcriber::{store_transcription_as_memory, transcribe_audio};
-    
+    use crate::bridge::tools::ingestor::audio_transcriber::{
+        store_transcription_as_memory, transcribe_audio,
+    };
+
     let filename = path
         .file_name()
         .and_then(|n| n.to_str())
@@ -592,7 +619,7 @@ pub async fn ingest_audio_file(
         .to_string();
 
     let file_path_str = path.to_string_lossy().to_string();
-    
+
     Ok(IngestResult {
         filename,
         file_path: file_path_str,
@@ -600,7 +627,10 @@ pub async fn ingest_audio_file(
         chunks_created: 0,
         chunk_size_used: 0,
         memory_ids: vec![],
-        error: Some("Audio transcription is not available. Enable the 'audio' feature to use this feature.".to_string()),
+        error: Some(
+            "Audio transcription is not available. Enable the 'audio' feature to use this feature."
+                .to_string(),
+        ),
         remaining_count: 0,
     })
 }

@@ -130,7 +130,7 @@ impl<'a> GeneralizationMethods<'a> {
         // Detect temporal patterns: experiences clustered in time often
         // indicate a recurring workflow or seasonal effect.
         let mut by_time: Vec<&Experience> = experiences.iter().collect();
-        by_time.sort_by(|a, b| a.timestamp.cmp(&b.timestamp));
+        by_time.sort_by_key(|a| a.timestamp);
         if by_time.len() >= 3 {
             let first_ts = by_time.first().map(|f| f.timestamp.timestamp()).unwrap_or(0);
             let last_ts = by_time.last().map(|l| l.timestamp.timestamp()).unwrap_or(0);

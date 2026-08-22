@@ -1,11 +1,13 @@
 // src/bridge/tools/handlers/memory_handler.rs
 // Memory tools handler - handles memory operations and vector embeddings
 
+use crate::bridge::mcp::McpContext;
+use crate::bridge::mcp::handlers::{
+    HandlerError, HandlerInitError, HandlerInitResult, ToolHandler, json_to_schema,
+};
+use crate::bridge::tools::memory;
 use std::sync::Arc;
 use uuid::Uuid;
-use crate::bridge::mcp::McpContext;
-use crate::bridge::tools::memory;
-use crate::bridge::mcp::handlers::{HandlerError, HandlerInitError, HandlerInitResult, ToolHandler, json_to_schema};
 
 /// Handler for memory-related tools
 #[derive(Clone)]
@@ -15,9 +17,7 @@ pub struct MemoryToolsHandler {
 
 impl MemoryToolsHandler {
     /// Create a new memory tools handler
-    pub fn new(
-        context: Arc<McpContext>,
-    ) -> HandlerInitResult<Self> {
+    pub fn new(context: Arc<McpContext>) -> HandlerInitResult<Self> {
         // Validate that required dependencies exist
         if context.database.connection().is_err() {
             return Err(HandlerInitError::new(
@@ -34,12 +34,8 @@ impl MemoryToolsHandler {
         &self,
         input: memory::StoreMemoryInput,
     ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
-        memory::execute_store_memory(
-            input,
-            &self.context.database,
-            &self.context.working_memory,
-        )
-        .await
+        memory::execute_store_memory(input, &self.context.database, &self.context.working_memory)
+            .await
     }
 
     /// Search memories by content
@@ -122,7 +118,9 @@ impl MemoryToolsHandler {
     }
 
     /// Get embedding statistics
-    pub async fn execute_get_embedding_stats(&self) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    pub async fn execute_get_embedding_stats(
+        &self,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         memory::execute_get_embedding_stats(&self.context.database).await
     }
 
@@ -131,10 +129,25 @@ impl MemoryToolsHandler {
         &self,
         input: memory::ArchiveMemoryInput,
     ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
-        let memory_id: Uuid = input.memory_id.parse()
+        let memory_id: Uuid = input
+            .memory_id
+            .parse()
             .map_err(|e| anyhow::anyhow!("Invalid memory UUID: {}", e))?;
         let archived = self.context.permanent_memory.archive(&memory_id).await;
         memory::execute_archive_memory(input, archived).await
+    }
+
+    /// Delete a memory by ID
+    pub async fn execute_delete_memory_by_id(
+        &self,
+        input: memory::DeleteMemoryInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        let memory_id: Uuid = input
+            .memory_id
+            .parse()
+            .map_err(|e| anyhow::anyhow!("Invalid memory UUID: {}", e))?;
+        let deleted = self.context.permanent_memory.delete(&memory_id).await;
+        memory::execute_delete_memory(input, deleted).await
     }
 
     /// Link two memories with a relationship
@@ -142,9 +155,13 @@ impl MemoryToolsHandler {
         &self,
         input: memory::LinkMemoriesInput,
     ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
-        let from_id: Uuid = input.from_id.parse()
+        let from_id: Uuid = input
+            .from_id
+            .parse()
             .map_err(|e| anyhow::anyhow!("Invalid from_id UUID: {}", e))?;
-        let to_id: Uuid = input.to_id.parse()
+        let to_id: Uuid = input
+            .to_id
+            .parse()
             .map_err(|e| anyhow::anyhow!("Invalid to_id UUID: {}", e))?;
         self.context
             .permanent_memory
@@ -185,6 +202,7 @@ impl ToolHandler for MemoryToolsHandler {
             "delete_embedding".to_string(),
             "get_embedding_stats".to_string(),
             "archive_memory".to_string(),
+            "delete_memory_by_id".to_string(),
             "link_memories".to_string(),
             "ranked_search".to_string(),
         ]
@@ -255,6 +273,17 @@ impl ToolHandler for MemoryToolsHandler {
                     "required": ["memory_id"]
                 })),
             ).with_title("Archive Memory"),
+            rmcp::model::Tool::new(
+                "delete_memory_by_id",
+                "Delete a memory by ID (requires explicit confirmation)",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "memory_id": { "type": "string", "description": "UUID of the memory to delete" }
+                    },
+                    "required": ["memory_id"]
+                })),
+            ).with_title("Delete Memory By ID"),
             rmcp::model::Tool::new(
                 "link_memories",
                 "Create a relationship between two memories",
@@ -348,87 +377,108 @@ impl ToolHandler for MemoryToolsHandler {
         ]
     }
 
-    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
-        async move {
+    async fn execute_tool(
+        &self,
+        name: &str,
+        args: serde_json::Value,
+    ) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
             match name {
                 "store_memory" => {
                     let input: memory::StoreMemoryInput = serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_store_memory(input).await
+                    self.execute_store_memory(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "search_memory" => {
                     let input: memory::SearchMemoryInput = serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_search_memory(input).await
+                    self.execute_search_memory(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "get_memory" => {
                     let input: memory::GetMemoryInput = serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_get_memory(input).await
+                    self.execute_get_memory(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "list_memories" => {
-                    let input: memory::ListMemoriesInput = serde_json::from_value(args)
-                        .unwrap_or_default();
-                    self.execute_list_memories(input).await
+                    let input: memory::ListMemoriesInput =
+                        serde_json::from_value(args).unwrap_or_default();
+                    self.execute_list_memories(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "store_embedding" => {
                     let input: memory::StoreEmbeddingInput = serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_store_embedding(input).await
+                    self.execute_store_embedding(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "get_embedding" => {
                     let input: memory::GetEmbeddingInput = serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_get_embedding(input).await
+                    self.execute_get_embedding(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "search_similar" => {
                     let input: memory::SearchSimilarInput = serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_search_similar(input).await
+                    self.execute_search_similar(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "list_embeddings" => {
-                    let input: memory::ListEmbeddingsInput = serde_json::from_value(args)
-                        .unwrap_or_default();
-                    self.execute_list_embeddings(input).await
+                    let input: memory::ListEmbeddingsInput =
+                        serde_json::from_value(args).unwrap_or_default();
+                    self.execute_list_embeddings(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "delete_embedding" => {
                     let input: memory::DeleteEmbeddingInput = serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_delete_embedding(input).await
+                    self.execute_delete_embedding(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
-                "get_embedding_stats" => {
-                    self.execute_get_embedding_stats().await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
+                "get_embedding_stats" => self
+                    .execute_get_embedding_stats()
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string())),
                 "archive_memory" => {
                     let input: memory::ArchiveMemoryInput = serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_archive_memory(input).await
+                    self.execute_archive_memory(input)
+                        .await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                "delete_memory_by_id" => {
+                    let input: memory::DeleteMemoryInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_delete_memory_by_id(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "link_memories" => {
                     let input: memory::LinkMemoriesInput = serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_link_memories(input).await
+                    self.execute_link_memories(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "ranked_search" => {
                     let input: memory::RankedSearchInput = serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_ranked_search(input).await
+                    self.execute_ranked_search(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
-                _ => Err(HandlerError::ToolNotFound(name.to_string()))
+                _ => Err(HandlerError::ToolNotFound(name.to_string())),
             }
-        }
     }
 }

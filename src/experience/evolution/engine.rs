@@ -283,16 +283,18 @@ impl EvolutionEngine {
         for behavior in behaviors.values_mut() {
             // Wire get_evidence: check evidence ratio for promotion decision
             let evidence = self.get_evidence(&behavior.id).await;
-            if !evidence.is_empty() {
-                let support_ratio = evidence
+            let support_ratio = if evidence.is_empty() {
+                0.0
+            } else {
+                evidence
                     .iter()
                     .filter(|e| e.verdict == EvidenceVerdict::Supports)
                     .count() as f32
-                    / evidence.len() as f32;
-                if support_ratio > 0.8 && behavior.status == BehaviorStatus::Candidate {
-                    behavior.activate();
-                    summary.promoted += 1;
-                }
+                    / evidence.len() as f32
+            };
+            if support_ratio > 0.8 && behavior.status == BehaviorStatus::Candidate {
+                behavior.activate();
+                summary.promoted += 1;
             }
 
             // Check deprecation conditions
@@ -361,7 +363,7 @@ impl EvolutionEngine {
             }
 
             let mut merges = Vec::new();
-            for (_key, ids) in groups {
+            for ids in groups.into_values() {
                 if ids.len() > 1 {
                     let mut sorted = ids.clone();
                     sorted.sort_by(|a, b| {
@@ -383,7 +385,7 @@ impl EvolutionEngine {
 
         // Execute merges (each acquires its own lock)
         for (source_id, target_id) in merges {
-            let _ = self.merge_behaviors(&source_id, &target_id).await;
+            self.merge_behaviors(&source_id, &target_id).await?;
         }
 
         Ok(summary)
@@ -405,11 +407,10 @@ impl EvolutionEngine {
             if !self.should_recommend(&behavior.id).await {
                 continue;
             }
-            if let Some(effectiveness) = self.get_effectiveness(&behavior.id).await {
-                if effectiveness > 0.0 {
+            if let Some(effectiveness) = self.get_effectiveness(&behavior.id).await
+                && effectiveness > 0.0 {
                     suggestions.push(behavior);
                 }
-            }
             if suggestions.len() >= 5 {
                 break;
             }
@@ -505,8 +506,8 @@ impl EvolutionEngine {
         let mut behaviors = self.behaviors.write().await;
 
         let source = behaviors.remove(source_id);
-        if let Some(source) = source {
-            if let Some(target) = behaviors.get_mut(target_id) {
+        if let Some(source) = source
+            && let Some(target) = behaviors.get_mut(target_id) {
                 // Transfer evidence from source to target
                 if let Some(evidence) = self.evidence.read().await.get(source_id) {
                     let mut evidence_store = self.evidence.write().await;
@@ -529,7 +530,6 @@ impl EvolutionEngine {
 
                 tracing::info!("Merged behavior {} into {}", source_id, target_id);
             }
-        }
 
         Ok(())
     }

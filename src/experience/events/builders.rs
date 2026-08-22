@@ -5,8 +5,6 @@
 //! Per Architecture §4.04:
 //! ExperienceRecorded → Reflection observes → Hypothesis evaluates → Knowledge updates → Reputation adjusts
 
-
-
 use chrono::Utc;
 use uuid::Uuid;
 
@@ -15,7 +13,7 @@ use crate::experience::types::{Experience, ExperienceScore};
 
 impl ExperienceEvent {
     /// Create an event indicating a new experience was recorded.
-    pub fn recorded(experience_id: Uuid) -> Self {
+    pub(crate) fn recorded(experience_id: Uuid) -> Self {
         Self {
             id: Uuid::new_v4(),
             experience_id,
@@ -32,7 +30,9 @@ impl ExperienceEvent {
             experience_id: experience.id,
             timestamp: Utc::now(),
             event_type: ExperienceEventType::ExperienceRecorded,
-            payload: EventPayload::ExperienceRecord { experience: Box::new(experience) },
+            payload: EventPayload::ExperienceRecord {
+                experience: Box::new(experience),
+            },
         }
     }
 
@@ -87,7 +87,11 @@ impl ExperienceEvent {
     }
 
     /// Create an event when a hypothesis is validated.
-    pub fn hypothesis_validated(experience_id: Uuid, hypothesis_id: String, validated: bool) -> Self {
+    pub fn hypothesis_validated(
+        experience_id: Uuid,
+        hypothesis_id: String,
+        validated: bool,
+    ) -> Self {
         Self {
             id: Uuid::new_v4(),
             experience_id,
@@ -95,7 +99,11 @@ impl ExperienceEvent {
             event_type: ExperienceEventType::HypothesisValidated,
             payload: EventPayload::HypothesisValidation {
                 hypothesis_id,
-                result: if validated { "supported".to_string() } else { "rejected".to_string() },
+                result: if validated {
+                    "supported".to_string()
+                } else {
+                    "rejected".to_string()
+                },
             },
         }
     }
@@ -132,7 +140,7 @@ impl ExperienceEvent {
             payload: EventPayload::KnowledgeRecord { knowledge_id },
         }
     }
-    
+
     /// Create an event when knowledge is transferred between domains.
     pub fn knowledge_transferred(
         experience_id: Uuid,

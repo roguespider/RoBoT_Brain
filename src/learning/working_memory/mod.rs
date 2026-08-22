@@ -27,8 +27,10 @@ use uuid::Uuid;
 
 /// Classification of working-memory items by purpose.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Default)]
 pub enum MemoryItemType {
     /// Background context for the current task.
+    #[default]
     Context,
     /// A task or sub-goal to complete.
     Task,
@@ -40,11 +42,6 @@ pub enum MemoryItemType {
     Observation,
 }
 
-impl Default for MemoryItemType {
-    fn default() -> Self {
-        Self::Context
-    }
-}
 
 /// A single item held in the learning working memory.
 #[derive(Debug, Clone, Serialize, Deserialize)]

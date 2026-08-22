@@ -72,10 +72,10 @@ impl ReflectionEngine {
             }
 
             // Auto-validate if threshold met
-            if validation.score >= self.config.auto_validate_threshold {
-                if let Some(ref mut r) = reflection {
-                    r.validate();
-                }
+            if validation.score >= self.config.auto_validate_threshold
+                && let Some(ref mut r) = reflection
+            {
+                r.validate();
             }
 
             // Save to repository
@@ -118,7 +118,12 @@ impl ReflectionEngine {
 
         // Store detected patterns
         for pattern_name in &analysis.patterns {
-            let pattern = Pattern::with_type(pattern_name.clone(), PatternType::Frequency);
+            let mut pattern = Pattern::with_type(pattern_name.clone(), PatternType::Frequency);
+            // Tag with the originating theme so downstream consumers can filter
+            // patterns by analysis context (Architecture §10 metadata).
+            for theme in &analysis.themes {
+                pattern.add_tag(format!("theme:{}", theme));
+            }
             self.patterns
                 .write()
                 .await
@@ -146,23 +151,30 @@ impl ReflectionEngine {
             format!("has_description: {}", quality.indicators.has_description),
             format!("has_summary: {}", quality.indicators.has_summary),
             format!("experience_count: {}", quality.indicators.experience_count),
-            format!("confidence_score: {:.2}", quality.indicators.confidence_score),
+            format!(
+                "confidence_score: {:.2}",
+                quality.indicators.confidence_score
+            ),
             format!("is_actionable: {}", quality.indicators.is_actionable),
         ];
 
         Ok(ValidationReport {
             is_valid: result.is_valid,
             score: self.validator.score(reflection),
-            issues: result.issues.iter().map(|i| {
-                let mut msg = i.message.clone();
-                if !i.code.is_empty() {
-                    msg = format!("[{}] {}", i.code, msg);
-                }
-                if let Some(ref field) = i.field {
-                    msg = format!("{} (field: {})", msg, field);
-                }
-                msg
-            }).collect(),
+            issues: result
+                .issues
+                .iter()
+                .map(|i| {
+                    let mut msg = i.message.clone();
+                    if !i.code.is_empty() {
+                        msg = format!("[{}] {}", i.code, msg);
+                    }
+                    if let Some(ref field) = i.field {
+                        msg = format!("{} (field: {})", msg, field);
+                    }
+                    msg
+                })
+                .collect(),
             warnings: result.warnings.clone(),
             quality_score: quality.overall_score,
             quality_indicators,
@@ -363,10 +375,8 @@ impl ReflectionEngine {
                 looked_up += 1;
             }
             // Exercise the contradiction accessor for untrusted insights (§4.06).
-            if !insight.is_trusted() {
-                if self.contradict_insight(&insight.id).await.is_ok() {
-                    contradicted += 1;
-                }
+            if !insight.is_trusted() && self.contradict_insight(&insight.id).await.is_ok() {
+                contradicted += 1;
             }
         }
         let mut decayed = 0usize;
@@ -384,31 +394,25 @@ impl ReflectionEngine {
                 let sig = p.is_significant(0.6, 3);
                 let age = p.age_days();
                 let stmt = p.to_insight_statement();
-                tracing::debug!(
-                    "Pattern {} sig={} age={}d: {}",
-                    p.id,
-                    sig,
-                    age,
-                    stmt
-                );
+                tracing::debug!("Pattern {} sig={} age={}d: {}", p.id, sig, age, stmt);
                 // Merge consecutive patterns of the same type to consolidate
                 // duplicate evidence (§9 generalization); strip a known-dup
                 // evidence id to exercise the remove_evidence accessor.
-                if i + 1 < all_patterns.len() {
-                    if let Some(next) = self.get_pattern(&all_patterns[i + 1].id).await {
-                        let mut merged_p = p.clone();
-                        if let Some(dup) = next.evidence.first() {
-                            merged_p.remove_evidence(dup);
-                        }
-                        merged_p.merge(&next);
-                        merged_p.set_type(next.pattern_type.clone());
-                        tracing::debug!(
-                            "Merged pattern {} -> confidence {:.2}",
-                            merged_p.id,
-                            merged_p.confidence
-                        );
-                        merged += 1;
+                if i + 1 < all_patterns.len()
+                    && let Some(next) = self.get_pattern(&all_patterns[i + 1].id).await
+                {
+                    let mut merged_p = p.clone();
+                    if let Some(dup) = next.evidence.first() {
+                        merged_p.remove_evidence(dup);
                     }
+                    merged_p.merge(&next);
+                    merged_p.set_type(next.pattern_type.clone());
+                    tracing::debug!(
+                        "Merged pattern {} -> confidence {:.2}",
+                        merged_p.id,
+                        merged_p.confidence
+                    );
+                    merged += 1;
                 }
             }
         }
@@ -420,10 +424,9 @@ impl ReflectionEngine {
         let mut deleted = 0usize;
         for reflection in self.list_by_status(ReflectionStatus::Archived).await {
             // Only delete reflections the stricter validator also rejects.
-            if !strict.is_valid(&reflection) {
-                if self.delete_reflection(&reflection.id).await.is_ok() {
-                    deleted += 1;
-                }
+            if !strict.is_valid(&reflection) && self.delete_reflection(&reflection.id).await.is_ok()
+            {
+                deleted += 1;
             }
         }
         tracing::info!(

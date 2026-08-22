@@ -334,8 +334,7 @@ impl ToolHandler for KnowledgeToolsHandler {
         ]
     }
 
-    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
-        async move {
+    async fn execute_tool(&self, name: &str, args: serde_json::Value) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
             match name {
                 "add_knowledge" => {
                     let input: knowledge::AddKnowledgeInput = serde_json::from_value(args)
@@ -409,6 +408,5 @@ impl ToolHandler for KnowledgeToolsHandler {
                 }
                 _ => Err(HandlerError::ToolNotFound(name.to_string()))
             }
-        }
     }
 }

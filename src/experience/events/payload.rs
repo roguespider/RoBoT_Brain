@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 use crate::experience::types::{Experience, ExperienceScore};
-use crate::experience::reflection::reflection::Reflection;
+use crate::experience::reflection::types::Reflection;
 use crate::experience::hypothesis::core::hypothesis::Hypothesis;
 
 /// The specific event that occurred.

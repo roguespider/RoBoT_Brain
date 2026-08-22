@@ -91,17 +91,17 @@ impl EventSubscriber {
 
             // Also record the experience directly to the database via
             // ExperienceRecorder (Architecture §07 structured recording).
-            if let Some(recorder) = &self.experience_recorder {
-                if let Err(e) = recorder.record(
+            if let Some(recorder) = &self.experience_recorder
+                && let Err(e) = recorder.record(
                     experience.experience_type.clone(),
                     experience.title.clone(),
                     experience.description.clone(),
                     experience.context.clone(),
                     experience.outcome.clone(),
                     experience.observation_ids.clone(),
-                ) {
-                    tracing::warn!("ExperienceRecorder failed for {}: {}", experience.id, e);
-                }
+                )
+            {
+                tracing::warn!("ExperienceRecorder failed for {}: {}", experience.id, e);
             }
 
             // Fallback (no learning coordinator wired): drive the available
@@ -250,6 +250,37 @@ impl EventSubscriber {
                         tracing::warn!("Hypothesis validation failed for {}: {}", hypothesis_id, e);
                     }
                 }
+            } else {
+                // Fallback (no learning coordinator wired): promote the
+                // validated hypothesis into the knowledge store directly so
+                // the §4.04 Validation → Knowledge step still advances.
+                let hypothesis_id_typed =
+                    crate::experience::hypothesis::core::hypothesis::HypothesisId(
+                        hypothesis_id.clone(),
+                    );
+                let graph_arc = self.hypothesis_engine.get_graph();
+                let exists = match graph_arc.lock() {
+                    Ok(graph) => graph.has_node(&hypothesis_id_typed),
+                    Err(poisoned) => {
+                        tracing::error!("Graph mutex poisoned during hypothesis lookup");
+                        poisoned.into_inner().has_node(&hypothesis_id_typed)
+                    }
+                };
+                if exists {
+                    self.update_knowledge_from_hypothesis(
+                        &crate::experience::hypothesis::core::hypothesis::Hypothesis::new(
+                            hypothesis_id.clone(),
+                            hypothesis_id.clone(),
+                        ),
+                        result,
+                    )
+                    .await?;
+                } else {
+                    tracing::debug!(
+                        "Hypothesis {} not present in graph; skipping fallback promotion",
+                        hypothesis_id
+                    );
+                }
             }
         }
 
@@ -314,7 +345,11 @@ impl EventSubscriber {
         tracing::debug!("Processing EvidenceAdded event: {}", event.id);
 
         if let EventPayload::EvidenceRecord { hypothesis_id, .. } = &event.payload {
-            tracing::debug!("Evidence added for hypothesis: {}", hypothesis_id);
+            // Drive the evidence → hypothesis-confidence update (Architecture
+            // §11) so the subscriber participates in evidence processing even
+            // without a learning coordinator wired.
+            self.update_hypothesis_with_evidence(hypothesis_id, &event.payload)
+                .await?;
         }
 
         Ok(())

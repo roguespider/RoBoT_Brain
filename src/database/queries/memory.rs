@@ -60,18 +60,17 @@ pub fn delete_memories(conn: &Connection, ids: &[Uuid]) -> Result<usize> {
     if ids.is_empty() {
         return Ok(0);
     }
-    
+
     let placeholders: Vec<String> = ids.iter().map(|_| "?".to_string()).collect();
     let query = format!(
         "DELETE FROM memories WHERE id IN ({})",
         placeholders.join(",")
     );
-    
+
     let params: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
-    let params_refs: Vec<&dyn rusqlite::ToSql> = params.iter()
-        .map(|s| s as &dyn rusqlite::ToSql)
-        .collect();
-    
+    let params_refs: Vec<&dyn rusqlite::ToSql> =
+        params.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
+
     let deleted = conn.execute(&query, params_refs.as_slice())?;
     Ok(deleted)
 }
@@ -103,9 +102,7 @@ pub fn get_memory(conn: &Connection, id: Uuid) -> Result<Option<MemoryCard>> {
         ",
     )?;
 
-    let result = stmt.query_row([id.to_string()], |row| {
-        map_row_to_memory_card(row)
-    });
+    let result = stmt.query_row([id.to_string()], map_row_to_memory_card);
 
     match result {
         Ok(memory) => Ok(Some(memory)),
@@ -155,7 +152,11 @@ pub fn search_memory(conn: &Connection, text: &str, limit: usize) -> Result<Vec<
 }
 
 /// List memories, optionally filtered by type
-pub fn list_memories(conn: &Connection, memory_type: Option<&str>, limit: usize) -> Result<Vec<MemoryCard>> {
+pub fn list_memories(
+    conn: &Connection,
+    memory_type: Option<&str>,
+    limit: usize,
+) -> Result<Vec<MemoryCard>> {
     let mut stmt = if memory_type.is_some() {
         conn.prepare(
             "
@@ -201,8 +202,18 @@ pub fn list_memories(conn: &Connection, memory_type: Option<&str>, limit: usize)
     Ok(memories)
 }
 
+/// Delete a single memory by UUID
+pub fn delete_memory_by_id(conn: &Connection, id: Uuid) -> Result<usize> {
+    let deleted = conn.execute("DELETE FROM memories WHERE id = ?1", [id.to_string()])?;
+    Ok(deleted)
+}
+
 /// List memories by layer
-pub fn list_memories_by_layer(conn: &Connection, layer: &str, limit: usize) -> Result<Vec<MemoryCard>> {
+pub fn list_memories_by_layer(
+    conn: &Connection,
+    layer: &str,
+    limit: usize,
+) -> Result<Vec<MemoryCard>> {
     let mut stmt = conn.prepare(
         "
         SELECT
@@ -220,7 +231,7 @@ pub fn list_memories_by_layer(conn: &Connection, layer: &str, limit: usize) -> R
 
     let mut rows = stmt.query(params![layer, limit as i64])?;
     let mut memories = Vec::new();
-    
+
     while let Some(row) = rows.next()? {
         memories.push(map_row_to_memory_card(row)?);
     }

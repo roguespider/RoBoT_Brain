@@ -1,6 +1,6 @@
 # Large File Refactoring (periodic maintenance)
 
-> Moved here from AGENTS.md on 2026-08-11. This is a periodic maintenance task,
+> This is a periodic maintenance task,
 > not a session-start rule. Check it from time to time; do it when a file
 > actually needs splitting.
 

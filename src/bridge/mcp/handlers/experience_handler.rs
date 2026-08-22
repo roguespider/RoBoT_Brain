@@ -1,10 +1,12 @@
 // src/bridge/tools/handlers/experience_handler.rs
 // Experience tools handler - handles experience recording and worker management
 
-use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
+use crate::bridge::mcp::handlers::{
+    HandlerError, HandlerInitError, HandlerInitResult, ToolHandler,
+};
 use crate::bridge::tools::experience;
-use crate::bridge::mcp::handlers::{HandlerError, HandlerInitError, HandlerInitResult, ToolHandler};
+use std::sync::Arc;
 
 /// Handler for experience-related tools
 #[derive(Clone)]
@@ -14,9 +16,7 @@ pub struct ExperienceToolsHandler {
 
 impl ExperienceToolsHandler {
     /// Create a new experience tools handler
-    pub fn new(
-        context: Arc<McpContext>,
-    ) -> HandlerInitResult<Self> {
+    pub fn new(context: Arc<McpContext>) -> HandlerInitResult<Self> {
         // Validate that required dependencies exist
         if context.database.connection().is_err() {
             return Err(HandlerInitError::new(
@@ -75,8 +75,26 @@ impl ExperienceToolsHandler {
     }
 
     /// Get the number of active background workers
-    pub async fn execute_get_worker_count(&self) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    pub async fn execute_get_worker_count(
+        &self,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
         experience::execute_get_worker_count(&self.context.worker_manager).await
+    }
+
+    /// Add evidence to a recorded experience
+    pub async fn execute_add_evidence_to_experience(
+        &self,
+        input: experience::AddEvidenceToExperienceInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        experience::execute_add_evidence_to_experience(input, &self.context.database).await
+    }
+
+    /// Archive a recorded experience
+    pub async fn execute_archive_experience(
+        &self,
+        input: experience::ArchiveExperienceInput,
+    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+        experience::execute_archive_experience(input, &self.context.database).await
     }
 }
 
@@ -91,6 +109,8 @@ impl ToolHandler for ExperienceToolsHandler {
             "get_experience_stats".to_string(),
             "list_experiences".to_string(),
             "get_experience".to_string(),
+            "add_evidence_to_experience".to_string(),
+            "archive_experience".to_string(),
             "get_worker_stats".to_string(),
             "get_worker_count".to_string(),
         ]
@@ -168,48 +188,93 @@ impl ToolHandler for ExperienceToolsHandler {
                     "properties": {}
                 })),
             ).with_title("Get Worker Count"),
+            rmcp::model::Tool::new(
+                "add_evidence_to_experience",
+                "Add evidence to a recorded experience",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "experience_id": { "type": "string", "description": "Experience UUID" },
+                        "evidence_id": { "type": "string", "description": "Evidence UUID to add to this experience" }
+                    },
+                    "required": ["experience_id", "evidence_id"]
+                })),
+            ).with_title("Add Evidence To Experience"),
+            rmcp::model::Tool::new(
+                "archive_experience",
+                "Archive an experience (soft-delete, not destroy)",
+                json_to_schema(serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "experience_id": { "type": "string", "description": "Experience UUID to archive" }
+                    },
+                    "required": ["experience_id"]
+                })),
+            ).with_title("Archive Experience"),
         ]
     }
 
-    fn execute_tool(&self, name: &str, args: serde_json::Value) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send {
-        async move {
+    async fn execute_tool(
+        &self,
+        name: &str,
+        args: serde_json::Value,
+    ) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
             match name {
                 "record_experience" => {
                     let input: experience::RecordExperienceInput = serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_record_experience(input).await
+                    self.execute_record_experience(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "get_experience_stats" => {
-                    let input: experience::GetExperienceStatsInput = serde_json::from_value(args)
-                        .unwrap_or_default();
-                    self.execute_get_experience_stats(input).await
+                    let input: experience::GetExperienceStatsInput =
+                        serde_json::from_value(args).unwrap_or_default();
+                    self.execute_get_experience_stats(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "list_experiences" => {
-                    let input: experience::ListExperiencesInput = serde_json::from_value(args)
-                        .unwrap_or_default();
-                    self.execute_list_experiences(input).await
+                    let input: experience::ListExperiencesInput =
+                        serde_json::from_value(args).unwrap_or_default();
+                    self.execute_list_experiences(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "get_experience" => {
                     let input: experience::GetExperienceInput = serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_get_experience(input).await
+                    self.execute_get_experience(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
                 "get_worker_stats" => {
-                    let input: experience::GetWorkerStatsInput = serde_json::from_value(args)
-                        .unwrap_or_default();
-                    self.execute_get_worker_stats(input).await
+                    let input: experience::GetWorkerStatsInput =
+                        serde_json::from_value(args).unwrap_or_default();
+                    self.execute_get_worker_stats(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
-                "get_worker_count" => {
-                    self.execute_get_worker_count().await
+                "get_worker_count" => self
+                    .execute_get_worker_count()
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string())),
+                "add_evidence_to_experience" => {
+                    let input: experience::AddEvidenceToExperienceInput =
+                        serde_json::from_value(args)
+                            .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_add_evidence_to_experience(input)
+                        .await
                         .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
                 }
-                _ => Err(HandlerError::ToolNotFound(name.to_string()))
+                "archive_experience" => {
+                    let input: experience::ArchiveExperienceInput = serde_json::from_value(args)
+                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                    self.execute_archive_experience(input)
+                        .await
+                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+                }
+                _ => Err(HandlerError::ToolNotFound(name.to_string())),
             }
-        }
     }
 }

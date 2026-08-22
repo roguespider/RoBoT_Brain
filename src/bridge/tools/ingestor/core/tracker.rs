@@ -49,19 +49,17 @@ impl IngestTracker {
         }
 
         // Check if it's in files_to_import (allow deletion of any file from import folder)
-        if let Ok(exe_path) = std::env::current_exe() {
-            if let Some(exe_dir) = exe_path.parent() {
+        if let Ok(exe_path) = std::env::current_exe()
+            && let Some(exe_dir) = exe_path.parent() {
                 let import_folder = exe_dir.join("files_to_import");
-                if let Ok(file_path_buf) = Path::new(file_path).canonicalize() {
-                    if let Ok(import_canonical) = import_folder.canonicalize() {
+                if let Ok(file_path_buf) = Path::new(file_path).canonicalize()
+                    && let Ok(import_canonical) = import_folder.canonicalize() {
                         // Normalize both paths to handle Windows extended-length paths
                         let file_normalized = normalize_path(file_path_buf);
                         let import_normalized = normalize_path(import_canonical);
                         return file_normalized.starts_with(import_normalized);
                     }
-                }
             }
-        }
 
         false
     }

@@ -394,7 +394,7 @@ pub async fn execute_add_workflow_step(
                     }
                 }))
             } else {
-                ToolOutput::error(format!("Failed to add step to workflow"))
+                ToolOutput::error("Failed to add step to workflow".to_string())
             }
         }
         Err(e) => ToolOutput::error(e),

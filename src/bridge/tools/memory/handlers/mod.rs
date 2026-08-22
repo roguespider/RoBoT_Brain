@@ -10,7 +10,8 @@ mod search;
 mod store;
 
 pub use query::{
-    execute_archive_memory, execute_get_memory, execute_link_memories, execute_list_memories,
+    execute_archive_memory, execute_delete_memory, execute_get_memory, execute_link_memories,
+    execute_list_memories,
 };
 pub use search::{execute_ranked_search, execute_search_memory};
 pub use store::execute_store_memory;

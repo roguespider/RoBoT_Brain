@@ -9,13 +9,11 @@ use crate::bridge::tools::ToolOutput;
 use crate::database::models::{MemoryCard, Observation};
 use crate::database::queries;
 use crate::database::sqlite::SqliteDatabase;
-use crate::experience::types::{
-    Experience, ExperienceContext, ExperienceOutcome, ExperienceType,
-};
+use crate::experience::types::{Experience, ExperienceContext, ExperienceOutcome, ExperienceType};
 use crate::memory::MemoryRetrieval;
 
 use super::super::types::{
-    ArchiveMemoryInput, GetMemoryInput, LinkMemoriesInput, ListMemoriesInput,
+    ArchiveMemoryInput, DeleteMemoryInput, GetMemoryInput, LinkMemoriesInput, ListMemoriesInput,
 };
 
 /// Execute get memory tool
@@ -108,7 +106,7 @@ pub async fn execute_list_memories(
     let working_count = working_items.len();
 
     let conn = database.connection()?;
-    let db_memories = queries::search_memory(&conn, "", limit as usize)?;
+    let db_memories = queries::search_memory(&conn, "", limit)?;
     let db_ids: std::collections::HashSet<_> = db_memories.iter().map(|m| m.id).collect();
     let working_ids: std::collections::HashSet<_> = working_items.iter().map(|m| m.id).collect();
 
@@ -175,5 +173,15 @@ pub async fn execute_link_memories(input: LinkMemoriesInput) -> Result<ToolOutpu
         "from_id": input.from_id,
         "to_id": input.to_id,
         "relationship": "related",
+    })))
+}
+
+/// Execute delete memory by ID tool
+/// Requires explicit user confirmation (hard delete)
+pub async fn execute_delete_memory(input: DeleteMemoryInput, deleted: bool) -> Result<ToolOutput> {
+    Ok(ToolOutput::success(serde_json::json!({
+        "success": deleted,
+        "memory_id": input.memory_id,
+        "deleted": deleted,
     })))
 }

@@ -36,11 +36,10 @@ impl IngestFilesInput {
         if let Some(ref fp) = self.file_path {
             return Some(fp);
         }
-        if let Some(ref fps) = self.file_paths_alias {
-            if let Some(first) = fps.first() {
+        if let Some(ref fps) = self.file_paths_alias
+            && let Some(first) = fps.first() {
                 return Some(first);
             }
-        }
         None
     }
 }

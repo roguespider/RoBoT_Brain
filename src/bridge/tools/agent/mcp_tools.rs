@@ -1,11 +1,10 @@
-
 // src/tools/agent/mcp_tools.rs
 // MCP-specific tool executions
 
 use std::sync::Arc;
 
 use crate::bridge::mcp::McpClient;
-use crate::bridge::tools::{get_tools_async, ToolOutput};
+use crate::bridge::tools::{ToolOutput, get_tools_async};
 
 use super::inputs::{CallMcpToolInput, ConnectMcpServerInput, GetToolInput};
 
@@ -20,7 +19,7 @@ pub fn init_mcp_client(client: Arc<McpClient>) {
 }
 
 /// Get the global MCP client
-fn get_mcp_client() -> Option<Arc<McpClient>> {
+pub fn get_mcp_client() -> Option<Arc<McpClient>> {
     MCP_CLIENT.get().cloned()
 }
 
@@ -57,7 +56,7 @@ pub async fn execute_connect_mcp_server(
             return Ok(ToolOutput::success(serde_json::json!({
                 "success": false,
                 "error": "MCP client not initialized"
-            })))
+            })));
         }
     };
 
@@ -87,16 +86,14 @@ pub async fn execute_connect_mcp_server(
 }
 
 /// Execute call_mcp_tool tool - call a tool on a connected MCP server
-pub async fn execute_call_mcp_tool(
-    input: CallMcpToolInput,
-) -> Result<ToolOutput, anyhow::Error> {
+pub async fn execute_call_mcp_tool(input: CallMcpToolInput) -> Result<ToolOutput, anyhow::Error> {
     let client = match get_mcp_client() {
         Some(c) => c,
         None => {
             return Ok(ToolOutput::success(serde_json::json!({
                 "success": false,
                 "error": "MCP client not initialized"
-            })))
+            })));
         }
     };
 
@@ -108,7 +105,7 @@ pub async fn execute_call_mcp_tool(
                 return Ok(ToolOutput::success(serde_json::json!({
                     "success": false,
                     "error": format!("Invalid JSON in arguments: {}", e)
-                })))
+                })));
             }
         },
         None => None,
@@ -116,9 +113,13 @@ pub async fn execute_call_mcp_tool(
 
     match client.call_tool(&input.tool_name, arguments).await {
         Ok(result) => {
-            let tool_info = client.get_tool(&input.tool_name).await
+            let tool_info = client
+                .get_tool(&input.tool_name)
+                .await
                 .map(|t| t.name.to_string());
-            let server = client.get_tool_server(&input.tool_name).await
+            let server = client
+                .get_tool_server(&input.tool_name)
+                .await
                 .unwrap_or_default();
             Ok(ToolOutput::success(serde_json::json!({
                 "success": true,
@@ -134,7 +135,9 @@ pub async fn execute_call_mcp_tool(
                 Some(srv) => {
                     let mut filtered = Vec::new();
                     for t in &all_tools {
-                        let tool_srv = client.get_tool_server(t.name.as_ref()).await
+                        let tool_srv = client
+                            .get_tool_server(t.name.as_ref())
+                            .await
                             .unwrap_or_default();
                         if tool_srv == *srv {
                             filtered.push(t.name.to_string());

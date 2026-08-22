@@ -154,11 +154,10 @@ fn detect_file_type(path: &Path) -> String {
 /// Check if file should be skipped due to size limits
 fn check_file_size_limits(path: &Path, file_type: &str, size: u64) -> Option<String> {
     // Check skip patterns first
-    if let Some(filename) = path.file_name().and_then(|n| n.to_str()) {
-        if let Some(reason) = matches_skip_pattern(filename) {
+    if let Some(filename) = path.file_name().and_then(|n| n.to_str())
+        && let Some(reason) = matches_skip_pattern(filename) {
             return Some(reason);
         }
-    }
     
     // JSON files are now handled by the smart JSON importer
     // No size limit - we extract structured data intelligently

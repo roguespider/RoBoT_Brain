@@ -29,9 +29,9 @@ use tokenizers::Tokenizer;
 
 use crate::database::models::{MemoryCard, MemoryType};
 use crate::database::sqlite::SqliteDatabase;
+use crate::memory::WorkingMemory;
 use crate::memory::pipeline::MemoryPipeline;
 use crate::memory::types::MemoryItem;
-use crate::memory::WorkingMemory;
 
 /// Get supported audio extensions
 pub fn get_supported_extensions() -> &'static [&'static str] {
@@ -221,9 +221,13 @@ impl WhisperTranscriber {
 
         // Run encoder and decode - do everything in one borrow
         let text = {
-            let model = self.model.as_mut()
+            let model = self
+                .model
+                .as_mut()
                 .ok_or_else(|| anyhow::anyhow!("Whisper model not loaded"))?;
-            let tokenizer = self.tokenizer.as_ref()
+            let tokenizer = self
+                .tokenizer
+                .as_ref()
                 .ok_or_else(|| anyhow::anyhow!("Tokenizer not loaded"))?;
 
             // Run encoder
@@ -231,7 +235,13 @@ impl WhisperTranscriber {
             tracing::info!("Audio features shape: {:?}", audio_features.dims());
 
             // Decode tokens - pass config and device explicitly to avoid borrow conflict
-            decode_tokens_from_features(&self.config, &self.device, model, tokenizer, &audio_features)?
+            decode_tokens_from_features(
+                &self.config,
+                &self.device,
+                model,
+                tokenizer,
+                &audio_features,
+            )?
         };
 
         Ok(TranscriptionResult {
@@ -244,7 +254,13 @@ impl WhisperTranscriber {
 }
 
 /// Decode audio features to text (free function to avoid borrow conflicts)
-fn decode_tokens_from_features(config: &Config, device: &Device, model: &mut whisper::model::Whisper, tokenizer: &Tokenizer, audio_features: &Tensor) -> Result<String> {
+fn decode_tokens_from_features(
+    config: &Config,
+    device: &Device,
+    model: &mut whisper::model::Whisper,
+    tokenizer: &Tokenizer,
+    audio_features: &Tensor,
+) -> Result<String> {
     // Get special tokens
     let sot_token = get_token_id(tokenizer, whisper::SOT_TOKEN)?;
     let transcribe_token = get_token_id(tokenizer, whisper::TRANSCRIBE_TOKEN)?;
@@ -386,13 +402,17 @@ fn is_model_cached() -> bool {
     // Check standard HuggingFace cache locations
     let possible_paths = [
         std::env::var("HF_HUB_CACHE").ok(),
-        Some(format!("{}/.cache/huggingface/hub", std::env::var("HOME").unwrap_or_default())),
+        Some(format!(
+            "{}/.cache/huggingface/hub",
+            std::env::var("HOME").unwrap_or_default()
+        )),
     ];
-    
+
     for cache_dir in possible_paths.into_iter().flatten() {
         let model_path = std::path::Path::new(&cache_dir).join("models--openai--whisper-base");
-        if model_path.join("models/model.safetensors").exists() 
-            && model_path.join("config.json").exists() {
+        if model_path.join("models/model.safetensors").exists()
+            && model_path.join("config.json").exists()
+        {
             return true;
         }
     }
@@ -410,13 +430,18 @@ fn get_transcriber() -> Result<std::sync::MutexGuard<'static, WhisperTranscriber
                     std::sync::Mutex::new(t)
                 }
                 Err(e) => {
-                    tracing::warn!("Failed to load cached Whisper model: {}, using audio analysis only", e);
+                    tracing::warn!(
+                        "Failed to load cached Whisper model: {}, using audio analysis only",
+                        e
+                    );
                     std::sync::Mutex::new(WhisperTranscriber::default())
                 }
             }
         } else {
             // Model not cached, skip download (would block on network)
-            tracing::info!("Whisper model not cached - audio analysis mode only (set HF_HUB_CACHE or download model manually for full transcription)");
+            tracing::info!(
+                "Whisper model not cached - audio analysis mode only (set HF_HUB_CACHE or download model manually for full transcription)"
+            );
             std::sync::Mutex::new(WhisperTranscriber::default())
         };
 
@@ -427,9 +452,9 @@ fn get_transcriber() -> Result<std::sync::MutexGuard<'static, WhisperTranscriber
 
     // Now safely get the transcriber (it must exist after initialization)
     match TRANSCRIBER.get() {
-        Some(transcriber) => {
-            transcriber.lock().map_err(|e| anyhow::anyhow!("Lock error: {}", e))
-        }
+        Some(transcriber) => transcriber
+            .lock()
+            .map_err(|e| anyhow::anyhow!("Lock error: {}", e)),
         None => {
             // This shouldn't happen since we initialized above, but handle gracefully
             Err(anyhow::anyhow!("Transcriber not initialized"))
@@ -474,7 +499,10 @@ pub fn transcribe_audio(path: &Path) -> Result<TranscriptionResult> {
             }
         }
         Err(e) => {
-            tracing::warn!("Failed to get Whisper transcriber: {}, using audio analysis", e);
+            tracing::warn!(
+                "Failed to get Whisper transcriber: {}, using audio analysis",
+                e
+            );
             None
         }
     };
@@ -500,8 +528,7 @@ pub fn transcribe_audio(path: &Path) -> Result<TranscriptionResult> {
             Ok(TranscriptionResult {
                 text: format!(
                     "{}\n\n[Audio analysis only - Whisper model not available - {:.1}s audio]",
-                    analysis_text,
-                    duration_seconds
+                    analysis_text, duration_seconds
                 ),
                 language: None,
                 duration_seconds,
@@ -671,7 +698,7 @@ fn load_wav(path: &Path) -> Result<Vec<f32>> {
 fn decode_wav_samples(data: &[u8], channels: u16, bits_per_sample: u16) -> Result<Vec<f32>> {
     let bytes_per_sample = (bits_per_sample / 8) as usize;
     let frame_size = bytes_per_sample * channels.max(1) as usize;
-    let num_frames = if frame_size == 0 { 0 } else { data.len() / frame_size };
+    let num_frames = data.len().checked_div(frame_size).unwrap_or(0);
     let mut samples = Vec::with_capacity(num_frames);
 
     for f in 0..num_frames {
@@ -690,7 +717,8 @@ fn decode_wav_samples(data: &[u8], channels: u16, bits_per_sample: u16) -> Resul
                     val as f32 / 32768.0
                 }
                 24 => {
-                    let val = i32::from_le_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
+                    let val =
+                        i32::from_le_bytes([0, data[offset], data[offset + 1], data[offset + 2]]);
                     val as f32 / 8388608.0
                 }
                 32 => {

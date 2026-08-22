@@ -7,6 +7,7 @@
 
 use std::sync::{Arc, Mutex};
 
+use crate::bridge::mcp::McpContext;
 use crate::database::sqlite::SqliteDatabase;
 use crate::experience::coordinator::ExperienceCoordinator;
 use crate::experience::metrics::Metrics;
@@ -52,27 +53,22 @@ pub struct AgentDeps {
 }
 
 impl AgentDeps {
-    pub fn new(
-        planner: Arc<Planner>,
-        memory_retrieval: Arc<MemoryRetrieval>,
-        knowledge_store: Arc<KnowledgeStore>,
-        coordinator: Arc<ExperienceCoordinator>,
-        database: Arc<SqliteDatabase>,
-        safety_gate: Arc<SafetyGate>,
-        personality: Arc<Mutex<Personality>>,
-        metrics: Arc<Metrics>,
-    ) -> Self {
+    /// Compose agent dependencies from the shared MCP context.
+    ///
+    /// Every handle is cloned from the context; `personality` is passed
+    /// separately because it is owned by the App layer, not the MCP context.
+    pub fn from_context(context: &McpContext, personality: Arc<Mutex<Personality>>) -> Self {
         Self {
-            planner,
-            memory_retrieval,
+            planner: context.planner.clone(),
+            memory_retrieval: context.memory_retrieval.clone(),
             persistence: PersistenceDeps {
-                knowledge_store,
-                coordinator,
-                database,
+                knowledge_store: context.knowledge.clone(),
+                coordinator: context.coordinator.clone(),
+                database: context.database.clone(),
             },
-            safety_gate,
+            safety_gate: context.safety_gate.clone(),
             personality,
-            metrics,
+            metrics: context.metrics.clone(),
         }
     }
 }

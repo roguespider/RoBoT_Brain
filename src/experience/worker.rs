@@ -5,21 +5,25 @@
 //! Experience Recorded → Recorder → Bus → Job Queue → Workers → Observers
 
 use anyhow::Result;
-use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tokio::sync::mpsc;
 use uuid::Uuid;
 
-use crate::experience::{
-    events::ExperienceEvent,
-    observer::ExperienceObserver,
-};
+use crate::experience::{events::ExperienceEvent, observer::ExperienceObserver};
 
 /// Maximum retry attempts for a failed job
 const MAX_RETRIES: u32 = 3;
 
 /// Base delay for exponential backoff (in milliseconds)
 const BASE_BACKOFF_MS: u64 = 100;
+
+/// Callback type for job completion notifications
+pub type OnCompleteCallback = Arc<dyn Fn(&str) + Send + Sync>;
+/// Callback type for job failure notifications
+pub type OnFailedCallback = Arc<dyn Fn(&str, String) + Send + Sync>;
+/// Callback type for job retry notifications (new_job_id, original_job_id)
+pub type OnRetryCallback = Arc<dyn Fn(&str, &str) + Send + Sync>;
 
 /// A job for the worker to process, with retry tracking
 #[derive(Debug, Clone)]
@@ -33,7 +37,7 @@ pub struct ObserverJob {
 }
 
 impl ObserverJob {
-    /// Create a new job from an event
+    /// Create a new job from an event, generating a unique job ID.
     pub fn new(event: ExperienceEvent) -> Self {
         Self {
             event,
@@ -42,7 +46,19 @@ impl ObserverJob {
         }
     }
 
-    /// Create a retry job with incremented retry count
+    /// Create a new job from an event using a pre-generated job ID.
+    /// Use this when the caller needs the job ID to match a durable
+    /// queue entry (P0-002: Unique Durable Job Identity).
+    pub fn with_id(event: ExperienceEvent, job_id: Uuid) -> Self {
+        Self {
+            event,
+            retry_count: 0,
+            job_id,
+        }
+    }
+
+    /// Create a retry job with incremented retry count.
+    /// Generates a new unique job ID for this retry attempt.
     pub fn with_retry(event: ExperienceEvent, original_job: &ObserverJob) -> Self {
         Self {
             event,
@@ -89,13 +105,28 @@ pub struct ExperienceWorker {
     receiver: mpsc::Receiver<ObserverJob>,
     sender: mpsc::Sender<ObserverJob>,
     stats: Arc<WorkerStats>,
+    /// Called when a job completes successfully (with job_id)
+    on_complete: Option<OnCompleteCallback>,
+    /// Called when a job permanently fails after max retries (with job_id, error)
+    on_failed: Option<OnFailedCallback>,
+    /// Called when a retry job is created (new_job_id, original_job_id)
+    /// Used to register the retry's new ID in the JobRegistry so the
+    /// worker callbacks can later find it (P0-003 synchronization).
+    on_retry: Option<OnRetryCallback>,
 }
 
 impl ExperienceWorker {
-    pub fn new(
+    /// Create a worker with completion/failure/retry callbacks.
+    /// The callbacks receive the unique job_id and are invoked when a job
+    /// completes successfully, fails permanently (after all retries exhausted),
+    /// or when a retry job is created (P0-003: durable queue/worker sync).
+    pub fn with_callbacks(
         observer: Arc<dyn ExperienceObserver>,
         receiver: mpsc::Receiver<ObserverJob>,
         sender: mpsc::Sender<ObserverJob>,
+        on_complete: Option<OnCompleteCallback>,
+        on_failed: Option<OnFailedCallback>,
+        on_retry: Option<OnRetryCallback>,
     ) -> Self {
         let observer_name = observer.name().to_string();
         Self {
@@ -103,6 +134,9 @@ impl ExperienceWorker {
             receiver,
             sender,
             stats: Arc::new(WorkerStats::new(observer_name)),
+            on_complete,
+            on_failed,
+            on_retry,
         }
     }
 
@@ -136,11 +170,11 @@ impl ExperienceWorker {
             match self.observer.observe(&job.event) {
                 Ok(_) => {
                     self.stats.jobs_processed.fetch_add(1, Ordering::SeqCst);
-                    tracing::debug!(
-                        "Worker {} completed job {}",
-                        observer_name,
-                        job_id
-                    );
+                    tracing::debug!("Worker {} completed job {}", observer_name, job_id);
+                    if let Some(cb) = &self.on_complete {
+                        let job_id_str = job_id.to_string();
+                        cb(&job_id_str);
+                    }
                 }
                 Err(err) => {
                     self.handle_failure(job, err.to_string()).await;
@@ -164,7 +198,7 @@ impl ExperienceWorker {
         if job.retry_count < MAX_RETRIES {
             // Calculate exponential backoff delay
             let delay_ms = BASE_BACKOFF_MS * 2u64.pow(job.retry_count);
-            
+
             tracing::warn!(
                 "Worker {} job {} failed (attempt {}/{}): {}. Retrying in {}ms",
                 observer_name,
@@ -179,10 +213,17 @@ impl ExperienceWorker {
 
             // Create retry job with incremented retry count
             let retry_job = ObserverJob::with_retry(job.event.clone(), &job);
-            
+
+            // Register the retry's new job ID so the durable queue callbacks
+            // can find it later (P0-003: worker/state synchronization).
+            if let Some(cb) = &self.on_retry {
+                let new_id = retry_job.job_id.to_string();
+                cb(&new_id, &job.job_id.to_string());
+            }
+
             // Wait for backoff delay then re-queue
             tokio::time::sleep(tokio::time::Duration::from_millis(delay_ms)).await;
-            
+
             if let Err(e) = self.sender.send(retry_job).await {
                 tracing::error!(
                     "Worker {} failed to re-queue job {} after retry: {}",
@@ -199,6 +240,10 @@ impl ExperienceWorker {
                 MAX_RETRIES,
                 error
             );
+            if let Some(cb) = &self.on_failed {
+                let job_id_str = job_id.to_string();
+                cb(&job_id_str, error);
+            }
         }
     }
 }

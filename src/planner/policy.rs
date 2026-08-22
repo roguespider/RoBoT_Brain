@@ -56,7 +56,7 @@ pub enum PolicyAction {
 
 /// Context for policy evaluation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub struct PolicyContext {
+pub(crate) struct PolicyContext {
     pub task_type: Option<String>,
     pub task_description: Option<String>,
     pub confidence: f32,
@@ -69,6 +69,8 @@ pub struct PolicyContext {
 /// Policy engine that evaluates rules
 pub struct PolicyEngine {
     rules: Arc<RwLock<Vec<PolicyRule>>>,
+    /// Current policy package with metadata
+    current_policy: tokio::sync::RwLock<Policy>,
 }
 
 impl PolicyEngine {
@@ -76,6 +78,13 @@ impl PolicyEngine {
     pub fn new() -> Self {
         Self {
             rules: Arc::new(RwLock::new(Vec::new())),
+            current_policy: tokio::sync::RwLock::new(Policy {
+                id: String::new(),
+                name: String::new(),
+                version: String::new(),
+                rules: Vec::new(),
+                created_at: chrono::Utc::now(),
+            }),
         }
     }
 
@@ -164,8 +173,14 @@ impl PolicyEngine {
         rules.clone()
     }
 
-    /// Load default policy rules
+    /// Get the current policy package
+    pub fn current_policy(&self) -> &tokio::sync::RwLock<Policy> {
+        &self.current_policy
+    }
+
+    /// Load default policy rules and create the current policy package
     pub async fn load_defaults(&self) {
+        let now = chrono::Utc::now();
         let defaults = vec![
             PolicyRule {
                 id: "high-confidence-allow".to_string(),
@@ -197,7 +212,23 @@ impl PolicyEngine {
         ];
 
         let mut rules = self.rules.write().await;
-        *rules = defaults;
+        *rules = defaults.clone();
+
+        // Build and store the current policy package
+        let policy = Policy {
+            id: "default-policy".to_string(),
+            name: "Default Policy".to_string(),
+            version: "1.0.0".to_string(),
+            rules: defaults,
+            created_at: now,
+        };
+        let mut cp = self.current_policy.write().await;
+        *cp = policy;
+    }
+
+    /// Get the current policy package
+    pub async fn get_policy(&self) -> Policy {
+        self.current_policy.read().await.clone()
     }
 }
 

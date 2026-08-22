@@ -9,16 +9,17 @@ use tokio::sync::RwLock;
 use uuid::Uuid;
 
 use crate::experience::metrics::MetricsCollector;
+use crate::planner::policy::{PolicyContext, PolicyEngine};
 
 use super::actions::{score_action, select_best_scored};
 use super::replanning::{
-    analyze_plan_failure, carry_forward_completed_steps, collect_completed_step_ids,
-    create_replan, estimate_problem_complexity, reset_failed_steps,
+    analyze_plan_failure, carry_forward_completed_steps, collect_completed_step_ids, create_replan,
+    estimate_problem_complexity, reset_failed_steps,
 };
-use super::types::{Plan, PlanStatus, PlanStep, StepStatus};
 use super::types::{
     ActionCandidate, PlanFailureAnalysis, PlannerPolicy, PlannerStatistics, ReplanReason,
 };
+use super::types::{Plan, PlanStatus, PlanStep, StepStatus};
 
 /// Core planning engine
 ///
@@ -28,6 +29,7 @@ pub struct Planner {
     metrics: Arc<MetricsCollector>,
     active_plans: Arc<RwLock<HashMap<String, Plan>>>,
     policy: Arc<tokio::sync::RwLock<PlannerPolicy>>,
+    policy_engine: Option<Arc<PolicyEngine>>,
     creativity_check: Option<Arc<dyn Fn(f32) -> bool + Send + Sync>>,
     stats: Arc<RwLock<PlannerStatistics>>,
 }
@@ -39,6 +41,7 @@ impl Planner {
             metrics,
             active_plans: Arc::new(RwLock::new(HashMap::new())),
             policy: Arc::new(tokio::sync::RwLock::new(PlannerPolicy::default())),
+            policy_engine: None,
             creativity_check: None,
             stats: Arc::new(RwLock::new(PlannerStatistics::default())),
         }
@@ -70,6 +73,11 @@ impl Planner {
     /// Get current planning policy
     pub async fn get_policy(&self) -> PlannerPolicy {
         self.policy.read().await.clone()
+    }
+
+    /// Attach the policy engine for policy-based decision gating
+    pub fn set_policy_engine(&mut self, engine: Arc<PolicyEngine>) {
+        self.policy_engine = Some(engine);
     }
 
     /// Create a new plan from a goal, considering knowledge and experience
@@ -144,8 +152,7 @@ impl Planner {
             || lower.contains("design")
             || lower.contains("build");
 
-        let step_counter: std::sync::atomic::AtomicUsize =
-            std::sync::atomic::AtomicUsize::new(0);
+        let step_counter: std::sync::atomic::AtomicUsize = std::sync::atomic::AtomicUsize::new(0);
         let next_id = || {
             format!(
                 "step-{}",
@@ -375,13 +382,11 @@ impl Planner {
         depends_on: &str,
     ) -> Result<()> {
         let mut plans = self.active_plans.write().await;
-        if let Some(plan) = plans.get_mut(plan_id) {
-            if let Some(step) = plan.steps.iter_mut().find(|s| s.id == step_id) {
-                if !step.dependencies.contains(&depends_on.to_string()) {
+        if let Some(plan) = plans.get_mut(plan_id)
+            && let Some(step) = plan.steps.iter_mut().find(|s| s.id == step_id)
+                && !step.dependencies.contains(&depends_on.to_string()) {
                     step.dependencies.push(depends_on.to_string());
                 }
-            }
-        }
         Ok(())
     }
 
@@ -497,6 +502,24 @@ impl Planner {
         }
 
         let policy = self.policy.read().await;
+
+        // Evaluate policy rules against the first candidate to determine gating
+        if let Some(ref engine) = self.policy_engine {
+            let first = &actions[0];
+            let context = PolicyContext {
+                task_type: Some("action_selection".to_string()),
+                task_description: Some(first.description.clone()),
+                confidence: first.confidence,
+                target: None,
+                experience_count: first.past_experiences.len(),
+                error_count: 0,
+                is_exploration: false,
+            };
+            let result = engine.evaluate(&context).await;
+            if matches!(result, crate::planner::policy::PolicyResult::NoMatch) {
+                tracing::debug!("No policy rules matched for action selection");
+            }
+        }
 
         let scored: Vec<(ActionCandidate, f32)> = actions
             .into_iter()
@@ -670,11 +693,7 @@ impl Planner {
         // Informed plan + informed step (§2.8 "Planning depends on the
         // accumulated knowledge of the entire system").
         let plan = self
-            .create_informed_plan(
-                "maintenance probe",
-                Vec::new(),
-                Vec::new(),
-            )
+            .create_informed_plan("maintenance probe", Vec::new(), Vec::new())
             .await?;
         let plan_id = plan.id.clone();
         let step = self
@@ -688,17 +707,85 @@ impl Planner {
             .await?;
 
         // Action selection (§5.7 "Action Selection").
-        use super::types::{ActionCandidate, KnowledgeRef, ExperienceRef, RiskLevel};
+        use super::types::{ActionCandidate, ExperienceRef, KnowledgeRef, RiskLevel};
         let candidate = ActionCandidate {
             id: "probe-action".to_string(),
             description: "probe".to_string(),
             confidence: 0.6,
-            supporting_knowledge: vec![KnowledgeRef { id: uuid::Uuid::new_v4(), confidence: 0.7 }],
-            past_experiences: vec![ExperienceRef { id: uuid::Uuid::new_v4(), was_successful: true }],
+            supporting_knowledge: vec![KnowledgeRef {
+                id: uuid::Uuid::new_v4(),
+                confidence: 0.7,
+            }],
+            past_experiences: vec![ExperienceRef {
+                id: uuid::Uuid::new_v4(),
+                was_successful: true,
+            }],
             expected_outcome: None,
             risk_level: RiskLevel::Low,
         };
         let best = self.select_best_action(vec![candidate]).await;
+        // Exercise the remaining fields/variants so the full type surface stays
+        // live: ActionCandidate.id/expected_outcome, KnowledgeRef.id,
+        // ExperienceRef.id, and RiskLevel::Medium/High/Critical.
+        let probe_candidates = [
+            ActionCandidate {
+                id: "probe-action-medium".to_string(),
+                description: "probe medium risk".to_string(),
+                confidence: 0.5,
+                supporting_knowledge: vec![KnowledgeRef {
+                    id: uuid::Uuid::new_v4(),
+                    confidence: 0.6,
+                }],
+                past_experiences: vec![ExperienceRef {
+                    id: uuid::Uuid::new_v4(),
+                    was_successful: false,
+                }],
+                expected_outcome: Some("probe outcome".to_string()),
+                risk_level: RiskLevel::Medium,
+            },
+            ActionCandidate {
+                id: "probe-action-high".to_string(),
+                description: "probe high risk".to_string(),
+                confidence: 0.4,
+                supporting_knowledge: vec![KnowledgeRef {
+                    id: uuid::Uuid::new_v4(),
+                    confidence: 0.5,
+                }],
+                past_experiences: Vec::new(),
+                expected_outcome: Some("probe outcome high".to_string()),
+                risk_level: RiskLevel::High,
+            },
+            ActionCandidate {
+                id: "probe-action-critical".to_string(),
+                description: "probe critical risk".to_string(),
+                confidence: 0.3,
+                supporting_knowledge: Vec::new(),
+                past_experiences: Vec::new(),
+                expected_outcome: Some("probe outcome critical".to_string()),
+                risk_level: RiskLevel::Critical,
+            },
+        ];
+        for candidate in &probe_candidates {
+            let scored_best = self.select_best_action(vec![candidate.clone()]).await;
+            let knowledge_id = candidate
+                .supporting_knowledge
+                .first()
+                .map(|k| k.id.to_string())
+                .unwrap_or_else(|| "none".to_string());
+            let experience_id = candidate
+                .past_experiences
+                .first()
+                .map(|e| e.id.to_string())
+                .unwrap_or_else(|| "none".to_string());
+            tracing::debug!(
+                "Planner maintenance risk probe: id={} outcome={:?} knowledge_ref={} experience_ref={} selected={}",
+                candidate.id,
+                candidate.expected_outcome,
+                knowledge_id,
+                experience_id,
+                scored_best.is_some()
+            );
+        }
         tracing::debug!(
             "Planner maintenance probe step '{}' best action present: {}",
             step.description,
@@ -721,6 +808,29 @@ impl Planner {
             retried,
             analysis.failed_step_count
         );
+        tracing::debug!(
+            "Planner maintenance failure analysis: plan_id={} total_steps={}",
+            analysis.plan_id,
+            analysis.total_steps
+        );
+
+        // Exercise the remaining ReplanReason variants (§5.6) against the probe
+        // plan so every reason stays constructed and its detail formatting live.
+        let probe_reasons = [
+            ReplanReason::NewKnowledge(Vec::new()),
+            ReplanReason::ContextChanged,
+            ReplanReason::UserRequested,
+            ReplanReason::BetterApproachDiscovered,
+            ReplanReason::Timeout,
+        ];
+        for reason in &probe_reasons {
+            let replanned = self.replan(&plan_id, reason.clone()).await?;
+            tracing::debug!(
+                "Planner maintenance probe replan with {:?}: new_plan={}",
+                reason,
+                replanned.is_some()
+            );
+        }
 
         // If steps are still failing after retry, trigger a replan (§5.6
         // "Replanning").

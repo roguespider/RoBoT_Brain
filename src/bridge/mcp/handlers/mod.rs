@@ -96,11 +96,11 @@ pub trait ToolHandler: Send + Sync {
     /// Execute a tool by name with arguments
     ///
     /// Each handler must implement this to handle its own tool execution.
-    fn execute_tool(
+    async fn execute_tool(
         &self,
         name: &str,
         args: serde_json::Value,
-    ) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send;
+    ) -> Result<crate::bridge::tools::ToolOutput, HandlerError>;
 }
 
 /// Convert serde_json::Value to Arc<serde_json::Map<String, serde_json::Value>>
@@ -137,7 +137,7 @@ pub use workflow_handler::WorkflowToolsHandler;
 pub use world_model_handler::WorldModelToolsHandler;
 
 /// Collection of all tool handlers with graceful degradation
-#[derive(Clone)]
+#[derive(Clone, Default)]
 pub struct ToolHandlerCollection {
     pub acp: Option<AcpToolsHandler>,
     pub agent: Option<AgentToolsHandler>,
@@ -154,28 +154,6 @@ pub struct ToolHandlerCollection {
     pub skills: Option<SkillsToolsHandler>,
     pub workflow: Option<WorkflowToolsHandler>,
     pub world_model: Option<WorldModelToolsHandler>,
-}
-
-impl Default for ToolHandlerCollection {
-    fn default() -> Self {
-        Self {
-            acp: None,
-            agent: None,
-            experience: None,
-            exploration: None,
-            hypothesis: None,
-            ingestor: None,
-            knowledge: None,
-            memory: None,
-            personality: None,
-            planner: None,
-            reflection: None,
-            search: None,
-            skills: None,
-            workflow: None,
-            world_model: None,
-        }
-    }
 }
 
 impl ToolHandlerCollection {

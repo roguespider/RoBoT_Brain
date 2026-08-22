@@ -78,39 +78,34 @@ pub fn apply_query(items: &[KnowledgeItem], query: &KnowledgeQuery) -> Vec<Knowl
 /// Check if item matches query filters
 fn matches_filter(item: &KnowledgeItem, query: &KnowledgeQuery) -> bool {
     // Text filter
-    if let Some(ref text) = query.text {
-        if !item.statement.to_lowercase().contains(&text.to_lowercase()) {
+    if let Some(ref text) = query.text
+        && !item.statement.to_lowercase().contains(&text.to_lowercase()) {
             return false;
         }
-    }
     
     // Type filter
-    if let Some(ref ktype) = query.knowledge_type {
-        if &item.knowledge_type != ktype {
+    if let Some(ref ktype) = query.knowledge_type
+        && &item.knowledge_type != ktype {
             return false;
         }
-    }
     
     // Status filter
-    if let Some(ref status) = query.status {
-        if &item.status != status {
+    if let Some(ref status) = query.status
+        && &item.status != status {
             return false;
         }
-    }
     
     // Confidence filter
-    if let Some(min) = query.min_confidence {
-        if item.overall_confidence() < min {
+    if let Some(min) = query.min_confidence
+        && item.overall_confidence() < min {
             return false;
         }
-    }
     
     // Tags filter (any match)
-    if let Some(ref tags) = query.tags {
-        if !tags.is_empty() && !tags.iter().any(|t| item.tags.contains(t)) {
+    if let Some(ref tags) = query.tags
+        && !tags.is_empty() && !tags.iter().any(|t| item.tags.contains(t)) {
             return false;
         }
-    }
     
     // Mature only filter
     if query.mature_only && !item.is_mature() {
@@ -149,11 +144,10 @@ fn calculate_relevance(item: &KnowledgeItem, query: &KnowledgeQuery) -> f32 {
     }
     
     // Boost for matching type
-    if let Some(ref ktype) = query.knowledge_type {
-        if &item.knowledge_type == ktype {
+    if let Some(ref ktype) = query.knowledge_type
+        && &item.knowledge_type == ktype {
             score += 0.15;
         }
-    }
     
     // Boost for matching tags
     if let Some(ref tags) = query.tags {
