@@ -80,16 +80,18 @@ impl CoverageReport {
         tested_sorted.sort();
 
         use std::collections::HashSet;
-        let server_set: HashSet<&str> =
-            server_sorted.iter().map(|s| s.as_str()).collect();
-        let tested_set: HashSet<&str> =
-            tested_sorted.iter().map(|s| s.as_str()).collect();
+        let server_set: HashSet<&str> = server_sorted.iter().map(|s| s.as_str()).collect();
+        let tested_set: HashSet<&str> = tested_sorted.iter().map(|s| s.as_str()).collect();
 
-        let mut untested_tools: Vec<String> =
-            server_set.difference(&tested_set).map(|s| s.to_string()).collect();
+        let mut untested_tools: Vec<String> = server_set
+            .difference(&tested_set)
+            .map(|s| s.to_string())
+            .collect();
         untested_tools.sort();
-        let mut phantom_tools: Vec<String> =
-            tested_set.difference(&server_set).map(|s| s.to_string()).collect();
+        let mut phantom_tools: Vec<String> = tested_set
+            .difference(&server_set)
+            .map(|s| s.to_string())
+            .collect();
         phantom_tools.sort();
 
         Self {
@@ -172,7 +174,7 @@ impl TestReport {
     pub fn set_source_path(&mut self, path: PathBuf) {
         self.source_path = Some(path);
     }
-    
+
     /// Set MCP protocol status
     pub fn set_mcp_protocol_ok(&mut self, ok: bool) {
         self.mcp_protocol_ok = ok;
@@ -269,13 +271,16 @@ impl TestReport {
     }
 }
 
-/// Truncate a string to a maximum length
+/// Truncate a string to a maximum length (char-boundary safe)
 pub(crate) fn truncate(s: &str, max_len: usize) -> String {
     if s.len() <= max_len {
-        s.to_string()
-    } else {
-        format!("{}...", &s[..max_len.saturating_sub(3)])
+        return s.to_string();
     }
+    let mut end = max_len.saturating_sub(3);
+    while end > 0 && !s.is_char_boundary(end) {
+        end -= 1;
+    }
+    format!("{}...", &s[..end])
 }
 
 /// Print issues table (standalone function for early reporting)

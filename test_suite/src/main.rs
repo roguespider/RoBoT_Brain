@@ -79,7 +79,11 @@ impl TestStats {
 
 /// Resolve the server binary path at runtime (see `paths::server_binary`).
 fn find_server_binary(robot_brain_dir: &Path) -> Option<PathBuf> {
-    let native = if cfg!(windows) { "robot_brain.exe" } else { "robot_brain" };
+    let native = if cfg!(windows) {
+        "robot_brain.exe"
+    } else {
+        "robot_brain"
+    };
     let primary = robot_brain_dir.join("target/release").join(native);
     if primary.exists() {
         return Some(primary);
@@ -174,7 +178,9 @@ fn create_minimal_wav() -> Vec<u8> {
     wav.extend_from_slice(&1u16.to_le_bytes()); // Audio format (PCM)
     wav.extend_from_slice(&num_channels.to_le_bytes());
     wav.extend_from_slice(&sample_rate.to_le_bytes());
-    wav.extend_from_slice(&(sample_rate * u32::from(num_channels) * u32::from(bits_per_sample / 8)).to_le_bytes()); // Byte rate
+    wav.extend_from_slice(
+        &(sample_rate * u32::from(num_channels) * u32::from(bits_per_sample / 8)).to_le_bytes(),
+    ); // Byte rate
     wav.extend_from_slice(&(num_channels * bits_per_sample / 8).to_le_bytes()); // Block align
     wav.extend_from_slice(&bits_per_sample.to_le_bytes());
 
@@ -198,7 +204,8 @@ fn setup_test_environment(server_path: &Path) -> anyhow::Result<TestEnvironment>
     teeprintln!("SETTING UP TEST ENVIRONMENT");
     teeprintln!("{}", "=".repeat(60));
 
-    let test_dir = server_path.parent()
+    let test_dir = server_path
+        .parent()
         .ok_or_else(|| anyhow::anyhow!("Server path has no parent directory"))?
         .join("test_suite_env");
 
@@ -565,12 +572,15 @@ impl TestMcpClient {
             .kill_on_drop(true)
             .spawn()?;
 
-        let stdin = child.stdin.take()
-            .ok_or_else(|| anyhow::anyhow!("Failed to take stdin - process may not have been spawned correctly"))?;
-        let stdout = child.stdout.take()
-            .ok_or_else(|| anyhow::anyhow!("Failed to take stdout - process may not have been spawned correctly"))?;
-        let stderr = child.stderr.take()
-            .ok_or_else(|| anyhow::anyhow!("Failed to take stderr - process may not have been spawned correctly"))?;
+        let stdin = child.stdin.take().ok_or_else(|| {
+            anyhow::anyhow!("Failed to take stdin - process may not have been spawned correctly")
+        })?;
+        let stdout = child.stdout.take().ok_or_else(|| {
+            anyhow::anyhow!("Failed to take stdout - process may not have been spawned correctly")
+        })?;
+        let stderr = child.stderr.take().ok_or_else(|| {
+            anyhow::anyhow!("Failed to take stderr - process may not have been spawned correctly")
+        })?;
 
         let server_logs = new_server_log_buffer();
         // Spawn a background task that continuously reads stderr lines into the
@@ -694,43 +704,48 @@ impl TestMcpClient {
             return Err(anyhow::anyhow!("Tool error: {:?}", error));
         }
 
-        // Check for isError field in the result (MCP error response format)
+        // Check for isError field in the result (MCP error response format).
+        // IMPORTANT: an isError result is still a valid tool RESPONSE - the
+        // runner's validation layer decides whether an error was expected.
+        // We surface it as a parsed JSON object with the isError flag intact
+        // instead of collapsing it into Err, which would bypass validation.
         if let Some(result) = json.get("result") {
-            if result
+            let is_error = result
                 .get("isError")
                 .and_then(|e| e.as_bool())
-                .unwrap_or(false)
-            {
-                // Extract error message from content
-                let error_msg = result
-                    .get("content")
-                    .and_then(|c| c.as_array())
-                    .and_then(|arr| arr.first())
-                    .and_then(|item| item.get("text"))
-                    .and_then(|t| t.as_str())
-                    .unwrap_or("Unknown error");
-                return Err(anyhow::anyhow!("Tool returned error: {}", error_msg));
-            }
+                .unwrap_or(false);
 
-            // Also check if result contains success: false (tool execution error in content)
-            if let Some(content) = result
+            // Extract the first content text payload (if any) so we can parse
+            // the structured tool output embedded in the content block.
+            let content_json = result
                 .get("content")
                 .and_then(|c| c.as_array())
                 .and_then(|arr| arr.first())
-                && let Some(text) = content.get("text")
-                    && let Ok(text_str) = text
-                        .as_str()
-                        .ok_or_else(|| anyhow::anyhow!("Expected text"))
-                        && let Ok(content_json) =
-                            serde_json::from_str::<serde_json::Value>(text_str)
-                            && content_json.get("success").and_then(|s| s.as_bool()) == Some(false)
-                            {
-                                let error_msg = content_json
-                                    .get("error")
-                                    .map(|e| e.to_string())
-                                    .unwrap_or_else(|| "Unknown error".to_string());
-                                return Err(anyhow::anyhow!("Tool returned error: {}", error_msg));
-                            }
+                .and_then(|item| item.get("text"))
+                .and_then(|t| t.as_str())
+                .and_then(|text_str| serde_json::from_str::<serde_json::Value>(text_str).ok());
+
+            if let Some(mut parsed) = content_json {
+                // Preserve the MCP-level error flag on the parsed payload so
+                // validation::is_success can treat it as success=false.
+                if is_error {
+                    parsed["isError"] = serde_json::json!(true);
+                    if parsed.get("success").is_none() {
+                        parsed["success"] = serde_json::json!(false);
+                    }
+                }
+                return Ok(parsed);
+            }
+
+            if is_error {
+                // isError with no parseable content: synthesize a failure
+                // payload so expected-error validations still match.
+                return Ok(serde_json::json!({
+                    "success": false,
+                    "isError": true,
+                    "error": "Tool returned an error response with no content"
+                }));
+            }
         }
 
         json.get("result")
@@ -769,11 +784,13 @@ impl TestMcpClient {
             return Err(anyhow::anyhow!("Tool error: {:?}", error));
         }
 
-        let result = json.get("result")
+        let result = json
+            .get("result")
             .cloned()
             .ok_or_else(|| anyhow::anyhow!("No result in response"))?;
 
-        let tools = result.get("tools")
+        let tools = result
+            .get("tools")
             .and_then(|t| t.as_array())
             .cloned()
             .unwrap_or_default();
@@ -917,7 +934,10 @@ async fn run_probe(server_path: &Path, tool_name: &str) -> anyhow::Result<()> {
         println!("description: {desc}");
     }
 
-    let schema = tool.get("inputSchema").cloned().unwrap_or(serde_json::json!({}));
+    let schema = tool
+        .get("inputSchema")
+        .cloned()
+        .unwrap_or(serde_json::json!({}));
     let required: Vec<String> = schema
         .get("required")
         .and_then(|r| r.as_array())
@@ -948,7 +968,11 @@ async fn run_probe(server_path: &Path, tool_name: &str) -> anyhow::Result<()> {
             .unwrap_or("unknown");
         let marker = if is_required { "*" } else { " " };
         let mut line = format!("  {marker} {name}: {typ}");
-        if let Some(items) = spec.get("items").and_then(|i| i.get("type")).and_then(|v| v.as_str()) {
+        if let Some(items) = spec
+            .get("items")
+            .and_then(|i| i.get("type"))
+            .and_then(|v| v.as_str())
+        {
             line.push_str(&format!("<{items}>"));
         }
         if let Some(desc) = spec.get("description").and_then(|v| v.as_str()) {
@@ -972,7 +996,10 @@ async fn run_probe(server_path: &Path, tool_name: &str) -> anyhow::Result<()> {
 fn run_gate() -> anyhow::Result<()> {
     let report_path = paths::test_suite_dir().join("test_suite_report.json");
     if !report_path.exists() {
-        eprintln!("QUALITY WALL RED: test_suite report not found at {}", report_path.display());
+        eprintln!(
+            "QUALITY WALL RED: test_suite report not found at {}",
+            report_path.display()
+        );
         eprintln!("Run `test_suite` (full suite) first to generate the report.");
         std::process::exit(1);
     }
@@ -980,19 +1007,13 @@ fn run_gate() -> anyhow::Result<()> {
     let json = std::fs::read_to_string(&report_path)?;
     let report: serde_json::Value = serde_json::from_str(&json)?;
 
-    let summary = report.get("summary").ok_or_else(|| {
-        anyhow::anyhow!("report missing 'summary' key")
-    })?;
+    let summary = report
+        .get("summary")
+        .ok_or_else(|| anyhow::anyhow!("report missing 'summary' key"))?;
 
     let passed = summary.get("passed").and_then(|v| v.as_u64()).unwrap_or(0);
-    let failed = summary
-        .get("failed")
-        .and_then(|v| v.as_u64())
-        .unwrap_or(0)
-        + summary
-            .get("errors")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0);
+    let failed = summary.get("failed").and_then(|v| v.as_u64()).unwrap_or(0)
+        + summary.get("errors").and_then(|v| v.as_u64()).unwrap_or(0);
     let warnings = summary
         .get("compiler_warnings")
         .and_then(|v| v.as_u64())
@@ -1011,10 +1032,26 @@ fn run_gate() -> anyhow::Result<()> {
     let rst = "\x1b[0m";
 
     let checks = [
-        ("tests", failed == 0, format!("passed={}, failed/err={}", passed, failed)),
-        ("compiler_warnings", warnings == 0, format!("actual={}", warnings)),
-        ("code_issues", code_issues == 0, format!("actual={}", code_issues)),
-        ("untested_tools", untested == 0, format!("actual={}", untested)),
+        (
+            "tests",
+            failed == 0,
+            format!("passed={}, failed/err={}", passed, failed),
+        ),
+        (
+            "compiler_warnings",
+            warnings == 0,
+            format!("actual={}", warnings),
+        ),
+        (
+            "code_issues",
+            code_issues == 0,
+            format!("actual={}", code_issues),
+        ),
+        (
+            "untested_tools",
+            untested == 0,
+            format!("actual={}", untested),
+        ),
     ];
 
     let mut bad = Vec::new();
@@ -1034,10 +1071,7 @@ fn run_gate() -> anyhow::Result<()> {
         println!("{green}QUALITY WALL OK (0 warnings, 0 code-issues, 0 untested tools){rst}");
         Ok(())
     } else {
-        eprintln!(
-            "\n{red}QUALITY WALL RED: {}{rst}",
-            bad.join("; ")
-        );
+        eprintln!("\n{red}QUALITY WALL RED: {}{rst}", bad.join("; "));
         eprintln!(
             "Fix per AGENTS.md: wire the dead-code pub API into a real caller. \
              Do NOT use #[allow] or `_` to silence."
@@ -1062,7 +1096,9 @@ async fn main() -> anyhow::Result<()> {
 
     if let Some(idx) = args.iter().position(|a| a == "--probe") {
         let tool = args.get(idx + 1).ok_or_else(|| {
-            anyhow::anyhow!("--probe requires a tool name, e.g. `test_suite --probe register_agent`")
+            anyhow::anyhow!(
+                "--probe requires a tool name, e.g. `test_suite --probe register_agent`"
+            )
         })?;
         return run_probe(&server_path, tool).await;
     }
@@ -1114,7 +1150,7 @@ async fn main() -> anyhow::Result<()> {
     tests::run_agent_tests(&mut client, &mut stats, None).await?;
     tests::run_error_handling_tests(&mut client, &mut stats, None).await?;
     tests::run_mcp_workflow_tests(&mut client, &mut stats, None).await?;
-    
+
     // Run new comprehensive tests
     tests::run_rmcp_tests(&mut client, &mut stats, None).await?;
     tests::run_acp_tests(&mut client, &mut stats, None).await?;
@@ -1133,7 +1169,8 @@ async fn main() -> anyhow::Result<()> {
     tests::exploration_attempt::run_exploration_attempt_tests(&mut client, &mut stats).await?;
 
     // T1-10B-08: migrated hypothesis lifecycle+clamp unit test (MCP-based).
-    tests::exploration_hypothesis::run_exploration_hypothesis_tests(&mut client, &mut stats).await?;
+    tests::exploration_hypothesis::run_exploration_hypothesis_tests(&mut client, &mut stats)
+        .await?;
 
     // T1-10B-04: migrated knowledge store add+get+mature unit test (MCP-based).
     tests::knowledge_store::run_knowledge_store_tests(&mut client, &mut stats).await?;

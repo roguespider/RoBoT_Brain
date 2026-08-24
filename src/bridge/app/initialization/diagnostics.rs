@@ -1,5 +1,11 @@
 // src/bridge/app/initialization/diagnostics.rs
-//! Explicit subsystem diagnostics (P2-001C).
+//! Explicit subsystem diagnostics (P2-001A/B/C).
+//!
+//! Production startup (`App::new` / `App::run`) initializes production
+//! systems only. All subsystem self-tests / lifecycle probes live here and
+//! run exclusively when the user explicitly requests diagnostics via the
+//! `robot diagnose` CLI command. This preserves existing test coverage
+//! (P2-001B) while removing probe pollution from production startup (P2-001A).
 //!
 //! Production startup (`App::new` / `App::run`) initializes production
 //! systems only. All subsystem self-tests / lifecycle probes live here and
@@ -70,6 +76,26 @@ pub async fn run_startup_diagnostics(app: &App) {
         &evolution_engine,
     )
     .await;
+
+    // ExperienceRecorder convenience helper verification
+    crate::bridge::app::initialization::experience_recorder_diagnostics::verify_experience_recorder(
+        app,
+    );
+
+    // Reputation system verification
+    crate::bridge::app::initialization::reputation_diagnostics::verify_reputation_system(app);
+
+    // Reflection/hypothesis type-surface verification (P2-001B)
+    crate::bridge::app::initialization::reflection_surface_diagnostics::verify_type_surfaces(app)
+        .await;
+
+    // ReflectionPipeline and ReflectionEngine verification
+    crate::bridge::app::initialization::reflection_diagnostics::verify_reflection_pipeline(app)
+        .await;
+    crate::bridge::app::initialization::reflection_diagnostics::verify_reflection_engine(app).await;
+
+    // HypothesisPipeline verification
+    crate::bridge::app::initialization::hypothesis_pipeline_diagnostics::verify_hypothesis_pipeline(app).await;
 
     // Subsystem health logging
     crate::bridge::app::initialization::sub_health_log::log_subsystem_health(app).await;

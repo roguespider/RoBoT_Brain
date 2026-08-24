@@ -1,17 +1,17 @@
 // src/main.rs
 
+mod agent;
+mod bridge;
+mod cli;
 mod database;
 mod experience;
-mod bridge;
+mod knowledge;
+mod learning;
+mod memory;
+mod personality;
 mod planner;
 mod skills;
 mod workflows;
-mod learning;
-mod knowledge;
-mod memory;
-mod cli;
-mod personality;
-mod agent;
 mod world_model;
 
 use bridge::app::App;
@@ -26,7 +26,7 @@ async fn main() -> anyhow::Result<()> {
     {
         bridge::windows_console::attach_console();
     }
-    
+
     init_logging();
 
     // Check if CLI mode is requested
@@ -35,6 +35,12 @@ async fn main() -> anyhow::Result<()> {
         match args[1].as_str() {
             "server" => {
                 App::new().await?.run().await?;
+            }
+            "diagnose" => {
+                // Explicit subsystem diagnostics (P2-001C). Runs inside the
+                // existing tokio runtime, then exits.
+                let app = App::new().await?;
+                bridge::app::initialization::diagnostics::run_startup_diagnostics(&app).await;
             }
             _ => {
                 // Run CLI commands
@@ -48,4 +54,3 @@ async fn main() -> anyhow::Result<()> {
 
     Ok(())
 }
-
