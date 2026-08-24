@@ -60,10 +60,9 @@ pub async fn run_startup_diagnostics(app: &App) {
     crate::bridge::app::initialization::worker_diagnostics::run_worker_probes(&worker_manager)
         .await;
 
-    // Scheduler task-management probe
-    let scheduler = app.mcp_context.scheduler.clone();
-    crate::bridge::app::initialization::scheduler_diagnostics::run_scheduler_probe(&scheduler)
-        .await;
+    // Scheduler task-management probe (isolated temporary database; the
+    // production scheduler store is never touched)
+    crate::bridge::app::initialization::scheduler_diagnostics::run_scheduler_probe().await;
 
     // Learning pipeline construction-path probes
     let metrics = app.mcp_context.metrics.clone();
