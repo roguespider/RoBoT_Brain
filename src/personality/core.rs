@@ -5,6 +5,7 @@ use super::presets::default_presets;
 use super::traits::PersonalityTraits;
 
 /// Personality system that influences decision-making
+#[derive(Clone)]
 pub struct Personality {
     /// Current personality traits
     pub(crate) traits: PersonalityTraits,
@@ -64,6 +65,20 @@ impl Personality {
     pub fn set_traits(&mut self, traits: PersonalityTraits) {
         self.traits = traits;
         self.current_preset = "custom".to_string();
+    }
+
+    /// Capture a full snapshot of the personality state. Used by explicit
+    /// diagnostics to run mutation probes without permanently altering the
+    /// live shared personality.
+    pub fn snapshot(&self) -> Self {
+        self.clone()
+    }
+
+    /// Restore a previously captured snapshot, undoing any mutations made
+    /// after it was taken (traits, preset name, experience counters,
+    /// emotional state, humor, preferences).
+    pub fn restore(&mut self, snapshot: &Self) {
+        *self = snapshot.clone();
     }
 
     /// Observe an outcome and update emotional state (Architecture §13).

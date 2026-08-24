@@ -1,9 +1,15 @@
 // src/bridge/app/initialization/personality_diagnostics.rs
 //! Personality subsystem self-check (explicit diagnostics, P2-001C).
+//!
+//! Exercises the personality decision surface and mutation paths, then
+//! restores the pre-probe snapshot so the live shared personality is left
+//! exactly as it was found.
 
 use crate::bridge::app::state::App;
 
 /// Exercise the personality decision surface and report results.
+/// All mutating probes run against a snapshot/restore cycle so the live
+/// personality is unchanged by diagnostics.
 pub fn run_personality_self_check(app: &App) {
     use crate::bridge::app::{
         adapt_personality, apply_personality_preset, get_communication_style,
@@ -28,7 +34,7 @@ pub fn run_personality_self_check(app: &App) {
     let comm_style = get_communication_style(app);
     tracing::info!("Communication style: {:?}", comm_style);
 
-    // Exercise personality decision functions
+    // Exercise personality decision functions (read-only)
     let explore = should_explore(app, 0.5);
     let risk = should_take_risk(app, 0.7, 0.3);
     let creativity = should_use_creativity(app, 0.5);
@@ -40,6 +46,16 @@ pub fn run_personality_self_check(app: &App) {
         creativity,
         timeout
     );
+
+    // Snapshot the live personality so every mutating probe below can be
+    // undone; the running system keeps its exact traits and counters.
+    let snapshot = {
+        let personality_arc = personality(app);
+        match personality_arc.lock() {
+            Ok(guard) => guard.snapshot(),
+            Err(poisoned) => poisoned.into_inner().snapshot(),
+        }
+    };
 
     // Re-apply current preset to verify the personality system is functional
     let personality_arc = personality(app);
@@ -55,4 +71,18 @@ pub fn run_personality_self_check(app: &App) {
     set_personality_traits(app, current_traits.clone());
     adapt_personality(app, true, false);
     tracing::info!("Personality self-check complete: traits re-set and adaptation exercised");
+
+    // Restore the exact pre-diagnostics state (traits, preset name,
+    // experience/success counters, emotional state, preferences).
+    {
+        let mut guard = match personality_arc.lock() {
+            Ok(g) => g,
+            Err(poisoned) => {
+                tracing::error!("Personality mutex poisoned during restore, recovering");
+                poisoned.into_inner()
+            }
+        };
+        guard.restore(&snapshot);
+    }
+    tracing::info!("Personality state restored to pre-diagnostics snapshot");
 }
