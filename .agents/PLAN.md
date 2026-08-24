@@ -481,7 +481,11 @@ Testing belongs in:
   now use isolated temp databases and buses; personality probes snapshot and
   restore live state. Gate green after each fix: 148/148 tests, 0 warnings,
   0 code issues, 0 untested tools.
-- [ ] **P2-001B** - Existing test coverage is preserved.
+- [x] **P2-001B** - Existing test coverage is preserved.
+  [DONE] (2026-08-24) Verified via test_suite_report.json: passed=148 failed=0
+  errors=0, 0 warnings, 0 code issues, 0 untested tools, overall_success=true.
+  All subsystem APIs previously covered by startup probes remain exercised via
+  `robot diagnose` diagnostics + the 148-test registry.
 - [ ] **P2-001C** - Diagnostics remain available through an explicit mechanism.
 - [ ] **P2-001D** - Startup remains deterministic.
 - [ ] **P2-001E** - Startup does not mutate test data merely by launching RoBoT.
