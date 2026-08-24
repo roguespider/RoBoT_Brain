@@ -1,6 +1,5 @@
 // robot/src/experience/hypothesis/core/hypothesis.rs
 
-
 //! ============================================================================
 //! HYPOTHESIS
 //! ============================================================================
@@ -13,8 +12,6 @@
 //!
 //! This module intentionally contains no persistence or evaluation logic.
 //! Those responsibilities belong to the repository and evaluator services.
-
-
 
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
@@ -96,8 +93,7 @@ impl Default for HypothesisId {
 /// ============================================================================
 /// STATUS
 /// ============================================================================
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum HypothesisStatus {
     #[default]
     Draft,
@@ -107,12 +103,10 @@ pub enum HypothesisStatus {
     Archived,
 }
 
-
 /// ============================================================================
 /// CATEGORY
 /// ============================================================================
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum HypothesisCategory {
     Behavioral,
     Preference,
@@ -127,12 +121,10 @@ pub enum HypothesisCategory {
     Other,
 }
 
-
 /// ============================================================================
 /// PRIORITY
 /// ============================================================================
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
 pub enum HypothesisPriority {
     Low,
     #[default]
@@ -140,7 +132,6 @@ pub enum HypothesisPriority {
     High,
     Critical,
 }
-
 
 /// ============================================================================
 /// CONFIDENCE
@@ -269,4 +260,3 @@ impl Hypothesis {
         !self.supporting_evidence.is_empty() || !self.contradicting_evidence.is_empty()
     }
 }
-

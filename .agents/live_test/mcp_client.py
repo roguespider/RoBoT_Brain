@@ -24,7 +24,7 @@ import os
 import subprocess
 import threading
 import time
-from typing import Any
+from typing import Any, Self
 
 
 def default_binary() -> str:
@@ -32,14 +32,18 @@ def default_binary() -> str:
     if env and os.path.isfile(env):
         return env
     here = os.path.dirname(os.path.abspath(__file__))
+    exe = "robot_brain.exe" if os.name == "nt" else "robot_brain"
     candidates = [
+        os.path.join(here, "..", "..", "target", "release", exe),
         os.path.join(here, "..", "..", "target", "release", "robot_brain"),
-        "/workspace/project/RoBoT_Brain/target/release/robot_brain",
     ]
     for c in candidates:
         if os.path.isfile(c):
             return os.path.normpath(c)
-    return "robot_brain"
+    raise FileNotFoundError(
+        "robot_brain binary not found; set ROBOT_BRAIN_PATH or build with "
+        "`cargo build --release`"
+    )
 
 
 class ToolResult:
@@ -73,7 +77,7 @@ class ToolResult:
             return {}
         try:
             return json.loads(t)
-        except Exception:
+        except json.JSONDecodeError:
             return t
 
     @property
@@ -93,11 +97,11 @@ class RobotBrainClient:
         self._id = 0
         self._stderr_thread: threading.Thread | None = None
 
-    def __enter__(self) -> "RobotBrainClient":
+    def __enter__(self) -> Self:
         self.start()
         return self
 
-    def __exit__(self, *exc):
+    def __exit__(self, *exc: object) -> bool:
         self.close()
         return False
 
@@ -116,9 +120,11 @@ class RobotBrainClient:
         self._stderr_thread = threading.Thread(target=self._drain_stderr, daemon=True)
         self._stderr_thread.start()
 
-    def _drain_stderr(self):
-        assert self.proc is not None
-        for _line in iter(self.proc.stderr.readline, b""):
+    def _drain_stderr(self) -> None:
+        proc = self.proc
+        if proc is None or proc.stderr is None:
+            return
+        for _line in iter(proc.stderr.readline, b""):
             pass
 
     def _send(self, method: str, params: dict) -> int:
@@ -153,16 +159,21 @@ class RobotBrainClient:
 
         Returns the raw initialize result dict.
         """
-        self._send("initialize", {
-            "protocolVersion": self.PROTO,
-            "capabilities": {"tools": {}},
-            "clientInfo": {"name": "live_probe", "version": "1.0.0"},
-        })
+        self._send(
+            "initialize",
+            {
+                "protocolVersion": self.PROTO,
+                "capabilities": {"tools": {}},
+                "clientInfo": {"name": "live_probe", "version": "1.0.0"},
+            },
+        )
         resp = self._read_line(15)
         if not resp:
             raise RuntimeError("No initialize response from server")
         assert self.proc is not None and self.proc.stdin is not None
-        self.proc.stdin.write(b'{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}\n')
+        self.proc.stdin.write(
+            b'{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}\n'
+        )
         self.proc.stdin.flush()
         result = json.loads(resp)
         # Server enforces: get_workflow first, then search_memory before writes.
@@ -188,14 +199,16 @@ class RobotBrainClient:
         try:
             if self.proc.stdin:
                 self.proc.stdin.close()
-        except Exception:
+        except OSError:
+            # stdin already closed or pipe broken during shutdown
             pass
         try:
             self.proc.terminate()
             self.proc.wait(timeout=5)
-        except Exception:
+        except subprocess.TimeoutExpired:
             try:
                 self.proc.kill()
-            except Exception:
+            except OSError:
+                # process already exited between terminate and kill
                 pass
         self.proc = None

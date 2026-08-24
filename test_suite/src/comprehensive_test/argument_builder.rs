@@ -141,7 +141,8 @@ pub fn build_test_arguments(
         }),
         "ingestor_list_ingested" => serde_json::json!({}),
         "ingestor_delete_blocked" => serde_json::json!({
-            "file_ids": ["test_file_id"]
+            "files": ["test_file_id"],
+            "confirmation": "no"
         }),
         "ingestor_transcribe_audio" => serde_json::json!({
             "path": env.files_folder.join("sample.wav").to_string_lossy().to_string(),

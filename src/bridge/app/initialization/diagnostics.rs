@@ -1,5 +1,11 @@
 // src/bridge/app/initialization/diagnostics.rs
-//! Explicit subsystem diagnostics (P2-001C).
+//! Explicit subsystem diagnostics (P2-001A/B/C).
+//!
+//! Production startup (`App::new` / `App::run`) initializes production
+//! systems only. All subsystem self-tests / lifecycle probes live here and
+//! run exclusively when the user explicitly requests diagnostics via the
+//! `robot diagnose` CLI command. This preserves existing test coverage
+//! (P2-001B) while removing probe pollution from production startup (P2-001A).
 //!
 //! Production startup (`App::new` / `App::run`) initializes production
 //! systems only. All subsystem self-tests / lifecycle probes live here and
@@ -24,14 +30,13 @@ pub async fn run_startup_diagnostics(app: &App) {
     crate::bridge::app::initialization::learning_pipeline::verify_learning_pipeline().await;
     crate::bridge::app::initialization::exploration_repo::verify_exploration_repository().await;
 
-    // Experience repository persistence probe (uses the live database)
-    let database = app.mcp_context.database.clone();
-    crate::bridge::app::initialization::experience_repo::verify_experience_repository(&database)
-        .await;
+    // Experience repository persistence probe (isolated temporary
+    // database; the production database is never touched)
+    crate::bridge::app::initialization::experience_repo::verify_experience_repository().await;
 
-    // JobQueue durability probe (uses the live queue + database)
-    let job_queue = app.mcp_context.job_queue.clone();
-    crate::bridge::app::initialization::job_queue::verify_job_queue(&job_queue, &database);
+    // JobQueue durability probe (isolated temporary database; the live
+    // queue and production database are never touched)
+    crate::bridge::app::initialization::job_queue::verify_job_queue();
 
     // Metrics subsystem self-check
     let metrics_summary = crate::experience::metrics::run_metrics_self_check().await;
@@ -50,15 +55,13 @@ pub async fn run_startup_diagnostics(app: &App) {
     let policy_engine = app.mcp_context.policy.clone();
     crate::bridge::app::initialization::policy::verify_policy_management(&policy_engine).await;
 
-    // Worker manager enqueue/completion probes
-    let worker_manager = app.mcp_context.worker_manager.clone();
-    crate::bridge::app::initialization::worker_diagnostics::run_worker_probes(&worker_manager)
-        .await;
+    // Worker manager enqueue/completion probes (isolated bus + temp
+    // database queue; the live bus and production queue are never touched)
+    crate::bridge::app::initialization::worker_diagnostics::run_worker_probes().await;
 
-    // Scheduler task-management probe
-    let scheduler = app.mcp_context.scheduler.clone();
-    crate::bridge::app::initialization::scheduler_diagnostics::run_scheduler_probe(&scheduler)
-        .await;
+    // Scheduler task-management probe (isolated temporary database; the
+    // production scheduler store is never touched)
+    crate::bridge::app::initialization::scheduler_diagnostics::run_scheduler_probe().await;
 
     // Learning pipeline construction-path probes
     let metrics = app.mcp_context.metrics.clone();
@@ -70,6 +73,26 @@ pub async fn run_startup_diagnostics(app: &App) {
         &evolution_engine,
     )
     .await;
+
+    // ExperienceRecorder convenience helper verification
+    crate::bridge::app::initialization::experience_recorder_diagnostics::verify_experience_recorder(
+        app,
+    );
+
+    // Reputation system verification
+    crate::bridge::app::initialization::reputation_diagnostics::verify_reputation_system(app);
+
+    // Reflection/hypothesis type-surface verification (P2-001B)
+    crate::bridge::app::initialization::reflection_surface_diagnostics::verify_type_surfaces(app)
+        .await;
+
+    // ReflectionPipeline and ReflectionEngine verification
+    crate::bridge::app::initialization::reflection_diagnostics::verify_reflection_pipeline(app)
+        .await;
+    crate::bridge::app::initialization::reflection_diagnostics::verify_reflection_engine(app).await;
+
+    // HypothesisPipeline verification
+    crate::bridge::app::initialization::hypothesis_pipeline_diagnostics::verify_hypothesis_pipeline(app).await;
 
     // Subsystem health logging
     crate::bridge::app::initialization::sub_health_log::log_subsystem_health(app).await;

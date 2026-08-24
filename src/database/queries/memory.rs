@@ -55,26 +55,6 @@ pub fn insert_memory(conn: &Connection, memory: &MemoryCard) -> Result<()> {
     Ok(())
 }
 
-/// Delete memories by their UUIDs
-pub fn delete_memories(conn: &Connection, ids: &[Uuid]) -> Result<usize> {
-    if ids.is_empty() {
-        return Ok(0);
-    }
-
-    let placeholders: Vec<String> = ids.iter().map(|_| "?".to_string()).collect();
-    let query = format!(
-        "DELETE FROM memories WHERE id IN ({})",
-        placeholders.join(",")
-    );
-
-    let params: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
-    let params_refs: Vec<&dyn rusqlite::ToSql> =
-        params.iter().map(|s| s as &dyn rusqlite::ToSql).collect();
-
-    let deleted = conn.execute(&query, params_refs.as_slice())?;
-    Ok(deleted)
-}
-
 /// Get a memory card by ID
 pub fn get_memory(conn: &Connection, id: Uuid) -> Result<Option<MemoryCard>> {
     let mut stmt = conn.prepare(

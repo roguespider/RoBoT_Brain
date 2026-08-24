@@ -13,7 +13,9 @@
 use chrono::Utc;
 use serde::{Deserialize, Serialize};
 
-use super::{ReflectionConfidence, ReflectionMetadata, ReflectionStatus, ReflectionType};
+use super::{ReflectionConfidence, ReflectionMetadata};
+
+pub use super::{ReflectionStatus, ReflectionType};
 
 /// Type alias for experience ID (used in reflection module)
 pub type ExperienceId = String;
@@ -214,4 +216,3 @@ impl crate::experience::reflection::Reflector for Reflection {
         Ok(format!("{} | {}", context, self.summary))
     }
 }
-

@@ -5,7 +5,7 @@
 A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with persistent memory, experience-based learning, and structured knowledge storage.
 
 > **Status:** v0.0.1 (release) — Automated release workflow for Windows, Linux, and macOS. Memory System implemented per Architecture §4.08, §6.3 with Working Memory, Permanent Memory, and Memory Retrieval.
-> Full event catalog per Architecture §4.04. Learning Pipeline per Architecture §9. Database layer with 8 migrations. Integration test suite: 145 tests passing, 0 errors, 0 code issues, 0 untested tools.
+> Full event catalog per Architecture §4.04. Learning Pipeline per Architecture §9. Database layer with 12 migrations. Integration test suite: see `test_suite_report.json` for current gate results.
 >
 > **Automated Releases:** GitHub Actions CI/CD builds binaries for Windows (x86_64), Linux (x86_64, aarch64), and macOS (x86_64, aarch64).
 ---
@@ -272,108 +272,11 @@ robot_brain --version
 | **Graph Memory** | Stores relationships/facts only, never prose. Extracted async in background | Variable | ✅ Implemented (schema + tables) |
 | **Long-term Memory** | Promoted memories with full lineage tracking | Persistent | ✅ Implemented (lineage) |
 
-### Experience Compression
+### Experience Compression (⏳ Deferred)
 
-The Experience Compression system reduces memory overhead by detecting patterns across similar experiences and compressing them into efficient representations.
+Not implemented. The `experience/compression/` module does not exist. When implemented:
+pattern detection, exception tracking, and aggregation of similar experiences.
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                    Experience Compression                    │
-├─────────────────────────────────────────────────────────────┤
-│                                                             │
-│   ┌─────────────┐    ┌─────────────┐    ┌─────────────┐   │
-│   │ Experience 1│    │ Experience 2│    │ Experience 3│   │
-│   └──────┬──────┘    └──────┬──────┘    └──────┬──────┘   │
-│          │                   │                   │          │
-│          └───────────────────┼───────────────────┘          │
-│                              │                              │
-│                    ┌─────────▼─────────┐                    │
-│                    │ Pattern Detector  │                    │
-│                    │  - Common tags   │                    │
-│                    │  - Keywords      │                    │
-│                    │  - Success rate  │                    │
-│                    └─────────┬─────────┘                    │
-│                              │                              │
-│          ┌───────────────────┼───────────────────┐         │
-│          │                   │                   │         │
-│   ┌──────▼──────┐    ┌───────▼───────┐   ┌──────▼──────┐  │
-│   │   Pattern   │    │  Compressed   │   │  Exception  │  │
-│   │ (common     │    │  Experience   │   │  Tracker    │  │
-│   │  elements)  │    │ (aggregated   │   │  (deviations│  │
-│   └─────────────┘    │  confidence)  │   └─────────────┘  │
-│                      └───────────────┘                     │
-└─────────────────────────────────────────────────────────────┘
-```
-
-#### Components
-
-| Component | File | Description |
-|-----------|------|-------------|
-| `ExperienceCompressor` | `compression/compressor.rs` | Main compressor for reducing similar experiences |
-| `PatternDetector` | `compression/pattern.rs` | Finds common elements across experiences |
-| `ExceptionTracker` | `compression/exceptions.rs` | Tracks deviations from patterns |
-
-#### Compression Algorithm
-
-1. **Collection**: Gather 3+ similar experiences
-2. **Pattern Detection**: Extract common tags, keywords, and actions
-3. **Confidence Calculation**: Aggregate confidence statistics (mean ± std)
-4. **Exception Detection**: Identify experiences that deviate from the pattern
-5. **Result**: Return `CompressionResult` with pattern, aggregated stats, and exceptions
-
-#### Usage Example
-
-```rust
-use crate::experience::compression::{ExperienceCompressor, PatternDetector};
-
-// Create compressor with custom settings
-let compressor = ExperienceCompressor::with_config(
-    min_experiences: 3,
-    similarity_threshold: 0.7
-);
-
-// Compress multiple experiences
-if let Some(result) = compressor.compress(&experiences) {
-    println!("Compressed {} experiences into pattern: {}", 
-             result.experience_count, 
-             result.pattern.action);
-    println!("Aggregated confidence: {:.2} ± {:.2}", 
-             result.confidence, 
-             result.confidence_range);
-}
-```
-
-#### Pattern Detection
-
-```rust
-let detector = PatternDetector::new();
-if let Some(pattern) = detector.detect_pattern(&experiences) {
-    // Access common elements
-    println!("Action: {}", pattern.action);
-    println!("Tags: {:?}", pattern.common_tags);
-    println!("Keywords: {:?}", pattern.keywords);
-    println!("Success rate: {:.1}%", pattern.success_rate * 100.0);
-}
-```
-
-#### Exception Tracking
-
-```rust
-let mut tracker = ExceptionTracker::new();
-
-// Add exceptions when experiences deviate from patterns
-let exception = Exception::new(
-    experience_id,
-    pattern_id,
-    0.5, // deviation score
-    "Unexpected outcome".to_string()
-);
-tracker.add_exception(exception);
-
-// Query exceptions
-let significant = tracker.get_significant(0.3);
-let by_type = tracker.get_by_type(DeviationType::DifferentOutcome);
-```
 
 ### Data Flow
 
@@ -556,141 +459,420 @@ pub trait ExperienceObserver: Send + Sync {
 ## Project Structure
 
 ```
-robot/
 src/
-├── main.rs                     ✅
-├── database\                   ✅
-│   ├── sqlite.rs               ✅← connection + initialization
-│   ├── models.rs               ✅← database structs
-│   ├── migrations/             ✅← schema migrations module
-│   │   └── mod.rs              ✅← migration functions
-│   └── queries.rs              ✅← CRUD operations
-├── experience\                 ⚠️
-│   ├── mod.rs                  ✅←                                    ├─ xp backbone
-│   ├── types.rs                ✅← → experience data structures       ├─ xp backbone
-│   ├── observer.rs             ✅← → observer contract                ├─ xp backbone
-│   └── events.rs               ✅← → ExperienceEvent + EventPayload   ├─ xp backbone
-│   ├── events\                 ✅← →                                  ├─ xp backbone
-│   │   ├── mod.rs              ✅← →                                  ├─ xp backbone
-│   │   ├── event.rs            ✅← → ExperienceEvent                  ├─ xp backbone
-│   │   └── payload.rs          ✅← →EventPayload enum                 ├─ xp backbone
-│   ├── bus.rs                  ✅← → publish/subscribe routing        ├─ xp backbone
-│   ├── queue.rs                ✅← → queued work + retry/recovery     ├─ xp backbone
-│   ├── worker.rs               ✅← → executes queued observer work    ├─ xp backbone
-│   ├── coordinator.rs          ✅← → owns the whole lifecycle         ├─ xp backbone
-│   ├── recorder.rs             ✅← entry point for writes experiences
-│   ├── scorer.rs               ✅←
-│   └── reputation.rs           ✅←
-│   ├── reputation/             ✅←
-│   │   ├── mod.rs	            ✅← Exposes the reputation subsystem
-│   │   ├── reputation.rs       ✅← Core reputation state and updates
-│   │   ├── factors.rs	        ✅← Different trust dimensions
-│   │   ├── decay.rs	          ✅← Time-based reputation aging
-│   │   ├── analytics.rs        ✅← Reports, trends, statistics
-│   │   └── repository.rs       ✅← Save/load reputation data
-│   ├── working_memory/         ✅ Working memory with state machine
-│   │   ├── mod.rs              ✅ Module entry point
-│   │   ├── working_memory.rs   ✅ Working memory implementation
-│   │   ├── memory_state.rs     ✅ State machine definitions
-│   │   └── promotion.rs        ✅ Promotion policy engine
-│   ├── lineage.rs              ✅ Memory lineage tracking
-│   ├── candidates.rs           ✅ Candidate memory generation
-│   ├── exploration/            ✅
+├── main.rs                     ✅ App entry point
+├── lib.rs                      ✅ Crate root
+├── agent/                      ✅ Agent loop, context, safety gate
+│   ├── loop_runner.rs          ✅ AgentLoop::run() - main cognition loop
+│   ├── context.rs              ✅ Context engine integration
+│   ├── decision.rs             ✅ Action selection logic
+│   ├── types.rs                ✅ Agent types
+│   └── safety_gate/            ✅ Sandbox, hallucination detection, rollback
+│       ├── mod.rs
+│       ├── sandbox.rs
+│       ├── hallucination.rs
+│       ├── rollback.rs
+│       └── types.rs
+├── database/
+│   ├── mod.rs                  ✅
+│   ├── sqlite.rs               ✅ Connection + initialization
+│   ├── models.rs               ✅ Database structs
+│   ├── migrations/
+│   │   ├── mod.rs              ✅ 12 migrations (v0→v12)
+│   │   ├── core_data_storage.rs
+│   │   ├── tracking.rs
+│   │   ├── scheduling.rs
+│   │   ├── advanced_features.rs
+│   │   ├── hierarchical_memory.rs
+│   │   └── job_queue.rs
+│   └── queries/
+│       ├── mod.rs              ✅
+│       ├── memory.rs           ✅
+│       ├── experiences.rs      ✅
+│       ├── observations.rs     ✅
+│       ├── relationships.rs    ✅
+│       ├── scheduled_tasks.rs  ✅
+│       ├── embeddings.rs       ✅
+│       └── helpers.rs          ✅
+├── memory/
+│   ├── mod.rs                  ✅
+│   ├── working.rs              ✅ Working memory (LRU, TTL)
+│   ├── permanent/
 │   │   ├── mod.rs              ✅
-│   │   ├── exploration.rs      ✅
-│   │   ├── hypothesis.rs       ✅
+│   │   ├── store.rs            ✅
+│   │   └── tests.rs            ✅
+│   ├── retrieval.rs            ✅ Unified retrieval across layers
+│   ├── pipeline.rs             ✅ Memory pipeline
+│   ├── repository.rs           ✅ Memory persistence
+│   └── types.rs                ✅ Memory types
+├── experience/
+│   ├── mod.rs                  ✅
+│   ├── coordinator.rs          ✅ Pipeline coordinator
+│   ├── bus.rs                  ✅ Pub/sub event bus
+│   ├── queue.rs                ✅ SQLite-backed job queue
+│   ├── worker.rs               ✅ Async worker
+│   ├── scorer.rs               ✅ Experience scoring
+│   ├── metrics.rs              ✅ Metrics collection
+│   ├── repository.rs           ✅ CRUD for encounters/experiences
+│   ├── encounter_recorder.rs   ✅ Encounter recording
+│   ├── event_handler.rs        ✅ Event handling
+│   ├── events/
+│   │   ├── mod.rs              ✅
+│   │   ├── builders.rs         ✅
+│   │   ├── types.rs            ✅
+│   │   ├── payload.rs          ✅
+│   │   └── mod.rs              ✅
+│   ├── types/
+│   │   ├── mod.rs              ✅
+│   │   ├── experience.rs       ✅
+│   │   ├── encounter.rs        ✅
+│   │   ├── score.rs            ✅
+│   │   ├── reputation.rs       ✅
+│   │   ├── outcome.rs          ✅
+│   │   ├── evidence.rs         ✅
+│   │   ├── maturity.rs         ✅
+│   │   └── context.rs          ✅
+│   ├── observer/
+│   │   ├── mod.rs              ✅
+│   │   ├── experience.rs       ✅
+│   │   └── impls/
+│   │       ├── mod.rs          ✅
+│   │       ├── hypothesis.rs   ✅
+│   │       ├── metrics.rs      ✅
+│   │       └── reputation.rs   ✅
+│   ├── hypothesis/
+│   │   ├── mod.rs              ✅
+│   │   ├── core/
+│   │   │   ├── mod.rs          ✅
+│   │   │   ├── hypothesis.rs   ✅
+│   │   │   ├── evidence.rs     ✅
+│   │   │   ├── evaluator.rs    ✅
+│   │   │   └── lifecycle.rs    ✅
+│   │   ├── services/
+│   │   │   ├── mod.rs          ✅
+│   │   │   ├── analytics.rs    ✅
+│   │   │   ├── generator.rs    ✅
+│   │   │   ├── matcher.rs      ✅
+│   │   │   └── validator.rs    ✅
+│   │   └── support/
+│   │       ├── mod.rs          ✅
+│   │       ├── statistics.rs   ✅
+│   │       ├── graph/          ✅ Graph algorithms
+│   │       ├── simulation.rs   ✅
+│   │       └── planner.rs      ✅
+│   ├── evolution/
+│   │   ├── mod.rs              ✅
+│   │   ├── behavior.rs         ✅
+│   │   ├── engine.rs           ✅
+│   │   └── evidence.rs         ✅
+│   ├── exploration/
+│   │   ├── mod.rs              ✅
+│   │   ├── core.rs             ✅
 │   │   ├── attempt.rs          ✅
 │   │   ├── finding.rs          ✅
+│   │   ├── hypothesis.rs       ✅
 │   │   └── store.rs            ✅
-│   ├── hypothesis/             ✅
-│   │    ├── mod.rs             ✅ Hypothesis engine entry point (moved from hypothesis.rs)
-│   │    ├── core/              ✅
-│   │    │   ├── mod.rs         ✅ Define what hypothesis is
-│   │    │   ├── hypothesis.rs  ✅ Core data structures (Hypothesis + HypothesisId)
-│   │    │   ├── evidence.rs    ✅ Evidence models
-│   │    │   ├── evaluator.rs   ✅ Confidence updates and evaluation logic
-│   │    │   └── lifecycle.rs   ✅ State transitions
-│   │    ├── services/          ✅
-│   │    │   ├── mod.rs         ✅
-│   │    │   ├── repository.rs  ✅ Storage interface similar to Experience/Reputation
-│   │    │   ├── analytics.rs   ✅ Statistics and trend reporting
-│   │    │   ├── generator.rs   ✅ Basic pattern detection and generation
-│   │    │   ├── matcher.rs     ✅ Bridge between experiences and beliefs
-│   │    │   └── validator.rs   ✅ Contradiction checks and validation
-│   │    └── support/           ✅
-│   │         ├── mod.rs        ✅ Support module root
-│   │         ├── statistics.rs ✅ Mostly counters and summaries
-│   │         ├── graph.rs      ✅ Full hypothesis graph with cycle detection, path finding, SCC
-│   │         ├── simulation.rs ✅ What-if reasoning system with outcome simulation
-│   │         └── planner.rs    ✅ Decision-support layer converting hypotheses to actions
-│   ├── reflection/             ✅
-│   │   ├── mod.rs              ✅ Reflection module root
-│   │   ├── reflection.rs       ✅ Core Reflection struct and methods
-│   │   ├── insight.rs          ✅ Insight types for reusable knowledge
-│   │   ├── pattern.rs          ✅ Pattern detection and management
-│   │   ├── review.rs           ✅ Reflection review types
-│   │   └── services/           ✅
-│   │       ├── mod.rs          ✅ Services module
-│   │       ├── analyzer.rs     ✅ ReflectionAnalyzer for analyzing experiences
-│   │       ├── generator.rs    ✅ ReflectionGenerator for creating reflections
-│   │       ├── repository.rs   ✅ Thread-safe in-memory reflection repository
-│   │       └── validator.rs    ✅ ReflectionValidator for quality checks
-│   ├── evolution/              ✅
-│   │   ├── mod.rs              ✅ Evolution module root
-│   │   ├── behavior.rs         ✅ Behavior struct and lifecycle management
-│   │   ├── evidence.rs         ✅ Evolution evidence types
-│   │   └── engine.rs           ✅ Evolution engine for behavior management
-│   ├── compression/            ✅ Experience pattern compression
-│   │   ├── mod.rs              ✅ Compression module root
-│   │   ├── compressor.rs       ✅ Core compression algorithm
-│   │   ├── pattern.rs          ✅ Pattern detection
-│   │   └── exceptions.rs       ✅ Exception tracking
-│   ├── metrics.rs              ✅ Metrics collection with counters, gauges, aggregation
-│   ├── scheduler.rs            ✅ Background task scheduler with interval/daily/weekly schedules
-├── planner/                    ✅
-│   ├── planner.rs              ✅ Core planning engine for task decomposition
-│   └── policy.rs               ✅ Policy engine for decision-making rules
-├── bridge/                     ✅
-│   ├── mcp.rs                  ✅ MCP context (includes WorkflowEngine)
-│   ├── app.rs                  ✅ Application initialization (instantiates WorkflowEngine)
-│   └── rmcp/                   ✅ RMCP server (split into smaller files)
-│       ├── mod.rs              ✅ Module entry point
-│       ├── handler.rs          ✅ run_stdio_server() function
-│       ├── types.rs            ✅ McpServerHandler struct definition
-│       ├── helpers.rs          ✅ Helper functions (tool_output_to_content, etc.)
-│       ├── generated/          ✅ Auto-generated tool implementations
-│       │   ├── mod.rs          ✅ Generated module entry point
-│       │   ├── *_tools.rs      ✅ 11 tool files (memory, experience, etc.)
-│       │   └── tools_impl.rs   ✅ Combined impl (auto-generated by build.rs)
-├── build.rs                    ✅ Build script (auto-generates tools_impl.rs)
-├── skills/                     ✅
-│   └── registry.rs             ✅ Skill registry with discovery and execution
-├── workflows/                  ✅
-│   ├── mod.rs                  ✅ Workflow module root
-│   └── engine.rs               ✅ Workflow execution engine (connected to MCP server)
-├── tools/                      ✅
-│   ├── mod.rs                  ✅ Tools module root
-│   ├── memory.rs               ✅ Memory tools (store, search, get, list)
-│   ├── experience.rs           ✅ Experience tools
-│   ├── reflection.rs           ✅ Reflection tools
-│   ├── search.rs               ✅ Search tools
-│   ├── ingestor.rs             ✅ File ingestion tools (import, delete with confirmation)
-│   ├── workflow.rs             ✅ Workflow tools (create, add_step, start, pause, resume, cancel, delete)
-├── learning/                   ✅
-│   ├── working_memory.rs       ✅ Short-term memory management
-│   ├── hypothesis.rs           ✅ Hypothesis tracking and evaluation
-│   └── candidates.rs           ✅ Learning candidate generation
-└── cli/                        ✅
-    ├── mod.rs                  ✅ CLI module root
-    ├── commands/               ✅ CLI commands
-    │   ├── server.rs           ✅ Start MCP server
-    │   ├── init.rs             ✅ Initialize database
-    │   ├── status.rs           ✅ Check system status
-    │   ├── memory.rs           ✅ Memory management
-    │   ├── experience.rs       ✅ Experience statistics
-    │   ├── config.rs           ✅ Show configuration
-    │   └── migrate.rs          ✅ Run migrations
-    └── output.rs               ✅ Formatted output utilities
+│   ├── reflection/
+│   │   ├── mod.rs              ✅
+│   │   ├── insight.rs          ✅
+│   │   ├── pattern.rs          ✅
+│   │   ├── review.rs           ✅
+│   │   ├── types.rs            ✅
+│   │   ├── engine/
+│   │   │   ├── mod.rs          ✅
+│   │   │   ├── config.rs       ✅
+│   │   │   └── reports.rs      ✅
+│   │   └── services/
+│   │       ├── mod.rs          ✅
+│   │       ├── analyzer.rs     ✅
+│   │       ├── generator.rs    ✅
+│   │       ├── repository.rs   ✅
+│   │       └── validator.rs    ✅
+│   ├── reputation/
+│   │   ├── mod.rs              ✅
+│   │   ├── score.rs            ✅
+│   │   ├── factors.rs          ✅
+│   │   ├── decay.rs            ✅
+│   │   ├── analytics.rs        ✅
+│   │   └── repository.rs       ✅
+│   ├── integration/
+│   │   ├── mod.rs              ✅
+│   │   ├── event_subscriber/
+│   │   │   ├── mod.rs          ✅
+│   │   │   ├── config.rs       ✅
+│   │   │   ├── handlers.rs     ✅
+│   │   │   ├── helpers.rs      ✅
+│   │   │   ├── runner.rs       ✅
+│   │   │   ├── reputation.rs   ✅
+│   │   │   └── config.rs       ✅
+│   │   ├── learning_coordinator/
+│   │   │   ├── mod.rs          ✅
+│   │   │   ├── config.rs       ✅
+│   │   │   ├── entry.rs        ✅
+│   │   │   ├── hypothesis.rs   ✅
+│   │   │   ├── knowledge.rs    ✅
+│   │   │   ├── exploration.rs  ✅
+│   │   │   ├── generalization.rs ✅
+│   │   │   ├── reinforcement.rs ✅
+│   │   │   ├── reputation.rs   ✅
+│   │   │   └── results.rs      ✅
+│   │   ├── reflection_pipeline.rs ✅
+│   │   └── hypothesis_pipeline.rs ✅
+│   ├── worker_manager/
+│   │   ├── mod.rs              ✅
+│   │   ├── manager.rs          ✅
+│   │   └── background.rs       ✅
+│   ├── scheduler.rs            ✅ Background task scheduler
+│   └── metrics.rs              ✅ Experience metrics
+├── learning/
+│   ├── mod.rs                  ✅
+│   ├── pipeline.rs             ✅ Learning pipeline
+│   ├── candidates.rs           ✅ Candidate generation
+│   ├── hypothesis.rs           ✅ Hypothesis tracking
+│   ├── lineage.rs              ✅ Memory lineage
+│   ├── memory_state.rs         ✅ Memory state machine
+│   ├── promotion.rs            ✅ Promotion policy
+│   └── working_memory/
+│       ├── mod.rs              ✅
+│       ├── memory_state.rs     ✅
+│       ├── promotion.rs        ✅
+│       ├── store/
+│       │   ├── mod.rs          ✅
+│       │   ├── crud.rs         ✅
+│       │   ├── query.rs        ✅
+│       │   ├── processing.rs   ✅
+│       │   ├── state.rs        ✅
+│       │   └── structs.rs      ✅
+├── knowledge/
+│   ├── mod.rs                  ✅
+│   ├── store.rs                ✅ Knowledge store
+│   ├── query.rs                ✅ Knowledge queries
+│   └── types.rs                ✅ Knowledge types
+├── personality/
+│   ├── mod.rs                  ✅
+│   ├── core.rs                 ✅
+│   ├── traits.rs               ✅
+│   ├── presets.rs              ✅
+│   ├── emotional.rs            ✅
+│   ├── decision_making.rs      ✅
+│   ├── decision.rs             ✅
+│   ├── communication.rs        ✅
+│   └── adaptation.rs           ✅
+├── planner/
+│   ├── mod.rs                  ✅
+│   ├── policy.rs               ✅ Policy engine
+│   └── engine/
+│       ├── mod.rs              ✅
+│       ├── planner.rs          ✅ Planning engine
+│       ├── actions.rs          ✅ Action candidates
+│       ├── replanning.rs       ✅ Replanning logic
+│       └── types.rs            ✅ Planner types
+├── skills/
+│   ├── mod.rs                  ✅
+│   └── registry/
+│       ├── mod.rs              ✅
+│       ├── skill.rs            ✅
+│       ├── store.rs            ✅
+│       ├── executor.rs         ✅
+│       ├── context.rs          ✅
+│       ├── result.rs           ✅
+│       ├── metrics.rs          ✅
+│       └── types.rs            ✅
+├── workflows/
+│   ├── mod.rs                  ✅
+│   ├── enforcement/
+│   │   ├── mod.rs              ✅
+│   │   ├── enforcer.rs         ✅
+│   │   ├── tests.rs            ✅
+│   │   └── tests.rs            ✅
+│   └── engine/
+│       ├── mod.rs              ✅
+│       ├── core.rs             ✅
+│       ├── types.rs            ✅
+│       ├── experience.rs       ✅
+│       └── executor/
+│           ├── mod.rs          ✅
+│           ├── execute.rs      ✅
+│           ├── actions.rs      ✅
+│           ├── experience.rs   ✅
+│           └── variables.rs    ✅
+├── world_model/
+│   ├── mod.rs                  ✅
+│   ├── store.rs                ✅
+│   └── types.rs                ✅
+├── bridge/
+│   ├── mod.rs                  ✅
+│   ├── logging.rs              ✅
+│   ├── windows_console.rs      ✅
+│   ├── mcp/
+│   │   ├── mod.rs              ✅
+│   │   ├── context.rs          ✅ MCP context
+│   │   ├── types/
+│   │   │   ├── mod.rs          ✅
+│   │   │   ├── capabilities.rs ✅
+│   │   │   ├── info.rs         ✅
+│   │   │   └── tools.rs        ✅
+│   │   ├── handler.rs          ✅ MCP server handler
+│   │   ├── client/
+│   │   │   ├── mod.rs          ✅
+│   │   │   ├── connection.rs   ✅
+│   │   │   ├── error.rs        ✅
+│   │   │   └── handler.rs      ✅
+│   │   └── handlers/
+│   │       ├── mod.rs          ✅
+│   │       ├── acp_handler.rs  ✅
+│   │       ├── agent_handler.rs ✅
+│   │       ├── experience_handler.rs ✅
+│   │       ├── exploration_handler.rs ✅
+│   │       ├── hypothesis_handler.rs ✅
+│   │       ├── ingestor_handler.rs ✅
+│   │       ├── knowledge_handler.rs ✅
+│   │       ├── memory_handler.rs ✅
+│   │       ├── personality_handler.rs ✅
+│   │       ├── planner_handler.rs ✅
+│   │       ├── reflection_handler.rs ✅
+│   │       ├── search_handler.rs ✅
+│   │       ├── skills_handler.rs ✅
+│   │       ├── workflow_handler.rs ✅
+│   │       └── world_model_handler.rs ✅
+│   ├── rmcp/
+│   │   ├── mod.rs              ✅ RMCP server
+│   │   ├── handler.rs          ✅
+│   │   ├── helpers.rs          ✅
+│   │   └── types.rs            ✅
+│   ├── app/
+│   │   ├── mod.rs              ✅ App initialization
+│   │   ├── personality.rs      ✅
+│   │   ├── scheduler.rs        ✅
+│   │   ├── state.rs            ✅
+│   │   ├── acp.rs              ✅
+│   │   └── initialization/
+│   │       ├── mod.rs          ✅
+│   │       ├── core.rs         ✅
+│   │       ├── db.rs           ✅
+│   │       ├── mcp_context.rs  ✅
+│   │       ├── memory_scheduler.rs ✅
+│   │       ├── workers.rs      ✅
+│   │       ├── workflow_acp.rs ✅
+│   │       ├── agent_loop.rs   ✅
+│   │       ├── policy.rs       ✅
+│   │       ├── job_queue.rs    ✅
+│   │       ├── engines.rs      ✅
+│   │       ├── learning.rs     ✅
+│   │       ├── learning_pipeline.rs ✅
+│   │       ├── learning_coordinator.rs ✅
+│   │       ├── hypothesis_manager.rs ✅
+│   │       ├── candidates.rs   ✅
+│   │       ├── working_memory.rs ✅
+│   │       ├── lineage_tracker.rs ✅
+│   │       ├── exploration_repo.rs ✅
+│   │       ├── experience_repo.rs ✅
+│   │       ├── sub_health_log.rs ✅
+│   │       ├── acp_diagnostics.rs ✅
+│   │       ├── experience_recorder_diagnostics.rs ✅
+│   │       ├── experience_repo_diagnostics.rs ✅
+│   │       ├── exploration_repo_diagnostics.rs ✅
+│   │       ├── hypothesis_pipeline_diagnostics.rs ✅
+│   │       ├── hypothesis_manager_diagnostics.rs ✅
+│   │       ├── reflection_diagnostics.rs ✅
+│   │       ├── reflection_surface_diagnostics.rs ✅
+│   │       ├── reputation_diagnostics.rs ✅
+│   │       ├── scheduler_diagnostics.rs ✅
+│   │       ├── worker_diagnostics.rs ✅
+│   │       ├── personality_diagnostics.rs ✅
+│   │       ├── mcp_client_diagnostics.rs ✅
+│   │       └── diagnostics.rs  ✅
+│   ├── acp/
+│   │   ├── mod.rs              ✅
+│   │   ├── agent.rs            ✅
+│   │   ├── message.rs          ✅
+│   │   ├── registry.rs         ✅
+│   │   ├── router.rs           ✅
+│   │   └── system_agent.rs     ✅
+│   └── tools/
+│       ├── mod.rs              ✅
+│       ├── agent/
+│       │   ├── mod.rs          ✅
+│       │   ├── definitions.rs  ✅
+│       │   ├── inputs.rs       ✅
+│       │   ├── mcp_tools.rs    ✅
+│       │   └── workflows.rs    ✅
+│       ├── memory/
+│       │   ├── mod.rs          ✅
+│       │   ├── definitions.rs  ✅
+│       │   ├── handlers/
+│       │   │   ├── mod.rs      ✅
+│       │   │   ├── query.rs    ✅
+│       │   │   ├── search.rs   ✅
+│       │   │   └── store.rs    ✅
+│       │   ├── helpers.rs      ✅
+│       │   ├── types.rs        ✅
+│       │   └── embedding.rs    ✅
+│       ├── experience/
+│       │   └── mod.rs          ✅
+│       ├── exploration/
+│       │   ├── mod.rs          ✅
+│       │   ├── definitions.rs  ✅
+│       │   └── handlers/
+│       │       ├── mod.rs      ✅
+│       │       ├── hypothesis.rs ✅
+│       │       ├── lifecycle.rs ✅
+│       │       ├── observation.rs ✅
+│       │       └── store.rs    ✅
+│       ├── hypothesis/
+│       │   ├── mod.rs          ✅
+│       │   ├── execute.rs      ✅
+│       │   └── db.rs           ✅
+│       ├── ingestor/
+│       │   ├── mod.rs          ✅
+│       │   ├── definitions.rs  ✅
+│       │   ├── core/
+│       │   │   ├── mod.rs      ✅
+│       │   │   ├── execute.rs  ✅
+│       │   │   ├── ingestion.rs ✅
+│       │   │   ├── helpers.rs  ✅
+│       │   │   ├── tracker.rs  ✅
+│       │   │   └── types.rs    ✅
+│       │   ├── semantic_chunker.rs ✅
+│       │   ├── text_extractor.rs ✅
+│       │   ├── audio_transcriber.rs ✅
+│       │   ├── json_importer.rs ✅
+│       │   ├── archive_handler.rs ✅
+│       │   ├── file_collector.rs ✅
+│       │   ├── workflow.rs     ✅
+│       │   └── workflow.rs     ✅
+│       ├── knowledge/
+│       │   └── mod.rs          ✅
+│       ├── reflection/
+│       │   ├── mod.rs          ✅
+│       │   ├── definitions.rs  ✅
+│       │   ├── execute.rs      ✅
+│       │   └── types.rs        ✅
+│       ├── search/
+│       │   └── mod.rs          ✅
+│       ├── skills/
+│       │   └── mod.rs          ✅
+│       ├── workflow/
+│       │   └── mod.rs          ✅
+│       ├── personality/
+│       │   └── mod.rs          ✅
+│       ├── planner/
+│       │   └── mod.rs          ✅
+│       └── world_model/
+│           └── mod.rs          ✅
+├── cli/
+│   ├── mod.rs                  ✅
+│   ├── output.rs               ✅
+│   └── commands/
+│       ├── mod.rs              ✅
+│       ├── server.rs           ✅
+│       ├── init.rs             ✅
+│       ├── status.rs           ✅
+│       ├── diagnose.rs         ✅
+│       ├── memory.rs           ✅
+│       ├── experience.rs       ✅
+│       ├── config.rs           ✅
+│       └── migrate.rs          ✅
 ```
 
 **Legend:** ✅ Implemented | ⚠️ Stubbed/partial | ❌ Placeholder code only | 🟡 Partially done | 📋 Planned but not started
@@ -2810,13 +2992,13 @@ Delete a workflow completely.
 
 | Area | Status | Details |
 |------|--------|---------|
-| Database layer | ✅ Functional | Schema + 8 migrations (v0→v8 via `migrations/` module), CRUD queries all implemented |
+| Database layer | ✅ Functional | Schema + 12 migrations (v0→v12 via `migrations/` module), CRUD queries all implemented |
 | Memory System | ✅ Complete | Working Memory, Permanent Memory, Memory Retrieval per Architecture §6.3 |
 | Event System | ✅ Complete | Full event catalog per Architecture §4.04 (30+ event types) |
 | Learning Pipeline | ✅ Implemented | Input→Observation→Memory→Experience→Knowledge→Planning→Decision→Action→Reflection |
 | Experience types/events | ✅ Complete | Full type system for experiences, scores, reputation, event payloads |
 | Observer pattern | ✅ Implemented | Trait defined with priority and filter hooks |
-| Job queue + worker | ✅ Implemented | In-memory queue with async worker (mpsc channel) |
+| Job queue + worker | ✅ Implemented | SQLite-backed job queue with async worker (migrations/job_queue.rs) |
 | Event bus | ✅ Implemented | Full pub/sub with broadcast channel, subscriber tracking |
 | Experience coordinator | ✅ Implemented | Pipeline logic with all sub-modules wired up |
 | Experience recorder | ✅ Implemented | Record/success/failure methods working with database |
@@ -2834,7 +3016,7 @@ Delete a workflow completely.
 | Skills module | ✅ Implemented | Skill registry for managing available skills |
 | Workflows module | ✅ Implemented | Workflow execution engine for multi-step tasks |
 | Learning module | ✅ Implemented | Working memory, hypothesis tracking, candidate generation, lineage tracking |
-| Experience Compression | ✅ Implemented | Pattern detection, exception tracking, and compression algorithms |
+| Experience Compression | ⏳ Deferred | Module not implemented yet |
 | CLI interface | ✅ Implemented | Command-line interface with server, memory, experience commands |
 | App entry point | ✅ Implemented | App struct with coordinator and stdio server |
 | Main entry point | ✅ Implemented | init_logging() and App::new().run() working |
@@ -2843,10 +3025,10 @@ Delete a workflow completely.
 
 ## Immediate Next Steps
 
-1. **Wire MCP tools to handlers** — Connect tool definitions to actual functionality
-2. **Implement tool execution** — Make tools actually perform their operations
-3. **Implement knowledge graph** — Broader knowledge representation system
-4. **Add LLM integration** — Enable actual reflection generation
+1. **P4: Automatic cognitive lifecycle** — Wire memory retrieval into workflow execution (P4-002A-D)
+2. **P5-P9: Integration & testing** — Failure isolation, end-to-end tests, restart recovery
+3. **T2: v0.0.2 conformance** — Upgrade existing subsystems to data contracts
+4. **T3: Missing subsystems** — Add modules per Architecture v0.0.2.1 chapters 01-33
 
 ---
 
