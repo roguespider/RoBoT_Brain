@@ -1,17 +1,36 @@
 // src/bridge/app/initialization/job_queue.rs
-//! JobQueue durability probe at startup
+//! JobQueue durability probe (explicit diagnostics, P2-001C).
+//!
+//! Runs entirely against an isolated temporary database so diagnostics can
+//! never pop, complete, or fail real jobs from the live production queue.
 
-use std::sync::{Arc, Mutex};
+use std::sync::Arc;
 
+use crate::database::sqlite::SqliteDatabase;
 use crate::experience::queue::JobQueue;
 
-/// Verify the durable JobQueue was wired correctly at startup.
-/// Push a probe job, confirm it persists, then restore from a fresh instance.
-pub(crate) fn verify_job_queue(
-    job_queue: &Arc<Mutex<JobQueue>>,
-    database: &Arc<crate::database::sqlite::SqliteDatabase>,
-) {
-    let mut q = job_queue.lock().unwrap_or_else(|e| e.into_inner());
+/// Verify the durable JobQueue lifecycle against an isolated database.
+/// Push probe jobs, confirm they persist, then restore from a fresh instance.
+/// The live production queue is never touched.
+pub(crate) fn verify_job_queue() {
+    // Isolated database in the OS temp directory: probe rows are written to
+    // their own robot_brain.db, never to the production database.
+    let probe_dir = std::env::temp_dir().join(format!(
+        "robot_brain_diagnostics_job_queue_{}",
+        uuid::Uuid::new_v4()
+    ));
+    let database = match SqliteDatabase::initialize_at(&probe_dir) {
+        Ok(db) => Arc::new(db),
+        Err(e) => {
+            tracing::warn!(
+                "JobQueue diagnostics skipped: isolated database init failed: {}",
+                e
+            );
+            return;
+        }
+    };
+
+    let mut q = JobQueue::with_database(database.clone());
     // Exercise the legacy constructor path (Job::new + push_job) alongside the
     // preferred push_job_with_id so both stay live (P0-002 documents both).
     q.push_job("startup-queue-legacy-probe", "experience_scorer");
@@ -46,4 +65,13 @@ pub(crate) fn verify_job_queue(
         popped_ok,
         restored
     );
+
+    // Remove the isolated probe database directory.
+    if let Err(e) = std::fs::remove_dir_all(&probe_dir) {
+        tracing::warn!(
+            "JobQueue diagnostics cleanup failed for {:?}: {}",
+            probe_dir,
+            e
+        );
+    }
 }

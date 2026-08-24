@@ -35,9 +35,9 @@ pub async fn run_startup_diagnostics(app: &App) {
     crate::bridge::app::initialization::experience_repo::verify_experience_repository(&database)
         .await;
 
-    // JobQueue durability probe (uses the live queue + database)
-    let job_queue = app.mcp_context.job_queue.clone();
-    crate::bridge::app::initialization::job_queue::verify_job_queue(&job_queue, &database);
+    // JobQueue durability probe (isolated temporary database; the live
+    // queue and production database are never touched)
+    crate::bridge::app::initialization::job_queue::verify_job_queue();
 
     // Metrics subsystem self-check
     let metrics_summary = crate::experience::metrics::run_metrics_self_check().await;
