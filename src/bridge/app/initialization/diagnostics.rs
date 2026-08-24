@@ -55,10 +55,9 @@ pub async fn run_startup_diagnostics(app: &App) {
     let policy_engine = app.mcp_context.policy.clone();
     crate::bridge::app::initialization::policy::verify_policy_management(&policy_engine).await;
 
-    // Worker manager enqueue/completion probes
-    let worker_manager = app.mcp_context.worker_manager.clone();
-    crate::bridge::app::initialization::worker_diagnostics::run_worker_probes(&worker_manager)
-        .await;
+    // Worker manager enqueue/completion probes (isolated bus + temp
+    // database queue; the live bus and production queue are never touched)
+    crate::bridge::app::initialization::worker_diagnostics::run_worker_probes().await;
 
     // Scheduler task-management probe (isolated temporary database; the
     // production scheduler store is never touched)
