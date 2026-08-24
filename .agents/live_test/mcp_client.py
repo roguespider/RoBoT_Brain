@@ -73,7 +73,7 @@ class ToolResult:
             return {}
         try:
             return json.loads(t)
-        except Exception:
+        except json.JSONDecodeError:
             return t
 
     @property
@@ -153,16 +153,21 @@ class RobotBrainClient:
 
         Returns the raw initialize result dict.
         """
-        self._send("initialize", {
-            "protocolVersion": self.PROTO,
-            "capabilities": {"tools": {}},
-            "clientInfo": {"name": "live_probe", "version": "1.0.0"},
-        })
+        self._send(
+            "initialize",
+            {
+                "protocolVersion": self.PROTO,
+                "capabilities": {"tools": {}},
+                "clientInfo": {"name": "live_probe", "version": "1.0.0"},
+            },
+        )
         resp = self._read_line(15)
         if not resp:
             raise RuntimeError("No initialize response from server")
         assert self.proc is not None and self.proc.stdin is not None
-        self.proc.stdin.write(b'{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}\n')
+        self.proc.stdin.write(
+            b'{"jsonrpc":"2.0","method":"notifications/initialized","params":{}}\n'
+        )
         self.proc.stdin.flush()
         result = json.loads(resp)
         # Server enforces: get_workflow first, then search_memory before writes.
@@ -188,14 +193,16 @@ class RobotBrainClient:
         try:
             if self.proc.stdin:
                 self.proc.stdin.close()
-        except Exception:
+        except OSError:
+            # stdin already closed or pipe broken during shutdown
             pass
         try:
             self.proc.terminate()
             self.proc.wait(timeout=5)
-        except Exception:
+        except subprocess.TimeoutExpired:
             try:
                 self.proc.kill()
-            except Exception:
+            except OSError:
+                # process already exited between terminate and kill
                 pass
         self.proc = None
