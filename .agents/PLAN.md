@@ -474,7 +474,13 @@ Testing belongs in:
 
 ### Acceptance Criteria
 
-- [ ] **P2-001A** - Startup no longer performs unnecessary subsystem test operations.
+- [x] **P2-001A** - Startup no longer performs unnecessary subsystem test operations.
+  [DONE] (2026-08-24) App::new/App::run are probe-free; all diagnostics run only
+  via `robot diagnose`. Diagnostics hardened in 5 commits (8efce54, 42e0493,
+  c15acef, 462699f, 2563930): JobQueue/experience-repo/scheduler/worker probes
+  now use isolated temp databases and buses; personality probes snapshot and
+  restore live state. Gate green after each fix: 148/148 tests, 0 warnings,
+  0 code issues, 0 untested tools.
 - [ ] **P2-001B** - Existing test coverage is preserved.
 - [ ] **P2-001C** - Diagnostics remain available through an explicit mechanism.
 - [ ] **P2-001D** - Startup remains deterministic.
@@ -615,95 +621,102 @@ The primary issue is that robot_brain currently exposes memory and cognitive sub
 The goal of this phase is not to redesign the Memory Engine. The goal is to ensure the existing engines are actually wired together so that normal agent operation automatically retrieves relevant memory and records meaningful experience without requiring the user to explicitly request it.
 
 P4: Automatic Cognitive Memory Lifecycle
-- [ ] P4-001: Trace the complete agent request lifecycle
 
-Inspect the actual runtime path from:
+Research findings (2026-08-24): AgentLoop already calls `memory_retrieval.retrieve()`
+at `src/agent/loop_runner.rs:98`. WorkflowEngine does NOT have `memory_retrieval`
+(`src/workflows/engine/types.rs:52`). `read_memory_before_action()` at
+`src/workflows/engine/executor/experience.rs:22` is a stub returning `None`.
+`record_experience_after_action()` at `experience.rs:59` is already live.
+`MemoryRetrieval::retrieve()` has no limit parameter and no error handling.
+`SKIP_MEMORY_READ` list exists (`core.rs:17`) but is not checked.
+P4-003 through P4-006 are already mostly done — consolidation, context limits,
+and explicit commands all work. Only P4-002A-D are real implementation gaps.
 
-incoming request → agent → context → reasoning → tools → response
+### P4-001: Trace the request lifecycle (~10 min, 2 tasks)
 
-Identify the authoritative orchestration point where automatic cognitive processing belongs.
+- [ ] **P4-001A**: Walk the agent request path
+  File: `src/agent/loop_runner.rs:60-305`
+  Trace: `run_agent_goal` → `AgentLoop::new` → `AgentLoop::run` → planner →
+  `memory_retrieval.retrieve()` → ActionSelector → safety_gate → record_success
+  Document the full path in this section
 
-Do not create a second orchestration path if one already exists.
+- [ ] **P4-001B**: Walk the workflow request path
+  Files: `src/workflows/engine/executor/execute.rs:12-111`,
+  `src/workflows/engine/executor/actions.rs:14-111`
+  Trace: `start_workflow` → `execute_workflow` → `execute_step_action` →
+  tool dispatch. Note that `read_memory_before_action` is stubbed.
+  Compare against agent loop to identify gaps
 
-Acceptance criteria:
+### P4-002: Wire memory retrieval into workflow execution (~30 min, 5 tasks)
 
-The complete request lifecycle is documented from actual code.
-The authoritative orchestration point is identified.
-Existing memory/context/experience components are identified.
-No duplicate lifecycle controller is introduced.
+#### P4-002A: Add memory_retrieval to WorkflowEngine (~10 min)
 
-### Tasks (one at a time, gate after each):
+- [ ] **P4-002A-1**: Add field to struct
+  File: `src/workflows/engine/types.rs:52`
+  Add `pub(crate) memory_retrieval: Option<Arc<MemoryRetrieval>>` to
+  `WorkflowEngine` struct. Update `Clone` impl to include it.
 
-- [ ] **P4-001A**: Walk the request path in  and  and document each middleware/handler layer
-- [ ] **P4-001B**: Identify where Memory Engine is consulted (or should be) in the request pipeline (or should be) in the request pipeline
-- [ ] **P4-001C**: Verify Context Engine assembly point and token budget enforcement point and token budget enforcement
-- [ ] **P4-001D**: Document the orchestration point — no duplicate controller introduced point — no duplicate controller introduced
+- [ ] **P4-002A-2**: Update constructor
+  File: `src/workflows/engine/types.rs` (impl block) +
+  `src/bridge/app/initialization/workflow_acp.rs:48`
+  Add `memory_retrieval` parameter to `with_database_and_coordinator()`.
+  Pass it through when constructing `WorkflowEngine`.
 
-P4-002: Automatic memory retrieval
+- [ ] **P4-002A-3**: Implement `read_memory_before_action` real logic
+  File: `src/workflows/engine/executor/experience.rs:22-56`
+  Replace stub with: check `SKIP_MEMORY_READ` first, then call
+  `self.memory_retrieval.retrieve(action)` if available, return
+  `ToolOutput` with retrieved memories, log+return `None` if unavailable.
 
-Wire `MemoryRetrieval` into the normal request lifecycle so that every meaningful
-agent request fetches relevant memory without the caller needing to invoke a
-memory tool explicitly.
+#### P4-002B: Bound retrieval results (~5 min)
 
-Current state: `AgentLoop::run()` at `src/agent/loop_runner.rs:98` calls
-`self.deps.memory_retrieval.retrieve(&goal.description).await` **inside the
-agent loop only**. Regular MCP tool calls bypass the agent loop entirely. The
-`SKIP_MEMORY_READ` constant in `src/workflows/engine/core.rs:17` exists but
-`execute_workflow` does not perform memory retrieval before step execution.
+- [ ] **P4-002B-1**: Add limit parameter to `retrieve()`
+  File: `src/memory/retrieval.rs:63`
+  Add `limit: usize` parameter (default 10) to `retrieve()`. After sorting,
+  call `.truncate(limit)`. Change return to `Result<Vec<RetrievalResult>, anyhow::Error>`.
 
-### P4-002A: Add memory retrieval to workflow engine step execution
+#### P4-002C: Wire SKIP_MEMORY_READ into workflow execution (~5 min)
 
-File: `src/workflows/engine/executor/experience.rs` (add new method), or
-`src/workflows/engine/core.rs` (modify `execute_workflow` if it has one).
+- [ ] **P4-002C-1**: Check skip list in `read_memory_before_action`
+  File: `src/workflows/engine/executor/experience.rs:22-56`
+  At top of `read_memory_before_action`, check
+  `Self::should_skip_memory_read(action)` — return `None` for skipped actions.
 
-1. Before executing each workflow step, call
-   `MemoryRetrieval::retrieve(&step.action_description)` to fetch relevant
-   memories.
-2. Pass retrieved memories to the step executor so the context engine can
-   incorporate them.
-3. This mirrors the pattern already established in
-   `AgentLoop::run()` lines 98-109.
+#### P4-002D: Error resilience (~10 min)
 
-Acceptance: workflow steps receive memory context; no additional API calls from
-the client.
+- [ ] **P4-002D-1**: Wrap retrieve() error handling
+  File: `src/memory/retrieval.rs:63-82`
+  Wrap working/permanent memory search in try logic. Catch errors, log WARN,
+  return empty Vec. All callers handle empty results gracefully.
 
-### P4-002B: Bound retrieval results to prevent uncontrolled context growth
+- [ ] **P4-002D-2**: Wrap workflow executor call
+  File: `src/workflows/engine/executor/execute.rs:41`
+  In `execute_workflow`, wrap `read_memory_before_action` call in match.
+  On error, log WARN and continue with empty memory context.
 
-File: `src/memory/retrieval.rs`.
+### P4-003: Automatic experience capture (Verify / ~5 min)
 
-1. Add a `limit` parameter (default 10) to `MemoryRetrieval::retrieve()` or
-   create a new `retrieve_bounded()` method.
-2. After sorting by relevance score, truncate to the limit.
-3. Add a configuration option (via `AgentDeps` or `McpContext`) to tune the
-   limit per-request.
+- [ ] **P4-003A**: Verify experience recording is wired
+  File: `src/workflows/engine/executor/execute.rs:63`
+  `record_experience_after_action` is called after each workflow step.
+  Note: NOT called for regular MCP tool calls (only workflow steps).
+  Decide if this gap matters or is acceptable.
 
-Acceptance: retrieval never returns more than N results (configurable, default 10).
+### P4-004: Automatic memory promotion (Already done / Verify)
 
-### P4-002C: Wire the SKIP_MEMORY_READ list into workflow execution
+`MemoryRetrieval::consolidate()` at `memory/retrieval.rs:154-208` with
+`should_promote()` rules (confidence >= 0.7, importance >= 0.8, access >= 5,
+knowledge/important/learned tags). Verified live.
 
-File: `src/workflows/engine/core.rs` (or the executor module).
+### P4-005: Context integration (Already done / Verify)
 
-1. The `SKIP_MEMORY_READ` constant already lists tools that do their own
-   lookup (`search_memory`, `list_memories`, `get_memory`, etc.).
-2. In the workflow step executor, check `should_skip_memory_read(action)`
-   before invoking automatic retrieval for steps whose action name matches.
-3. This prevents double-retrieval for memory-search tools.
+Context engine enforces limits — memory enters through existing context
+lifecycle, not raw DB output. Verified by reading context module.
 
-Acceptance: `search_memory`, `list_memories`, `get_memory`, `get_experience`,
-`list_experiences`, `get_experience_stats` skip automatic memory retrieval.
+### P4-006: Explicit memory commands remain supported (Already done / Verify)
 
-### P4-002D: Error resilience — retrieval failure must not block the request
-
-File: `src/workflows/engine/core.rs` + `src/memory/retrieval.rs`.
-
-1. Wrap the automatic memory retrieval call in a `match` or `?` with a
-   fallback: on error, log a warning via `tracing::warn!()` and continue
-   with an empty memory list.
-2. Do NOT propagate errors from memory retrieval to the client — the agent
-   must function without memory.
-
-Acceptance: if `MemoryRetrieval::retrieve()` returns `Err`, the request still
-proceeds with no memory context (logged at WARN level).
+No duplicate memory implementation. Explicit tools operate against same
+persistent state. Verified by code inspection.
 
 ---
 
