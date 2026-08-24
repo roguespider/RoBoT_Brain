@@ -1,5 +1,8 @@
 // src/bridge/app/initialization/experience_repo.rs
-//! Verify experience repository persistence at startup.
+//! Verify experience repository persistence (explicit diagnostics, P2-001C).
+//!
+//! Runs entirely against an isolated temporary database so the production
+//! database is never written to and no transient rows can leak into it.
 
 use std::sync::Arc;
 
@@ -12,11 +15,28 @@ use crate::experience::types::{
 use chrono::Utc;
 use uuid::Uuid;
 
-/// Verify experience repository persistence methods work at startup
-/// (Architecture §07/§09). Exercises save_encounter, get_encounter,
-/// find_similar_encounters and save_experience with transient rows that
-/// are cleaned up afterwards.
-pub async fn verify_experience_repository(database: &Arc<SqliteDatabase>) {
+/// Verify experience repository persistence methods (Architecture §07/§09).
+/// Exercises save_encounter, get_encounter, find_similar_encounters and
+/// save_experience with transient rows in an isolated database that is
+/// removed afterwards.
+pub async fn verify_experience_repository() {
+    // Isolated database in the OS temp directory: probe rows are written to
+    // their own robot_brain.db, never to the production database.
+    let probe_dir = std::env::temp_dir().join(format!(
+        "robot_brain_diagnostics_exp_repo_{}",
+        Uuid::new_v4()
+    ));
+    let database = match SqliteDatabase::initialize_at(&probe_dir) {
+        Ok(db) => Arc::new(db),
+        Err(e) => {
+            tracing::warn!(
+                "Experience repository diagnostics skipped: isolated database init failed: {}",
+                e
+            );
+            return;
+        }
+    };
+
     let encounter = Encounter {
         id: Uuid::new_v4(),
         timestamp: Utc::now(),
@@ -71,12 +91,6 @@ pub async fn verify_experience_repository(database: &Arc<SqliteDatabase>) {
         .await
         .is_ok();
 
-    // Clean up the transient rows.
-    if let Ok(conn) = database.connection() {
-        crate::database::queries::memory::delete_memories(&conn, &[encounter.id, experience.id])
-            .ok();
-    }
-
     tracing::info!(
         "Experience repository verified: save_encounter_ok={} get_encounter_ok={} similar_count={} save_experience_ok={}",
         saved_encounter,
@@ -84,4 +98,13 @@ pub async fn verify_experience_repository(database: &Arc<SqliteDatabase>) {
         similar,
         saved_experience,
     );
+
+    // Remove the isolated probe database directory.
+    if let Err(e) = std::fs::remove_dir_all(&probe_dir) {
+        tracing::warn!(
+            "Experience repository diagnostics cleanup failed for {:?}: {}",
+            probe_dir,
+            e
+        );
+    }
 }

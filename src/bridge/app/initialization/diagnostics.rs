@@ -30,10 +30,9 @@ pub async fn run_startup_diagnostics(app: &App) {
     crate::bridge::app::initialization::learning_pipeline::verify_learning_pipeline().await;
     crate::bridge::app::initialization::exploration_repo::verify_exploration_repository().await;
 
-    // Experience repository persistence probe (uses the live database)
-    let database = app.mcp_context.database.clone();
-    crate::bridge::app::initialization::experience_repo::verify_experience_repository(&database)
-        .await;
+    // Experience repository persistence probe (isolated temporary
+    // database; the production database is never touched)
+    crate::bridge::app::initialization::experience_repo::verify_experience_repository().await;
 
     // JobQueue durability probe (isolated temporary database; the live
     // queue and production database are never touched)
