@@ -24,7 +24,7 @@ import os
 import subprocess
 import threading
 import time
-from typing import Any
+from typing import Any, Self
 
 
 def default_binary() -> str:
@@ -97,11 +97,11 @@ class RobotBrainClient:
         self._id = 0
         self._stderr_thread: threading.Thread | None = None
 
-    def __enter__(self) -> "RobotBrainClient":
+    def __enter__(self) -> Self:
         self.start()
         return self
 
-    def __exit__(self, *exc):
+    def __exit__(self, *exc: object) -> bool:
         self.close()
         return False
 
@@ -120,9 +120,11 @@ class RobotBrainClient:
         self._stderr_thread = threading.Thread(target=self._drain_stderr, daemon=True)
         self._stderr_thread.start()
 
-    def _drain_stderr(self):
-        assert self.proc is not None
-        for _line in iter(self.proc.stderr.readline, b""):
+    def _drain_stderr(self) -> None:
+        proc = self.proc
+        if proc is None or proc.stderr is None:
+            return
+        for _line in iter(proc.stderr.readline, b""):
             pass
 
     def _send(self, method: str, params: dict) -> int:
