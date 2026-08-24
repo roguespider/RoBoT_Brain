@@ -32,14 +32,18 @@ def default_binary() -> str:
     if env and os.path.isfile(env):
         return env
     here = os.path.dirname(os.path.abspath(__file__))
+    exe = "robot_brain.exe" if os.name == "nt" else "robot_brain"
     candidates = [
+        os.path.join(here, "..", "..", "target", "release", exe),
         os.path.join(here, "..", "..", "target", "release", "robot_brain"),
-        "/workspace/project/RoBoT_Brain/target/release/robot_brain",
     ]
     for c in candidates:
         if os.path.isfile(c):
             return os.path.normpath(c)
-    return "robot_brain"
+    raise FileNotFoundError(
+        "robot_brain binary not found; set ROBOT_BRAIN_PATH or build with "
+        "`cargo build --release`"
+    )
 
 
 class ToolResult:
