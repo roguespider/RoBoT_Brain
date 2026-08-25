@@ -19,8 +19,6 @@ pub struct DiagnosticResult {
 }
 
 /// Per-subsystem diagnostic outcome.
-use std::fmt::Write;
-
 use crate::bridge::app::initialization;
 use crate::bridge::app::state::App;
 use crate::experience::metrics;
@@ -126,7 +124,9 @@ pub async fn run_startup_diagnostics(app: &App) -> DiagnosticResult {
         tracing::info!("Metrics self-check passed");
         passed += 1;
     } else {
-        tracing::error!("Metrics self-check failed: {}", metrics_result.unwrap_err());
+        if let Err(ref e) = metrics_result {
+            tracing::error!("Metrics self-check failed: {e}");
+        }
         failed += 1;
     }
     results.push(("metrics", metrics_ok));
@@ -139,10 +139,9 @@ pub async fn run_startup_diagnostics(app: &App) -> DiagnosticResult {
         tracing::info!("Personality self-check passed");
         passed += 1;
     } else {
-        tracing::error!(
-            "Personality self-check failed: {}",
-            personality_result.unwrap_err()
-        );
+        if let Err(ref e) = personality_result {
+            tracing::error!("Personality self-check failed: {e}");
+        }
         failed += 1;
     }
     results.push(("personality", personality_ok));
@@ -154,7 +153,9 @@ pub async fn run_startup_diagnostics(app: &App) -> DiagnosticResult {
         tracing::info!("MCP client probe passed");
         passed += 1;
     } else {
-        tracing::error!("MCP client probe failed: {}", mcp_result.unwrap_err());
+        if let Err(ref e) = mcp_result {
+            tracing::error!("MCP client probe failed: {e}");
+        }
         failed += 1;
     }
     results.push(("mcp_client", mcp_ok));
@@ -166,7 +167,9 @@ pub async fn run_startup_diagnostics(app: &App) -> DiagnosticResult {
         tracing::info!("ACP health check passed");
         passed += 1;
     } else {
-        tracing::error!("ACP health check failed: {}", acp_result.unwrap_err());
+        if let Err(ref e) = acp_result {
+            tracing::error!("ACP health check failed: {e}");
+        }
         failed += 1;
     }
     results.push(("acp", acp_ok));
@@ -193,7 +196,9 @@ pub async fn run_startup_diagnostics(app: &App) -> DiagnosticResult {
         tracing::info!("Worker probes passed");
         passed += 1;
     } else {
-        tracing::error!("Worker probes failed: {}", worker_result.unwrap_err());
+        if let Err(ref e) = worker_result {
+            tracing::error!("Worker probes failed: {e}");
+        }
         failed += 1;
     }
     results.push(("worker", worker_ok));
@@ -315,12 +320,10 @@ pub async fn run_startup_diagnostics(app: &App) -> DiagnosticResult {
     // Log per-subsystem summary (P2-001C-M4)
     let mut summary = String::new();
     for (name, ok) in &results {
-        let _ = write!(
-            summary,
-            " {}: {}",
-            name,
-            if *ok { "[PASS]" } else { "[FAIL]" }
-        );
+        summary.push(' ');
+        summary.push_str(name);
+        summary.push_str(": ");
+        summary.push_str(if *ok { "[PASS]" } else { "[FAIL]" });
     }
     tracing::info!(
         "Subsystem diagnostics complete: passed={} failed={}\n  subsystems:{}",
