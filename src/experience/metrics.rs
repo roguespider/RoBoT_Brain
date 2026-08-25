@@ -567,7 +567,9 @@ pub mod metric_names {
 /// Exercises the high-level `Metrics` API and the low-level
 /// `MetricsCollector` API to verify all metric recording and
 /// retrieval functions are functional.
-pub async fn run_metrics_self_check() -> String {
+///
+/// Returns `Ok(())` on success. The caller handles error reporting.
+pub async fn run_metrics_self_check() -> std::result::Result<(), String> {
     let metrics = Metrics::new();
 
     // Exercise high-level Metrics API
@@ -677,8 +679,5 @@ pub async fn run_metrics_self_check() -> String {
         vocab_counters.len()
     );
 
-    format!(
-        "Metrics self-check complete: exp_count={} know_count={} learning_rate={:.2} rep_score={:?}",
-        exp_count, know_count, learning_rate, rep_score
-    )
+    Ok(())
 }

@@ -2,7 +2,8 @@
 //! CandidateGenerator lifecycle probe at startup
 
 /// Verify the CandidateGenerator lifecycle works at startup.
-pub(crate) async fn verify_candidates() {
+/// Returns `Ok(())` on success, `Err(msg)` on failure.
+pub(crate) async fn verify_candidates() -> std::result::Result<(), String> {
     use crate::learning::candidates::{CandidateGenerator, CandidateScore, CandidateType};
 
     let generator = CandidateGenerator::new();
@@ -57,4 +58,5 @@ pub(crate) async fn verify_candidates() {
         stats.total,
         risk_labels.len()
     );
+    Ok(())
 }

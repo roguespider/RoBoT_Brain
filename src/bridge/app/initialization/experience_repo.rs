@@ -19,7 +19,9 @@ use uuid::Uuid;
 /// Exercises save_encounter, get_encounter, find_similar_encounters and
 /// save_experience with transient rows in an isolated database that is
 /// removed afterwards.
-pub async fn verify_experience_repository() {
+///
+/// Returns `true` if all operations succeed, `false` if database init fails.
+pub async fn verify_experience_repository() -> bool {
     // Isolated database in the OS temp directory: probe rows are written to
     // their own robot_brain.db, never to the production database.
     let probe_dir = std::env::temp_dir().join(format!(
@@ -33,7 +35,7 @@ pub async fn verify_experience_repository() {
                 "Experience repository diagnostics skipped: isolated database init failed: {}",
                 e
             );
-            return;
+            return false;
         }
     };
 
@@ -107,4 +109,5 @@ pub async fn verify_experience_repository() {
             e
         );
     }
+    true
 }

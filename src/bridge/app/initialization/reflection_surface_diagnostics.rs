@@ -19,7 +19,8 @@ use crate::experience::reflection::types::{
 use crate::experience::reflection::{InsightProducer, Reflector, ValidatableReflection};
 
 /// Verify the reflection/hypothesis type surface.
-pub async fn verify_type_surfaces(app: &App) {
+/// Returns `Ok(())` on success, `Err(msg)` on failure.
+pub async fn verify_type_surfaces(app: &App) -> std::result::Result<(), String> {
     // --- Hypothesis confidence lifecycle ---------------------------------
     let mut confidence = HypothesisConfidence::default();
     confidence.increase(0.1);
@@ -146,6 +147,7 @@ pub async fn verify_type_surfaces(app: &App) {
 
     // --- HypothesisPipeline.add_contradicting_evidence -------------------
     verify_pipeline_contradicting(app).await;
+    Ok(())
 }
 
 fn build_probe_subscriber(app: &App) -> EventSubscriber {

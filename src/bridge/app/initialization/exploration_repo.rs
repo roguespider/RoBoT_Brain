@@ -9,7 +9,8 @@ use crate::experience::types::ExperienceContext;
 /// implementation works at startup. Exercises create/get/update/
 /// list_active/count/list_all/list_by_status/delete/search_by_title so
 /// those repository methods remain live rather than dead code.
-pub async fn verify_exploration_repository() {
+/// Returns `Ok(())` on success, `Err(msg)` on failure.
+pub async fn verify_exploration_repository() -> std::result::Result<(), String> {
     let repo = InMemoryExplorationRepository::new();
     let probe = Exploration::new(
         "startup-repo-probe".to_string(),
@@ -54,4 +55,5 @@ pub async fn verify_exploration_repository() {
         deleted,
         after_delete,
     );
+    Ok(())
 }

@@ -475,20 +475,117 @@ Testing belongs in:
 ### Acceptance Criteria
 
 - [x] **P2-001A** - Startup no longer performs unnecessary subsystem test operations.
-  [DONE] (2026-08-24) App::new/App::run are probe-free; all diagnostics run only
-  via `robot diagnose`. Diagnostics hardened in 5 commits (8efce54, 42e0493,
-  c15acef, 462699f, 2563930): JobQueue/experience-repo/scheduler/worker probes
-  now use isolated temp databases and buses; personality probes snapshot and
-  restore live state. Gate green after each fix: 148/148 tests, 0 warnings,
-  0 code issues, 0 untested tools.
+  [DONE] (2026-08-24) Removed the scheduler probe block (create/load/cancel/enable/delete
+  task on production DB) from `build_memory_scheduler` in
+  `src/bridge/app/initialization/memory_scheduler.rs`. The production consolidation
+  task setup (`setup_memory_consolidation_task`) is preserved as a non-probe startup
+  call. The diagnostics module already has an isolated `run_scheduler_probe()` in
+  `scheduler_diagnostics.rs` that exercises the same code paths against a temp DB.
+  Gate: 148/148 tests, 0 warnings, 0 code issues, 0 untested tools.
 - [x] **P2-001B** - Existing test coverage is preserved.
-  [DONE] (2026-08-24) Verified via test_suite_report.json: passed=148 failed=0
-  errors=0, 0 warnings, 0 code issues, 0 untested tools, overall_success=true.
-  All subsystem APIs previously covered by startup probes remain exercised via
-  `robot diagnose` diagnostics + the 148-test registry.
+  [DONE] (2026-08-24) Two changes:
+  1. Added `run_diagnose_test()` in test_suite/src/tests/cli_tools.rs that spawns
+     `robot_brain diagnose` as a subprocess, asserts exit 0, and checks for
+     expected diagnostic log markers ("Starting explicit subsystem diagnostics",
+     "Subsystem diagnostics complete"). Wired into main.rs after CLI tool tests.
+  2. Rewrote `verify_experience_recorder()` in
+     experience_recorder_diagnostics.rs to use an isolated temp database (same
+     pattern as job_queue/scheduler diagnostics) instead of writing probe
+     experiences to the production database via the real ExperienceRecorder.
+     Updated diagnostics.rs caller to match the new zero-argument signature.
+  Gate: 148/148 coverage tests, 0 warnings, 0 code issues.
 - [ ] **P2-001C** - Diagnostics remain available through an explicit mechanism.
+  [RESEARCHED] (2026-08-24) The explicit mechanism already exists: `robot diagnose`
+  CLI (src/main.rs L39-44) calls `run_startup_diagnostics()` in
+  `src/bridge/app/initialization/diagnostics.rs`, which dispatches 18 diagnostic
+  functions across all subsystems. `App::run()` contains no probes (verified:
+  only scheduler spawn + stdio server). `test_suite/src/tests/cli_tools.rs::
+  run_diagnose_test()` covers the CLI path (exit 0 + start/complete markers).
+  What remains to call P2-001C DONE: harden the diagnose path itself so it is a
+  reliable, verifiable explicit mechanism.
+
+  Micro-tasks (~5 min each, do ONE per session step, gate + commit after each):
+
+  - [x] **P2-001C-M1** - Audit dispatch completeness: DONE (2026-08-24). All 18 diagnostic functions
+    are called exactly once from `run_startup_diagnostics()`. Verified by grepping all *_diagnostics.rs
+    files and cross-referencing with diagnostics.rs callers.
+  - [x] **P2-001C-M2** - Verify no startup pollution remains: DONE (2026-08-24). `App::new` in
+    `initialization/mod.rs` contains no probe/self-check invocations. All build_* and setup_*
+    functions are clean (verified via grep).
+  - [x] **P2-001C-M3** - Diagnose exit status: DONE (already implemented). `robot diagnose`
+    returns exit code 1 when any diagnostic fails (src/main.rs L45-48). No changes needed.
+  - [x] **P2-001C-M4** - Diagnose summary output: DONE (2026-08-24). Converted 14 void diagnostic
+    functions to return `Result<(), String>`. Updated `run_startup_diagnostics()` to track per-subsystem
+    results and log a summary with `[PASS]`/`[FAIL]` markers per subsystem. Extended expected markers
+    in `run_diagnose_test` already covers the subsystems summary line.
+  - [ ] **P2-001C-M5** - Isolation check: confirm `experience_recorder_diagnostics::
+    verify_experience_recorder()` uses a temp DB (see P2-001B open question);
+    if it writes to production DB, switch it to an isolated temp DB like the
+    other probes.
+  - [ ] **P2-001C-M6** - Documentation: add a short "Diagnostics" section to README
+    describing `robot diagnose` as THE explicit diagnostics mechanism (what it
+    checks, expected output, exit codes).
+  - [ ] **P2-001C-M7** - Gate + close-out: run full gate, confirm diagnose test
+    passes, mark P2-001C `[x]` with completion note.
 - [ ] **P2-001D** - Startup remains deterministic.
+  [RESEARCHED] (2026-08-24) Production startup (`App::new` in
+  `src/bridge/app/initialization/mod.rs`) contains no probe/self-test logic and
+  no random data generation. Deterministic steps: DB init + migrations,
+  core infra build, engines build, observer registration, restored-job dispatch,
+  idempotent consolidation-task registration, policy `load_defaults`, MCP tool
+  registration. Known non-determinism sources found: (1) consolidation task
+  `next_run = now + 3600s` on first creation (time-dependent, benign); (2)
+  `dispatch_restored_jobs()` replays whatever pending jobs the previous run left
+  in the DB - behavior depends on prior-run state, not launch inputs; (3) log
+  lines embed timestamps/UUIDs. None of these are probes; the question is which
+  are acceptable and which need documenting or fixing.
+
+  Micro-tasks (~5 min each, ONE per session step, gate + commit after each):
+
+  - [ ] **P2-001D-M1** - Audit each `App::new` step for randomness/time-dependence:
+    grep the init modules for `Uuid::new_v4`, `Utc::now`, `rand`, `SystemTime`.
+    Record findings in this task's note; classify each as acceptable-benign or
+    fix-needed.
+  - [ ] **P2-001D-M2** - Decide policy for `dispatch_restored_jobs()`: is replaying
+    leftover jobs at startup "deterministic"? Document the decision here; if
+    deemed non-deterministic pollution, move dispatch behind an explicit command
+    or gate it.
+  - [ ] **P2-001D-M3** - Verify two consecutive cold starts produce identical DB
+    schema/state except for expected volatile rows (consolidation task next_run).
+    Script it as a test_suite restart test if feasible.
+  - [ ] **P2-001D-M4** - Confirm startup log sequence is stable across runs
+    (same info lines in same order). Fix any order-dependent initialization.
+  - [ ] **P2-001D-M5** - Gate + close-out: full gate green, mark P2-001D `[x]`
+    with completion note.
 - [ ] **P2-001E** - Startup does not mutate test data merely by launching RoBoT.
+  [RESEARCHED] (2026-08-24) The DB (`robot_brain.db`) lives beside the exe
+  (`src/database/sqlite.rs::initialize`). On a plain launch, startup writes:
+  (1) schema migrations; (2) first-run creation of the hourly memory-consolidation
+  task row; (3) replay/dispatch of pending jobs left by a previous run. All
+  diagnostic probes use isolated temp DBs EXCEPT possibly
+  `experience_recorder_diagnostics::verify_experience_recorder()` (open question
+  shared with P2-001B / P2-001C-M5). "Test data" here means: experiences,
+  memories, tasks, jobs that exist only because of probe/test behavior.
+
+  Micro-tasks (~5 min each, ONE per session step, gate + commit after each):
+
+  - [ ] **P2-001E-M1** - Enumerate every write path reachable from a plain
+    `robot_brain server` launch (migrations, scheduler setup, job replay, event
+    subscriber side effects). List them in this task's note.
+  - [ ] **P2-001E-M2** - Launch the server against a fresh temp-dir copy, snapshot
+    the DB before/after (sqlite3 dump diff), and confirm only expected rows
+    (schema + consolidation task) change. Record result.
+  - [ ] **P2-001E-M3** - Resolve the `verify_experience_recorder()` isolation
+    question (shared with P2-001C-M5): confirm it writes to its own temp DB, not
+    production. Fix if not.
+  - [ ] **P2-001E-M4** - Verify `dispatch_restored_jobs()` cannot re-execute
+    diagnostic/probe jobs left over from a crashed diagnose run (probe jobs use
+    synthetic IDs in separate temp DBs - confirm no cross-contamination path).
+  - [ ] **P2-001E-M5** - Add a test_suite durability-style test: start server on a
+    pristine tempdir DB, stop, assert no experience/task/job rows beyond the
+    expected consolidation task exist.
+  - [ ] **P2-001E-M6** - Gate + close-out: full gate green, mark P2-001E `[x]`
+    with completion note.
 
 ---
 
@@ -507,6 +604,28 @@ Never claim:
 - architecture complete
 
 unless automated verification supports the claim.
+
+[RESEARCHED] (2026-08-24) README has a Quality Gate section with metric table
+but no claims of "zero warnings" / "all tests passing" were found by grep -
+good baseline. However there is no Diagnostics section (needed by P2-001C-M6),
+no status snapshot with date, and PLAN.md itself contains stale counts
+(P1-001 "40", P1-002 "38" without dates). The sync work is: make every status
+claim traceable to a gate run and dated.
+
+Micro-tasks (~5 min each, ONE per session step, gate + commit after each):
+
+- [ ] **P3-001-M1** - Grep README + all `.agents/*.md` for unverifiable claims
+  ("zero warnings", "all tests pass", "fully operational", "complete"). List each
+  hit with file:line in this task's note.
+- [ ] **P3-001-M2** - Fix each flagged claim: either cite the gate report that
+  proves it (with date) or soften to current verified state.
+- [ ] **P3-001-M3** - Add a dated "Verified state" block to README pointing at
+  `test_suite/test_suite_report.json` as the single source of truth.
+- [ ] **P3-001-M4** - Date-stamp the P1-001/P1-002 known-counts in this file and
+  note they must be refreshed from the gate report, not hand-edited.
+- [ ] **P3-001-M5** - Add the rule "status claims require a same-day gate run"
+  to AGENTS.md or README if not already present.
+- [ ] **P3-001-M6** - Gate + close-out: full gate green, mark P3-001 `[x]`.
 
 ---
 
@@ -643,6 +762,7 @@ and explicit commands all work. Only P4-002A-D are real implementation gaps.
   Trace: `run_agent_goal` → `AgentLoop::new` → `AgentLoop::run` → planner →
   `memory_retrieval.retrieve()` → ActionSelector → safety_gate → record_success
   Document the full path in this section
+  (~5 min: read loop_runner.rs, write the trace into this section)
 
 - [ ] **P4-001B**: Walk the workflow request path
   Files: `src/workflows/engine/executor/execute.rs:12-111`,
@@ -650,6 +770,7 @@ and explicit commands all work. Only P4-002A-D are real implementation gaps.
   Trace: `start_workflow` → `execute_workflow` → `execute_step_action` →
   tool dispatch. Note that `read_memory_before_action` is stubbed.
   Compare against agent loop to identify gaps
+  (~5 min: read both files, write comparison into this section)
 
 ### P4-002: Wire memory retrieval into workflow execution (~30 min, 5 tasks)
 
@@ -705,6 +826,7 @@ and explicit commands all work. Only P4-002A-D are real implementation gaps.
   `record_experience_after_action` is called after each workflow step.
   Note: NOT called for regular MCP tool calls (only workflow steps).
   Decide if this gap matters or is acceptable.
+  (~5 min: read execute.rs call site, write decision + rationale here)
 
 ### P4-004: Automatic memory promotion (Already done / Verify)
 
@@ -808,150 +930,154 @@ No duplicate memory implementation exists.
 Explicit tools operate against the same persistent state.
 Automatic memory and explicit memory remain consistent.
 P5: Failure and Recovery Integration
-P5-001: Memory failure isolation
 
-Test behavior when:
+[RESEARCHED] (2026-08-24) These are behavior-verification tasks, not new code.
+The failure paths already exist in principle (Result-based error handling, no
+unwrap in production per project rules); what is missing is PROOF via
+test_suite tests. Breakdown below slices each into ~5-min audit + test steps.
 
-database unavailable
-memory retrieval fails
-memory write fails
-malformed memory record encountered
-embedding/retrieval subsystem unavailable
-experience processing fails
+P5-001: Memory failure isolation (~5-min micro-tasks)
 
-Required behavior:
+- [ ] **P5-001-M1**: Audit `MemoryRetrieval::retrieve()` and working/permanent
+  search call sites for error propagation (src/memory/retrieval.rs:63).
+  DONE WHEN: a written list in this task's note of every caller of retrieve()
+  / get_from_working() / get_from_permanent(), each marked "error reaches user"
+  or "silently degraded".
+- [ ] **P5-001-M2**: Audit DB-unavailable behavior: rename robot_brain.db while
+  the server runs (Windows: copy first - file may be locked), then call
+  `search_memory` via RobotBrainClient. DONE WHEN: observed behavior (graceful
+  error vs crash) is recorded in this task's note with the actual tool response.
+- [ ] **P5-001-M3**: Add test_suite test `memory_failure_isolation`: spawn server
+  on tempdir (reuse the IsoClient pattern from queue_durability.rs), stop it,
+  insert a junk row into the memories table via rusqlite, restart, call
+  `search_memory` + `list_memories`. DONE WHEN: test asserts no panic and either
+  empty result or MCP error response; wired into mod.rs/main.rs; suite green.
+- [ ] **P5-001-M4**: Verify failures are recorded via existing observability:
+  grep the memory paths for `tracing::error!`/`metrics` on failure branches
+  found in M1. DONE WHEN: each identified failure branch has a log/metric, or a
+  fix commit adds one.
 
-A memory failure must not unnecessarily kill the user's request.
+P5-002: Experience failure isolation (~5-min micro-tasks)
 
-The system should degrade gracefully and record the failure through existing observability mechanisms.
+- [ ] **P5-002-M1**: Read `record_experience_after_action`
+  (src/workflows/engine/executor/experience.rs) and its caller at
+  execute.rs:63. DONE WHEN: a note states whether recording errors can propagate
+  to the step result, citing the exact match/if-let that contains them.
+- [ ] **P5-002-M2**: Add test_suite test `experience_failure_isolation`: run a
+  workflow step whose experience recording fails (e.g. point recorder at a
+  read-only DB path or inject an oversized payload). DONE WHEN: test asserts the
+  tool response is still success while a WARN/ERROR appears in stderr capture;
+  wired + suite green.
 
-P5-002: Experience failure isolation
+P5-003: Restart and persistence test (~5-min micro-tasks)
 
-Verify that an error during post-response experience processing cannot corrupt or invalidate the completed interaction.
-
-The user's response should remain successful even if post-processing fails.
-
-P5-003: Restart and persistence test
-
-Verify:
-
-store information
-        ↓
-shutdown
-        ↓
-restart robot_brain
-        ↓
-new request
-        ↓
-automatic retrieval
-        ↓
-previous information available
-
-This must work without manually asking the agent to search memory.
+- [ ] **P5-003-M1**: Read test_suite/src/tests/queue_durability.rs and list which
+  of store -> shutdown -> restart -> retrieve it already covers. DONE WHEN: gaps
+  are written here as explicit bullet points (covered/not-covered per stage).
+- [ ] **P5-003-M2**: Extend queue_durability.rs (or new flow_restart_memory.rs):
+  store fact via `store_memory`, kill child, respawn same tempdir, call
+  `run_agent_goal` referencing the fact WITHOUT explicit search. DONE WHEN:
+  assertion on goal output containing the fact passes; wired + suite green.
+  (If run_agent_goal output is not deterministic enough to assert on, assert on
+  the retrieval log line instead and note the limitation.)
 
 P6: End-to-End Cognitive Integration Tests
 
-Add integration tests covering the actual runtime rather than testing only individual functions.
+[RESEARCHED] (2026-08-24) No flow_*.rs files exist yet in test_suite/src/tests/.
+Each P6 item maps to a single test file (~15-30 min each); sliced into 5-min
+steps: scaffold → implement assertions → wire into mod.rs/main.rs → gate.
+P6-001/P6-002/P6-003 overlap heavily with P9-002/P9-003/P9-006 - implement ONCE
+under P9 file names and cross-reference here to avoid duplicate work.
 
-P6-001: Automatic retrieval test
+P6 items are implemented ONCE under the P9 flow files (cross-referenced) to
+avoid duplicate work. Each P6 checkbox below is satisfied when its P9 counterpart
+is green AND the specific extra assertion listed here exists.
 
-Store a known fact.
+- [ ] **P6-001** Automatic retrieval = P9-002 complete PLUS: the test proves the
+  agent received the memory without any explicit search tool call in the trace.
+- [ ] **P6-002** Automatic experience = P9-003 complete PLUS: the asserted
+  experience was created by the goal run itself (timestamp/count delta), not
+  pre-existing.
+- [ ] **P6-003** Cross-session = P9-006 complete PLUS: Session B uses a fresh
+  client process (not just a second connection), proving persistence not cache.
+- [ ] **P6-004** Explicit+automatic consistency: inside flow_cross_session_memory.rs,
+  add assertion that the fact stored explicitly via `store_memory` is returned by
+  `search_memory` AND surfaced by automatic retrieval - same persistent state.
+- [ ] **P6-005** Memory-failure resilience: inside the P5-001-M3 test, after
+  corrupting the DB, also call `run_agent_goal` with a trivial goal. DONE WHEN:
+  goal completes (any status except crash/disconnect).
+- [ ] **P6-006** Context pressure: DEPENDS ON P4-002B (retrieval limit). Test:
+  insert 200+ memories via loop, call retrieval-heavy goal, assert retrieval
+  result count <= limit and latency bounded. Scaffold only after P4-002B lands;
+  until then this stays blocked.
 
-Start a new interaction.
-
-Ask a question requiring that fact.
-
-Verify that the agent receives the relevant memory automatically.
-
-P6-002: Automatic experience test
-
-Perform an interaction that produces a meaningful experience.
-
-End the interaction.
-
-Verify that the experience was automatically recorded.
-
-P6-003: Cross-session memory test
-
-Session A:
-
-User provides important information.
-
-Session B:
-
-User asks something related.
-
-Verify that the information from Session A is automatically retrieved.
-
-P6-004: Explicit + automatic memory test
-
-Verify that:
-
-automatic memory
-+
-explicit memory tools
-
-operate against the same persistent memory state.
-
-P6-005: Memory failure test
-
-Disable or break the memory subsystem.
-
-Verify that the agent can still process a request and produce a response.
-
-P6-006: Context pressure test
-
-Create enough memories to make retrieval potentially large.
-
-Verify that:
-
-retrieval remains bounded
-context remains within configured limits
-relevant memories receive priority
-irrelevant memories are excluded
-context compression remains functional
 P7: Concurrency and Lifecycle Audit
 
-Review asynchronous cognitive operations for:
+[RESEARCHED] (2026-08-24) Audit checklist task. Known shared-state points:
+`job_queue.lock().unwrap_or_else` mutex in manager.rs:380, tokio RwLock on
+workers, broadcast bus with Lagged handling (runner.rs:27-33 already drains).
+Sliced into 5-min audit steps:
 
-locks held across await
-race conditions
-duplicate writes
-duplicate experience processing
-shutdown during memory operations
-cancellation during retrieval
-cancellation during persistence
-concurrent requests accessing shared memory state
+- [ ] **P7-M1**: Grep for `.lock().await` / `.read().await` / `.write().await`
+  in src/experience/ and src/workflows/. For each hit, check whether the guard
+  is alive across a subsequent `.await` in the same scope. DONE WHEN: every hit
+  is listed here with file:line and verdict safe/unsafe.
+- [ ] **P7-M2**: Grep for std `Mutex` (`lock().unwrap_or_else`) usage. The
+  compiler prevents await-across-std-Mutex, so instead verify guards are dropped
+  before awaits by scoping (e.g. manager.rs:379-387 block is correct). DONE WHEN:
+  all std-Mutex sites listed with verdict; any guard held too long gets a fix
+  commit.
+- [ ] **P7-M3**: Duplicate-write audit: read the job claim path
+  (queue pending_jobs / dequeue + worker_manager dispatch). DONE WHEN: a written
+  answer exists to "can two workers receive the same job id?" with the code
+  lines that prove it (claim flag, status transition, or single-dispatcher
+  design).
+- [ ] **P7-M4**: Shutdown audit: trace what happens to in-flight writes when the
+  process is killed (kill_on_drop in tests mimics this). DONE WHEN: documented
+  guarantee statement here, e.g. "SQLite WAL ensures committed txns survive;
+  uncommitted work is lost and re-derived" - or a gap filed as a new task.
+- [ ] **P7-M5**: Cancellation audit: check tokio tasks spawned at startup
+  (scheduler worker, worker_manager background, event subscriber runner.rs)
+  for partial-write windows on cancellation. DONE WHEN: each spawned task is
+  listed with its cancellation behavior.
+- [ ] **P7-M6**: Concurrent-request test `concurrent_store.rs`: spawn one server
+  on tempdir, fire 20 parallel `store_memory` calls (tokio JoinSet), then
+  `list_memories` and assert all 20 present with distinct ids. DONE WHEN: test
+  green; wired + suite pass.
+- [ ] **P7-M7**: Fix issues found in M1-M6, ONE fix per session step (gate +
+  commit each). DONE WHEN: zero unsafe verdicts remain unresolved and P7 is
+  marked `[x]` with the audit summary.
 
-Existing patterns established during P2/P3 should be reused.
-
-Do not introduce unnecessary synchronization layers.
-
-Acceptance criteria:
-
-No known lock-across-await problems remain.
-Concurrent requests do not corrupt memory state.
-Shutdown leaves persistent state consistent.
-Cancellation does not leave orphaned cognitive operations.
 P8: Runtime and Fresh-Start Validation
 
-Test robot_brain from a clean environment.
+[RESEARCHED] (2026-08-24) Fresh-start matrix task. Overlaps with P2-001E-M2
+(tempdir launch diff). Sliced:
 
-Verify:
+Each item below should end up automated in test_suite where feasible (reuse
+the IsoClient pattern from queue_durability.rs); manual runs are acceptable
+only for the corrupted-state matrix, and must be recorded in the task note.
 
-database creation
-required directories
-configuration loading
-default configuration
-first startup
-restart
-shutdown
-missing optional configuration
-missing memory data
-empty memory database
-corrupted/invalid recoverable state
-
-The system must not depend on artifacts left behind by previous development/test runs.
+- [ ] **P8-M1**: First startup on pristine tempdir: copy built binary into
+  tempfile::tempdir(), spawn via stdio MCP, init (get_workflow + search_memory),
+  call tools/list. DONE WHEN: robot_brain.db exists beside exe, tools/list
+  returns the full catalog, no panic in stderr.
+- [ ] **P8-M2**: Restart on same tempdir: kill child, respawn, init again.
+  DONE WHEN: init succeeds, no migration errors in stderr, previously stored
+  memory still retrievable.
+- [ ] **P8-M3**: Shutdown cleanliness: kill during idle, open robot_brain.db
+  with rusqlite, run `PRAGMA integrity_check`. DONE WHEN: result is `ok`.
+- [ ] **P8-M4**: Missing optional config/dirs: tempdir with NO files_to_import/
+  and no config file. DONE WHEN: server starts, ingest-related tools return
+  graceful errors (not crashes) when invoked.
+- [ ] **P8-M5**: Empty memory DB: on pristine instance call search_memory,
+  list_memories, query_knowledge, list_experiences. DONE WHEN: all return
+  empty-but-successful responses; automate as assertions in the P8-M1 test.
+- [ ] **P8-M6**: Corrupted state matrix (manual, record findings): (a) truncate
+  the DB file mid-way, (b) insert junk row, (c) delete WAL sidecar while closed.
+  For each: record recover/error/crash and decide required behavior; file fixes
+  as new tasks if behavior is unacceptable.
+- [ ] **P8-M7**: Convert M1/M2/M5 into one automated `fresh_start.rs` test
+  module; wire + suite green. Close out P8.
 
 P9: Final v0.0.1 Integration Gate
 
@@ -965,6 +1091,21 @@ substantive tool.
 
 ### P9-001: Flow A — Basic cognition
 
+[SLICED] (~20 min total, 4 x 5-min steps)
+
+- [ ] **P9-001-M1**: Scaffold `test_suite/src/tests/flow_basic_cognition.rs`:
+  copy the IsoClient struct + start/request helpers from queue_durability.rs
+  (or extract them into a shared `tests/iso_client.rs` module and import).
+- [ ] **P9-001-M2**: Implement: init client (get_workflow then search_memory),
+  call `run_agent_goal` {"goal": "store the fact that the sky is blue"}.
+  Assert: response isOk, parsed status string == "Achieved"
+  (GoalStatus::Achieved at src/agent/loop_runner.rs:277), content non-empty.
+- [ ] **P9-001-M3**: Wire: `pub mod flow_basic_cognition;` in tests/mod.rs +
+  dispatch block in main.rs (copy the diagnose-test dispatch pattern at
+  main.rs:1211). Add a TestRequirement entry in function_registry if the
+  coverage cross-check requires it for any new tool usage.
+- [ ] **P9-001-M4**: Run full suite once (cargo build --release + run); commit.
+
 Test: `test_suite/src/tests/flow_basic_cognition.rs`
 
 1. Spawn `robot_brain` subprocess via MCP.
@@ -974,6 +1115,18 @@ Test: `test_suite/src/tests/flow_basic_cognition.rs`
 4. Verify the agent produced output without crashing.
 
 ### P9-002: Flow B — Automatic memory retrieval
+
+[SLICED] (~20 min total, 4 x 5-min steps; also satisfies P6-001)
+
+- [ ] **P9-002-M1**: Scaffold `flow_auto_memory_retrieval.rs` using the shared
+  IsoClient helper; implement init sequence (get_workflow + search_memory gate).
+- [ ] **P9-002-M2**: Store 3 distinct facts via `store_memory` (unique marker
+  strings, e.g. include a random suffix so reruns are idempotent-safe).
+- [ ] **P9-002-M3**: Call `run_agent_goal` whose goal text references one marker;
+  assert success AND that the marker appears in the goal output or captured
+  stderr retrieval log. If neither is observable, fall back to asserting via a
+  follow-up `search_memory` and note the weaker guarantee in a comment.
+- [ ] **P9-002-M4**: Wire mod.rs/main.rs dispatch; run suite; commit.
 
 Test: `test_suite/src/tests/flow_auto_memory_retrieval.rs`
 
@@ -985,6 +1138,15 @@ Test: `test_suite/src/tests/flow_auto_memory_retrieval.rs`
 
 ### P9-003: Flow C — Automatic experience capture
 
+[SLICED] (~15 min total, 3 x 5-min steps; also satisfies P6-002)
+
+- [ ] **P9-003-M1**: Scaffold `flow_experience_capture.rs`; snapshot
+  `list_experiences` count before, then run one goal.
+- [ ] **P9-003-M2**: Call `list_experiences`; assert count increased by >=1 and
+  the newest entry has non-empty id/content and an outcome consistent with the
+  goal result (delta-based assertion avoids false positives from prior runs).
+- [ ] **P9-003-M3**: Wire dispatch; run suite; commit.
+
 Test: `test_suite/src/tests/flow_experience_capture.rs`
 
 1. Call `run_agent_goal` with a goal.
@@ -994,6 +1156,20 @@ Test: `test_suite/src/tests/flow_experience_capture.rs`
    `outcome` matching the loop result.
 
 ### P9-004: Flow D — Recovery (job failure → retry → completion)
+
+[SLICED] (~25 min total, 5 x 5-min steps)
+
+- [ ] **P9-004-M1**: Scaffold `flow_recovery.rs`; reuse queue_durability.rs
+  enqueue/rusqlite helpers. Identify how to force a transient failure (read the
+  retry logic in experience/queue.rs first - pick the cheapest injection point:
+  unknown observer name, bad payload, or direct DB status manipulation).
+- [ ] **P9-004-M2**: Enqueue the failing job; observe retry attempts in stderr
+  capture (assert on retry log lines if present).
+- [ ] **P9-004-M3**: Poll/assert job eventually reaches completed (bounded wait,
+  e.g. tokio::time::timeout 30s).
+- [ ] **P9-004-M4**: Open DB directly with rusqlite; assert persisted status row
+  shows completed (not just in-memory state).
+- [ ] **P9-004-M5**: Wire dispatch; run suite; commit.
 
 Test: `test_suite/src/tests/flow_recovery.rs`
 
@@ -1007,6 +1183,20 @@ Test: `test_suite/src/tests/flow_recovery.rs`
 
 ### P9-005: Flow E — Restart recovery
 
+[SLICED] (~25 min total, 5 x 5-min steps; overlaps P5-003/P8-M2/M3)
+
+- [ ] **P9-005-M1**: Scaffold `flow_restart_recovery.rs`: copy built binary into
+  tempfile::tempdir() (server creates robot_brain.db beside current_exe), spawn
+  via stdio MCP with kill_on_drop.
+- [ ] **P9-005-M2**: Persist state via `run_agent_goal` + one `store_memory`;
+  record baseline (memory count, stored fact marker).
+- [ ] **P9-005-M3**: Kill child; inject a pending job row via rusqlite; respawn
+  same tempdir; re-init client (workflow gate again - fresh instance requires it).
+- [ ] **P9-005-M4**: Assert: injected pending job was recovered/dispatched (log
+  line "Dispatching N restored job(s)" from manager.rs:385), stored fact still
+  retrievable, server answers new tool calls normally.
+- [ ] **P9-005-M5**: Wire dispatch; run suite; commit.
+
 Test: `test_suite/src/tests/flow_restart_recovery.rs`
 
 1. Persist state via `run_agent_goal` (creates `robot_brain.db`).
@@ -1019,6 +1209,17 @@ Test: `test_suite/src/tests/flow_restart_recovery.rs`
 
 ### P9-006: Flow F — Cross-session memory
 
+[SLICED] (~20 min total, 4 x 5-min steps; also satisfies P6-003/P6-004)
+
+- [ ] **P9-006-M1**: Scaffold `flow_cross_session_memory.rs`; Session A: store a
+  specific fact with a unique marker via `store_memory`.
+- [ ] **P9-006-M2**: Session A: run a goal to ensure persistence/consolidation;
+  verify via `search_memory` that the fact is present.
+- [ ] **P9-006-M3**: Session B: kill and RESPAWN the server process (fresh
+  process = true cross-session, satisfies P6-003's fresh-client requirement);
+  re-init; run goal referencing the marker; assert automatic retrieval.
+- [ ] **P9-006-M4**: Wire dispatch; run suite; commit.
+
 Test: `test_suite/src/tests/flow_cross_session_memory.rs`
 
 1. Session A: call `store_memory` with a specific fact (e.g. a test
@@ -1029,6 +1230,14 @@ Test: `test_suite/src/tests/flow_cross_session_memory.rs`
 4. Assert: the fact is automatically retrieved and used in reasoning.
 
 ### P9-007: Run the full integration gate
+
+[SLICED] (~10 min total, 2 x 5-min steps)
+
+- [ ] **P9-007-M1**: Confirm all six flow tests are wired into mod.rs + main.rs
+  dispatch; run `cd test_suite && cargo build --release &&
+  ./target/release/test_suite`.
+- [ ] **P9-007-M2**: Run `--gate`; verify all four metrics green; record results
+  in this section with date.
 
 1. After all P9-001 through P9-006 tests are wired into
    `test_suite/src/tests/mod.rs` and dispatched from `main.rs`:

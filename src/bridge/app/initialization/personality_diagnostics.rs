@@ -10,7 +10,7 @@ use crate::bridge::app::state::App;
 /// Exercise the personality decision surface and report results.
 /// All mutating probes run against a snapshot/restore cycle so the live
 /// personality is unchanged by diagnostics.
-pub fn run_personality_self_check(app: &App) {
+pub fn run_personality_self_check(app: &App) -> std::result::Result<(), String> {
     use crate::bridge::app::{
         adapt_personality, apply_personality_preset, get_communication_style,
         get_personality_preset, get_personality_success_rate, get_personality_timeout,
@@ -66,11 +66,12 @@ pub fn run_personality_self_check(app: &App) {
     let preset_ok = apply_personality_preset(app, &preset);
     if preset_ok {
         tracing::info!("Personality preset '{}' re-applied successfully", preset);
+    } else {
+        return Err(format!("Personality preset '{}' re-apply failed", preset));
     }
     let current_traits = get_personality_traits(app);
     set_personality_traits(app, current_traits.clone());
     adapt_personality(app, true, false);
-    tracing::info!("Personality self-check complete: traits re-set and adaptation exercised");
 
     // Restore the exact pre-diagnostics state (traits, preset name,
     // experience/success counters, emotional state, preferences).
@@ -84,5 +85,7 @@ pub fn run_personality_self_check(app: &App) {
         };
         guard.restore(&snapshot);
     }
+    tracing::info!("Personality self-check complete: traits re-set and adaptation exercised");
     tracing::info!("Personality state restored to pre-diagnostics snapshot");
+    Ok(())
 }

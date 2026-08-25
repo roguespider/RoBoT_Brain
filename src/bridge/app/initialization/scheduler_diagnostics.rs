@@ -12,7 +12,8 @@ use crate::experience::scheduler::Scheduler;
 
 /// Exercise scheduler task-management methods with a transient probe task
 /// on an isolated temporary database.
-pub async fn run_scheduler_probe() {
+/// Returns `Ok(())` on success, `Err(msg)` on failure.
+pub async fn run_scheduler_probe() -> std::result::Result<(), String> {
     // Isolated database in the OS temp directory: probe tasks are written to
     // their own robot_brain.db, never to the production database.
     let probe_dir = std::env::temp_dir().join(format!(
@@ -26,7 +27,7 @@ pub async fn run_scheduler_probe() {
                 "Scheduler diagnostics skipped: isolated database init failed: {}",
                 e
             );
-            return;
+            return Err(format!("Scheduler diagnostics init failed: {}", e));
         }
     };
     let scheduler = Scheduler::new(database);
@@ -64,4 +65,5 @@ pub async fn run_scheduler_probe() {
             e
         );
     }
+    Ok(())
 }

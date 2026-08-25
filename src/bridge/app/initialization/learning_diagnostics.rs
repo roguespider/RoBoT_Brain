@@ -10,11 +10,12 @@ use crate::experience::reflection::ReflectionEngine;
 /// Exercise the alternate LearningCoordinator / EventSubscriber constructors
 /// and the EvolutionEngine behavior lifecycle so all construction paths stay
 /// live without running at production startup.
+/// Returns `Ok(())` on success, `Err(msg)` on failure.
 pub async fn run_learning_probes(
     metrics: &Arc<Metrics>,
     reflection_engine: &Arc<ReflectionEngine>,
     evolution_engine: &Arc<EvolutionEngine>,
-) {
+) -> std::result::Result<(), String> {
     use crate::experience::bus::ExperienceBus;
     use crate::experience::integration::event_subscriber::EventSubscriber;
     use crate::experience::integration::learning_coordinator::LearningCoordinator;
@@ -135,4 +136,5 @@ pub async fn run_learning_probes(
             trait_active
         );
     }
+    Ok(())
 }

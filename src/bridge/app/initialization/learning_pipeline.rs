@@ -4,7 +4,8 @@
 /// Verify the Learning Pipeline coordinator at startup.
 /// Exercises start_from_input, advance_stage, get, get_by_stage, stats,
 /// and cleanup so the learning pipeline stays live rather than dead code.
-pub async fn verify_learning_pipeline() {
+/// Returns `Ok(())` on success, `Err(msg)` on failure.
+pub async fn verify_learning_pipeline() -> std::result::Result<(), String> {
     use crate::learning::pipeline::{LearningPipeline, PipelineStage};
 
     let mut pipeline = LearningPipeline::new(100);
@@ -29,4 +30,5 @@ pub async fn verify_learning_pipeline() {
         stats.total_records,
         stage_display,
     );
+    Ok(())
 }

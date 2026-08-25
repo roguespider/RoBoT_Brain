@@ -12,7 +12,10 @@ pub async fn setup_policy_engine(policy_engine: &crate::planner::PolicyEngine) {
 /// Exercises add_rule/list_rules/disable_rule/enable_rule/remove_rule so they
 /// remain live, and confirms the rule store is writable. Also exercises
 /// current_policy() and get_policy() package accessors.
-pub async fn verify_policy_management(policy_engine: &crate::planner::PolicyEngine) {
+/// Returns `Ok(())` on success, `Err(msg)` on failure.
+pub async fn verify_policy_management(
+    policy_engine: &crate::planner::PolicyEngine,
+) -> std::result::Result<(), String> {
     let probe = crate::planner::policy::PolicyRule {
         id: "diagnostics-probe".to_string(),
         name: "Diagnostics Probe".to_string(),
@@ -49,4 +52,5 @@ pub async fn verify_policy_management(policy_engine: &crate::planner::PolicyEngi
         package_snapshot.id == package_get.id
             && package_snapshot.rules.len() == package_get.rules.len(),
     );
+    Ok(())
 }
