@@ -4,7 +4,9 @@
 use crate::bridge::app::state::App;
 
 /// Send a diagnostic query through the ACP router to verify message routing.
-pub fn run_acp_health_check(app: &App) {
+///
+/// Returns `Err` if the router or registry cannot list agents.
+pub fn run_acp_health_check(app: &App) -> std::result::Result<(), String> {
     use crate::bridge::app::{
         acp_agent_count, acp_registry, acp_router, list_acp_agents, route_acp_message,
     };
@@ -23,13 +25,8 @@ pub fn run_acp_health_check(app: &App) {
         registry.count(),
         agent_count
     );
-    let agents = match list_acp_agents(app) {
-        Ok(agents) => agents,
-        Err(e) => {
-            tracing::warn!("ACP diagnostics: failed to list agents: {}", e);
-            return;
-        }
-    };
+    let agents = list_acp_agents(app)
+        .map_err(|e| format!("ACP diagnostics: failed to list agents: {}", e))?;
     for agent_id in &agents {
         tracing::info!("Registered ACP agent: {}", agent_id);
     }
@@ -65,4 +62,6 @@ pub fn run_acp_health_check(app: &App) {
         }
         Err(e) => tracing::warn!("ACP diagnostics health check failed: {}", e),
     }
+
+    Ok(())
 }

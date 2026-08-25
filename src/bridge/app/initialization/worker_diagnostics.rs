@@ -14,23 +14,22 @@ use crate::experience::worker_manager::WorkerManager;
 
 /// Exercise the targeted enqueue path and the manager-level completion path
 /// on an isolated worker manager.
-pub async fn run_worker_probes() {
+///
+/// Returns `Err` if the isolated database cannot be initialized.
+pub async fn run_worker_probes() -> std::result::Result<(), String> {
     // Isolated database in the OS temp directory: probe jobs are written to
     // their own robot_brain.db, never to the production database.
     let probe_dir = std::env::temp_dir().join(format!(
         "robot_brain_diagnostics_worker_{}",
         uuid::Uuid::new_v4()
     ));
-    let database = match SqliteDatabase::initialize_at(&probe_dir) {
-        Ok(db) => Arc::new(db),
-        Err(e) => {
-            tracing::warn!(
-                "Worker manager diagnostics skipped: isolated database init failed: {}",
-                e
-            );
-            return;
-        }
-    };
+    let database = SqliteDatabase::initialize_at(&probe_dir).map_err(|e| {
+        format!(
+            "Worker manager diagnostics: isolated database init failed: {}",
+            e
+        )
+    })?;
+    let database = Arc::new(database);
     let isolated_bus = Arc::new(ExperienceBus::new());
     let isolated_queue = Arc::new(Mutex::new(JobQueue::with_database(database)));
     let worker_manager = Arc::new(WorkerManager::new_with_queue(isolated_bus, isolated_queue));
@@ -67,4 +66,5 @@ pub async fn run_worker_probes() {
             e
         );
     }
+    Ok(())
 }

@@ -12,7 +12,8 @@ use crate::experience::reputation::score::Reputation;
 use crate::experience::types::reputation::{ReputationRecord, ReputationTarget};
 
 /// Verify reputation system APIs: ReputationAnalytics and ReputationRecord.
-pub fn verify_reputation_system(app: &App) {
+/// Returns `Ok(())` on success, `Err(msg)` on failure.
+pub fn verify_reputation_system(app: &App) -> std::result::Result<(), String> {
     // Exercise the shared personality surface so the App handle stays live.
     let personality_snapshot = app
         .personality
@@ -60,4 +61,5 @@ pub fn verify_reputation_system(app: &App) {
         record.observations,
         factor.factor
     );
+    Ok(())
 }

@@ -5,7 +5,8 @@
 /// Exercises create, update, list, list_by_status, get_supported,
 /// get_high_confidence, stats, and delete so the hypothesis subsystem
 /// stays live rather than dead code.
-pub async fn verify_hypothesis_manager() {
+/// Returns `Ok(())` on success, `Err(msg)` on failure.
+pub async fn verify_hypothesis_manager() -> std::result::Result<(), String> {
     use crate::learning::hypothesis::{
         EvidenceBuilder, EvidenceType, HypothesisManager, HypothesisStatus,
     };
@@ -60,4 +61,5 @@ pub async fn verify_hypothesis_manager() {
         stats.total_evidence,
         h_mut.confidence,
     );
+    Ok(())
 }

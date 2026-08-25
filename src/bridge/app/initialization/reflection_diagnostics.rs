@@ -10,7 +10,8 @@ use crate::experience::reflection::types::ReflectionType;
 use crate::experience::types::{Experience, ExperienceType};
 
 /// Verify ReflectionPipeline.analyze_patterns.
-pub async fn verify_reflection_pipeline(app: &App) {
+/// Returns `Ok(())` on success, `Err(msg)` on failure.
+pub async fn verify_reflection_pipeline(app: &App) -> std::result::Result<(), String> {
     let pipeline = &app.reflection_pipeline;
 
     let probe_experiences: Vec<Experience> = (0..3)
@@ -32,10 +33,12 @@ pub async fn verify_reflection_pipeline(app: &App) {
         "ReflectionPipeline.analyze_patterns verified: patterns={}",
         pattern_count
     );
+    Ok(())
 }
 
 /// Verify ReflectionEngine list_by_type/list_validated/search.
-pub async fn verify_reflection_engine(app: &App) {
+/// Returns `Ok(())` on success, `Err(msg)` on failure.
+pub async fn verify_reflection_engine(app: &App) -> std::result::Result<(), String> {
     let engine = &app.mcp_context.reflection;
 
     let by_type = engine.list_by_type(ReflectionType::General).await.len();
@@ -53,4 +56,5 @@ pub async fn verify_reflection_engine(app: &App) {
         by_status,
         searched
     );
+    Ok(())
 }

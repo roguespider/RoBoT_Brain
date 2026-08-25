@@ -1,15 +1,37 @@
 // src/bridge/app/initialization/experience_recorder_diagnostics.rs
-//! ExperienceRecorder convenience helper probes (P2-001C).
+//! ExperienceRecorder convenience probes (P2-001C).
 //!
-//! Exercises ExperienceRecorder::success and ::failure so these production
-//! convenience methods stay live without running at production startup.
+//! Exercises ExperienceRecorder::success and ::failure against an isolated
+//! temporary database so probe experiences never reach the production store.
 
-use crate::bridge::app::state::App;
+use std::sync::Arc;
+
+use crate::database::sqlite::SqliteDatabase;
+use crate::experience::encounter_recorder::ExperienceRecorder;
 use crate::experience::types::ExperienceType;
 
-/// Verify ExperienceRecorder success/failure convenience helpers.
-pub fn verify_experience_recorder(app: &App) {
-    let recorder = &app.experience_recorder;
+/// Verify ExperienceRecorder success/failure convenience helpers against an
+/// isolated temporary database.
+/// Returns `Ok(())` on success, `Err(msg)` on failure.
+pub fn verify_experience_recorder() -> std::result::Result<(), String> {
+    // Isolated database in the OS temp directory: probe experiences are written
+    // to their own robot_brain.db, never to the production database.
+    let probe_dir = std::env::temp_dir().join(format!(
+        "robot_brain_diagnostics_experience_recorder_{}",
+        uuid::Uuid::new_v4()
+    ));
+    let database = match SqliteDatabase::initialize_at(&probe_dir) {
+        Ok(db) => Arc::new(db),
+        Err(e) => {
+            tracing::warn!(
+                "ExperienceRecorder diagnostics skipped: isolated database init failed: {}",
+                e
+            );
+            return Err(format!("ExperienceRecorder diagnostics init failed: {}", e));
+        }
+    };
+
+    let recorder = ExperienceRecorder::new(database);
 
     let success_result = recorder.success(
         ExperienceType::System,
@@ -28,4 +50,14 @@ pub fn verify_experience_recorder(app: &App) {
         success_result.is_ok(),
         failure_result.is_ok()
     );
+
+    // Remove the isolated probe database directory.
+    if let Err(e) = std::fs::remove_dir_all(&probe_dir) {
+        tracing::warn!(
+            "ExperienceRecorder diagnostics cleanup failed for {:?}: {}",
+            probe_dir,
+            e
+        );
+    }
+    Ok(())
 }

@@ -1210,6 +1210,18 @@ async fn main() -> anyhow::Result<()> {
         }
     }
 
+    // P2-001B: Test the `robot diagnose` CLI entry point.
+    let diagnose_result = tests::cli_tools::run_diagnose_test().await;
+    if diagnose_result.success {
+        stats.passed += 1;
+    } else {
+        stats.failed += 1;
+        println!(
+            "  [DIAGNOSE FAIL] {}",
+            diagnose_result.output.chars().take(300).collect::<String>()
+        );
+    }
+
     // Print unified summary table
     teeprintln!("\n{}", "=".repeat(120));
     teeprintln!("{}", "=".repeat(120));

@@ -5,7 +5,8 @@
 /// Exercises create_lineage, add_evidence, add_observation, add_refinement,
 /// add_contradiction, add_confirmation, resolve_contradiction, mark_superseded,
 /// and all query/summary paths so the lineage subsystem stays live.
-pub async fn verify_lineage_tracker() {
+/// Returns `Ok(())` on success, `Err(msg)` on failure.
+pub async fn verify_lineage_tracker() -> std::result::Result<(), String> {
     use crate::learning::lineage::{
         Confirmation, ConfirmationSource, Contradiction, ContradictionResolution, EvidenceRef,
         EvidenceType, LineageTracker, MemoryLineage, ObservationOutcome, ObservationRef,
@@ -116,4 +117,5 @@ pub async fn verify_lineage_tracker() {
         penalty,
         lin_conf,
     );
+    Ok(())
 }

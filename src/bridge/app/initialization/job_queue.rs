@@ -12,7 +12,9 @@ use crate::experience::queue::JobQueue;
 /// Verify the durable JobQueue lifecycle against an isolated database.
 /// Push probe jobs, confirm they persist, then restore from a fresh instance.
 /// The live production queue is never touched.
-pub(crate) fn verify_job_queue() {
+///
+/// Returns `true` if all operations succeed, `false` if database init fails.
+pub(crate) fn verify_job_queue() -> bool {
     // Isolated database in the OS temp directory: probe rows are written to
     // their own robot_brain.db, never to the production database.
     let probe_dir = std::env::temp_dir().join(format!(
@@ -26,7 +28,7 @@ pub(crate) fn verify_job_queue() {
                 "JobQueue diagnostics skipped: isolated database init failed: {}",
                 e
             );
-            return;
+            return false;
         }
     };
 
@@ -74,4 +76,5 @@ pub(crate) fn verify_job_queue() {
             e
         );
     }
+    true
 }

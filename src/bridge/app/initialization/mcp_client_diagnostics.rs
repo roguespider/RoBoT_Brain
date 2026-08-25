@@ -6,20 +6,25 @@ use crate::bridge::app::state::App;
 /// Exercise MCP client connection-management methods. With no servers
 /// connected these are safe no-ops, but they keep disconnect,
 /// disconnect_all and refresh_tools live.
-pub async fn run_mcp_client_probe(app: &App) {
+///
+/// Returns `Err` if disconnect or disconnect_all operations fail.
+pub async fn run_mcp_client_probe(app: &App) -> std::result::Result<(), String> {
     let db_path = app.mcp_context.database.path().display().to_string();
     tracing::debug!("MCP client diagnostics: database at {}", db_path);
     let mcp_client = match crate::bridge::tools::agent::get_mcp_client() {
         Some(client) => client,
         None => {
             tracing::warn!("MCP client diagnostics skipped: client not initialized");
-            return;
+            return Ok(());
         }
     };
-    let disconnected = mcp_client
+    let disconnect_ok = mcp_client
         .disconnect("diagnostics-probe-server")
         .await
         .unwrap_or(false);
+    if !disconnect_ok {
+        return Err("MCP client disconnect failed".to_string());
+    }
     let cleared = mcp_client.disconnect_all().await;
     let refresh_ok = mcp_client
         .refresh_tools("diagnostics-probe-server")
@@ -27,8 +32,9 @@ pub async fn run_mcp_client_probe(app: &App) {
         .is_ok();
     tracing::info!(
         "MCP client management verified: disconnect={} disconnect_all={} refresh_tools_ok={}",
-        disconnected,
+        disconnect_ok,
         cleared,
         refresh_ok
     );
+    Ok(())
 }

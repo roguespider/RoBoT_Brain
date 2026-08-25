@@ -2,7 +2,8 @@
 //! Learning WorkingMemory lifecycle probe at startup
 
 /// Verify the Learning WorkingMemory lifecycle at startup.
-pub(crate) async fn verify_working_memory() {
+/// Returns `Ok(())` on success, `Err(msg)` on failure.
+pub(crate) async fn verify_working_memory() -> std::result::Result<(), String> {
     use crate::learning::working_memory::{
         MemoryItemType, WorkingMemory, WorkingMemoryItem,
         memory_state::{MemoryState, StateTransition, StateTransitionRecord},
@@ -140,4 +141,5 @@ pub(crate) async fn verify_working_memory() {
         stats.total_items,
         conf
     );
+    Ok(())
 }

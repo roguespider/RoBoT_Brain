@@ -31,38 +31,30 @@ impl CliTestResult {
 /// Run a CLI command and return the result
 pub fn run_cli_command(args: &[&str]) -> CliTestResult {
     let server_path = find_robot_brain();
-    
-    let output = Command::new(&server_path)
-        .args(args)
-        .output();
-    
+
+    let output = Command::new(&server_path).args(args).output();
+
     match output {
         Ok(out) => {
             let stdout = String::from_utf8_lossy(&out.stdout).to_string();
             let stderr = String::from_utf8_lossy(&out.stderr).to_string();
-            
+
             if out.status.success() {
                 CliTestResult::new(
                     "cli_command",
                     true,
                     stdout,
-                    if stderr.is_empty() { None } else { Some(stderr) },
+                    if stderr.is_empty() {
+                        None
+                    } else {
+                        Some(stderr)
+                    },
                 )
             } else {
-                CliTestResult::new(
-                    "cli_command",
-                    false,
-                    stdout,
-                    Some(stderr),
-                )
+                CliTestResult::new("cli_command", false, stdout, Some(stderr))
             }
         }
-        Err(e) => CliTestResult::new(
-            "cli_command",
-            false,
-            String::new(),
-            Some(e.to_string()),
-        ),
+        Err(e) => CliTestResult::new("cli_command", false, String::new(), Some(e.to_string())),
     }
 }
 
@@ -82,95 +74,166 @@ fn test_command(test_name: &str, args: &[&str]) -> CliTestResult {
 }
 
 /// Run all CLI-based tool tests
-/// 
+///
 /// This is the NEW tool system that replaces MCP protocol testing.
 /// Each test category corresponds to a CLI command or set of commands.
 pub async fn run_cli_tool_tests() -> Vec<CliTestResult> {
     let mut results = Vec::new();
-    
+
     println!("\n{}", "=".repeat(80));
     println!("NEW TOOL SYSTEM - CLI-BASED TESTS");
     println!("Testing via CLI commands (the NEW system that replaced MCP tools/call)");
     println!("{}", "=".repeat(80));
-    
+
     // ========================================
     // MEMORY TOOL TESTS
     // ========================================
     println!("\n[INFO] MEMORY TOOL TESTS:");
     println!("{}", "-".repeat(40));
-    
+
     // Test memory list
     let result = test_command("memory.list", &["memory", "list", "10"]);
-    println!("  memory list: {}", if result.success { "[OK] PASS" } else { "[FAIL] FAIL" });
+    println!(
+        "  memory list: {}",
+        if result.success {
+            "[OK] PASS"
+        } else {
+            "[FAIL] FAIL"
+        }
+    );
     results.push(result);
-    
+
     // Test memory stats
     let result = test_command("memory.stats", &["memory", "stats"]);
-    println!("  memory stats: {}", if result.success { "[OK] PASS" } else { "[FAIL] FAIL" });
+    println!(
+        "  memory stats: {}",
+        if result.success {
+            "[OK] PASS"
+        } else {
+            "[FAIL] FAIL"
+        }
+    );
     results.push(result);
-    
+
     // Test memory search
     let result = test_command("memory.search", &["memory", "search", "test"]);
-    println!("  memory search: {}", if result.success { "[OK] PASS" } else { "[FAIL] FAIL" });
+    println!(
+        "  memory search: {}",
+        if result.success {
+            "[OK] PASS"
+        } else {
+            "[FAIL] FAIL"
+        }
+    );
     results.push(result);
-    
+
     // Test memory add
-    let result = test_command("memory.add", &["memory", "add", "Test memory from test_suite"]);
-    println!("  memory add: {}", if result.success { "[OK] PASS" } else { "[FAIL] FAIL" });
+    let result = test_command(
+        "memory.add",
+        &["memory", "add", "Test memory from test_suite"],
+    );
+    println!(
+        "  memory add: {}",
+        if result.success {
+            "[OK] PASS"
+        } else {
+            "[FAIL] FAIL"
+        }
+    );
     results.push(result);
-    
+
     // ========================================
     // SYSTEM TOOL TESTS
     // ========================================
     println!("\n[INFO] SYSTEM TOOL TESTS:");
     println!("{}", "-".repeat(40));
-    
+
     // Test status
     let result = test_command("system.status", &["status"]);
-    println!("  system status: {}", if result.success { "[OK] PASS" } else { "[FAIL] FAIL" });
+    println!(
+        "  system status: {}",
+        if result.success {
+            "[OK] PASS"
+        } else {
+            "[FAIL] FAIL"
+        }
+    );
     results.push(result);
-    
+
     // Test experience
     let result = test_command("system.experience", &["experience"]);
-    println!("  system experience: {}", if result.success { "[OK] PASS" } else { "[FAIL] FAIL" });
+    println!(
+        "  system experience: {}",
+        if result.success {
+            "[OK] PASS"
+        } else {
+            "[FAIL] FAIL"
+        }
+    );
     results.push(result);
-    
+
     // Test config
     let result = test_command("system.config", &["config"]);
-    println!("  system config: {}", if result.success { "[OK] PASS" } else { "[FAIL] FAIL" });
+    println!(
+        "  system config: {}",
+        if result.success {
+            "[OK] PASS"
+        } else {
+            "[FAIL] FAIL"
+        }
+    );
     results.push(result);
-    
+
     // ========================================
     // DATABASE TOOL TESTS
     // ========================================
     println!("\n[INFO] DATABASE TOOL TESTS:");
     println!("{}", "-".repeat(40));
-    
+
     // Test init
     let result = test_command("db.init", &["init"]);
-    println!("  db init: {}", if result.success { "[OK] PASS" } else { "[FAIL] FAIL" });
+    println!(
+        "  db init: {}",
+        if result.success {
+            "[OK] PASS"
+        } else {
+            "[FAIL] FAIL"
+        }
+    );
     results.push(result);
-    
+
     // Test migrate
     let result = test_command("db.migrate", &["migrate"]);
-    println!("  db migrate: {}", if result.success { "[OK] PASS" } else { "[FAIL] FAIL" });
+    println!(
+        "  db migrate: {}",
+        if result.success {
+            "[OK] PASS"
+        } else {
+            "[FAIL] FAIL"
+        }
+    );
     results.push(result);
-    
+
     // ========================================
     // Print Summary
     // ========================================
     let passed = results.iter().filter(|r| r.success).count();
     let total = results.len();
-    
+
     println!("\n{}", "=".repeat(80));
     println!("CLI TOOL TEST SUMMARY");
     println!("{}", "=".repeat(80));
-    
+
     for result in &results {
         let status = if result.success { "[OK]" } else { "[FAIL]" };
         let test_type = result.test_name.split('.').next().unwrap_or("unknown");
-        println!("  {:12} {:12} {:20} {}", status, test_type, result.test_name, 
-            if result.success { "PASS" } else { "FAIL" });
+        println!(
+            "  {:12} {:12} {:20} {}",
+            status,
+            test_type,
+            result.test_name,
+            if result.success { "PASS" } else { "FAIL" }
+        );
         if !result.success {
             if let Some(err) = &result.error {
                 println!("    Error: {}", err);
@@ -181,9 +244,77 @@ pub async fn run_cli_tool_tests() -> Vec<CliTestResult> {
             }
         }
     }
-    
-    println!("\n  Total: {}/{} passed ({:.0}%)", passed, total, 
-        if total > 0 { (passed as f64 / total as f64) * 100.0 } else { 0.0 });
-    
+
+    println!(
+        "\n  Total: {}/{} passed ({:.0}%)",
+        passed,
+        total,
+        if total > 0 {
+            (passed as f64 / total as f64) * 100.0
+        } else {
+            0.0
+        }
+    );
+
     results
+}
+
+/// Test the `robot diagnose` CLI entry point (P2-001B).
+///
+/// Spawns `robot_brain diagnose` as a subprocess, asserts exit 0, and checks
+/// that the diagnostic output contains the expected subsystem messages.
+pub async fn run_diagnose_test() -> CliTestResult {
+    let server_path = find_robot_brain();
+
+    println!("\n[INFO] DIAGNOSE CLI TEST:");
+    println!("  Spawning '{} diagnose'...", server_path);
+
+    let output = std::process::Command::new(&server_path)
+        .arg("diagnose")
+        .output();
+
+    match output {
+        Ok(out) => {
+            let stdout = String::from_utf8_lossy(&out.stdout).to_string();
+            let stderr = String::from_utf8_lossy(&out.stderr).to_string();
+            let combined = format!("{}{}", stdout, stderr);
+
+            if !out.status.success() {
+                CliTestResult::new(
+                    "diagnose",
+                    false,
+                    combined.clone(),
+                    Some(format!(
+                        "non-zero exit: {}\nstderr: {}",
+                        out.status,
+                        &stderr[..stderr.len().min(500)]
+                    )),
+                )
+            } else {
+                // Check that expected diagnostic subsystems appear in output
+                let expected_markers = [
+                    "Starting explicit subsystem diagnostics",
+                    "Subsystem diagnostics complete",
+                ];
+                let mut missing = Vec::new();
+                for marker in &expected_markers {
+                    if !combined.contains(marker) {
+                        missing.push(*marker);
+                    }
+                }
+
+                if !missing.is_empty() {
+                    CliTestResult::new(
+                        "diagnose",
+                        false,
+                        combined.clone(),
+                        Some(format!("Missing expected markers: {}", missing.join(", "))),
+                    )
+                } else {
+                    CliTestResult::new("diagnose", true, combined, None)
+                }
+            }
+        }
+        Err(e) => CliTestResult::new("diagnose", false, String::new(), Some(e.to_string())),
+    }
 }

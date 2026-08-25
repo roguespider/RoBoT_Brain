@@ -13,7 +13,8 @@ use crate::experience::types::{Experience as ProbeExperience, ExperienceType};
 
 /// Verify HypothesisPipeline lifecycle (process, add_supporting_evidence,
 /// list_active, list_validated, graph_stats, archive_old).
-pub async fn verify_hypothesis_pipeline(app: &App) {
+/// Returns `Ok(())` on success, `Err(msg)` on failure.
+pub async fn verify_hypothesis_pipeline(app: &App) -> std::result::Result<(), String> {
     let pipeline = HypothesisPipeline::with_config(
         HypothesisPipelineConfig::default(),
         app.hypothesis_engine
@@ -74,4 +75,5 @@ pub async fn verify_hypothesis_pipeline(app: &App) {
             archived
         );
     }
+    Ok(())
 }
