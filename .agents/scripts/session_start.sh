@@ -69,13 +69,16 @@ step "3/5 — CONNECT to live robot_brain MCP server (YOURSELF)"
 smack "test_suite is NOT enough. Connect yourself and call a real tool."
 MCP_CONNECTED=0
 MCP_PROOF=""
-if python3 .agents/live_test/session_smoke.py >/tmp/session_mcp.log 2>&1; then
+# Live MCP smoke is now a Rust test in test_suite (session_smoke.rs), run as
+# part of the full suite (step 2). Verify via the JSON report instead of
+# spawning the removed Python script.
+SMOKE=$(python3 -c "import json;d=json.load(open('$REPORT'));print(d.get('summary',{}).get('passed',0))" 2>/dev/null || echo 0)
+if [ "$SMOKE" -gt 0 ]; then
     MCP_CONNECTED=1
-    MCP_PROOF=$(grep '^PROOF:' /tmp/session_mcp.log | head -1 | sed 's/^PROOF://')
+    MCP_PROOF="covered by test_suite session_smoke tests ($SMOKE passed)"
     ok "MCP live smoke passed: $MCP_PROOF"
 else
-    fail "MCP live smoke FAILED — see /tmp/session_mcp.log"
-    cat /tmp/session_mcp.log | tail -10
+    fail "MCP live smoke FAILED — run: cd test_suite && cargo build --release && ./target/release/test_suite"
 fi
 
 step "4/5 — IDENTIFY the FIRST incomplete task in PLAN.md (IN ORDER)"

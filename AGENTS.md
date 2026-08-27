@@ -34,6 +34,17 @@ description. Verify each step by inspecting the actual codebase state.**
   the relevant metric is actually 0 (not just "I think I fixed it").
 - "It compiles on my machine" is not verification. The gate is the verifier.
 
+### Status Claims Require Same-Day Gate Run (MANDATORY)
+
+Any status claim in README, PLAN.md, CHANGELOG.md, or `.agents/*.md` that
+references test counts, warning counts, or completeness must be backed by
+a same-day gate run. If the gate was not run this session, soften the claim:
+- Instead of "0 warnings" → "pending gate verification"
+- Instead of "148/148 tests pass" → "148 tests (unverified, pending gate)"
+- Never hardcode gate counts in task notes without a date
+
+The single source of truth is `test_suite/test_suite_report.json`.
+
 ### Never Separately Build robot_brain (MANDATORY)
 
 **test_suite auto-builds robot_brain. Never run
@@ -147,7 +158,6 @@ test_suite — connect yourself as a client.
 **Two ways to connect (do NOT hand-write a new MCP client):**
 
 1. **`test_suite --probe TOOL`** — Rust, built into the test suite. Introspects a tool's live `inputSchema` (required/optional params). Fastest way to discover what a tool expects.
-2. **`.agents/live_test/mcp_client.py`** — stdlib-only Python `RobotBrainClient` for ad-hoc calls. Auto-detects the binary, auto-handles the workflow gate.
 
 ```bash
 # Schema introspection (Rust) — discover a tool's required fields:
@@ -155,23 +165,17 @@ cd test_suite && ./target/release/test_suite --probe register_agent
 
 # Quick smoke check — list all server tools + required fields:
 cd test_suite && ./target/release/test_suite --list
-
-# Ad-hoc tool calls via the reusable Python RobotBrainClient:
-#   from mcp_client import RobotBrainClient
-#   with RobotBrainClient() as c:
-#       c.init()  # initialize + workflow gate (get_workflow -> search_memory)
-#       r = c.call("store_memory", {"content": "hi", "memory_type": "note"})
 ```
 
 The `robot-brain` skill (`.agents/skills/robot-brain/skill.md`) documents the tool catalog and the workflow gate. Steps after a successful build:
 1. Invoke the `robot-brain` skill
-2. Run `test_suite` (full suite) or `test_suite --probe TOOL` (schema lookup) or use `RobotBrainClient` for targeted calls
+2. Run `test_suite` (full suite) or `test_suite --probe TOOL` (schema lookup) for targeted verification
 3. Verify key tools: `store_memory`, `search_memory`, `list_memories`, `create_plan`, `list_plans`, `create_workflow`, `start_workflow`, `query_knowledge`, `record_experience`
 4. ACP tools: `route_acp_message`, `register_agent`, `list_acp_agents` (note: `list_agents` does not exist — the real tool is `list_acp_agents`)
 5. Discovery: `test_suite --list` confirms all tools are available
 6. Report which tools work and which fail
 
-**Workflow gate (required before any substantive tool call):** the server returns `WORKFLOW_NOT_RETRIEVED` until `get_workflow` is called, then `MEMORY_NOT_SEARCHED` until `search_memory` is called. `RobotBrainClient.init()` handles both automatically.
+**Workflow gate (required before any substantive tool call):** the server returns `WORKFLOW_NOT_RETRIEVED` until `get_workflow` is called, then `MEMORY_NOT_SEARCHED` until `search_memory` is called. The Rust `TestMcpClient::new()` in `test_suite/src/main.rs` handles both automatically.
 
 This direct testing makes it easier to identify working vs. broken functionality immediately after compilation, rather than only seeing aggregate pass/fail from the test suite.
 
@@ -314,21 +318,14 @@ every session should know:
 - **Validation choice for new registry tests:** use `IsSuccess(None)` for tools
   that succeed on a default/fake call, and `IsSuccess(Some("false"))` for tools
   that return an MCP error on a fake id. To pick correctly, probe the tool with
-  a fake id via `RobotBrainClient` and check `is_error`.
+  a fake id via `test_suite --probe TOOL` and check `is_error`.
 - **Probing tip:** extract all tool schemas at once from the live server:
-  ```python
-  from mcp_client import RobotBrainClient
-  with RobotBrainClient() as c:
-      c.init()
-      for t in c.list_tools():
-          print(t['name'], t.get('inputSchema',{}).get('required',[]))
+  ```bash
+  cd test_suite && ./target/release/test_suite --list
   ```
-- **Current gate state (2026-08-12):** RED on warnings. 145/145 tests pass,
-  0 code issues, 0 untested, 0 phantom, but **67 compiler warnings**
-  (dead-code `never used`/`never read`, `collapsible_if`, async-fn
-  simplification, `module_inception`, `too_many_arguments`). The warning count
-  is the only gate blocker. See `.agents/PLAN.md` "Verified state" for the
-  live snapshot. NOTE: the 2026-08-11 "GREEN" note above was stale — always
+- **Current gate state: see `test_suite/test_suite_report.json`.** Any status
+  claim referencing test counts, warning counts, or completeness must be
+  verified by running the gate this session. Stale counts are common — always
   re-run the gate, never trust a prior "done/GREEN" claim (Verify, Don't Trust).
 
 ## Verifying task status (MANDATORY)

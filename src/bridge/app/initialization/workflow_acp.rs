@@ -6,6 +6,7 @@ use std::sync::Arc;
 use crate::bridge::acp::{AcpRegistry, AcpRouter};
 use crate::experience::coordinator::ExperienceCoordinator;
 use crate::experience::metrics::MetricsCollector;
+use crate::memory::retrieval::MemoryRetrieval;
 use crate::planner::{Planner, PolicyEngine};
 use crate::workflows::engine::WorkflowEngine;
 
@@ -20,6 +21,7 @@ pub fn setup_planner_workflow_acp(
     coordinator: &Arc<ExperienceCoordinator>,
     policy_engine: &Arc<PolicyEngine>,
     shared_personality: &Arc<std::sync::Mutex<crate::personality::Personality>>,
+    memory_retrieval: Option<Arc<MemoryRetrieval>>,
 ) -> (
     Arc<Planner>,
     Arc<WorkflowEngine>,
@@ -45,14 +47,15 @@ pub fn setup_planner_workflow_acp(
     planner.set_policy_engine(policy_engine.clone());
     let planner = Arc::new(planner);
 
-    // Create workflow engine with database access and coordinator for event integration
-    // This ensures workflow experiences flow to WorkerManager and EventSubscriber
+    // Create workflow engine with database access, coordinator for event integration,
+    // and memory retrieval for automatic context enrichment
     let workflow_engine = Arc::new(WorkflowEngine::with_database_and_coordinator(
         metrics.clone(),
         database.clone(),
         coordinator.clone(),
+        memory_retrieval,
     ));
-    tracing::info!("Workflow engine initialized with coordinator");
+    tracing::info!("Workflow engine initialized with coordinator and memory retrieval");
 
     // Create ACP router and registry
     let acp_registry = Arc::new(AcpRegistry::new());

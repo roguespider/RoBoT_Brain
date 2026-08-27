@@ -3,10 +3,10 @@
 
 use std::collections::HashMap;
 
-use crate::experience::types::OutcomeKind;
 use crate::bridge::tools::ToolOutput;
-use crate::workflows::engine::types::WorkflowEngine;
+use crate::experience::types::OutcomeKind;
 use crate::workflows::engine::SKIP_MEMORY_READ;
+use crate::workflows::engine::types::WorkflowEngine;
 
 use crate::workflows::engine::experience::{
     build_experience_description, map_action_to_experience_type,
@@ -24,33 +24,55 @@ impl WorkflowEngine {
         action: &str,
         params: &HashMap<String, String>,
     ) -> Option<ToolOutput> {
-        // Check if coordinator is available for memory retrieval
-        if self.coordinator.is_none() {
-            tracing::trace!(
-                "[Memory] No coordinator available for action '{}', skipping memory read",
-                action
-            );
+        // Check skip list first (P4-002C)
+        if Self::should_skip_memory_read(action) {
+            tracing::trace!("[Memory] Skipping memory read for action '{}'", action);
             return None;
         }
 
-        // Extract any memory ID from params that might indicate what to read
-        let memory_hint = params.get("memory_id").or_else(|| params.get("memory_context"));
-        
-        if let Some(hint) = memory_hint {
-            tracing::debug!(
-                "[Memory] Would read memory hint '{}' before action '{}'",
-                hint,
+        // Use memory_retrieval if available (P4-002A-3)
+        if let Some(retrieval) = &self.memory_retrieval {
+            // Build a search query from the action and params
+            let query = action.split('_').next().unwrap_or(action).to_lowercase();
+
+            // Retrieve relevant memories with a default limit of 10 (P4-002B)
+            // Params are folded into the query so user-supplied context
+            // (e.g. a "query" parameter) sharpens retrieval instead of being ignored.
+            let query = if let Some(q) = params.get("query")
+                && !q.is_empty()
+            {
+                format!("{} {}", query, q.to_lowercase())
+            } else {
+                query
+            };
+            let results = retrieval.retrieve(&query).await;
+
+            if !results.is_empty() {
+                tracing::info!(
+                    "[Memory] Found {} relevant memories before action '{}'",
+                    results.len(),
+                    action
+                );
+
+                // Return memories as ToolOutput for the workflow executor to use
+                return Some(ToolOutput::success(serde_json::json!({
+                    "memories": results
+                        .iter()
+                        .map(|r| serde_json::json!({
+                            "id": r.item.id,
+                            "content": r.item.content,
+                            "relevance_score": r.relevance_score,
+                            "memory_type": r.item.memory_type.to_string(),
+                        }))
+                        .collect::<Vec<_>>(),
+                })));
+            }
+        } else {
+            tracing::trace!(
+                "[Memory] No memory_retrieval available for action '{}', skipping memory read",
                 action
             );
-            // Memory retrieval integration pending - coordinator not fully connected to memory system
         }
-
-        // Log the action context for debugging
-        tracing::trace!(
-            "[Memory] Checking memory context for action '{}' with {} parameters",
-            action,
-            params.len()
-        );
 
         None
     }
@@ -109,7 +131,9 @@ impl WorkflowEngine {
         };
 
         // Use the shared coordinator - events will flow to WorkerManager and EventSubscriber
-        match crate::bridge::tools::experience::execute_record_experience(input, coordinator, db).await {
+        match crate::bridge::tools::experience::execute_record_experience(input, coordinator, db)
+            .await
+        {
             Ok(_) => {
                 tracing::debug!(
                     "[Experience] Recorded for future reflection/curation: action='{}'",

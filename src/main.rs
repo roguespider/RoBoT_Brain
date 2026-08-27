@@ -10,6 +10,7 @@ mod learning;
 mod memory;
 mod personality;
 mod planner;
+
 mod skills;
 mod workflows;
 mod world_model;

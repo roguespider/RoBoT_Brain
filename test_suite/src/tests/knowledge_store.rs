@@ -5,14 +5,15 @@
 //! `get_mature` directly on the in-memory store. test_suite cannot import
 //! robot_brain source, so the behavior is re-expressed through the public MCP
 //! surface that invokes those exact methods:
+//!
 //!   - `add_knowledge` calls `KnowledgeStore::add(item)` and returns the id.
 //!   - `query_knowledge` retrieves via `get_all`/`get_by_type` then applies
 //!     query filters (text match + min_confidence), so an added item is
 //!     observable by searching its statement text (test_add_and_get).
-//!   - `get_knowledge_stats` reports `mature` count (items with confidence
-//!     >= 0.7 AND status Active, via `is_mature`), so test_get_mature is
-//!     observable: add a low-conf (0.3) + high-conf (0.8) item, assert only
-//!     the high-conf one is mature.
+//!   - `get_knowledge_stats` reports the mature count (items with confidence
+//!     of at least 0.7 AND status Active, via `is_mature`), so test_get_mature
+//!     is observable: add a low-confidence (0.3) and a high-confidence (0.8)
+//!     item; only the high-conf one should be reported as mature.
 
 use crate::TestMcpClient;
 use crate::TestStats;
@@ -77,15 +78,13 @@ pub async fn run_knowledge_store_tests(
         Ok(r) => payload_json(&r)
             .ok()
             .and_then(|v| {
-                v.get("items")
-                    .and_then(|r| r.as_array())
-                    .map(|arr| {
-                        arr.iter().any(|item| {
-                            item.get("statement")
-                                .and_then(|s| s.as_str())
-                                .is_some_and(|s| s.contains(&marker))
-                        })
+                v.get("items").and_then(|r| r.as_array()).map(|arr| {
+                    arr.iter().any(|item| {
+                        item.get("statement")
+                            .and_then(|s| s.as_str())
+                            .is_some_and(|s| s.contains(&marker))
                     })
+                })
             })
             .unwrap_or(false),
         Err(e) => {
@@ -95,10 +94,15 @@ pub async fn run_knowledge_store_tests(
         }
     };
     if found {
-        crate::teeprintln!("  [OK] add_knowledge + query_knowledge: added item retrieved (add+get)");
+        crate::teeprintln!(
+            "  [OK] add_knowledge + query_knowledge: added item retrieved (add+get)"
+        );
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  [FAIL] query_knowledge did not return the added item (marker={})", marker);
+        crate::teeprintln!(
+            "  [FAIL] query_knowledge did not return the added item (marker={})",
+            marker
+        );
         stats.failed += 1;
         return Ok(());
     }
@@ -158,15 +162,13 @@ pub async fn run_knowledge_store_tests(
         Ok(r) => payload_json(&r)
             .ok()
             .and_then(|v| {
-                v.get("items")
-                    .and_then(|r| r.as_array())
-                    .map(|arr| {
-                        arr.iter().any(|item| {
-                            item.get("statement")
-                                .and_then(|s| s.as_str())
-                                .is_some_and(|s| s.contains(&high_marker))
-                        })
+                v.get("items").and_then(|r| r.as_array()).map(|arr| {
+                    arr.iter().any(|item| {
+                        item.get("statement")
+                            .and_then(|s| s.as_str())
+                            .is_some_and(|s| s.contains(&high_marker))
                     })
+                })
             })
             .unwrap_or(false),
         Err(e) => {
@@ -189,15 +191,13 @@ pub async fn run_knowledge_store_tests(
         Ok(r) => payload_json(&r)
             .ok()
             .and_then(|v| {
-                v.get("items")
-                    .and_then(|r| r.as_array())
-                    .map(|arr| {
-                        !arr.iter().any(|item| {
-                            item.get("statement")
-                                .and_then(|s| s.as_str())
-                                .is_some_and(|s| s.contains(&low_marker))
-                        })
+                v.get("items").and_then(|r| r.as_array()).map(|arr| {
+                    !arr.iter().any(|item| {
+                        item.get("statement")
+                            .and_then(|s| s.as_str())
+                            .is_some_and(|s| s.contains(&low_marker))
                     })
+                })
             })
             .unwrap_or(false),
         Err(e) => {

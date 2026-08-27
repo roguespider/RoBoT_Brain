@@ -22,7 +22,7 @@ mcp_config = {
 }
 ```
 
-> **Prefer test_suite for verification.** The unified test suite at `test_suite/` has three modes: `test_suite` (full suite), `test_suite --list` (smoke check), and `test_suite --probe TOOL` (introspect a tool's live inputSchema). For ad-hoc calls, the repo also ships a stdlib-only Python `RobotBrainClient` at `.agents/live_test/mcp_client.py` that auto-detects the binary and auto-handles the workflow gate below. Do not hand-write a new client. See "Live Testing" below.
+> **Prefer test_suite for verification.** The unified test suite at `test_suite/` has three modes: `test_suite` (full suite, includes the session smoke proof), `test_suite --list` (smoke check), and `test_suite --probe TOOL` (introspect a tool's live inputSchema). Do not hand-write a new client.
 
 ## Workflow Gate (REQUIRED before any tool)
 
@@ -31,7 +31,7 @@ The server enforces a mandatory two-step gate before it accepts substantive tool
 1. Call `get_workflow` with `{"purpose": "general"}` — otherwise tools return `{"code": "WORKFLOW_NOT_RETRIEVED"}`.
 2. Call `search_memory` with a relevant query — otherwise tools return `{"code": "MEMORY_NOT_SEARCHED"}`.
 
-After both, all tools work normally. The `RobotBrainClient.init()` method does this automatically; if you wire the SDK `mcp_config` above, the LLM agent must be instructed to call `get_workflow` then `search_memory` first.
+After both, all tools work normally. The Rust `TestMcpClient::new()` in `test_suite/src/main.rs` does this automatically; if you wire the SDK `mcp_config` above, the LLM agent must be instructed to call `get_workflow` then `search_memory` first.
 
 ## Available Tools
 
@@ -148,15 +148,6 @@ cd test_suite && cargo build --release && ./target/release/test_suite
 ./target/release/test_suite --probe register_agent
 ```
 
-For ad-hoc tool calls, the Python `RobotBrainClient` (`.agents/live_test/mcp_client.py`) is still available:
 
-```bash
-# Ad-hoc tool calls via the reusable client:
-#   from mcp_client import RobotBrainClient
-#   with RobotBrainClient() as c:
-#       c.init()                       # handles initialize + workflow gate
-#       r = c.call("store_memory", {"content": "hi", "memory_type": "note"})
-#       print(r.text_json())
-```
 
 `mcp_client.py` is stdlib-only (no dependencies), auto-detects the binary via `ROBOT_BRAIN_PATH` or relative path, and runs the `get_workflow`→`search_memory` gate inside `init()`.

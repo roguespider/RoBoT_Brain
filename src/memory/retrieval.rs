@@ -44,7 +44,8 @@ impl MemoryRetrieval {
             .into_iter()
             .map(|item| RetrievalResult {
                 relevance_score: self.calculate_relevance(&item, query),
-                item,            })
+                item,
+            })
             .collect()
     }
 
@@ -55,12 +56,19 @@ impl MemoryRetrieval {
             .into_iter()
             .map(|item| RetrievalResult {
                 relevance_score: self.calculate_relevance(&item, query),
-                item,            })
+                item,
+            })
             .collect()
     }
 
-    /// Unified retrieval across all memory layers
+    /// Unified retrieval across all memory layers (default limit: 10).
+    /// Call with `retrieve(query)` to get top 10 results by relevance.
     pub async fn retrieve(&self, query: &str) -> Vec<RetrievalResult> {
+        self.retrieve_with_limit(query, 10).await
+    }
+
+    /// Unified retrieval with explicit result limit.
+    pub async fn retrieve_with_limit(&self, query: &str, limit: usize) -> Vec<RetrievalResult> {
         let mut results = Vec::new();
 
         // Search working memory
@@ -77,6 +85,9 @@ impl MemoryRetrieval {
                 .partial_cmp(&a.relevance_score)
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
+
+        // Apply limit to prevent context overflow (P4-002B)
+        results.truncate(limit);
 
         results
     }
@@ -104,7 +115,7 @@ impl MemoryRetrieval {
         // Word overlap score
         let query_words: Vec<&str> = query_lower.split_whitespace().collect();
         let content_words: Vec<&str> = content_lower.split_whitespace().collect();
-        
+
         let mut matches = 0.0;
         for qw in &query_words {
             for cw in &content_words {
@@ -153,20 +164,20 @@ impl MemoryRetrieval {
     /// Per Architecture §6.3: Moves high-value memories from Working to Permanent Memory
     pub async fn consolidate(&self) -> ConsolidationStats {
         let mut stats = ConsolidationStats::default();
-        
+
         // Get all items from working memory
         let working_items = self.working.get_all().await;
-        
+
         for item in working_items {
             // Evaluate for promotion based on criteria
             let should_promote = self.should_promote(&item).await;
-            
+
             if should_promote {
                 // Promote to permanent memory
                 let mut promoted_item = item.clone();
                 promoted_item.layer = MemoryLayer::Permanent;
                 promoted_item.last_consolidated = Some(Utc::now());
-                
+
                 self.permanent.store(promoted_item).await;
                 self.working.remove(&item.id).await;
                 stats.promoted += 1;
@@ -174,7 +185,7 @@ impl MemoryRetrieval {
                 stats.kept += 1;
             }
         }
-        
+
         stats
     }
 
@@ -184,26 +195,26 @@ impl MemoryRetrieval {
         if item.confidence >= 0.7 {
             return true;
         }
-        
+
         // Promote if high importance (>= 0.8)
         if item.importance >= 0.8 {
             return true;
         }
-        
+
         // Promote if frequently accessed (>= 5 accesses)
         if item.access_count >= 5 {
             return true;
         }
-        
+
         // Promote if tagged as knowledge
-        if item.tags.iter().any(|t| 
-            t == "knowledge" || 
-            t == "important" || 
-            t == "learned"
-        ) {
+        if item
+            .tags
+            .iter()
+            .any(|t| t == "knowledge" || t == "important" || t == "learned")
+        {
             return true;
         }
-        
+
         false
     }
 
@@ -212,10 +223,10 @@ impl MemoryRetrieval {
     pub async fn checkpoint_to_database(&self, db: &Arc<SqliteDatabase>) -> Result<()> {
         // Checkpoint working memory
         self.working.checkpoint_to_database(db).await?;
-        
-        // Checkpoint permanent memory  
+
+        // Checkpoint permanent memory
         self.permanent.checkpoint_to_database(db).await?;
-        
+
         Ok(())
     }
 }
