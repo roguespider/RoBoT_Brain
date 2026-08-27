@@ -85,10 +85,10 @@
 - **T1-10B-12** `bridge/acp/` (20 tests) -- DONE 2026-08-14.
 - **T1-10B-13** `bridge/mcp/client/mod.rs` (8) -- DONE 2026-08-14.
 - **T1-10B-P** `planner/engine/planner.rs` (1) -- DONE 2026-08-14.
-- **T1-10B-14** `experience/scorer.rs` (5) -- RECLASSIFIED to Group B. No `#[cfg(test)]` block exists — `EncounterScore`/`score_encounter`/`aggregate_encounter_scores` removed previously. `ExperienceScorer` is live (ExperienceObserver impl, used in coordinator). Gate: 145/145, 0 warnings, 0 issues.
+- **T1-10B-14** `experience/scorer.rs` (5) -- RECLASSIFIED to Group B. No `#[cfg(test)]` block exists — `EncounterScore`/`score_encounter`/`aggregate_encounter_scores` removed previously. `ExperienceScorer` is live (ExperienceObserver impl, used in coordinator).
 - **T1-10B-15** `learning/pipeline.rs` (3) -- DONE 2026-08-14.
 - **T1-10B-16** `experience/evolution/engine.rs` (3) -- RECLASSIFIED to Group B. EvolutionEngine has ZERO MCP callers; 3 tests exercise full lifecycle + trait + behavior methods. No code change — decision documented, tests remain.
-- **T1-10B-17** `bridge/tools/ingestor/semantic_chunker.rs` (3) -- DONE 2026-08-12. Migrated to `test_suite/src/tests/semantic_chunker.rs` (MCP-based). `src/` block deleted. Gate: 145/145, 0 warnings, 0 issues, 0 untested.
+- **T1-10B-17** `bridge/tools/ingestor/semantic_chunker.rs` (3) -- DONE 2026-08-12. Migrated to `test_suite/src/tests/semantic_chunker.rs` (MCP-based). `src/` block deleted.
 - **T1-10B-18** `memory/repository.rs` (1) -- RECLASSIFIED to Group B. SqliteMemoryRepository / MemoryRepository exist as dead code (ZERO MCP callers). No `#[cfg(test)]` block to remove — already cleaned. `from_path()` removed previously.
 - **T1-10B-19** `database/queries/memory.rs` (1) -- RECLASSIFIED to Group B. `delete_memories_by_string_ids` + its `#[cfg(test)]` block already removed. `archive_memory` uses `delete_memories` (by Uuid).
 - **T1-10B-20** `database/queries/embeddings.rs` (1) -- DONE 2026-08-12. Migrated to `test_suite/src/tests/embeddings.rs` (MCP-based). `src/` 2 `#[cfg(test)]` functions (`get_embedding`, `delete_embedding`) + test block deleted.
@@ -212,11 +212,9 @@
 # Gate Status Summary (2026-08-16)
 
 - **TIER 1 task work: DONE.** All 1B-1E tasks completed and verified.
-- **Coverage:** 145/145 tests, 0 untested, 0 phantom. All 134 MCP tools covered.
-- **Gate RED on:** `compiler_warnings=144` (too-many-arguments, async-fn, unused-vars),
-  `code_issues=12` (emoji, dead-code). Gate not green — 144 warnings remain.
-- **Next blocker:** Clear the 144 compiler warnings + 12 code issues (P1-001/P1-002).
-  See PLAN.md P1 sections.
+- **Coverage:** See `test_suite/test_suite_report.json`. Do not trust prior
+  counts — run the gate to verify.
+- **Next blocker:** See PLAN.md P1-001/P1-002.
 - **#[cfg(test)] removal: DONE (2026-08-22).** Verified zero `#[cfg(test)]` blocks remain
   in `robot_brain/src/`. See STARTUP.md rule below. Deleted `.agents/CFG_TEST_REMOVAL_NOTES.md`.
 - Remaining work (TIER 2+): Data Contracts, Context/Conversation engines, Execution/Tool engines, AI Runtime, Multimodal, GUI.

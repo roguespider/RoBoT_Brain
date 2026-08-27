@@ -6,10 +6,10 @@
 //! - Agent capabilities
 //! - Message types and conversations
 
-pub mod registry;
-pub mod router;
 pub mod agents;
 pub mod messages;
+pub mod registry;
+pub mod router;
 
 use crate::{TestMcpClient, TestStats};
 
@@ -66,13 +66,11 @@ pub struct AcpTestResults {
 
 impl AcpTestResults {
     pub fn total_passed(&self) -> usize {
-        self.registry.passed + self.router.passed + 
-        self.agents.passed + self.messages.passed
+        self.registry.passed + self.router.passed + self.agents.passed + self.messages.passed
     }
 
     pub fn total_failed(&self) -> usize {
-        self.registry.failed + self.router.failed + 
-        self.agents.failed + self.messages.failed
+        self.registry.failed + self.router.failed + self.agents.failed + self.messages.failed
     }
 }
 
@@ -81,31 +79,64 @@ fn print_acp_results(results: &AcpTestResults) {
     crate::teeprintln!("ACP TEST RESULTS SUMMARY");
     crate::teeprintln!("{}", "=".repeat(80));
 
+    // Status markers are conditional so a zero count never prints a [FAIL]
+    // label (which would train the reader to ignore real failures).
+    let marker = |n: usize| if n == 0 { "[OK]" } else { "[FAIL]" };
+
     // Registry results
     crate::teeprintln!("\n[INFO] Agent Registry:");
     crate::teeprintln!("  [OK] Passed: {}", results.registry.passed);
-    crate::teeprintln!("  [FAIL] Failed: {}", results.registry.failed);
-    crate::teeprintln!("  [INFO]  Registered Agents: {}", results.registry.agents_registered);
+    crate::teeprintln!(
+        "  {} Failed: {}",
+        marker(results.registry.failed),
+        results.registry.failed
+    );
+    crate::teeprintln!(
+        "  [INFO]  Registered Agents: {}",
+        results.registry.agents_registered
+    );
 
     // Router results
     crate::teeprintln!("\n[INFO] Message Router:");
     crate::teeprintln!("  [OK] Passed: {}", results.router.passed);
-    crate::teeprintln!("  [FAIL] Failed: {}", results.router.failed);
-    crate::teeprintln!("  [INFO]  Messages Routed: {}", results.router.messages_routed);
+    crate::teeprintln!(
+        "  {} Failed: {}",
+        marker(results.router.failed),
+        results.router.failed
+    );
+    crate::teeprintln!(
+        "  [INFO]  Messages Routed: {}",
+        results.router.messages_routed
+    );
 
     // Agent results
     crate::teeprintln!("\n[INFO] Agent Capabilities:");
     crate::teeprintln!("  [OK] Passed: {}", results.agents.passed);
-    crate::teeprintln!("  [FAIL] Failed: {}", results.agents.failed);
+    crate::teeprintln!(
+        "  {} Failed: {}",
+        marker(results.agents.failed),
+        results.agents.failed
+    );
     crate::teeprintln!("  [INFO]  Agents Tested: {}", results.agents.agents_tested);
 
     // Message results
     crate::teeprintln!("\n[INFO] Message Handling:");
     crate::teeprintln!("  [OK] Passed: {}", results.messages.passed);
-    crate::teeprintln!("  [FAIL] Failed: {}", results.messages.failed);
-    crate::teeprintln!("  [INFO]  Messages Handled: {}", results.messages.messages_handled);
+    crate::teeprintln!(
+        "  {} Failed: {}",
+        marker(results.messages.failed),
+        results.messages.failed
+    );
+    crate::teeprintln!(
+        "  [INFO]  Messages Handled: {}",
+        results.messages.messages_handled
+    );
 
-    crate::teeprintln!("\n[INFO] Overall:");
+    let total_failed = results.total_failed();
+    crate::teeprintln!(
+        "\n[{}] Overall:",
+        if total_failed == 0 { "OK" } else { "FAIL" }
+    );
     crate::teeprintln!("  Total Passed: {}", results.total_passed());
-    crate::teeprintln!("  Total Failed: {}", results.total_failed());
+    crate::teeprintln!("  Total Failed: {}", total_failed);
 }

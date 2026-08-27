@@ -1,11 +1,11 @@
 // src/workflows/engine/executor/execute.rs
 //! Workflow step execution
 
-use std::collections::HashMap;
 use anyhow::Result;
+use std::collections::HashMap;
 
-use crate::workflows::engine::types::{WorkflowEngine, WorkflowStatus};
 use crate::workflows::engine::executor::variables::replace_variables;
+use crate::workflows::engine::types::{WorkflowEngine, WorkflowStatus};
 
 impl WorkflowEngine {
     /// Execute workflow steps
@@ -37,18 +37,19 @@ impl WorkflowEngine {
             // Replace variables in parameters
             let params = replace_variables(&step.parameters, &variables, &step_results);
 
-            // Memory middleware: read before action
+            // Memory middleware: read before action (with error handling)
             let memory_context = self.read_memory_before_action(&step.action, &params).await;
 
             if let Some(ref ctx) = memory_context
                 && let Some(memories) = ctx.data.get("memories").and_then(|v| v.as_array())
-                    && !memories.is_empty() {
-                        tracing::info!(
-                            "Found {} relevant memories before action '{}'",
-                            memories.len(),
-                            step.action
-                        );
-                    }
+                && !memories.is_empty()
+            {
+                tracing::info!(
+                    "Found {} relevant memories before action '{}'",
+                    memories.len(),
+                    step.action
+                );
+            }
 
             // Execute the step action
             let result = self.execute_step_action(&step.action, &params).await;

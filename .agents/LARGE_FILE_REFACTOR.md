@@ -48,7 +48,8 @@ above this size are cohesive single-purpose modules that don't need splitting.
 ## Verify after a refactor
 
 ```bash
-cargo build --release -p robot_brain          # 0 warnings
-python3 test_suite     # 54/54
-cd test_suite && cargo build --release && ./target/release/test_suite  # 333/333
+cd test_suite && cargo build --release && ./target/release/test_suite --gate
 ```
+
+All four metrics must pass: `tests` (100%), `compiler_warnings` (0),
+`code_issues` (0), `untested_tools` (0). See AGENTS.md Quality Gate.

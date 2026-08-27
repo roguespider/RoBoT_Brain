@@ -8,8 +8,8 @@
 //! - Error handling
 
 pub mod protocol;
-pub mod tools;
 pub mod sessions;
+pub mod tools;
 
 use crate::{TestMcpClient, TestStats};
 
@@ -66,13 +66,17 @@ pub struct RmcpTestResults {
 
 impl RmcpTestResults {
     pub fn total_passed(&self) -> usize {
-        self.protocol.passed + self.tool_discovery.passed + 
-        self.tool_execution.passed + self.sessions.passed
+        self.protocol.passed
+            + self.tool_discovery.passed
+            + self.tool_execution.passed
+            + self.sessions.passed
     }
 
     pub fn total_failed(&self) -> usize {
-        self.protocol.failed + self.tool_discovery.failed + 
-        self.tool_execution.failed + self.sessions.failed
+        self.protocol.failed
+            + self.tool_discovery.failed
+            + self.tool_execution.failed
+            + self.sessions.failed
     }
 }
 
@@ -81,34 +85,87 @@ fn print_rmcp_results(results: &RmcpTestResults) {
     crate::teeprintln!("RMCP TEST RESULTS SUMMARY");
     crate::teeprintln!("{}", "=".repeat(80));
 
+    // Status markers are conditional so a zero count never prints a [FAIL]
+    // or [WARN] label (which would train the reader to ignore real failures).
+    let marker = |n: usize| if n == 0 { "[OK]" } else { "[FAIL]" };
+
     // Protocol results
     crate::teeprintln!("\n[INFO] Protocol Tests:");
     crate::teeprintln!("  [OK] Passed: {}", results.protocol.passed);
-    crate::teeprintln!("  [FAIL] Failed: {}", results.protocol.failed);
-    crate::teeprintln!("  [INFO]  Initialization: {}", if results.protocol.init_ok { "OK" } else { "FAILED" });
-    crate::teeprintln!("  [INFO]  Capabilities: {}", if results.protocol.capabilities_ok { "OK" } else { "FAILED" });
+    crate::teeprintln!(
+        "  {} Failed: {}",
+        marker(results.protocol.failed),
+        results.protocol.failed
+    );
+    crate::teeprintln!(
+        "  [INFO]  Initialization: {}",
+        if results.protocol.init_ok {
+            "OK"
+        } else {
+            "FAILED"
+        }
+    );
+    crate::teeprintln!(
+        "  [INFO]  Capabilities: {}",
+        if results.protocol.capabilities_ok {
+            "OK"
+        } else {
+            "FAILED"
+        }
+    );
 
     // Tool discovery results
     crate::teeprintln!("\n[INFO] Tool Discovery:");
     crate::teeprintln!("  [OK] Passed: {}", results.tool_discovery.passed);
-    crate::teeprintln!("  [FAIL] Failed: {}", results.tool_discovery.failed);
-    crate::teeprintln!("  [INFO]  Tools Found: {}", results.tool_discovery.tools_found);
-    crate::teeprintln!("  [INFO]  Categories Covered: {:?}", results.tool_discovery.categories_found);
+    crate::teeprintln!(
+        "  {} Failed: {}",
+        marker(results.tool_discovery.failed),
+        results.tool_discovery.failed
+    );
+    crate::teeprintln!(
+        "  [INFO]  Tools Found: {}",
+        results.tool_discovery.tools_found
+    );
+    crate::teeprintln!(
+        "  [INFO]  Categories Covered: {:?}",
+        results.tool_discovery.categories_found
+    );
 
     // Tool execution results
-    crate::teeprintln!("\n[WARN] Tool Execution:");
+    crate::teeprintln!("\n[INFO] Tool Execution:");
     crate::teeprintln!("  [OK] Passed: {}", results.tool_execution.passed);
-    crate::teeprintln!("  [FAIL] Failed: {}", results.tool_execution.failed);
-    crate::teeprintln!("  [INFO]  Tools Executed: {}", results.tool_execution.tools_executed);
-    crate::teeprintln!("  [INFO]  Categories Executed: {:?}", results.tool_execution.categories_executed);
+    crate::teeprintln!(
+        "  {} Failed: {}",
+        marker(results.tool_execution.failed),
+        results.tool_execution.failed
+    );
+    crate::teeprintln!(
+        "  [INFO]  Tools Executed: {}",
+        results.tool_execution.tools_executed
+    );
+    crate::teeprintln!(
+        "  [INFO]  Categories Executed: {:?}",
+        results.tool_execution.categories_executed
+    );
 
     // Session results
     crate::teeprintln!("\n[INFO] Session Management:");
     crate::teeprintln!("  [OK] Passed: {}", results.sessions.passed);
-    crate::teeprintln!("  [FAIL] Failed: {}", results.sessions.failed);
-    crate::teeprintln!("  [INFO]  Sessions Tracked: {}", results.sessions.sessions_tracked);
+    crate::teeprintln!(
+        "  {} Failed: {}",
+        marker(results.sessions.failed),
+        results.sessions.failed
+    );
+    crate::teeprintln!(
+        "  [INFO]  Sessions Tracked: {}",
+        results.sessions.sessions_tracked
+    );
 
-    crate::teeprintln!("\n[INFO] Overall:");
+    let total_failed = results.total_failed();
+    crate::teeprintln!(
+        "\n[{}] Overall:",
+        if total_failed == 0 { "OK" } else { "FAIL" }
+    );
     crate::teeprintln!("  Total Passed: {}", results.total_passed());
-    crate::teeprintln!("  Total Failed: {}", results.total_failed());
+    crate::teeprintln!("  Total Failed: {}", total_failed);
 }

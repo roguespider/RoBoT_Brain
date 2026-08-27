@@ -1,10 +1,11 @@
 //! T1-10B-11 — migrated from `src/database/queries/observations.rs`
 //! `#[cfg(test)] mod tests` (test_link_observation_to_experience).
 //!
-//! The src/ test verified `insert_observation` + `link_observation_to_experience`
-//! + `get_observation` against an in-memory SQLite DB. test_suite cannot import
-//! robot_brain source, so the record/retrieve behavior is re-expressed through
-//! the public MCP surface:
+//! The src/ test verified insert_observation, link_observation_to_experience
+//! and get_observation against an in-memory SQLite DB. test_suite cannot
+//! import robot_brain source, so the record/retrieve behavior is re-expressed
+//! through the public MCP surface instead:
+//!
 //!   - `record_observation` calls `insert_observation` under the hood.
 //!   - `list_observations` calls `list_observations` (queries.rs) and returns
 //!     content/context/observation_type/id, so a recorded observation is
@@ -54,8 +55,7 @@ pub async fn run_observations_tests(
     let recorded_ok = match record_result {
         Ok(r) => match payload_json(&r) {
             Ok(v) => {
-                v.get("status").and_then(|s| s.as_str())
-                    == Some("observation_recorded")
+                v.get("status").and_then(|s| s.as_str()) == Some("observation_recorded")
                     || v.pointer("/observation/id").is_some()
             }
             Err(e) => {
@@ -116,7 +116,9 @@ pub async fn run_observations_tests(
         }
     };
     if found {
-        crate::teeprintln!("  [OK] list_observations returned the recorded observation (content+type match)");
+        crate::teeprintln!(
+            "  [OK] list_observations returned the recorded observation (content+type match)"
+        );
         stats.passed += 1;
     } else {
         crate::teeprintln!(

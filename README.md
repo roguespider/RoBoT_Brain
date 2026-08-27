@@ -8,6 +8,8 @@ A Rust MCP (Model Context Protocol) server for Zed Editor — an AI agent with p
 > Full event catalog per Architecture §4.04. Learning Pipeline per Architecture §9. Database layer with 12 migrations. Integration test suite: see `test_suite_report.json` for current gate results.
 >
 > **Automated Releases:** GitHub Actions CI/CD builds binaries for Windows (x86_64), Linux (x86_64, aarch64), and macOS (x86_64, aarch64).
+>
+> **Verified State (2026-08-25):** Single source of truth is `test_suite/test_suite_report.json`. All status claims must be traceable to a same-day gate run. See `.agents/PLAN.md` P3-001 for sync documentation.
 ---
 To Build
 install rust 
@@ -126,6 +128,58 @@ cargo build --release
 ```
 
 Audio transcription is enabled by default using Candle (no extra features or libclang required).
+
+### Diagnostics
+
+Run a full subsystem self-check suite. This is the **only** way to exercise
+the diagnostic probes that were removed from production startup (P2-001A/C).
+
+```bash
+# Run all subsystem diagnostics
+./target/release/robot_brain diagnose
+```
+
+**What it checks** (18 diagnostic functions across all subsystems):
+
+| Subsystem | Checks |
+|-----------|--------|
+| candidates | Candidate engine lifecycle |
+| working_memory | Working memory operations |
+| lineage_tracker | Lineage tracking |
+| hypothesis_manager | Hypothesis manager |
+| learning_pipeline | Learning pipeline construction |
+| exploration_repo | Exploration repository persistence |
+| experience_repo | Experience repository persistence (isolated temp DB) |
+| job_queue | JobQueue durability (isolated temp DB) |
+| metrics | Metrics subsystem |
+| personality | Personality subsystem |
+| mcp_client | MCP client connection management |
+| acp | ACP routing health |
+| policy | Policy engine management |
+| worker | Worker manager enqueue/completion (isolated bus) |
+| scheduler | Scheduler task management (isolated temp DB) |
+| learning | Learning probes (reflection/evolution engines) |
+| experience_recorder | ExperienceRecorder success/failure helpers (isolated temp DB) |
+| reputation | Reputation system |
+| reflection_surfaces | Reflection/hypothesis type surfaces |
+| reflection_pipeline | ReflectionPipeline |
+| reflection_engine | ReflectionEngine |
+| hypothesis_pipeline | HypothesisPipeline |
+
+**Output format:** Per-subsystem `[PASS]` / `[FAIL]` markers followed by a
+summary line: `Subsystem diagnostics complete: passed=N failed=M`.
+
+**Exit codes:**
+
+| Code | Meaning |
+|------|---------|
+| 0 | All 22 diagnostics passed |
+| 1 | One or more diagnostics failed (error count in output) |
+
+**When to use:**
+- After building a new version of robot_brain
+- Before opening a PR to verify subsystem health
+- During development to isolate which subsystem is broken
 
 ---
 

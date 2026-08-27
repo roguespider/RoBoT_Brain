@@ -13,7 +13,9 @@
 //! MCP-reachable (migrated here):
 //!   - test_retrieve_working: store_memory → search → content found in results
 //!   - test_unified_retrieve: store 2 items → search → 2 results returned
+//!
 //! Group B (internal-only, LEAVE as Rust unit test):
+//!
 //!   - test_retrieve_permanent: store_memory only writes to Working layer;
 //!     PermanentMemory's in-memory cache isn't populated by any MCP tool, so
 //!     get_from_permanent can't be exercised via MCP.

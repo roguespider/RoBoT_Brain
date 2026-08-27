@@ -5,7 +5,7 @@ use std::path::Path;
 
 use crate::code_analyzer::{LintIssue, LintLevel};
 
-use super::super::{truncate, TestReport, TestStatus};
+use super::super::{TestReport, TestStatus, truncate};
 
 /// Make `file_path` relative to `base` for display. Falls back to the
 /// original path if stripping the prefix fails.
@@ -22,7 +22,7 @@ impl TestReport {
         crate::teeprintln!("\n┌{:─<98}┐", "");
         crate::teeprintln!("│ {:^96} │", "[INFO] FULL TEST RESULTS TABLE");
         crate::teeprintln!(
-            "├{:─<6}├{:─<20}├{:─<25}├{:─<8}├{:─<10}├{:─<25}┤",
+            "├{:─<6}┼{:─<20}┼{:─<25}┼{:─<8}┼{:─<10}┼{:─<25}┤",
             "─",
             "─",
             "─",
@@ -118,6 +118,50 @@ impl TestReport {
                 .count();
             crate::teeprintln!("    {:<20} {}/{} passed", cat, passed, count);
         }
+
+        // Failure detail section: full error message + captured server logs
+        // for every non-passing test, so the reader can diagnose without
+        // re-running anything.
+        let failures: Vec<&crate::test_results::TestResult> = self
+            .results
+            .iter()
+            .filter(|r| r.status != TestStatus::Pass)
+            .collect();
+        if !failures.is_empty() {
+            crate::teeprintln!("\n┌{:─<98}┐", "");
+            crate::teeprintln!("│ {:^96} │", "[FAIL] FAILURE DETAILS (full diagnostics)");
+            crate::teeprintln!("├{:─<98}┤", "");
+            for f in failures {
+                crate::teeprintln!(
+                    "│ Test: {:<91} │",
+                    truncate(&f.requirement.function_name, 91)
+                );
+                crate::teeprintln!("│ ID:   {:<91} │", truncate(&f.requirement.id, 91));
+                crate::teeprintln!("│ Status: {:<89} │", f.status.to_string());
+                crate::teeprintln!("│ Duration: {:<87} ms │", f.duration_ms);
+                if let Some(err) = &f.error_message {
+                    for line in err.lines() {
+                        crate::teeprintln!("│ Error: {}", line);
+                    }
+                }
+                for v in &f.validation_results {
+                    if !v.passed {
+                        let msg = v.message.as_deref().unwrap_or("validation failed");
+                        crate::teeprintln!("│ Check failed [{}]: {}", v.field, msg);
+                    }
+                }
+                if f.server_logs.is_empty() {
+                    crate::teeprintln!("│ Server logs: (none captured)");
+                } else {
+                    crate::teeprintln!("│ Server logs:");
+                    for line in &f.server_logs {
+                        crate::teeprintln!("│   | {}", line);
+                    }
+                }
+                crate::teeprintln!("├{:─<98}┤", "");
+            }
+            crate::teeprintln!("└{:─<98}┘", "");
+        }
     }
 
     /// Print compiler errors and warnings.
@@ -155,11 +199,7 @@ impl TestReport {
         crate::teeprintln!("\n┌{:─<98}┐", "");
         crate::teeprintln!("│ {:^96} │", "[INFO]  COMPILER ERRORS & WARNINGS");
         crate::teeprintln!("├{:─<98}┤", "");
-        crate::teeprintln!(
-            "│  {} error(s), {} warning(s):",
-            error_count,
-            warning_count
-        );
+        crate::teeprintln!("│  {} error(s), {} warning(s):", error_count, warning_count);
         crate::teeprintln!("│");
 
         // Group by file so all warnings for a file are together
@@ -182,7 +222,13 @@ impl TestReport {
                     LintLevel::Warning => "[WARN]  WARN ",
                     _ => continue,
                 };
-                crate::teeprintln!("│    {} line {} [{}]: {}", level_str, issue.line_number, issue.code, issue.message);
+                crate::teeprintln!(
+                    "│    {} line {} [{}]: {}",
+                    level_str,
+                    issue.line_number,
+                    issue.code,
+                    issue.message
+                );
             }
             crate::teeprintln!("│");
         }

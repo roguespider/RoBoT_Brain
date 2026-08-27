@@ -15,7 +15,9 @@
 //!     extensions, call transcribe_audio, verify audio extensions pass the
 //!     is_audio_file gate (error != "Not a supported audio file") while
 //!     non-audio extensions are rejected with "Not a supported audio file".
+//!
 //! Group B (internal-only, LEAVE as Rust unit test):
+//!
 //!   - test_audio_analysis: AudioAnalysis::from_samples requires valid audio
 //!     samples loaded from a real WAV file; not practical to create via MCP.
 
@@ -125,7 +127,9 @@ pub async fn run_audio_transcriber_tests(
         );
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  [FAIL] is_audio_file: one or more extension checks failed (see above)");
+        crate::teeprintln!(
+            "  [FAIL] is_audio_file: one or more extension checks failed (see above)"
+        );
         stats.failed += 1;
     }
 

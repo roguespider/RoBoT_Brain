@@ -8,6 +8,7 @@ use serde::{Deserialize, Serialize};
 use tokio::sync::RwLock;
 
 use crate::experience::metrics::MetricsCollector;
+use crate::memory::retrieval::MemoryRetrieval;
 
 /// A workflow definition
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -55,6 +56,7 @@ pub struct WorkflowEngine {
     pub(crate) executing: Arc<RwLock<HashSet<String>>>,
     pub(crate) database: Option<Arc<crate::database::sqlite::SqliteDatabase>>,
     pub(crate) coordinator: Option<Arc<crate::experience::coordinator::ExperienceCoordinator>>,
+    pub(crate) memory_retrieval: Option<Arc<MemoryRetrieval>>,
 }
 
 /// Experience record for learning from workflow execution
@@ -78,6 +80,7 @@ impl Clone for WorkflowEngine {
             executing: self.executing.clone(),
             database: self.database.clone(),
             coordinator: self.coordinator.clone(),
+            memory_retrieval: self.memory_retrieval.clone(),
         }
     }
 }

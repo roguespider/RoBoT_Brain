@@ -136,6 +136,7 @@ impl App {
         // Build planner, workflow engine, and ACP router/registry.
         // Pass the core MetricsCollector (the one the ExperienceCoordinator
         // records into) so planner/workflow metrics land in the same store.
+        let memory_retrieval_arc = Arc::clone(&memory_retrieval);
         let (planner, workflow_engine, acp_router, acp_registry) =
             workflow_acp::setup_planner_workflow_acp(
                 &core_metrics,
@@ -143,6 +144,7 @@ impl App {
                 &coordinator,
                 &policy_engine,
                 &shared_personality,
+                Some(memory_retrieval_arc),
             );
 
         // Create MCP context with all systems

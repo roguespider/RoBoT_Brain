@@ -36,6 +36,71 @@ mod tests;
 use comprehensive_test::run_comprehensive_tests;
 use test_environment::TestEnvironment;
 
+/// Wall-clock timestamp for run/phase headers so failures can be correlated
+/// with when they happened.
+pub fn timestamp_now() -> String {
+    let secs = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    // Convert to UTC date/time without external crates (days since epoch math).
+    let days = secs / 86_400;
+    let rem = secs % 86_400;
+    let (h, m, s) = (rem / 3600, (rem % 3600) / 60, rem % 60);
+    // Civil-from-days algorithm (Howard Hinnant) for Y-M-D from epoch days.
+    let z = days as i64 + 719_468;
+    let era = z.div_euclid(146_097);
+    let doe = z.rem_euclid(146_097);
+    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
+    let y = yoe + era * 400;
+    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
+    let mp = (5 * doy + 2) / 153;
+    let d = doy - (153 * mp + 2) / 5 + 1;
+    let mo = if mp < 10 { mp + 3 } else { mp - 9 };
+    let y = if mo <= 2 { y + 1 } else { y };
+    format!("{:04}-{:02}-{:02} {:02}:{:02}:{:02} UTC", y, mo, d, h, m, s)
+}
+
+/// Times a named phase and prints an [INFO] line with its duration on done.
+/// If the phase errors out and `done` is never called, dropping the timer
+/// still prints the elapsed time so a stalled/crashed phase is visible.
+pub struct PhaseTimer {
+    name: &'static str,
+    started: std::time::Instant,
+    finished: bool,
+}
+
+impl PhaseTimer {
+    pub fn start(name: &'static str) -> Self {
+        Self {
+            name,
+            started: std::time::Instant::now(),
+            finished: false,
+        }
+    }
+
+    pub fn done(mut self) {
+        self.finished = true;
+        crate::teeprintln!(
+            "[INFO] PHASE {} completed in {:.1}s",
+            self.name,
+            self.started.elapsed().as_secs_f32()
+        );
+    }
+}
+
+impl Drop for PhaseTimer {
+    fn drop(&mut self) {
+        if !self.finished {
+            crate::teeprintln!(
+                "[WARN] PHASE {} aborted after {:.1}s (done was not reached)",
+                self.name,
+                self.started.elapsed().as_secs_f32()
+            );
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct TestStats {
     pub passed: usize,
@@ -1111,6 +1176,7 @@ async fn main() -> anyhow::Result<()> {
     output::init(&output_file)
         .map_err(|e| anyhow::anyhow!("Failed to create output file: {}", e))?;
 
+    let run_started = std::time::Instant::now();
     teeprintln!(
         "
 {}",
@@ -1118,23 +1184,25 @@ async fn main() -> anyhow::Result<()> {
     );
     teeprintln!("#  RoBoT Brain MCP Server - Comprehensive End-to-End Test Suite");
     teeprintln!("#  Testing every function 100% end-to-end");
+    teeprintln!("#  Run started: {}", timestamp_now());
     teeprintln!("#  Output saved to: {}", output_file.display());
     teeprintln!("{}", "#".repeat(120));
 
+    let phase = PhaseTimer::start("BUILD + SETUP");
     let server_path = build_server().await?;
     let env = setup_test_environment(&server_path)?;
     let mut client = TestMcpClient::new(&env.server_path).await?;
+    phase.done();
     let mut stats = TestStats::new();
 
     // Run comprehensive test suite with code analysis
+    let phase = PhaseTimer::start("COMPREHENSIVE TESTS");
     let report = run_comprehensive_tests(&mut client, &mut stats, &env).await?;
+    phase.done();
 
     // Also run the traditional test suite
-    teeprintln!(
-        "\n
-{}",
-        "=".repeat(120)
-    );
+    let phase = PhaseTimer::start("TRADITIONAL TESTS");
+    teeprintln!("\n{}", "=".repeat(120));
     teeprintln!("RUNNING ALL TESTS");
     teeprintln!("{}", "=".repeat(120));
 
@@ -1158,6 +1226,21 @@ async fn main() -> anyhow::Result<()> {
 
     // T1-10: verify the SQLite JobQueue survives a process restart.
     tests::queue_durability::run_queue_durability_tests(&mut stats).await?;
+
+    // P5-001-M3: verify memory failure isolation (corrupted DB → no panic).
+    tests::memory_failure_isolation::memory_failure_isolation(&mut stats).await;
+
+    // P6-006: context pressure (retrieval bounded under 200+ memories).
+    tests::context_pressure::context_pressure_test(&mut stats).await;
+
+    // P7-M6: concurrent store test — 20 parallel store_memory calls.
+    tests::concurrent_store::concurrent_store_test(&mut stats).await;
+
+    // P8: Runtime and Fresh-Start Validation (M1-M7 consolidated).
+    tests::run_fresh_start_tests(&mut stats).await?;
+
+    // P2-001E: verify startup does not mutate test data on production DB.
+    tests::run_startup_durability_tests(&mut stats).await?;
 
     // T1-10B-10: migrated finding new+promote unit test (MCP-based).
     tests::exploration_finding::run_exploration_finding_tests(&mut client, &mut stats).await?;
@@ -1193,12 +1276,13 @@ async fn main() -> anyhow::Result<()> {
     // T1-10B-01: migrated personality defaults/preset/traits/decision (MCP-based).
     tests::personality::run_personality_tests(&mut client, &mut stats).await?;
 
+    // Migrated from .agents/live_test/session_smoke.py: live store/search/plan proof.
+    tests::session_smoke::run_session_smoke_tests(&mut client, &mut stats).await?;
+    phase.done();
+
     // Run CLI-based tool tests (tests robot_brain CLI subcommands)
-    teeprintln!(
-        "
-{}",
-        "=".repeat(120)
-    );
+    let phase = PhaseTimer::start("CLI TOOL TESTS");
+    teeprintln!("\n{}", "=".repeat(120));
     teeprintln!("RUNNING CLI TOOL TESTS");
     teeprintln!("{}", "=".repeat(120));
     let cli_results = tests::cli_tools::run_cli_tool_tests().await;
@@ -1216,11 +1300,12 @@ async fn main() -> anyhow::Result<()> {
         stats.passed += 1;
     } else {
         stats.failed += 1;
-        println!(
+        teeprintln!(
             "  [DIAGNOSE FAIL] {}",
             diagnose_result.output.chars().take(300).collect::<String>()
         );
     }
+    phase.done();
 
     // Print unified summary table
     teeprintln!("\n{}", "=".repeat(120));
@@ -1256,23 +1341,40 @@ async fn main() -> anyhow::Result<()> {
     teeprintln!("\n  ┌{:─<116}┐", "");
     teeprintln!("  │ {:^112} │", "TEST RESULTS");
     teeprintln!("  ├{:─<116}┤", "");
+    teeprintln!("  │ {:<40} {:>70} │", "Run finished:", timestamp_now());
+    teeprintln!(
+        "  │ {:<40} {:>65.1} s │",
+        "Total run duration:",
+        run_started.elapsed().as_secs_f32()
+    );
     teeprintln!(
         "  │ {:<40} {:>70} │",
         "Total Tests:",
         format!("{}", total_tests)
     );
+    let passed_marker = if stats.passed > 0 { "[OK]" } else { "[INFO]" };
     teeprintln!(
-        "  │ {:<40} {:>63} [OK] │",
+        "  │ {:<40} {:>56} {} │",
         "Passed:",
-        format!("{}", stats.passed)
+        format!("{}", stats.passed),
+        passed_marker
     );
+    // Conditional markers: a zero count must not print a scary [FAIL].
+    let failed_marker = if stats.failed == 0 { "[OK]" } else { "[FAIL]" };
     teeprintln!(
-        "  │ {:<40} {:>62} [FAIL] │",
+        "  │ {:<40} {:>56} {} │",
         "Failed:",
-        format!("{}", stats.failed)
+        format!("{}", stats.failed),
+        failed_marker
     );
     teeprintln!("  │ {:<40} {:>65.1}% │", "Pass Rate:", pass_rate);
-    teeprintln!("  │ {:<40} {:>65} │", "Skipped:", stats.skipped);
+    let skipped_marker = if stats.skipped == 0 { "[OK]" } else { "[WARN]" };
+    teeprintln!(
+        "  │ {:<40} {:>56} {} │",
+        "Skipped:",
+        format!("{}", stats.skipped),
+        skipped_marker
+    );
     teeprintln!("  └{:─<116}┘", "");
 
     teeprintln!("\n  ┌{:─<116}┐", "");
