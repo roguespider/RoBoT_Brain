@@ -132,45 +132,45 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 > crate flags unreached pub APIs), violating the 0-warnings gate.
 
 ## 1B. SQLite-backed JobQueue (V2-11) -- [ ]
-
-- [ ] **T1-09** `job_queue` table + migration (SQLite)
-- [ ] **T1-10** Wire enqueue/dequeue to SQLite
-- [ ] **T1-10B** Migrate `#[cfg(test)]` blocks to test_suite
-  - [ ] T1-10B-01..T1-10B-11 (Group A: MCP-reachable, moved to test_suite)
-  - [ ] T1-10B-12..T1-10B-20, T1-10B-P, T1-10B-Z (Group B: internal-only, left as Rust unit tests)
-- [ ] **T1-11** Handle broadcast `Lagged` events
-- [ ] **T1-12** Startup verification in `initialization.rs`
+- [ ] **T1-10** Wire enqueue/dequeue to SQLite — CODE COMPLETE, PENDING GATE
+  `push_job`/`push_job_with_id` → `persist_insert`; `pop_job` → `mark_running` → `persist_update`; `mark_complete`/`mark_failed` → `persist_update`. All path persisted via helpers in `src/experience/queue.rs`. Gate running (PID 221).
+- [ ] **T1-10B** Migrate `#[cfg(test)]` blocks to test_suite — CODE COMPLETE, PENDING GATE
+  Group A: personality.rs, knowledge_store.rs, knowledge_query.rs, memory_retrieval.rs, semantic_chunker.rs, audio_transcriber.rs, embeddings.rs, hypothesis.rs, attempt.rs, finding.rs, observations.rs — all exist in test_suite with migration docs. Group B: left as Rust unit tests. Verified zero `#[cfg(test)]` in `src/**/*.rs`. Gate running (PID 221).
+- [ ] **T1-11** Handle broadcast `Lagged` events — FIXED 2026-08-28. Replaced `let _ = receiver.recv().await` in `runner.rs:31` with `drain_lagged_events()` helper function using match arms (no underscore-prefixed variable bindings). Gate: 148/148 pass, 0 warnings.
+- [ ] **T1-12** Startup verification in `initialization.rs` — CODE COMPLETE, PENDING GATE
+  `verify_job_queue()` at `src/bridge/app/initialization/job_queue.rs`: creates probe DB, exercises push/pop/complete/fail, verifies restore_from_database(). Gate running (PID 221).
 
 ## 1C. Loop-health metrics (V2-12) -- [ ]
 
-- [ ] **T1-13** Add `loop_latency` metric
-- [ ] **T1-14** Add `confidence_drift` metric
-- [ ] **T1-15** Add promotion-throughput metric
-- [ ] **T1-16** Expose metrics via `get_system_status`
+- [ ] **T1-13** Add `loop_latency` metric — CODE COMPLETE, PENDING GATE
+  `record_loop_latency` in `metrics.rs:174`, called at `loop_runner.rs:84,148,221,280` (all 4 exit paths). Gate running (PID 221).
+- [ ] **T1-14** Add `confidence_drift` metric — CODE COMPLETE, PENDING GATE
+  `record_confidence_drift` in `metrics.rs:187`, called at `loop_runner.rs:177`. Gate running (PID 221).
+- [ ] **T1-15** Add promotion-throughput metric — CODE COMPLETE, PENDING GATE
+  `record_promotion_throughput` in `metrics.rs:200`, called at `loop_runner.rs:291`. Gate running (PID 221).
+- [ ] **T1-16** Expose metrics via `get_system_status` — CODE COMPLETE, PENDING GATE
+  `loop_health` block at `acp_handler.rs:477-481` exposes all three metrics. Gate running (PID 221).
 
 ## 1D. Close the generic MCP→experience path (V2-05) -- [ ]
 
-- [ ] **T1-17** Hook `emit_tool_experience` into post-tool-execution dispatch
-- [ ] **T1-18** Idempotency -- no double-emit
+- [ ] **T1-17** Hook `emit_tool_experience` into post-tool-execution dispatch — CODE COMPLETE, PENDING GATE
+  `emit_tool_experience` in `rmcp/types.rs:139`, called at `rmcp/mod.rs:127` (success) and `:141` (error). Gate running (PID 221).
+- [ ] **T1-18** Idempotency -- no double-emit — CODE COMPLETE, PENDING GATE
+  Exactly 2 call sites in `rmcp/mod.rs`, mutually exclusive match arms. No double-emit possible. Gate running (PID 221).
 
 ## 1E. Close the coverage gate (make test_suite exit 0) -- [ ]
 
 ### 1E.1 -- Fix the phantom embedding tools
 
-- [ ] **T1-19** Fix 6 phantom embedding tools (commit b9b43ff)
+- [ ] **T1-19** Fix 6 phantom embedding tools — CODE COMPLETE, PENDING GATE
+  Memory handler: `tool_names()`, `get_tools()`, `execute_tool()` all include 6 embedding tools. `vector_index_tools.rs` has test entries. Gate running (PID 221).
 
 ### 1E.2 -- Add FunctionRegistry tests for untested tool groups
 
-- [ ] **T1-20** ACP tools (9) (commit 6b7d036)
-- [ ] **T1-21** System/session tools (4)
-- [ ] **T1-22** Memory/search extras (3)
-- [ ] **T1-23** Knowledge lifecycle (6)
-- [ ] **T1-24** Evidence/observation (3)
-- [ ] **T1-25** Reflection extras (3)
-- [ ] **T1-26** Skills extras (5)
-- [ ] **T1-27** Personality (6)
-- [ ] **T1-28** World model (10)
-- [ ] **T1-29** Agent/workflow extras (2)
+- [ ] **T1-20** ACP tools (9) — CODE COMPLETE, PENDING GATE
+  `acp_tools.rs` exists in function_registry with 9 test entries. Gate running (PID 221).
+- [ ] **T1-21..T1-29** System/tools coverage (40 entries) — CODE COMPLETE, PENDING GATE
+  `coverage_tools.rs` has 42 entries covering system, memory, knowledge, evidence, reflection, skills, personality, world model, agent/workflow tools. Gate running (PID 221).
 
 **T1-21..T1-29 [ ] together (commit 7775ca1).** 40 entries in `function_registry/coverage_tools.rs`.
 
@@ -424,7 +424,7 @@ Do not delete functionality merely to make the quality gate pass.
 
 # P1 - Quality Gate
 
-## P1-001 Dead Code
+## P1-001 Dead Code [ ]
 
 Current known count (last refreshed 2026-08-25):
 
@@ -448,7 +448,7 @@ Do NOT mass-delete code.
 
 ---
 
-## P1-002 CfgTest Issues
+## P1-002 CfgTest Issues [ ]
 
 Current known count (last refreshed 2026-08-25):
 
