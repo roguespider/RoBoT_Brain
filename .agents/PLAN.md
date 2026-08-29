@@ -108,24 +108,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 # 4. TIER 1 -- Finish v0.0.1 (clean baseline)
 
 > Goal: green gate (test_suite exit 0). End state = a clean v0.0.1 baseline.
-> TIER 1 is now COMPLETE (1B, 1C, 1D, 1E all finished).
-> the 8 `self_check.rs` files
-> exercise APIs that have NO other callers (informed plans, replanning, action
-> selection, policy engine, etc.). This is a binary crate, so removing a
-> self_check surfaces dead-code warnings on those pub APIs (24 warnings for
-> planner alone). Per the Dead Code Resolution Protocol, these APIs ARE
-> described in v0.0.2.1 Chapter 11 (Planning) / Chapter 19 (Confidence), so
-> they're incomplete stubs that must be WIRED into real MCP tools, not deleted.
-> That wiring is TIER 2 work (T2-32..T2-36 for planner, similar for others).
-> So: self_check removal happens DURING each system's TIER 2 upgrade, not as
-> standalone TIER 1 cleanup. TIER 1 focuses on the gate + queue + metrics.
-
-## 1A. (Moved to TIER 2) Remove self_check.rs files
-
-> Moved: each self_check is removed as part of its system's TIER 2 upgrade,
-> after the APIs it exercises are wired into real MCP tools. See T2-32..T2-42.
-> Attempting standalone removal in TIER 1 creates dead-code warnings (binary
-> crate flags unreached pub APIs), violating the 0-warnings gate.
+> TIER 1 is COMPLETE (1B, 1C, 1D, 1E finished).
 
 
 
