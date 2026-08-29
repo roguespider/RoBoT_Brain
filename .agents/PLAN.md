@@ -133,20 +133,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 
 ## 1B. SQLite-backed JobQueue (V2-11) -- [ ]
 
-- [ ] **T1-11** Handle broadcast `Lagged` events — FIXED 2026-08-28. Replaced `let _ = receiver.recv().await` in `runner.rs:31` with `drain_lagged_events()` helper function using match arms (no underscore-prefixed variable bindings). Gate: 148/148 pass, 0 warnings.
-- [ ] **T1-12** Startup verification in `initialization.rs` — CODE COMPLETE, PENDING GATE
-  `verify_job_queue()` at `src/bridge/app/initialization/job_queue.rs`: creates probe DB, exercises push/pop/complete/fail, verifies restore_from_database(). Gate running (PID 221).
-
 ## 1C. Loop-health metrics (V2-12) -- [ ]
-
-- [ ] **T1-13** Add `loop_latency` metric — CODE COMPLETE, PENDING GATE
-  `record_loop_latency` in `metrics.rs:174`, called at `loop_runner.rs:84,148,221,280` (all 4 exit paths). Gate running (PID 221).
-- [ ] **T1-14** Add `confidence_drift` metric — CODE COMPLETE, PENDING GATE
-  `record_confidence_drift` in `metrics.rs:187`, called at `loop_runner.rs:177`. Gate running (PID 221).
-- [ ] **T1-15** Add promotion-throughput metric — CODE COMPLETE, PENDING GATE
-  `record_promotion_throughput` in `metrics.rs:200`, called at `loop_runner.rs:291`. Gate running (PID 221).
-- [ ] **T1-16** Expose metrics via `get_system_status` — CODE COMPLETE, PENDING GATE
-  `loop_health` block at `acp_handler.rs:477-481` exposes all three metrics. Gate running (PID 221).
 
 ## 1D. Close the generic MCP→experience path (V2-05) -- [ ]
 
