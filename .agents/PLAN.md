@@ -131,9 +131,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 > Attempting standalone removal in TIER 1 creates dead-code warnings (binary
 > crate flags unreached pub APIs), violating the 0-warnings gate.
 
-## 1B. SQLite-backed JobQueue (V2-11) -- [ ]
 
-## 1C. Loop-health metrics (V2-12) -- [ ]
 
 ## 1D. Close the generic MCP→experience path (V2-05) -- [ ]
 

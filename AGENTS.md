@@ -435,7 +435,7 @@ The first unchecked task from the top IS the task — regardless of its marker.
   running the gate.
 - Commit + push that one change.
 - Report the result (what changed, gate status, commit hash).
-- STOP and report to the user for **code changes** (gate risk). For **documentation-only** changes (PLAN.md, README, AGENTS.md, etc.) proceed to the next task without confirmation.
+- STOP and report to the user for **code changes** (gate risk). For **documentation-only** changes (PLAN.md, README, AGENTS.md, CHANGELOG.md, etc.) proceed to the next task without confirmation — continue through ALL remaining tasks in PLAN.md until you hit a code-change task or the list is empty.
 
 ## 7. Periodic maintenance (check from time to time, not every session)
 

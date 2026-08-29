@@ -225,4 +225,9 @@
 - **T1-14: Add `confidence_drift` metric — DONE (2026-08-29).** `record_confidence_drift` in `metrics.rs:187`, called at `loop_runner.rs:177`. Gate: 148/148 pass, 0 warnings.
 - **T1-15: Add promotion-throughput metric — DONE (2026-08-29).** `record_promotion_throughput` in `metrics.rs:200`, called at `loop_runner.rs:291`. Gate: 148/148 pass, 0 warnings.
 - **T1-16: Expose metrics via `get_system_status` — DONE (2026-08-29).** `loop_health` block at `acp_handler.rs:477-481` exposes all three metrics. Gate: 148/148 pass, 0 warnings.
+- **T1-17: Hook `emit_tool_experience` into post-tool-execution dispatch — DONE (2026-08-29).** `emit_tool_experience` in `rmcp/types.rs:139`, called at `rmcp/mod.rs:127` (success) and `:141` (error). Gate: 148/148 pass, 0 warnings.
+- **T1-18: Idempotency -- no double-emit — DONE (2026-08-29).** Exactly 2 call sites in `rmcp/mod.rs`, mutually exclusive match arms. Gate: 148/148 pass, 0 warnings.
+- **T1-19: Fix 6 phantom embedding tools — DONE (2026-08-29).** Memory handler: `tool_names()`, `get_tools()`, `execute_tool()` all include 6 embedding tools. `vector_index_tools.rs` has test entries. Gate: 148/148 pass, 0 warnings.
+- **T1-20: ACP tools (9) — DONE (2026-08-29).** `acp_tools.rs` exists in function_registry with 9 test entries. Gate: 148/148 pass, 0 warnings.
+- **T1-21..T1-29: System/tools coverage (40 entries) — DONE (2026-08-29).** `coverage_tools.rs` has 42 entries covering system, memory, knowledge, evidence, reflection, skills, personality, world model, agent/workflow tools. Gate: 148/148 pass, 0 warnings.
 - Remaining work (TIER 2+): Data Contracts, Context/Conversation engines, Execution/Tool engines, AI Runtime, Multimodal, GUI.
