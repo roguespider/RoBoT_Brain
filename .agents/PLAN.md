@@ -1514,6 +1514,7 @@ Build more architecture.
 
 **End of TIER 1 = finished v0.0.1. Tag: `v0.0.1-clean`.**
 
+Confirm with User what to do next. do not pass this point unless the user approves.
 ---
 
 # 5. TIER 2 -- Reach v0.0.2 (upgrade existing systems)

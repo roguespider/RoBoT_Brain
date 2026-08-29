@@ -10,6 +10,7 @@
 // startup self-check probe.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use anyhow::Result;
 
@@ -82,8 +83,6 @@ pub struct JobQueue {
     /// Optional durable store. When set, every op is mirrored to SQLite.
     database: Option<Arc<SqliteDatabase>>,
 }
-
-use std::sync::Arc;
 
 impl JobQueue {
     pub fn new() -> Self {
