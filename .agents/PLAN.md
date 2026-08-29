@@ -202,7 +202,7 @@ Do NOT redesign the architecture unless a task explicitly requires it.
 10. Do not silently expand scope.
 11. Task completion protocol -- after a task passes the full verify gate (build + test_suite + gate green, end-to-end verified):
     a. Write a concise summary to `.agents/CHANGELOG.md` describing what was [ ], files changed, and verification results.
-    b. Remove the task from its section in PLAN.md (do not leave `[ ]` markers or stub detail behind).
+    b. Remove the task from its section in PLAN.md — delete the entire line from the file. Do not use ~~strike-through~~, do not change `[ ]` to `[x]`, do not leave stub detail. The line must be gone.
     c. Only then commit and push.
     Never write the CHANGELOG entry before the gate passes. Never let PLAN.md accumulate completed task detail.
 
