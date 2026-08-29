@@ -132,8 +132,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 > crate flags unreached pub APIs), violating the 0-warnings gate.
 
 ## 1B. SQLite-backed JobQueue (V2-11) -- [ ]
-- [ ] **T1-10B** Migrate `#[cfg(test)]` blocks to test_suite — CODE COMPLETE, PENDING GATE
-  Group A: personality.rs, knowledge_store.rs, knowledge_query.rs, memory_retrieval.rs, semantic_chunker.rs, audio_transcriber.rs, embeddings.rs, hypothesis.rs, attempt.rs, finding.rs, observations.rs — all exist in test_suite with migration docs. Group B: left as Rust unit tests. Verified zero `#[cfg(test)]` in `src/**/*.rs`. Gate running (PID 221).
+
 - [ ] **T1-11** Handle broadcast `Lagged` events — FIXED 2026-08-28. Replaced `let _ = receiver.recv().await` in `runner.rs:31` with `drain_lagged_events()` helper function using match arms (no underscore-prefixed variable bindings). Gate: 148/148 pass, 0 warnings.
 - [ ] **T1-12** Startup verification in `initialization.rs` — CODE COMPLETE, PENDING GATE
   `verify_job_queue()` at `src/bridge/app/initialization/job_queue.rs`: creates probe DB, exercises push/pop/complete/fail, verifies restore_from_database(). Gate running (PID 221).

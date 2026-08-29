@@ -218,4 +218,5 @@
 - **#[cfg(test)] removal: DONE (2026-08-22).** Verified zero `#[cfg(test)]` blocks remain
   in `robot_brain/src/`. See STARTUP.md rule below. Deleted `.agents/CFG_TEST_REMOVAL_NOTES.md`.
 - **T1-10: JobQueue SQLite persistence — DONE (2026-08-29).** Wired enqueue/dequeue to SQLite: `push_job`/`push_job_with_id` → `persist_insert`; `pop_job` → `mark_running` → `persist_update`; `mark_complete`/`mark_failed` → `persist_update`. Helpers in `src/experience/queue.rs`. Gate: 148/148 pass, 0 warnings, 0 issues, 100% tool coverage.
+- **T1-10B: Migrate `#[cfg(test)]` blocks to test_suite — DONE (2026-08-29).** Group A: personality.rs, knowledge_store.rs, knowledge_query.rs, memory_retrieval.rs, semantic_chunker.rs, audio_transcriber.rs, embeddings.rs, hypothesis.rs, attempt.rs, finding.rs, observations.rs — all migrated. Group B: left as Rust unit tests. Verified zero `#[cfg(test)]` in `src/**/*.rs`. Gate: 148/148 pass, 0 warnings.
 - Remaining work (TIER 2+): Data Contracts, Context/Conversation engines, Execution/Tool engines, AI Runtime, Multimodal, GUI.
