@@ -108,12 +108,8 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 # 4. TIER 1 -- Finish v0.0.1 (clean baseline)
 
 > Goal: green gate (test_suite exit 0). End state = a clean v0.0.1 baseline.
-> Tick `[x]` when an increment is committed with a green gate.
->
-> **Work order:** 1E (coverage gate) FIRST -- it's the actual gate problem and
-> the user's priority. Then 1B (queue), 1C (metrics), 1D (MCP→experience).
->
-> **NOTE on self_check removal (moved to TIER 2):** the 8 `self_check.rs` files
+> TIER 1 is now COMPLETE (1B, 1C, 1D, 1E all finished).
+> the 8 `self_check.rs` files
 > exercise APIs that have NO other callers (informed plans, replanning, action
 > selection, policy engine, etc.). This is a binary crate, so removing a
 > self_check surfaces dead-code warnings on those pub APIs (24 warnings for
@@ -133,30 +129,6 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 
 
 
-## 1D. Close the generic MCP→experience path (V2-05) -- [ ]
-
-- [ ] **T1-17** Hook `emit_tool_experience` into post-tool-execution dispatch — CODE COMPLETE, PENDING GATE
-  `emit_tool_experience` in `rmcp/types.rs:139`, called at `rmcp/mod.rs:127` (success) and `:141` (error). Gate running (PID 221).
-- [ ] **T1-18** Idempotency -- no double-emit — CODE COMPLETE, PENDING GATE
-  Exactly 2 call sites in `rmcp/mod.rs`, mutually exclusive match arms. No double-emit possible. Gate running (PID 221).
-
-## 1E. Close the coverage gate (make test_suite exit 0) -- [ ]
-
-### 1E.1 -- Fix the phantom embedding tools
-
-- [ ] **T1-19** Fix 6 phantom embedding tools — CODE COMPLETE, PENDING GATE
-  Memory handler: `tool_names()`, `get_tools()`, `execute_tool()` all include 6 embedding tools. `vector_index_tools.rs` has test entries. Gate running (PID 221).
-
-### 1E.2 -- Add FunctionRegistry tests for untested tool groups
-
-- [ ] **T1-20** ACP tools (9) — CODE COMPLETE, PENDING GATE
-  `acp_tools.rs` exists in function_registry with 9 test entries. Gate running (PID 221).
-- [ ] **T1-21..T1-29** System/tools coverage (40 entries) — CODE COMPLETE, PENDING GATE
-  `coverage_tools.rs` has 42 entries covering system, memory, knowledge, evidence, reflection, skills, personality, world model, agent/workflow tools. Gate running (PID 221).
-
-**T1-21..T1-29 [ ] together (commit 7775ca1).** 40 entries in `function_registry/coverage_tools.rs`.
-
-**Green-gate milestone:** 141/141 tests pass, exit 0. untested=0, phantom=0.
 
 # RoBoT v0.0.1 Completion Plan
 
