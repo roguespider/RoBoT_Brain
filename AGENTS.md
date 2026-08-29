@@ -462,9 +462,9 @@ The first unchecked task from the top IS the task — regardless of its marker.
 Long tasks lose state when the context window fills. Manage this proactively.
 
 **While working**, watch for these signals (any one is enough):
-- Conversation thread is long AND the last several turns were heavy on tool output.
+- You have completed more than ~5 turns in this session with heavy tool output.
 - A single tool returned more than ~500 lines, or cumulative tool output across recent turns exceeds several thousand lines.
-- The user reports the editor's context indicator is past ~80%.
+- The user tells you the editor's context indicator is past ~80%.
 - You are about to start a subtask that will itself be substantial (e.g. "refactor this 1000-line file").
 
 **At any of those signals**, do NOT push further. Instead:
