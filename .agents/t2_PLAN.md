@@ -10,6 +10,21 @@ Sub-bullets (▸) are children of the parent task above them — complete them i
 ## 0. Architecture foundations and invariants
 Set the rules that every v0.0.2 subsystem must preserve.
 
+# pre T2-01 — Research Engine (External Knowledge Acquisition) — FIRST TASK (moved from PLAN.md)
+
+> Source: `research_engine.txt` — full 21-section requirements document.
+> Core principle: The LLM decides it needs information; the Research Engine determines how to obtain it.
+
+## Concept / Design Rules / Phased Micro-Tasks (see `.agents/PLAN.md` archive for full text)
+
+- [ ] Phase A: Foundation (provider-independent core) — `SearchProvider` trait, types, mock provider.
+- [ ] Phase B: First provider + raw MCP tools (`web_search`, `web_open`, `quick_research`, `deep_research`).
+- [ ] Phase C: Pipeline — ranking, selection, passage extraction, contradiction detection, security.
+- [ ] Phase D: Cognitive integration — trigger, experience recording, memory promotion, failover.
+- [ ] Phase E: Hardening — security tests, docs, final gate.
+
+Full specification preserved in `.agents/PLAN.md` (lines 1194-1520, archive copy).
+
 - [ ] **T2-01** Write a short v0.0.2 architecture note covering persistence, continuity, memory-first design, experience-based learning, and controlled evolution.
 - [ ] **T2-02** Write a short v0.0.2 architecture note covering modularity, explainability, event-driven behavior, confidence-based decisions, and controlled evolution.
 - [ ] **T2-03** Write a subsystem ownership map with one owner per subsystem and no hidden cross-ownership.

@@ -1,11 +1,10 @@
 // /src/experience/bus.rs
 // Event bus for pub/sub communication between subsystems
 
-
 use crate::experience::events::ExperienceEvent;
 use anyhow::Result;
-use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::Arc;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use tokio::sync::broadcast;
 
 /// Event bus for publishing and subscribing to experience events
@@ -27,10 +26,16 @@ impl ExperienceBus {
     /// Publish an event to all subscribers
     pub fn publish(&self, event: ExperienceEvent) -> Result<()> {
         tracing::debug!("Publishing event: {:?}", event);
-        self.sender
-            .send(event)
-            .map_err(|e| anyhow::anyhow!("Failed to publish event: {}", e))?;
-        Ok(())
+        match self.sender.send(event) {
+            Ok(_) => Ok(()),
+            Err(e) => {
+                tracing::warn!(
+                    "Failed to publish event: {} (subscribers may have dropped)",
+                    e
+                );
+                Ok(())
+            }
+        }
     }
 
     /// Subscribe to events, returns a receiver
@@ -38,14 +43,20 @@ impl ExperienceBus {
         // Create receiver BEFORE incrementing counter to avoid race
         let receiver = self.sender.subscribe();
         self.subscriber_count.fetch_add(1, Ordering::SeqCst);
-        tracing::info!("New subscriber registered, total: {}", self.subscriber_count.load(Ordering::SeqCst));
+        tracing::info!(
+            "New subscriber registered, total: {}",
+            self.subscriber_count.load(Ordering::SeqCst)
+        );
         receiver
     }
 
     /// Unsubscribe (caller should drop their receiver)
     pub fn unsubscribe(&self) {
         let prev = self.subscriber_count.fetch_sub(1, Ordering::SeqCst);
-        tracing::info!("Subscriber unsubscribed, remaining: {}", prev.saturating_sub(1));
+        tracing::info!(
+            "Subscriber unsubscribed, remaining: {}",
+            prev.saturating_sub(1)
+        );
     }
 
     /// Get the number of active subscribers

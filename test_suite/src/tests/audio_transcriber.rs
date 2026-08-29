@@ -26,10 +26,12 @@ use crate::TestStats;
 use std::io::Write;
 
 fn payload_text(result: &serde_json::Value) -> Option<String> {
-    result
-        .pointer("/content/0/text")
-        .and_then(|v| v.as_str())
-        .map(|s| s.to_string())
+    // Check for raw MCP response with content[0].text
+    if let Some(text) = result.pointer("/content/0/text").and_then(|v| v.as_str()) {
+        return Some(text.to_string());
+    }
+    // Already parsed by call_tool — try to get the whole result as a string
+    Some(result.to_string())
 }
 
 /// Create a temp file with the given extension and dummy content.

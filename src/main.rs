@@ -20,6 +20,14 @@ use bridge::logging::init_logging;
 
 #[tokio::main]
 async fn main() -> anyhow::Result<()> {
+    // Initialize logging FIRST so that all subsequent output (including
+    // console attachment messages) flows through the tracing subscriber.
+    // This is critical for the `robot diagnose` CLI: the test harness
+    // captures stdout+stderr and checks for expected markers; stray
+    // eprintln! output before the subscriber is configured pollutes
+    // that stream.
+    init_logging();
+
     // On Windows, attach to parent console if running without one
     // This fixes issues with GUI applications (like Zed Editor) that spawn
     // subprocesses without a console, causing stdio to fail
@@ -27,8 +35,6 @@ async fn main() -> anyhow::Result<()> {
     {
         bridge::windows_console::attach_console();
     }
-
-    init_logging();
 
     // Check if CLI mode is requested
     let args: Vec<String> = std::env::args().collect();

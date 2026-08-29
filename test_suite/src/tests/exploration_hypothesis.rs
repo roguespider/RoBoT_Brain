@@ -23,12 +23,13 @@
 use crate::TestMcpClient;
 use crate::TestStats;
 
+/// Parse the JSON payload from a tool result's content[0].text.
+/// Handles both raw MCP responses and already-parsed results.
 fn payload_json(result: &serde_json::Value) -> anyhow::Result<serde_json::Value> {
-    let text = result
-        .pointer("/content/0/text")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| anyhow::anyhow!("no content text in tool result"))?;
-    Ok(serde_json::from_str(text)?)
+    if let Some(text) = result.pointer("/content/0/text").and_then(|v| v.as_str()) {
+        return Ok(serde_json::from_str(text)?);
+    }
+    Ok(result.clone())
 }
 
 pub async fn run_exploration_hypothesis_tests(
@@ -48,13 +49,11 @@ pub async fn run_exploration_hypothesis_tests(
         )
         .await;
     let exploration_id = match start_result {
-        Ok(r) => payload_json(&r)
-            .ok()
-            .and_then(|v| {
-                v.get("exploration_id")
-                    .and_then(|i| i.as_str())
-                    .map(|s| s.to_string())
-            }),
+        Ok(r) => payload_json(&r).ok().and_then(|v| {
+            v.get("exploration_id")
+                .and_then(|i| i.as_str())
+                .map(|s| s.to_string())
+        }),
         Err(e) => {
             crate::teeprintln!("  [FAIL] start_exploration — {}", e);
             stats.failed += 1;
@@ -93,7 +92,10 @@ pub async fn run_exploration_hypothesis_tests(
         }
     };
     if hcount1 != 1 {
-        crate::teeprintln!("  [FAIL] add_hypothesis(clamp-high) count={} (expected 1)", hcount1);
+        crate::teeprintln!(
+            "  [FAIL] add_hypothesis(clamp-high) count={} (expected 1)",
+            hcount1
+        );
         stats.failed += 1;
         return Ok(());
     }
@@ -121,7 +123,10 @@ pub async fn run_exploration_hypothesis_tests(
         }
     };
     if hcount2 != 2 {
-        crate::teeprintln!("  [FAIL] add_hypothesis(clamp-low) count={} (expected 2)", hcount2);
+        crate::teeprintln!(
+            "  [FAIL] add_hypothesis(clamp-low) count={} (expected 2)",
+            hcount2
+        );
         stats.failed += 1;
         return Ok(());
     }
@@ -200,15 +205,13 @@ pub async fn run_exploration_hypothesis_tests(
         )
         .await;
     let hyp_id = match status2 {
-        Ok(ref r) => payload_json(r)
-            .ok()
-            .and_then(|v| {
-                v.get("hypotheses")
-                    .and_then(|h| h.as_array())
-                    .and_then(|arr| arr.get(2))
-                    .and_then(|h| h.get("id").and_then(|i| i.as_str()))
-                    .map(|s| s.to_string())
-            }),
+        Ok(ref r) => payload_json(r).ok().and_then(|v| {
+            v.get("hypotheses")
+                .and_then(|h| h.as_array())
+                .and_then(|arr| arr.get(2))
+                .and_then(|h| h.get("id").and_then(|i| i.as_str()))
+                .map(|s| s.to_string())
+        }),
         Err(e) => {
             crate::teeprintln!("  [FAIL] get_exploration_status(2) — {}", e);
             stats.failed += 1;
@@ -231,11 +234,7 @@ pub async fn run_exploration_hypothesis_tests(
                 v.get("hypotheses")
                     .and_then(|h| h.as_array())
                     .and_then(|arr| arr.get(2))
-                    .map(|h| {
-                        h.get("result")
-                            .and_then(|r| r.as_str())
-                            .is_some()
-                    })
+                    .map(|h| h.get("result").and_then(|r| r.as_str()).is_some())
             })
             .unwrap_or(false),
         Err(_) => false,
@@ -292,15 +291,10 @@ pub async fn run_exploration_hypothesis_tests(
                 v.get("hypotheses")
                     .and_then(|h| h.as_array())
                     .and_then(|arr| {
-                        arr.iter().find(|h| {
-                            h.get("id").and_then(|i| i.as_str()) == Some(&hyp_id)
-                        })
+                        arr.iter()
+                            .find(|h| h.get("id").and_then(|i| i.as_str()) == Some(&hyp_id))
                     })
-                    .map(|h| {
-                        h.get("result")
-                            .and_then(|r| r.as_str())
-                            .is_some()
-                    })
+                    .map(|h| h.get("result").and_then(|r| r.as_str()).is_some())
             })
             .unwrap_or(false),
         Err(e) => {

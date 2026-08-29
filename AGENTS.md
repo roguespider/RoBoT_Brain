@@ -33,36 +33,54 @@ description. Verify each step by inspecting the actual codebase state.**
 - Before claiming a task is done: run the gate, read the JSON report, confirm
   the relevant metric is actually 0 (not just "I think I fixed it").
 - "It compiles on my machine" is not verification. The gate is the verifier.
+- Any status claim in README, PLAN.md, CHANGELOG.md, or `.agents/*.md` that
+  references test counts, warning counts, or completeness must be backed by
+  a same-day gate run. If the gate was not run this session, soften the claim:
+  - Instead of "0 warnings" → "pending gate verification"
+  - Instead of "148/148 tests pass" → "148 tests (unverified, pending gate)"
+  - Never hardcode gate counts in task notes without a date
+- The single source of truth is `test_suite/test_suite_report.json`.
+- When asked "is T1-NN done?" or "is X working 100%?": Do NOT read the PLAN.md
+  checkbox and repeat it. Checkboxes lie. INSPECT THE CODEBASE: `grep`/`find`
+  for the actual change, read the code, confirm the API exists and is wired.
+- For "working 100%" claims, the done-when criteria matter (e.g. T1-10 =
+  "queue survives a process restart"). Wire a real end-to-end test in
+  test_suite that exercises that criterion, not just "the function exists".
+- Report what is actually true, including gaps the PLAN glosses over.
 
-### Status Claims Require Same-Day Gate Run (MANDATORY)
-
-Any status claim in README, PLAN.md, CHANGELOG.md, or `.agents/*.md` that
-references test counts, warning counts, or completeness must be backed by
-a same-day gate run. If the gate was not run this session, soften the claim:
-- Instead of "0 warnings" → "pending gate verification"
-- Instead of "148/148 tests pass" → "148 tests (unverified, pending gate)"
-- Never hardcode gate counts in task notes without a date
-
-The single source of truth is `test_suite/test_suite_report.json`.
-
-### Never Separately Build robot_brain (MANDATORY)
+## Build Commands
 
 **test_suite auto-builds robot_brain. Never run
 `cargo build -p robot_brain` or `cargo build --release -p robot_brain`
 separately.**
 
-- test_suite and robot_brain are two separate, independent projects.
-  test_suite does NOT import or link robot_brain's source. It spawns
-  robot_brain as a subprocess via MCP.
+- test_suite and robot_brain are two separate, independent projects. test_suite
+  does NOT import or link robot_brain's source. It spawns robot_brain as a
+  subprocess via MCP.
 - When working on test_suite, NEVER touch `src/` (robot_brain's source). When
   working on robot_brain, NEVER touch `test_suite/src/`.
-- To build + test robot_brain: `cd test_suite && cargo build --release &&
-  ./target/release/test_suite`. That's it. test_suite rebuilds robot_brain
-  automatically.
 - Running a separate `cargo build -p robot_brain` wastes time and can mask
   discrepancies between what you built and what test_suite built.
 
-### Quality Gate (MANDATORY before any commit)
+```bash
+# The verify gate — test_suite auto-builds robot_brain, connects via MCP,
+# runs all tests + code analysis, and enforces 0 warnings / 0 code-issues /
+# 0 untested tools. This is the ONLY command needed to build + test:
+cd test_suite && cargo build --release && ./target/release/test_suite
+# Outputs: test_suite/test_suite_output.txt and test_suite/test_suite_report.json
+#
+# Or use `make gate` (runs the same thing via .agents/scripts/gate.sh).
+#
+# CLI modes:
+#   test_suite              → full suite (default)
+#   test_suite --list       → list all server tools (smoke check)
+#   test_suite --probe TOOL → introspect one tool's live inputSchema
+#
+# Build main binary only (rarely needed — test_suite does this automatically):
+#   cargo build --release -p robot_brain
+```
+
+#### Quality Gate (MANDATORY before any commit)
 
 Run `cd test_suite && cargo build --release && ./target/release/test_suite --gate`.
 All four metrics must pass: `tests` (100%), `compiler_warnings` (0),
@@ -73,15 +91,6 @@ The structured report at `test_suite/test_suite_report.json` has an `issues[]`
 array; each entry has `kind`/`category`/`file`/`line`/`message`/`suggested_action`.
 Use `python3 -c` + `collections.Counter` to group warnings by message/file for
 triage. Fix dead-code first (highest signal), then mechanical clippy lints.
-
-## Startup (do this every session — see `.agents/STARTUP.md` for the full call to action)
-
-1. Read `.agents/STARTUP.md`, then this file, then `.agents/PLAN.md` — in full.
-2. Run the verify gate (build + live test + test suite). Must be green before
-   any code change. Do not "remember" a prior pass — run it.
-3. Pick the FIRST incomplete task from `.agents/PLAN.md` "Next steps". Do not
-   skip ahead.
-4. ONE change → re-run gate → commit → push → STOP and report. Never batch.
 
 ## Prerequisites (install FIRST, before anything else)
 
@@ -115,38 +124,19 @@ This is a Rust workspace with **two separate, independent programs**:
 
 These programs **do NOT depend on each other's source code**. test_suite tests robot_brain by spawning it as a subprocess via MCP protocol.
 
-## Build Commands
-
-```bash
-# The verify gate — test_suite auto-builds robot_brain, connects via MCP,
-# runs all tests + code analysis, and enforces 0 warnings / 0 code-issues /
-# 0 untested tools. This is the ONLY command needed to build + test:
-cd test_suite && cargo build --release && ./target/release/test_suite
-# Outputs: test_suite/test_suite_output.txt and test_suite/test_suite_report.json
-#
-# Or use `make gate` (runs the same thing via .agents/scripts/gate.sh).
-#
-# CLI modes:
-#   test_suite              → full suite (default)
-#   test_suite --list       → list all server tools (smoke check)
-#   test_suite --probe TOOL → introspect one tool's live inputSchema
-#
-# Build main binary only (rarely needed — test_suite does this automatically):
-#   cargo build --release -p robot_brain
-```
-
 ## Build Efficiency (parallelize work)
 
 When running builds, **start the build in the background first**, then use the
 waiting time to work on other tasks (reading code, updating memory, planning).
 
 Pattern:
-1. Start `cargo build --release` or `cargo check --release` in background
+1. Start `cd test_suite && cargo build --release` in background
 2. While waiting, review related code, read documentation, plan next steps
 3. When build completes, review results and continue
 
-For quick compiler feedback (no test execution), prefer `cargo check --release`
-over full builds. This gives faster turnaround on iterative changes.
+For quick compiler feedback (no test execution), prefer
+`cd test_suite && cargo check --release` over full builds. This gives faster
+turnaround on iterative changes.
 
 ## Post-Compile: Connect to robot_brain MCP/ACP
 
@@ -178,16 +168,6 @@ The `robot-brain` skill (`.agents/skills/robot-brain/skill.md`) documents the to
 **Workflow gate (required before any substantive tool call):** the server returns `WORKFLOW_NOT_RETRIEVED` until `get_workflow` is called, then `MEMORY_NOT_SEARCHED` until `search_memory` is called. The Rust `TestMcpClient::new()` in `test_suite/src/main.rs` handles both automatically.
 
 This direct testing makes it easier to identify working vs. broken functionality immediately after compilation, rather than only seeing aggregate pass/fail from the test suite.
-
-## Handling Unused Type Warnings
-
-Many types (like `SimpleAgent`, `AcpCapability`, ACP message builders) are defined for testing/future use but unused in production. When fixing lint warnings:
-
-1. **Wrap test-only types in `#[cfg(test)]` modules** - keeps them available for tests without affecting production
-2. **Move unused re-exports to test modules** - don't expose unused types in public API
-3. **Keep production trait minimal** - implement only what's actually used (e.g., `AcpAgent` trait only needs `id()` and `handle()` methods)
-
-This pattern reduced warnings from 480+ to ~359.
 
 ## Code Style Conventions
 
@@ -258,23 +238,23 @@ When modifying or extending this codebase, you **MUST** adhere to these strict c
 
 ### Dead Code Resolution Protocol
 
-> **Don't add `#[cfg(test)]` to robot_brain's `src/`.** It causes code-quality
-> issues and the quality gate flags it. Tests belong in `test_suite/` (as MCP
-> flow tests) where they exercise the real public surface. The ONLY exception is
-> Group B — internal-only/dead-code logic with no MCP surface that genuinely
-> cannot be reached from test_suite. For Group B, leave the existing Rust unit
-> test in place and document the reclassification in PLAN.md, but do NOT create
-> NEW `#[cfg(test)]` blocks in `src/`.
+**Never use `#[cfg(test)]` in production source.** It causes code-quality issues
+and the quality gate flags it. Tests belong in `test_suite/` (as MCP flow tests)
+where they exercise the real public surface.
 
-When encountering unused, unreachable, or seemingly dead code:
+**Fixing unused type warnings:** Many types (like `SimpleAgent`, `AcpCapability`,
+ACP message builders) are defined for testing/future use but unused in production.
 
-1. **Cross-reference architecture**: Check `RoBoT_Brain/robot_architecture/` directory for documentation
-2. **If documentation describes the feature**: The code is an incomplete stub
-   - You MUST fully implement and complete the missing logic
-   - Production-ready status is required
-3. **If documentation confirms deprecated/absent**: The code can be safely deleted
-   - Clean up all associated imports and references
-   - Verify no breaking dependencies
+1. **Move unused types to `test_suite/`** — don't expose unused types in the
+   public API; move them to test modules where they belong.
+2. **Keep production traits minimal** — implement only what's actually used
+   (e.g., `AcpAgent` trait only needs `id()` and `handle()` methods).
+3. **Cross-reference architecture**: Check `RoBoT_Brain/robot_architecture/`
+   directory for documentation about seemingly dead code.
+4. **If documentation describes the feature**: The code is an incomplete stub.
+   You MUST fully implement and complete the missing logic (production-ready).
+5. **If documentation confirms deprecated/absent**: The code can be safely deleted.
+   Clean up all associated imports and references; verify no breaking dependencies.
 
 ### Enforcement
 
@@ -328,22 +308,6 @@ every session should know:
   verified by running the gate this session. Stale counts are common — always
   re-run the gate, never trust a prior "done/GREEN" claim (Verify, Don't Trust).
 
-## Verifying task status (MANDATORY)
-
-When asked "is T1-NN done?" or "is X working 100%?":
-- Do NOT read the PLAN.md checkbox and repeat it. Checkboxes lie.
-- Do NOT trust the "Verified state" snapshot in PLAN.md — it can be stale.
-- INSPECT THE CODEBASE: `grep`/`find` for the actual change, read the code,
-  confirm the API exists and is wired.
-- RUN THE GATE: `cd test_suite && cargo build --release &&
-  ./target/release/test_suite`. Read `test_suite_report.json` for the real
-  metrics (`compiler_warnings`, `code_issues`, `untested_tools`,
-  `tests passed/total`, `overall_success`).
-- For "working 100%" claims, the done-when criteria matter (e.g. T1-10 =
-  "queue survives a process restart"). Wire a real end-to-end test in
-  test_suite that exercises that criterion, not just "the function exists".
-- Report what is actually true, including gaps the PLAN glosses over.
-
 ## All tests live in test_suite (MANDATORY)
 
 - `#[cfg(test)]` modules inside robot_brain's `src/` are NOT the place for
@@ -363,7 +327,7 @@ When asked "is T1-NN done?" or "is X working 100%?":
 
 ---
 
-> **The sections below have moved out of this file to reduce noise:**
+> **The sections below have moved out of this file to reduce size:**
 > - **Roadmap to v2.0 (Architecture Conformance Work)** — the P0-P4 status
 >   tracker, Definition of Done, Resume Here, and verified-state snapshot —
 >   moved to **`.agents/PLAN.md`** section 6 ("v0.0.1 CONFORMANCE WORK").
@@ -372,6 +336,153 @@ When asked "is T1-NN done?" or "is X working 100%?":
 >   JSON report usage, future test work — moved to
 >   **`.agents/TEST_SUITE_NOTES.md`**.
 >
-> This file now ends at the hard rules above. Everything status/narrative/
-> reference lives in `.agents/` so it does not bury the rules you must follow
+> This file now ends at the hard rules above. All status/narrative/
+> reference lives in `.agents/` so the rules stay focused
 > every session.
+
+# STARTUP — Execute in order, no skipping
+
+## 1. MCP workflow gate (required before any tool call)
+
+Call `get_workflow` first — all MCP tools are blocked until this returns.
+
+## 2. Load these files in full:
+1. `AGENTS.md` — the hard rules (Incremental Workflow, Prerequisites, Build
+   Commands, Post-Compile MCP connect, Strict Rust Coding Standards)
+2. `.agents/PLAN.md` — the roadmap + the "Next steps to finish v0.0.1" list
+
+## 3. Store session context in memory (Working Memory Protocol)
+
+After reading startup files, call `store_memory` with:
+- `memory_type`: "note"
+- `tags`: ["startup", session date]
+- `content`: Current state summary (what we're working on, gate status, next task)
+
+This ensures session context survives across turns and can be retrieved later.
+After any code change, store a note summarizing what changed.
+
+## 4. Run the verify gate (must be green BEFORE any code change)
+
+> **The wall (use it):** `make gate` runs test_suite, which auto-builds
+> robot_brain, connects via MCP, runs all tests + code analysis, and enforces
+> the quality wall. It is installed as a pre-commit hook
+> (`.agents/githooks/pre-commit`) so **no commit lands unless the gate is green**.
+> One-time clone setup: `make hooks` (sets `core.hooksPath = .agents/githooks`).
+>
+> AGENTS.md is enforced as a **HARD wall**: 0 compiler warnings, 0 code-issues
+> (no `#[allow]`, no `PublicNeverCalled`, no stubs), 0 untested tools. There is
+> no ratchet and no baseline to ratchet against. A non-zero count blocks the
+> commit; fix it by wiring the dead-code pub API into a real caller — never by
+> `#[allow]` or `_`. `git commit --no-verify` is ONLY for the one-time
+> bootstrap of the wall files themselves (.agents/scripts/, .agents/githooks/, Makefile) and
+> trivial doc-only edits; never for `src/` changes.
+
+If the toolchain is not installed, install it first (see AGENTS.md
+"Prerequisites"). Then either run the wall:
+
+```bash
+make gate
+```
+
+…or run test_suite by hand (the wall does exactly this):
+
+```bash
+cd test_suite && cargo build --release && ./target/release/test_suite
+```
+
+test_suite auto-builds robot_brain, spawns it as a subprocess, connects
+via MCP, runs all tests + code analysis, and writes
+`test_suite/test_suite_report.json`. The gate is green only when all
+tests pass AND 0 warnings / 0 code-issues / 0 untested tools. If any fails,
+fix the failure before doing anything else. Do not "remember" a prior pass —
+actually run it this session.
+
+**Running the gate in background:** The gate takes 17+ minutes to complete. Run it in the background using output redirection so you can continue checking tasks against the codebase while it runs:
+
+```bash
+cd test_suite && ./target/release/test_suite > test_suite_output.txt 2>&1
+```
+
+Then read the results when done: `cat test_suite/test_suite_report.json` and `cat test_suite_output.txt | tail -100`. While waiting, continue verifying PLAN.md tasks by reading actual source code (never trust checkboxes — inspect the code).
+
+## 5. Pick the next task (in order, do not skip ahead)
+
+**STEP 1:** You are processing AGENTS.md (STARTUP section).
+
+**STEP 2:** Open `.agents/PLAN.md` at line 1. Find the first
+`- [ ]` task marker. **That is the ONLY task you work on this session.**
+Do NOT process any task after it. Do NOT skip ahead. Do NOT pick a different task.
+The first unchecked task from the top IS the task — regardless of its marker.
+
+**STEP 3:** Work on that task. When done, re-run the gate. Commit + push.
+
+**STEP 4:** Start the next task without user confirmation.
+
+- **Coverage gate: run it to verify.** Any status claim referencing test counts,
+  warning counts, or completeness must be verified by running the gate this
+  session. Do not trust prior "done/GREEN" claims.
+- **TIER 1 tasks: see CHANGELOG.md for details on each task.**
+- **Remaining blocker: P1 quality gate.** See PLAN.md P1-001/P1-002.
+- **Self_check removal is TIER 2 work** (the APIs they exercise have no other
+  callers; deleting them in TIER 1 creates dead-code warnings). Do it during
+  each system's TIER 2 upgrade. 8 self_check.rs files remain.
+
+## 6. Execute ONE change, then the gate, then stop
+
+- Make ONE change only (one file or one tightly-coupled set).
+- Re-run the full verify gate (step 2). All three must pass.
+- If the gate is red, fix it before claiming done. Never claim done without
+  running the gate.
+- Commit + push that one change.
+- Report the result (what changed, gate status, commit hash).
+- STOP and report to the user for **code changes** (gate risk). For **documentation-only** changes (PLAN.md, README, AGENTS.md, etc.) proceed to the next task without confirmation.
+
+## 7. Periodic maintenance (check from time to time, not every session)
+
+- **Large file refactor** (`.agents/LARGE_FILE_REFACTOR.md`): when an `.rs`
+  file hits ~1000 lines mixing responsibilities, split it into a directory
+  module per the pattern there. Run the candidates query occasionally.
+
+## 8. Hard rules (from AGENTS.md — non-negotiable)
+
+- NEVER batch multiple unrelated changes into one commit/step.
+- NO `.unwrap()`, `.expect()`, `panic!()`, `assert!()`, `unreachable!()`.
+- NO `todo!()`, `unimplemented!()`.
+- NO `#[allow(...)]` / `#![allow(...)]` anywhere in `src/`.
+- NO `#[cfg(test)]` in `src/`. Tests live in `test_suite/`, not in production source.
+- NO ignored variables (`let _x = ...`, `let _ = ...`, `|_| ...`).
+- NO deleting code to bypass fixes. Follow the Dead Code Resolution Protocol
+  (AGENTS.md): implement if the architecture describes it, delete only if
+  confirmed absent.
+- The build and test suite enforce these. If the compiler or test suite flags
+  a violation, the change is not done. Fix it; do not silence it.
+
+## 9. Context Watchdog Protocol
+
+Long tasks lose state when the context window fills. Manage this proactively.
+
+**While working**, watch for these signals (any one is enough):
+- Conversation thread is long AND the last several turns were heavy on tool output.
+- A single tool returned more than ~500 lines, or cumulative tool output across recent turns exceeds several thousand lines.
+- The user reports the editor's context indicator is past ~80%.
+- You are about to start a subtask that will itself be substantial (e.g. "refactor this 1000-line file").
+
+**At any of those signals**, do NOT push further. Instead:
+1. Run `store_memory` (per the Working Memory Protocol) with a checkpoint note: goal, files touched so far, current gate status, next concrete step, and any unresolved decisions.
+2. Reply with a short "Checkpoint" summary in chat so session state is durable.
+3. Ask the user whether to continue in this thread or open a fresh one.
+
+**Hard halt (~90% of context full)**:
+- Do not start any new code change.
+- Write the full `## Handoff State Package` to `.agents/context_save.md`:
+  - **Goal**: one sentence
+  - **Completed**: bulleted list of files changed + commit hashes if any
+  - **In progress**: what was being done when halted
+  - **Next step**: the single next action (concrete, not aspirational)
+  - **Gate status**: last `make gate` result, or "not run this turn"
+- Delete the file after the user has read it — once the agent loads `.agents/context_save.md` at the start of a session and has acted on its contents, delete it so it does not persist as stale state.
+
+**Context-save file as the top priority**: 
+If `.agents/context_save.md` exists when you start a session, that file contains the current problem to resolve before anything else. 
+Read it, execute the handoff (continue from where the previous session left off), then delete the file. 
+Do not proceed to any other task until the context-save file has been resolved and removed.

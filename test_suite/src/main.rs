@@ -1189,7 +1189,8 @@ async fn main() -> anyhow::Result<()> {
     teeprintln!("{}", "#".repeat(120));
 
     let phase = PhaseTimer::start("BUILD + SETUP");
-    let server_path = build_server().await?;
+    // Reuse the already-built server_path from the first build_server call
+    // above to avoid the double-build that wastes time on cargo clean + rebuild.
     let env = setup_test_environment(&server_path)?;
     let mut client = TestMcpClient::new(&env.server_path).await?;
     phase.done();
