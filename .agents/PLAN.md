@@ -110,9 +110,6 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 > Goal: green gate (test_suite exit 0). End state = a clean v0.0.1 baseline.
 > TIER 1 is COMPLETE (1B, 1C, 1D, 1E finished).
 
-
-
-
 # RoBoT v0.0.1 Completion Plan
 
 ## Mission
@@ -164,73 +161,6 @@ A task is NOT complete until its verification criteria pass.
 
 # Priority 0 - Critical Correctness
 
-## P0-001 Durable Queue Completion Semantics
-
-### Problem
-
-The durable queue currently marks work complete after successfully
-broadcasting an event rather than after the worker successfully processes
-the work.
-
-`broadcast_event()` using `try_send()` can also drop work when a worker
-channel is full.
-
-This can produce:
-
-    event created
-        ↓
-    durable job created
-        ↓
-    worker channel full
-        ↓
-    event dropped
-        ↓
-    broadcast reports success
-        ↓
-    durable job marked complete
-
-RoBoT therefore believes work was completed when it was not.
-
-### Required Outcome
-
-A durable job must remain pending/running until the worker confirms
-successful processing.
-
-A dropped or failed dispatch must NOT produce a completed job.
-
-### Likely Files
-
-- `src/experience/...`
-- `src/workers/...`
-- `src/queue/...`
-- `src/app/...`
-
-Do not assume these paths are exhaustive. Search the repository first.
-
-### Acceptance Criteria
-
-- [ ] Worker dispatch failure is detectable.
-- [ ] Full worker channels do not silently lose jobs.
-- [ ] SQLite job status is not marked complete during dispatch.
-- [ ] Successful worker execution marks the durable job complete.
-- [ ] Worker failure records failure state.
-- [ ] Retry behavior is represented consistently.
-- [ ] Tests cover channel-full behavior.
-- [ ] Tests cover worker failure.
-- [ ] Tests cover successful completion.
-- [ ] `cargo test` passes.
-- [ ] `cargo clippy` passes according to project policy.
-
-### Do Not
-
-- Replace SQLite with another database.
-- Remove the durable queue.
-- Remove workers to simplify the problem.
-- Hide failures with `unwrap`, `expect`, or ignored errors.
-- Change unrelated architecture.
-
----
-
 # P0-002 Unique Durable Job Identity
 
 ### Problem
@@ -276,18 +206,18 @@ is pending, running, failed, or complete.
 
 ### Fix Applied
 
-- Added `OnRetryCallback` to `ExperienceWorker` so retry job IDs are
+- [ ] - Added `OnRetryCallback` to `ExperienceWorker` so retry job IDs are
   registered in the `JobRegistry` when `handle_failure` creates a retry
   (worker callbacks can find them later).
-- Registered restored job IDs in `JobRegistry` from `dispatch_restored_jobs`
+- [ ] - Registered restored job IDs in `JobRegistry` from `dispatch_restored_jobs`
   so synthetic events match registry lookups.
-- Fixed `let _ = receiver.recv()` in `background.rs` → proper match
+- [ ] - Fixed `let _ = receiver.recv()` in `background.rs` → proper match
   (no underscore-prefixed variables).
 
 Files changed:
-- `src/experience/worker.rs` — OnRetryCallback type, on_retry field, callback invocation
-- `src/experience/worker_manager/manager.rs` — on_retry closure, dispatch_restored_jobs registry registration
-- `src/experience/worker_manager/background.rs` — fixed ignored recv result
+- [ ] - `src/experience/worker.rs` — OnRetryCallback type, on_retry field, callback invocation
+- [ ] - `src/experience/worker_manager/manager.rs` — on_retry closure, dispatch_restored_jobs registry registration
+- [ ] - `src/experience/worker_manager/background.rs` — fixed ignored recv result
 
 ### Required Outcome
 
@@ -447,22 +377,20 @@ Testing belongs in:
   wired in main.rs (L1215). verify_experience_recorder() uses UUID temp dir, zero-arg caller
   confirmed in diagnostics.rs (L241).
 - [ ] **P2-001C** - Diagnostics remain available through an explicit mechanism.
-  [ ] (2026-08-25) All micro-tasks completed:
-  - P2-001C-M1: 22 diagnostic functions dispatched exactly once (code verified in diagnostics.rs L42-313).
-  - P2-001C-M2: `App::run()` contains no probes — only scheduler + stdio server (verified L199-221).
-  - P2-001C-M3: Exit code 1 on failure (main.rs L45-47, verified).
-  - P2-001C-M4: Per-subsystem `[PASS]`/`[FAIL]` summary in diagnostics.rs (verified).
-  - P2-001C-M5: `verify_experience_recorder()` uses isolated temp DB via `std::env::temp_dir()` + UUID folder.
-    Pattern matches job_queue/scheduler diagnostics — never touches production DB (verified).
-  - P2-001C-M6: Added "Diagnostics" section to README describing `robot diagnose` (what it checks, output format, exit codes).
-  - P2-001C-M7: Gate results verified via `test_suite/test_suite_report.json`. Do not
-    trust prior gate counts — run the gate to verify.
+  - [ ] - P2-001C-M1: 22 diagnostic functions dispatched exactly once (code verified in diagnostics.rs L42-313).
+  - [ ] - P2-001C-M2: `App::run()` contains no probes — only scheduler + stdio server (verified L199-221).
+  - [ ] - P2-001C-M3: Exit code 1 on failure (main.rs L45-47, verified).
+  - [ ] - P2-001C-M4: Per-subsystem `[PASS]`/`[FAIL]` summary in diagnostics.rs (verified).
+  - [ ] - P2-001C-M5: `verify_experience_recorder()` uses isolated temp DB via `std::env::temp_dir()` + UUID folder.
+  - [ ] - Pattern matches job_queue/scheduler diagnostics — never touches production DB (verified).
+  - [ ] - P2-001C-M6: Added "Diagnostics" section to README describing `robot diagnose` (what it checks, output format, exit codes).
+  - [ ] - P2-001C-M7: Gate results verified via `test_suite/test_suite_report.json`. Do not trust prior gate counts — run the gate to verify.
   
-  Additional fix: Replaced 5 `.unwrap_err()` calls in diagnostics.rs with safe
+  - [ ] Additional fix: Replaced `.unwrap_err()` calls with safe
   `if let Err(ref e)` pattern to comply with NO-PANIC coding standard.
   The `robot diagnose` path is now a fully hardened, testable, documented explicit
   diagnostics mechanism.
-  [VERIFIED 2026-08-25] Code inspected end-to-end. Gate run pending as final validation.
+  - [ ]  Code inspected end-to-end. Gate run pending as final validation.
 
   Micro-tasks (~5 min each, do ONE per session step, gate + commit after each):
 

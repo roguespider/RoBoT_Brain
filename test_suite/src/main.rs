@@ -1228,6 +1228,9 @@ async fn main() -> anyhow::Result<()> {
     // T1-10: verify the SQLite JobQueue survives a process restart.
     tests::queue_durability::run_queue_durability_tests(&mut stats).await?;
 
+    // P0-001: verify queue lifecycle (channel-full, worker failure, successful completion).
+    tests::queue_durability::run_queue_lifecycle_tests(&mut stats).await?;
+
     // P5-001-M3: verify memory failure isolation (corrupted DB → no panic).
     tests::memory_failure_isolation::memory_failure_isolation(&mut stats).await;
 

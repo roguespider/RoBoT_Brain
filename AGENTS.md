@@ -201,7 +201,15 @@ When modifying or extending this codebase, you **MUST** adhere to these strict c
 6. **Name Conflicts**
    - If renaming types, use descriptive new names (e.g., `LearningPattern` instead of `Pattern`)
 
-7. **NO Emoji / Plain-Text Markers Only**
+7. **Fix Bugs When Found**
+   - When you inspect code and find a bug (logic error, missing error handling,
+     silent drop, data loss, etc.), you MUST fix it immediately.
+   - Do not note it, skip it, or defer it. Write the fix, verify it compiles,
+     run the gate, commit.
+   - This applies even to tasks not currently on your PLAN.md checklist. A
+     verified bug in production code takes priority over task order.
+
+8. **NO Emoji / Plain-Text Markers Only**
    - Strictly forbidden in ALL code and `.agents/` docs: decorative emoji
      (check marks, cross marks, party popper, clipboard, warning signs, etc.)
      and the variation selector U+FE0F. Emoji caused real mojibake breakage in
@@ -461,16 +469,52 @@ The first unchecked task from the top IS the task — regardless of its marker.
 
 Long tasks lose state when the context window fills. Manage this proactively.
 
-**While working**, watch for these signals (any one is enough):
-- You have completed more than ~10 turns in this session with heavy tool output.
-- A single tool returned more than ~1000 lines, or cumulative tool output across recent turns exceeds several thousand lines.
+### Self-tracking (MANDATORY)
+
+You cannot see the editor's context indicator. Track context usage yourself:
+
+1. **Count turns**: Every time you respond, increment `session_turns` (store in memory).
+2. **Count tool output lines**: Track cumulative lines from all tool calls this session. Store with `store_memory` after every 5 tool calls.
+3. **Estimate characters**: Rough formula — `character_count = line_count * 5`. A 14,000-line context ≈ 70,000 characters.
+4. **Store the estimate** in working memory with tag `context-estimate` after each batch of work.
+
+**Trigger checkpoints at these thresholds** (use stored count, not guesswork):
+
+| Threshold | Action |
+|-----------|--------|
+| 20 turns OR 5,000+ cumulative lines | Store checkpoint in memory (lightweight) |
+| 30 turns OR 8,000+ lines | Store checkpoint + ask user to report context indicator |
+| 40 turns OR 10,000+ lines | STOP new code changes, write context_save.md |
+| User reports >80% | Hard halt, write context_save.md |
+
+**Checkpoint format** (store via `store_memory`, `memory_type: "note"`):
+```
+[CHECKPOINT] session_turns=N, cumulative_lines=M
+- Goal: ...
+- Files touched: ...
+- Gate status: ...
+- Next step: ...
+```
+
+### Hard signals (any one is enough):
 - The user tells you the editor's context indicator is past ~90%.
 - You are about to start a subtask that will itself be substantial (e.g. "refactor this 1000-line file").
+- A single tool returned more than ~5000 lines (extreme case).
 
-**At any of those signals**, do NOT push further. Instead:
+### At hard signals, do NOT push further. Instead:
 1. Run `store_memory` (per the Working Memory Protocol) with a checkpoint note: goal, files touched so far, current gate status, next concrete step, and any unresolved decisions.
 2. Reply with a short "Checkpoint" summary in chat so session state is durable.
 3. Ask the user whether to continue in this thread or open a fresh one.
+
+### Hard halt (~90% of context full):
+- Do not start any new code change.
+- Write the full `## Handoff State Package` to `.agents/context_save.md`:
+  - **Goal**: one sentence
+  - **Completed**: bulleted list of files changed + commit hashes if any
+  - **In progress**: what was being done when halted
+  - **Next step**: the single next action (concrete, not aspirational)
+  - **Gate status**: last `make gate` result, or "not run this turn"
+- Delete the file after the user has read it — once the agent loads `.agents/context_save.md` at the start of a session and has acted on its contents, delete it so it does not persist as stale state.
 
 **Hard halt (~90% of context full)**:
 - Do not start any new code change.
