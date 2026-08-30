@@ -15,7 +15,32 @@ milestone on the way there.
 
 ---
 
-# 2. CONTEXT SUMMARY
+# 2. OPERATING RULES
+
+1. Work on ONE task at a time.
+2. Read the relevant source before modifying it.
+3. Preserve existing architectural intent.
+4. Do not solve a compiler warning by deleting functionality.
+5. Do not mark a task complete because code compiles.
+6. Every completed task must have a verification method.
+7. Run relevant tests after each change.
+8. Update this file when a task changes state.
+9. If implementation reveals an architectural conflict, STOP and report it.
+10. Do not silently expand scope.
+11. Task completion protocol -- after a task passes the full verify gate (build + test_suite + gate green, end-to-end verified):
+    a. Write a concise summary to `.agents/CHANGELOG.md` describing what was [ ], files changed, and verification results.
+    b. Remove the task from its section in PLAN.md — delete the entire line from the file. Do not use ~~strike-through~~, do not change `[ ]` to `[x]`, do not leave stub detail. The line must be gone.
+    c. Only then commit and push.
+    Never write the CHANGELOG entry before the gate passes. Never let PLAN.md accumulate completed task detail.
+
+    Important: if a task is still listed in PLAN.md, it is NOT complete -- regardless of any `[ ]` or `[x]` marker. Presence in PLAN.md means pending. The only signal of completion is removal from PLAN.md plus a CHANGELOG.md entry.
+
+    Removing a task from PLAN.md without full end-to-end verification is not acceptable. Every removed task must be 100% complete and verified in the codebase (gate green, tests pass, no warnings). Do not remove tasks you have not actually finished.
+12. Always make small, incremental edits. Never batch multiple unrelated changes into one edit. After each edit, verify it worked before proceeding. Large bulk rewrites lose information.
+
+---
+
+# 3. CONTEXT SUMMARY
 
 ## The blueprints
 
@@ -75,7 +100,7 @@ The gate is green only when all tests pass AND 0 warnings / 0 code-issues /
 
 ---
 
-# 3. APPROACH -- three tiers of small increments
+# 4. APPROACH -- three tiers of small increments
 
 Work through three tiers in order. Each tier is a checklist of small
 increments. Do them top-to-bottom, one at a time, with the verify gate green
@@ -105,7 +130,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 
 ---
 
-# 4. TIER 1 -- Finish v0.0.1 (clean baseline)
+# 5. TIER 1 -- Finish v0.0.1 (clean baseline)
 
 > Goal: green gate (test_suite exit 0). End state = a clean v0.0.1 baseline.
 > TIER 1 is COMPLETE (1B, 1C, 1D, 1E finished).
@@ -121,31 +146,6 @@ complete partially implemented integrations, and establish a
 verified passing baseline.
 
 Do NOT redesign the architecture unless a task explicitly requires it.
-
----
-
-# Operating Rules
-
-1. Work on ONE task at a time.
-2. Read the relevant source before modifying it.
-3. Preserve existing architectural intent.
-4. Do not solve a compiler warning by deleting functionality.
-5. Do not mark a task complete because code compiles.
-6. Every completed task must have a verification method.
-7. Run relevant tests after each change.
-8. Update this file when a task changes state.
-9. If implementation reveals an architectural conflict, STOP and report it.
-10. Do not silently expand scope.
-11. Task completion protocol -- after a task passes the full verify gate (build + test_suite + gate green, end-to-end verified):
-    a. Write a concise summary to `.agents/CHANGELOG.md` describing what was [ ], files changed, and verification results.
-    b. Remove the task from its section in PLAN.md — delete the entire line from the file. Do not use ~~strike-through~~, do not change `[ ]` to `[x]`, do not leave stub detail. The line must be gone.
-    c. Only then commit and push.
-    Never write the CHANGELOG entry before the gate passes. Never let PLAN.md accumulate completed task detail.
-
-    Important: if a task is still listed in PLAN.md, it is NOT complete -- regardless of any `[ ]` or `[x]` marker. Presence in PLAN.md means pending. The only signal of completion is removal from PLAN.md plus a CHANGELOG.md entry.
-
-    Removing a task from PLAN.md without full end-to-end verification is not acceptable. Every removed task must be 100% complete and verified in the codebase (gate green, tests pass, no warnings). Do not remove tasks you have not actually finished.
-12. Always make small, incremental edits. Never batch multiple unrelated changes into one edit. After each edit, verify it worked before proceeding. Large bulk rewrites lose information.
 
 ---
 
@@ -210,9 +210,9 @@ After completing a task:
 2. Run the relevant quality checks.
 3. Inspect the resulting diff.
 4. Confirm the acceptance criteria.
-5. Change `[~]` to `[x]`.
-6. Add a short completion note.
-7. Commit the change.
+5. Write a concise summary to `.agents/CHANGELOG.md`.
+6. Delete the task line from PLAN.md (not `[x]`, delete the entire line).
+7. Commit and push.
 8. Move to the next task.
 
 If the task cannot be safely completed:
