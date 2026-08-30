@@ -201,17 +201,23 @@ impl JobQueue {
 
     /// Mark a job as completed (updates in-memory cache and SQLite).
     pub fn mark_complete(&mut self, job_id: &str) -> Result<()> {
-        let db = self.database.as_ref();
+        let (experience_id, observer_name) = {
+            if let Some(job) = self.jobs.get(job_id) {
+                (job.experience_id.clone(), job.observer_name.clone())
+            } else {
+                (String::new(), String::new())
+            }
+        };
         if let Some(job) = self.jobs.get_mut(job_id) {
             job.status = JobStatus::Completed;
         }
-        if let Some(db) = db
+        if let Some(db) = self.database.as_ref()
             && let Err(e) = persist_update(
                 db,
                 &Job {
                     id: job_id.to_string(),
-                    experience_id: String::new(),
-                    observer_name: String::new(),
+                    experience_id,
+                    observer_name,
                     status: JobStatus::Completed,
                     last_error: None,
                     attempts: 0,
@@ -225,19 +231,25 @@ impl JobQueue {
 
     /// Mark a job as failed with an error message (updates in-memory cache and SQLite).
     pub fn mark_failed(&mut self, job_id: &str, error: String) -> Result<()> {
-        let db = self.database.as_ref();
+        let (experience_id, observer_name) = {
+            if let Some(job) = self.jobs.get(job_id) {
+                (job.experience_id.clone(), job.observer_name.clone())
+            } else {
+                (String::new(), String::new())
+            }
+        };
         if let Some(job) = self.jobs.get_mut(job_id) {
             job.status = JobStatus::Failed;
             job.last_error = Some(error.clone());
             job.attempts += 1;
         }
-        if let Some(db) = db
+        if let Some(db) = self.database.as_ref()
             && let Err(e) = persist_update(
                 db,
                 &Job {
                     id: job_id.to_string(),
-                    experience_id: String::new(),
-                    observer_name: String::new(),
+                    experience_id,
+                    observer_name,
                     status: JobStatus::Failed,
                     last_error: Some(error),
                     attempts: 1,
@@ -262,24 +274,25 @@ impl JobQueue {
         };
         let conn = db.connection()?;
         let mut stmt = conn.prepare(
-            "SELECT id, observer_name, status, last_error, attempts
+            "SELECT id, experience_id, observer_name, status, last_error, attempts
                FROM job_queue
               WHERE status IN ('pending', 'running')",
         )?;
-        let rows: Vec<(String, String, String, Option<String>, u32)> = stmt
+        let rows: Vec<(String, String, String, String, Option<String>, u32)> = stmt
             .query_map([], |row| {
                 Ok((
                     row.get::<_, String>(0)?,
                     row.get::<_, String>(1)?,
                     row.get::<_, String>(2)?,
-                    row.get::<_, Option<String>>(3)?,
-                    row.get::<_, u32>(4)?,
+                    row.get::<_, String>(3)?,
+                    row.get::<_, Option<String>>(4)?,
+                    row.get::<_, u32>(5)?,
                 ))
             })?
             .collect::<rusqlite::Result<Vec<_>>>()?;
 
         let mut restored = 0usize;
-        for (id, observer_name, status_str, last_error, attempts) in rows {
+        for (id, experience_id, observer_name, status_str, last_error, attempts) in rows {
             // Demote any 'running' jobs left over from a crash to 'pending'.
             let mut status = JobStatus::from_str(&status_str).unwrap_or(JobStatus::Pending);
             if status == JobStatus::Running {
@@ -293,7 +306,7 @@ impl JobQueue {
             }
             let job = Job {
                 id: id.clone(),
-                experience_id: id.clone(),
+                experience_id,
                 observer_name,
                 status,
                 last_error,
@@ -341,10 +354,11 @@ fn persist_insert(db: &SqliteDatabase, job: &Job) -> Result<()> {
     let conn = db.connection()?;
     conn.execute(
         "INSERT OR REPLACE INTO job_queue
-            (id, observer_name, status, last_error, attempts, created_at, updated_at)
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+            (id, experience_id, observer_name, status, last_error, attempts, created_at, updated_at)
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
         rusqlite::params![
             &job.id,
+            &job.experience_id,
             &job.observer_name,
             job.status.as_str(),
             job.last_error.as_deref(),
@@ -360,10 +374,11 @@ fn persist_update(db: &SqliteDatabase, job: &Job) -> Result<()> {
     let conn = db.connection()?;
     conn.execute(
         "UPDATE job_queue
-            SET status = ?1, last_error = ?2, attempts = ?3, updated_at = ?4
-          WHERE id = ?5",
+            SET status = ?1, experience_id = ?2, last_error = ?3, attempts = ?4, updated_at = ?5
+          WHERE id = ?6",
         rusqlite::params![
             job.status.as_str(),
+            &job.experience_id,
             job.last_error.as_deref(),
             job.attempts,
             now_iso(),

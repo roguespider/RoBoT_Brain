@@ -1231,6 +1231,10 @@ async fn main() -> anyhow::Result<()> {
     // P0-001: verify queue lifecycle (channel-full, worker failure, successful completion).
     tests::queue_durability::run_queue_lifecycle_tests(&mut stats).await?;
 
+    // P0-002: verify unique durable job IDs when multiple observers subscribe
+    // to the same event (multiple observers cannot overwrite each other).
+    tests::queue_durability::run_p002_unique_job_identity_tests(&mut stats).await?;
+
     // P5-001-M3: verify memory failure isolation (corrupted DB → no panic).
     tests::memory_failure_isolation::memory_failure_isolation(&mut stats).await;
 

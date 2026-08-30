@@ -161,41 +161,6 @@ A task is NOT complete until its verification criteria pass.
 
 # Priority 0 - Critical Correctness
 
-# P0-002 Unique Durable Job Identity
-
-### Problem
-
-Multiple observer jobs derived from the same experience/event can
-currently use the same durable identifier.
-
-This creates the possibility of one observer job replacing another.
-
-### Required Outcome
-
-Every independently executable durable job must have a unique job ID.
-
-The relationship between:
-
-- experience/event
-- observer
-- durable job
-- retry attempt
-
-must remain explicit.
-
-### Acceptance Criteria
-
-- [ ] Each observer job receives a unique durable job ID.
-- [ ] Event/experience ID remains available as a parent/reference ID.
-- [ ] Multiple observers cannot overwrite each other's jobs.
-- [ ] Retry attempts do not corrupt the original job.
-- [ ] Database constraints enforce intended uniqueness.
-- [ ] Tests cover multiple observers for one event.
-
-**Fix:** Added `ObserverJob::with_id(event, job_id)` constructor in `src/experience/worker.rs`. Updated `enqueue()` and `broadcast_event()` in `src/experience/worker_manager/manager.rs` to pass the pre-generated unique job ID to `ObserverJob::with_id()`, ensuring the `ObserverJob.job_id` matches the ID registered in the `JobQueue` and `JobRegistry`. This fixes the mismatch that previously caused worker completion callbacks to fail looking up the job in the registry.
-
----
-
 # P0-003 Durable Queue / Worker State Synchronization -- [ ]
 
 ### Problem

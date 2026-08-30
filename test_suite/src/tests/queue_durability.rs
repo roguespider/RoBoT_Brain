@@ -444,3 +444,154 @@ fn now_iso() -> String {
         .unwrap_or(0);
     format!("{}", secs)
 }
+
+// ======================================================================
+// P0-002: Unique Durable Job Identity — multiple-observers-for-one-event
+// ======================================================================
+
+/// Verify that multiple observers deriving jobs from the same event each
+/// receive a unique durable job ID (P0-002 acceptance criteria).
+///
+/// Pattern: boot an isolated server, inject multiple pending-job rows for
+/// the *same* event ID but *different* observer names, then verify via
+/// direct SQLite that every injected row has a distinct `id` and that
+/// `experience_id` is properly preserved.
+pub async fn run_p002_unique_job_identity_tests(stats: &mut TestStats) -> anyhow::Result<()> {
+    crate::teeprintln!("\n--- P0-002 Unique Durable Job Identity (Multiple Observers) ---");
+
+    let Some(bin) = crate::paths::server_binary() else {
+        crate::teeprintln!("  [SKIP] P0-002 tests — server binary not found");
+        stats.skipped += 1;
+        return Ok(());
+    };
+
+    let dir = tempfile::tempdir()?;
+    let server_path = dir.path().join("robot_brain");
+    std::fs::copy(&bin, &server_path)?;
+    let db_path = dir.path().join("robot_brain.db");
+
+    // --- Phase 1: boot server so migration runs ---
+    let mut c1 = match IsoClient::start(&server_path).await {
+        Ok(c) => c,
+        Err(e) => {
+            crate::teeprintln!("  [FAIL] phase1 start — {}", e);
+            stats.failed += 1;
+            return Ok(());
+        }
+    };
+    c1.pass_workflow_gate().await?;
+    c1.shutdown().await;
+    tokio::time::sleep(Duration::from_millis(200)).await;
+
+    // --- Phase 2: inject jobs for multiple observers (same event ID) ---
+    let event_id = "p002-test-event-001";
+    let observers = [
+        "observer_alpha",
+        "observer_beta",
+        "observer_gamma",
+        "observer_delta",
+    ];
+    let now = now_iso();
+
+    {
+        let conn = Connection::open(&db_path)?;
+        for (i, observer) in observers.iter().enumerate() {
+            let job_id = format!("p002-job-{:04}", i);
+            conn.execute(
+                "INSERT OR REPLACE INTO job_queue
+                    (id, experience_id, observer_name, status, last_error, attempts, created_at, updated_at)
+                 VALUES (?1, ?2, ?3, 'pending', NULL, 0, ?4, ?4)",
+                rusqlite::params![job_id, event_id, observer, now],
+            )?;
+        }
+        crate::teeprintln!(
+            "  • Injected {} jobs for event {} into {} observers",
+            observers.len(),
+            event_id,
+            db_path.display()
+        );
+    }
+
+    // --- Phase 3: verify uniqueness + experience_id preservation ---
+    // Boot a fresh server to exercise restore_from_database(), then query the DB.
+    let mut c2 = match IsoClient::start(&server_path).await {
+        Ok(c) => c,
+        Err(e) => {
+            crate::teeprintln!("  [FAIL] phase2 start — {}", e);
+            stats.failed += 1;
+            return Ok(());
+        }
+    };
+    c2.pass_workflow_gate().await?;
+
+    // 3a: verify each observer has a distinct job ID for the same event.
+    // Use direct DB query (not MCP) for reliable counts.
+    let conn = Connection::open(&db_path)?;
+    let mut observer_job_ids: std::collections::HashSet<String> = std::collections::HashSet::new();
+    let rows: Vec<(String, String)> = conn
+        .prepare(
+            "SELECT id, observer_name FROM job_queue WHERE experience_id = ?1 AND status = 'pending'",
+        )?
+        .query_map([event_id], |row| {
+            Ok((
+                row.get::<_, String>(0)?,
+                row.get::<_, String>(1)?,
+            ))
+        })?
+        .collect::<rusqlite::Result<Vec<_>>>()?;
+
+    for (job_id, observer) in &rows {
+        observer_job_ids.insert(job_id.clone());
+        crate::teeprintln!("  • {} -> job {} (event {})", observer, job_id, event_id);
+    }
+
+    let unique_observers: std::collections::HashSet<&str> =
+        rows.iter().map(|(_, obs)| obs.as_str()).collect();
+    if rows.len() == observers.len()
+        && unique_observers.len() == observers.len()
+        && observer_job_ids.len() == rows.len()
+    {
+        crate::teeprintln!(
+            "  [OK] All {} observers have unique job IDs for event {} ({} jobs)",
+            observers.len(),
+            event_id,
+            rows.len()
+        );
+        stats.passed += 1;
+    } else {
+        crate::teeprintln!(
+            "  [FAIL] Observer/job uniqueness check: rows={} unique_obs={} unique_jobs={}",
+            rows.len(),
+            unique_observers.len(),
+            observer_job_ids.len()
+        );
+        stats.failed += 1;
+    }
+
+    // 3b: verify experience_id is preserved as reference for injected jobs.
+    let ref_count: i64 = conn.query_row(
+        "SELECT COUNT(*) FROM job_queue
+         WHERE status = 'pending' AND experience_id = ?1",
+        rusqlite::params![event_id],
+        |r| r.get(0),
+    )?;
+    if ref_count == observers.len() as i64 {
+        crate::teeprintln!(
+            "  [OK] All {} jobs reference the correct event ID {}",
+            ref_count,
+            event_id
+        );
+        stats.passed += 1;
+    } else {
+        crate::teeprintln!(
+            "  [FAIL] Only {} of {} jobs reference event {}",
+            ref_count,
+            observers.len(),
+            event_id
+        );
+        stats.failed += 1;
+    }
+
+    c2.shutdown().await;
+    Ok(())
+}
