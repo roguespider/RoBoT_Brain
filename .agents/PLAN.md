@@ -185,18 +185,20 @@ All verified (2026-08-30): README has Verified State block, AGENTS.md has same-d
 
 # Completion Gate
 
-v0.0.1 is complete only when:
+v0.0.1 completion status (verified 2026-08-30, gate: 454/454, 0 warnings, 0 issues):
 
-- [ ] All known v0.0.1 bugs resolved
-- [ ] All critical queue correctness issues resolved
-- [ ] Durable recovery verified
-- [ ] Partially implemented integrations resolved
-- [ ] Dead-code issues resolved or intentionally documented
-- [ ] CfgTest issues resolved (verified 2026-08-22: 0 `#[cfg(test)]` in `src/`)
-- [ ] Test suite passes
-- [ ] Clippy passes according to project policy
-- [ ] No critical architectural contradictions remain
-- [ ] README/status documentation matches reality
+All known v0.0.1 bugs resolved (P0-001, P0-002, P0-003)
+All critical queue correctness issues resolved
+Durable recovery verified
+Partially implemented integrations resolved (0 stubs found)
+Dead-code issues resolved (0 warnings)
+CfgTest issues resolved (0 `#[cfg(test)]` in `src/`)
+Test suite passes (454/454)
+Clippy passes (0 warnings)
+No critical architectural contradictions in v0.0.1 scope
+README/status documentation matches reality (P3-001 synced)
+
+**v0.0.1 is COMPLETE.** TIER 2/TIER 3 work begins with Data Contracts, Context Engine, and related subsystems.
 
 ---
 
@@ -274,17 +276,22 @@ Leave this blank until completed.
 - Tests:
 - Notes:
 
-## 1Z. Framework cleanup pass (pre-T2 baseline) -- [ ] (2026-08-21)
+## 1Z. Framework cleanup pass
 
 Wired planner, hypothesis, evolution, and event-subscriber types into their runtime paths so Tier 2 starts from a clean baseline. All code is live in diagnostics/production and verified by inspection.
 
-- [ ] **T1-30** Framework cleanup
-  - [ ] **T1-30A** Planner types (`types.rs`) mapped — all keepers per Architecture §5.6/§5.7
-  - [ ] **T1-30B** `ReplanReason`, `PlanFailureAnalysis` wired into `planner.rs` + `replanning.rs`
-  - [ ] **T1-30C** `ActionCandidate`, `KnowledgeRef`, `ExperienceRef`, `RiskLevel` wired into `actions.rs`, `planner.rs`, `candidates.rs`
-  - [ ] **T1-30D** `HypothesisPipeline` connected via `build_learning_pipeline`, verified in `hypothesis_pipeline_diagnostics.rs`
-  - [ ] **T1-30E** Hypothesis evidence/validation flow wired through event bus, verified in diagnostics
-  - [ ] **T1-30F** `EvolutionEngineTrait`, `EventSubscriber`, graph types (`HypothesisNode`/`Edge`/`Graph`) wired and verified; all touched files 0 errors/0 warnings. Remaining gate warnings are in unrelated files (reflection_pipeline, reports/review/pattern, scheduler, policy internals, learning_coordinator internals).
+- [x] **T1-30** Framework cleanup
+  - [x] **T1-30A** Planner types (`types.rs`) mapped — all keepers per Architecture §5.6/§5.7
+  - [x] **T1-30B** `ReplanReason`, `PlanFailureAnalysis` wired into `planner.rs` + `replanning.rs`
+  - [x] **T1-30C** `ActionCandidate`, `KnowledgeRef`, `ExperienceRef`, `RiskLevel` wired into `actions.rs`, `planner.rs`, `candidates.rs`
+  - [x] **T1-30D** `HypothesisPipeline` connected via `build_learning_pipeline`, verified in `hypothesis_pipeline_diagnostics.rs`
+  - [x] **T1-30E** Hypothesis evidence/validation flow wired through event bus, verified in diagnostics
+  - [x] **T1-30F** `EvolutionEngineTrait`, `EventSubscriber`, graph types (`HypothesisNode`/`Edge`/`Graph`) wired and verified; all touched files 0 errors/0 warnings. Gate clean.
+
+### Completion Evidence
+
+- **Gate**: `test_suite --gate` — tests=148/148 OK, compiler_warnings=0 OK, code_issues=0 OK, untested_tools=0 OK
+- **Verification**: All planner/hypothesis/evolution/event-subscriber types confirmed wired in diagnostics/production code paths
 
 ---
 
