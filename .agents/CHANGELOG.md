@@ -3,6 +3,8 @@
 > Historical record of completed work. Forward planning lives in [PLAN.md](PLAN.md).
 > Append new completed work here so PLAN.md stays focused on what needs to be done.
 
+- **T1-30 Framework cleanup -- DONE (2026-08-30).** Wired planner/hypothesis/evolution/event-subscriber types into production paths: `ReplanReason`, `PlanFailureAnalysis`, `ActionCandidate`, `KnowledgeRef`, `ExperienceRef`, `RiskLevel`, `EvolutionEngineTrait`, `HypothesisNode/Edge/Graph` — all exercised in diagnostics/production. Gate: 148/148 pass, 0 warnings, 0 issues, 0 untested tools.
+
 ---
 
 # v0.0.1 CONFORMANCE WORK

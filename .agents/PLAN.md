@@ -276,22 +276,7 @@ Leave this blank until completed.
 - Tests:
 - Notes:
 
-## 1Z. Framework cleanup pass
 
-Wired planner, hypothesis, evolution, and event-subscriber types into their runtime paths so Tier 2 starts from a clean baseline. All code is live in diagnostics/production and verified by inspection.
-
-- [x] **T1-30** Framework cleanup
-  - [x] **T1-30A** Planner types (`types.rs`) mapped — all keepers per Architecture §5.6/§5.7
-  - [x] **T1-30B** `ReplanReason`, `PlanFailureAnalysis` wired into `planner.rs` + `replanning.rs`
-  - [x] **T1-30C** `ActionCandidate`, `KnowledgeRef`, `ExperienceRef`, `RiskLevel` wired into `actions.rs`, `planner.rs`, `candidates.rs`
-  - [x] **T1-30D** `HypothesisPipeline` connected via `build_learning_pipeline`, verified in `hypothesis_pipeline_diagnostics.rs`
-  - [x] **T1-30E** Hypothesis evidence/validation flow wired through event bus, verified in diagnostics
-  - [x] **T1-30F** `EvolutionEngineTrait`, `EventSubscriber`, graph types (`HypothesisNode`/`Edge`/`Graph`) wired and verified; all touched files 0 errors/0 warnings. Gate clean.
-
-### Completion Evidence
-
-- **Gate**: `test_suite --gate` — tests=148/148 OK, compiler_warnings=0 OK, code_issues=0 OK, untested_tools=0 OK
-- **Verification**: All planner/hypothesis/evolution/event-subscriber types confirmed wired in diagnostics/production code paths
 
 ---
 
