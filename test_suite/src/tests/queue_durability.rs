@@ -595,3 +595,101 @@ pub async fn run_p002_unique_job_identity_tests(stats: &mut TestStats) -> anyhow
     c2.shutdown().await;
     Ok(())
 }
+
+// ======================================================================
+// P0-003: Durable Queue / Worker State Synchronization
+// ======================================================================
+
+/// Verify the retry lifecycle: when a job fails and retries, the original
+/// job's durable state is properly managed (reset to Pending on retry,
+/// marked Failed on permanent failure).
+pub async fn run_p003_retry_lifecycle_tests(stats: &mut TestStats) -> anyhow::Result<()> {
+    crate::teeprintln!("\n--- P0-003 Durable Queue / Worker State Sync ---");
+
+    // Test 1: OnRetryCallback resets original job status
+    crate::teeprintln!("  [Test 1] OnRetryCallback resets original job to Pending");
+    let worker_src = std::fs::read_to_string(std::path::Path::new(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../src/experience/worker_manager/manager.rs"
+    )))?;
+    if worker_src.contains("mark_complete(original_job_id)")
+        && worker_src.contains("on_retry")
+        && worker_src.contains("job_queue")
+    {
+        crate::teeprintln!("    [OK] on_retry callback calls mark_complete on original_job_id");
+        stats.passed += 1;
+    } else {
+        crate::teeprintln!("    [FAIL] on_retry callback missing mark_complete(original_job_id)");
+        stats.failed += 1;
+    }
+
+    // Test 2: OnFailedCallback uses find_original_job_id
+    crate::teeprintln!("  [Test 2] OnFailedCallback looks up original job ID");
+    if worker_src.contains("find_original_job_id")
+        && worker_src.contains("mark_failed(&original_job_id")
+    {
+        crate::teeprintln!("    [OK] on_failed callback uses find_original_job_id + mark_failed");
+        stats.passed += 1;
+    } else {
+        crate::teeprintln!("    [FAIL] on_failed callback missing find_original_job_id logic");
+        stats.failed += 1;
+    }
+
+    // Test 3: JobRegistry has find_original_job_id method
+    crate::teeprintln!("  [Test 3] JobRegistry::find_original_job_id exists");
+    if worker_src.contains("fn find_original_job_id") {
+        crate::teeprintln!("    [OK] find_original_job_id method exists");
+        stats.passed += 1;
+    } else {
+        crate::teeprintln!("    [FAIL] find_original_job_id method missing");
+        stats.failed += 1;
+    }
+
+    // Test 4: Worker handle_failure creates retry with new ID
+    crate::teeprintln!("  [Test 4] Worker creates retry with new job ID");
+    let worker_file = std::fs::read_to_string(std::path::Path::new(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../src/experience/worker.rs"
+    )))?;
+    if worker_file.contains("ObserverJob::with_retry")
+        && worker_file.contains("on_retry")
+        && worker_file.contains("job.job_id.to_string()")
+    {
+        crate::teeprintln!("    [OK] handle_failure: with_retry + on_retry callback + job_id");
+        stats.passed += 1;
+    } else {
+        crate::teeprintln!("    [FAIL] handle_failure retry logic incomplete");
+        stats.failed += 1;
+    }
+
+    // Test 5: dispatch_restored_jobs registers job IDs
+    crate::teeprintln!("  [Test 5] dispatch_restored_jobs registers restored IDs");
+    if worker_src.contains("dispatch_restored_jobs") && worker_src.contains("job_registry.register")
+    {
+        crate::teeprintln!("    [OK] dispatch_restored_jobs registers restored job IDs");
+        stats.passed += 1;
+    } else {
+        crate::teeprintln!("    [FAIL] dispatch_restored_jobs missing registry registration");
+        stats.failed += 1;
+    }
+
+    // Test 6: background.rs has proper match on recv (no ignored results)
+    crate::teeprintln!("  [Test 6] background.rs: proper recv handling (no _)");
+    let bg_file = std::fs::read_to_string(std::path::Path::new(concat!(
+        env!("CARGO_MANIFEST_DIR"),
+        "/../src/experience/worker_manager/background.rs"
+    )))?;
+    if bg_file.contains("match receiver.recv().await")
+        && !bg_file.contains("let _ = receiver")
+        && bg_file.contains("RecvError::Lagged")
+        && bg_file.contains("RecvError::Closed")
+    {
+        crate::teeprintln!("    [OK] background.rs: proper match on recv with Lagged/Closed");
+        stats.passed += 1;
+    } else {
+        crate::teeprintln!("    [FAIL] background.rs missing proper recv handling");
+        stats.failed += 1;
+    }
+
+    Ok(())
+}

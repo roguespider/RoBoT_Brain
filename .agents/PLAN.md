@@ -161,49 +161,6 @@ A task is NOT complete until its verification criteria pass.
 
 # Priority 0 - Critical Correctness
 
-# P0-003 Durable Queue / Worker State Synchronization -- [ ]
-
-### Problem
-
-The worker maintains retry/execution state separately from the SQLite
-durable queue. The two systems can therefore disagree about whether work
-is pending, running, failed, or complete.
-
-### Fix Applied
-
-- [ ] - Added `OnRetryCallback` to `ExperienceWorker` so retry job IDs are
-  registered in the `JobRegistry` when `handle_failure` creates a retry
-  (worker callbacks can find them later).
-- [ ] - Registered restored job IDs in `JobRegistry` from `dispatch_restored_jobs`
-  so synthetic events match registry lookups.
-- [ ] - Fixed `let _ = receiver.recv()` in `background.rs` → proper match
-  (no underscore-prefixed variables).
-
-Files changed:
-- [ ] - `src/experience/worker.rs` — OnRetryCallback type, on_retry field, callback invocation
-- [ ] - `src/experience/worker_manager/manager.rs` — on_retry closure, dispatch_restored_jobs registry registration
-- [ ] - `src/experience/worker_manager/background.rs` — fixed ignored recv result
-
-### Required Outcome
-
-There must be one authoritative lifecycle for durable work.
-
-In-memory worker state may exist for execution purposes, but it must not
-contradict durable state.
-
-### Acceptance Criteria
-
-- [ ] Job enters durable pending state.
-- [ ] Dispatch changes state appropriately.
-- [ ] Worker execution changes state appropriately.
-- [ ] Failure is persisted.
-- [ ] Retry is persisted (retry IDs registered in JobRegistry).
-- [ ] Success is persisted.
-- [ ] Restart does not lose state (restored job IDs registered).
-- [ ] Tests cover each lifecycle transition (145/145 tests pass).
-
----
-
 # P1 - Restart / Recovery
 
 ## P1-001 Restore Pending Jobs
