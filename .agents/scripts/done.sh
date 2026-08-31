@@ -51,8 +51,8 @@ PLAN_FILE="$PROJECT_ROOT/.agents/PLAN.md"
 MATCH_PATTERN=$(echo "$TASK_PREFIX" | tr '/' '|')
 
 if grep -q "$MATCH_PATTERN" "$PLAN_FILE" 2>/dev/null; then
-    # Delete lines matching any of the task identifiers
-    grep -v "\[\] \*\*\($MATCH_PATTERN\)" "$PLAN_FILE" > "$PLAN_FILE.tmp" && mv "$PLAN_FILE.tmp" "$PLAN_FILE"
+    # Delete lines matching the task prefix (lines containing "- [ ] TASK_PREFIX")
+    grep -v "$TASK_PREFIX" "$PLAN_FILE" > "$PLAN_FILE.tmp" && mv "$PLAN_FILE.tmp" "$PLAN_FILE"
     echo "Deleted task lines matching '$TASK_PREFIX' from PLAN.md"
 fi
 
