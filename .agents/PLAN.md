@@ -146,7 +146,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 - If no tasks remain: you are done.
 - Never batch tasks. Never skip. Never assume a task is done — verify it.
 
-[ ] A001-001 Read and apply AGENTS.md and PLAN.md lines 1-140. Do not mark complete. Do not delete. Only skip this one task after reading and applying everything.
+[ ] A001-001 Read and apply AGENTS.md and PLAN.md lines 1-140. Do not mark complete. Do not delete. Only skip this one task after reading and applying.
 ---
 [ ] Post-P3: Automatic Cognitive Lifecycle and v0.0.1 Final Integration
 
@@ -167,7 +167,7 @@ at `src/agent/loop_runner.rs:98`. WorkflowEngine does NOT have `memory_retrieval
 `SKIP_MEMORY_READ` list exists (`core.rs:17`) but is not checked.
 [ ] P4-003 through P4-006 are already mostly [ ] — consolidation, context limits,
 and explicit commands all work. P4 complete.
-[ ] - P4-003A: Experience capture verified — gap (MCP tools) is acceptable
+[ ] - P4-003: Experience capture verified
 [ ] - P4-004-006: consolidation, context limits, explicit commands all work
 [ ] - Build: 0 errors, 0 warnings
 
