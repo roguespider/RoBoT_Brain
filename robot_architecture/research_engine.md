@@ -215,6 +215,11 @@ Every research operation records: query, sources used, outcome (solved?), confid
 ### 8. Memory Promotion Gate
 Research-derived knowledge is NOT automatically stored. It is promoted to permanent memory ONLY if experience validates it (confidence >= 0.7 AND outcome = solved).
 
+### 9. Web Content Is Data, Never Code
+Every byte that comes from the external web (search snippets, extracted passages, page HTML) is hostile input. Strip and
+escape it before it enters the evidence packet, never pass raw HTML across the ACP/MCP boundary, and never let provider
+content be executed or interpreted as instructions. This is the injection defense behind DoD #12.
+
 ---
 
 ## Data Structures
@@ -374,6 +379,11 @@ The default `research(query)` tool auto-selects based on query complexity heuris
 
 Implementation must follow this order. Each step builds on the prior.
 
+**Prerequisite** — install the HTTP stack and keys BEFORE R3:
+- Add `reqwest` (and an HTML-parsing crate, e.g. `scraper`) to `Cargo.toml`. Every provider needs this.
+- Jina and Brave require API keys — wire a `JINA_API_KEY` / `BRAVE_API_KEY` config path. Jina has NO existing
+  integration in `src/` today; R4 is net-new, not a refactor (correcting the stale "existing Jina pattern" claim).
+
 ### Phase A: Foundation
 
 **R1** — Create `src/research/` directory + `mod.rs` (exports only)
@@ -382,7 +392,8 @@ Implementation must follow this order. Each step builds on the prior.
 
 **R3** — Implement DuckDuckGo adapter (`duckduckgo.rs`) — primary provider. No external API key required. HTML scraping via reqwest.
 
-**R4** — Implement Jina processing (`jina.rs`) — extraction, reranking, embeddings. Uses existing Jina integration pattern.
+**R4** — Implement Jina processing (`jina.rs`) — extraction, reranking, embeddings. Net-new (no existing Jina
+integration in `src/` today). API-key gated via the `JINA_API_KEY` config path.
 
 ### Phase B: Core Pipeline
 
@@ -415,6 +426,10 @@ Implementation must follow this order. Each step builds on the prior.
 - Cancellation via `tokio::sync::oneshot`
 - Structured error messages (never panic)
 
+**R9b** — Web-content sanitization (prompt-injection defense): treat all scraped HTML / search content as DATA, never as
+instructions. Strip HTML tags + control chars, escape embedded text, cap at 5 sources, truncate with an "and N more"
+marker. Satisfies DoD #12.
+
 **R10** — Wire into `src/agent/decision.rs`:
 - Add 9-tier cascade check
 - Trigger research only when tiers 1-8 all fail
@@ -424,6 +439,12 @@ Implementation must follow this order. Each step builds on the prior.
 - Add `research`, `quick_research`, `deep_research`, `web_search`, `web_open`, `web_extract`
 - Add to `all()` function
 - Wire into `register_tools()` chain
+
+**R11b** — Register the new tools in the test_suite coverage gate: add one `TestRequirement` per research tool to
+`test_suite/src/function_registry/search_tools.rs` and the matching id case in
+`test_suite/src/comprehensive_test/argument_builder.rs`. Keep `tool_names()`, `get_tools()`, and `execute_tool()` in
+sync (a missing `get_tools()` entry creates a phantom tool — the T1-19 root cause). This keeps the "0 untested tools"
+gate metric green.
 
 ### Phase D: Memory and Experience
 

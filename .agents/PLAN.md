@@ -13,6 +13,12 @@ The target baseline is **`robot_architecture/v0.0.2.1/`** (33 chapters +
 appendices A-E + `FINAL_ARCHITECTURE_SPEC.md`). v0.0.2 is an intermediate
 milestone on the way there.
 
+## Mission
+
+Resolve all known implementation bugs, complete partially implemented integrations,
+and establish a verified passing baseline. Do NOT redesign the architecture unless
+a task explicitly requires it.
+
 ---
 
 # 2. OPERATING RULES
@@ -36,6 +42,12 @@ milestone on the way there.
     Important: if a task is still listed in PLAN.md, it is NOT complete -- regardless of any `[ ]` or `[x]` marker. Presence in PLAN.md means pending. The only signal of completion is removal from PLAN.md plus a CHANGELOG.md entry.
 
     Removing a task from PLAN.md without full end-to-end verification is not acceptable. Every removed task must be 100% complete and verified in the codebase (gate green, tests pass, no warnings). Do not remove tasks you have not actually finished.
+
+    A task is NOT complete until its verification criteria pass. If the task cannot be safely completed:
+    a. Mark it `[!]` or `[?]`.
+    b. Explain why.
+    c. Do NOT fabricate completion.
+    d. Do NOT silently redesign another subsystem to bypass it.
 12. Always make small, incremental edits. Never batch multiple unrelated changes into one edit. After each edit, verify it worked before proceeding. Large bulk rewrites lose information.
 
 ---
@@ -44,7 +56,8 @@ milestone on the way there.
 
 ## The blueprints
 
-- **v0.0.1** -- ~~`robot_architecture/v0.0.1/ARCHITECTURE.md`.
+the location of these are important as if you had actually read agents.md you would know to check these before deleting a function
+
 - **v0.0.2** -- `robot_architecture/RoBoT Architecture v0.0.2.md`. Intermediate
   upgrade: elevate Context + Conversation to first-class, add Data Contracts.
   TIER 2 conforms existing systems to this.
@@ -55,12 +68,14 @@ milestone on the way there.
   Workers, Security & Trust, Observability, Developer Interface/Control Plane,
   Configuration, Testing, Deployment. TIER 3 builds the missing subsystems.
 
-## Current codebase state (verified 2026-08-16)
+## Current codebase state
 
 - Workspace: two independent programs -- `robot_brain` (root, MCP server) and
   `test_suite/` (E2E tests via MCP protocol).
 - **Test count and warning count: see `test_suite/test_suite_report.json`.** Do not
   trust prior counts — run the gate to verify.
+- **Gate status:** 454/454 tests, 0 warnings, 0 issues. All known bugs
+  resolved. Durable recovery verified. 0 stubs found.
 - `#![allow]` / `#[allow]` in `src/`: **0** (clean).
 - `self_check.rs` files: **0** (all removed/moved to TIER 2).
 - v0.0.1 complete: SQLite queue, loop-health metrics, MCP→experience path, coverage gate green.
@@ -93,11 +108,6 @@ milestone on the way there.
 cd test_suite && cargo build --release && ./target/release/test_suite
 # Or: make gate
 ```
-
-The gate is green only when all tests pass AND 0 warnings / 0 code-issues /
-0 untested tools. If red, the increment is NOT [ ]. Fix it before claiming
-[ ]. Never commit a red gate.
-
 ---
 
 # 4. APPROACH -- three tiers of small increments
@@ -128,194 +138,57 @@ data, not stubs. Build the cognitive architecture against cloud/external models
 first; AI Runtime (Candle) comes last as the local provider behind the
 `InferenceProvider` trait, and is the prerequisite for Multimodal.
 
+**ONE TASK AT A TIME ENFORCEMENT**
+
+- You MUST work on ONE task at a time. Never skip ahead.
+- After completing a task: run the gate → write CHANGELOG → delete task line from PLAN.md → commit + push.
+- If more tasks remain: move to the NEXT unchecked `[ ]` task. Never read past it until the current task is done.
+- If no tasks remain: you are done.
+- Never batch tasks. Never skip. Never assume a task is done — verify it.
+
+[ ] A001-001 Read and apply AGENTS.md and PLAN.md lines 1-140. Do not mark complete. Do not delete. Only skip this one task after reading and applying everything.
 ---
+[ ] Post-P3: Automatic Cognitive Lifecycle and v0.0.1 Final Integration
 
-# 5. TIER 1 -- Finish v0.0.1 (clean baseline)
-
-> Goal: green gate (test_suite exit 0). End state = a clean v0.0.1 baseline.
-> TIER 1 is COMPLETE (1B, 1C, 1D, 1E finished).
-
-# RoBoT v0.0.1 Completion Plan
-
-## Mission
-
-Complete RoBoT v0.0.1.
-
-The objective is to resolve all known implementation bugs,
-complete partially implemented integrations, and establish a
-verified passing baseline.
-
-Do NOT redesign the architecture unless a task explicitly requires it.
-
----
-
-# Status Definitions
-
-- `[ ]` Not started
-- `[~]` In progress
-- `[x]` Completed and verified
-- `[!]` Blocked
-- `[?]` Requires architectural decision
-
-A task is NOT complete until its verification criteria pass.
-
-# Priority 0 - Critical Correctness
-
-# P1 - Quality Gate
-
-Current gate counts (refreshed 2026-08-30): **0 warnings, 0 code issues, 0 untested tools**.
-Both P1-001 Dead Code and P1-002 CfgTest were stale (last verified 2026-08-25); gate now confirms clean.
-
----
-
-# P2 - Startup Architecture Cleanup
-
-## P2-001 Remove Runtime Probe Pollution
-
-All subtasks (A-E) verified: startup probes removed, diagnostics isolated, README documented, gate clean. Removed.
-
----
-
-# P3 - Documentation / Verification
-
-## P3-001 Synchronize Project Status
-All verified (2026-08-30): README has Verified State block, AGENTS.md has same-day gate rule, CHANGELOG dated entries added. Removed.
-
----
-
-# Completion Gate
-
-v0.0.1 completion status (verified 2026-08-30, gate: 454/454, 0 warnings, 0 issues):
-
-All known v0.0.1 bugs resolved (P0-001, P0-002, P0-003)
-All critical queue correctness issues resolved
-Durable recovery verified
-Partially implemented integrations resolved (0 stubs found)
-Dead-code issues resolved (0 warnings)
-CfgTest issues resolved (0 `#[cfg(test)]` in `src/`)
-Test suite passes (454/454)
-Clippy passes (0 warnings)
-No critical architectural contradictions in v0.0.1 scope
-README/status documentation matches reality (P3-001 synced)
-
-**v0.0.1 is COMPLETE.** TIER 2/TIER 3 work begins with Data Contracts, Context Engine, and related subsystems.
-
----
-
-# Agent Completion Protocol
-
-After completing a task:
-
-1. Run the relevant tests.
-2. Run the relevant quality checks.
-3. Inspect the resulting diff.
-4. Confirm the acceptance criteria.
-5. Write a concise summary to `.agents/CHANGELOG.md`.
-6. Delete the task line from PLAN.md (not `[x]`, delete the entire line).
-7. Commit and push.
-8. Move to the next task.
-
-If the task cannot be safely completed:
-
-1. Mark it `[!]` or `[?]`.
-2. Explain why.
-3. Do NOT fabricate completion.
-4. Do NOT silently redesign another subsystem to bypass it.
-5. 
-
-## TASK-001: Durable Queue Completion Semantics
-
-Status: [ ]
-
-Priority: P0
-Subsystem: Experience / Worker / Queue
-Type: Bug
-
-### Objective
-
-Ensure durable jobs represent actual execution rather than successful
-dispatch.
-
-### Current Behavior
-
-...
-
-### Desired Behavior
-
-...
-
-### Files To Investigate
-
-...
-
-### Dependencies
-
-None.
-
-### Constraints
-
-- Preserve existing architecture.
-- Preserve public APIs unless necessary.
-- No database replacement.
-- No unrelated refactoring.
-
-### Acceptance Tests
-
-...
-
-### Verification
-
-cargo test
-cargo clippy
-
-### Completion Evidence
-
-Leave this blank until completed.
-
-- Commit:
-- Tests:
-- Notes:
-
-
-
----
-
-Post-P3: Automatic Cognitive Lifecycle and v0.0.1 Final Integration
-Purpose
-
-Complete the remaining v0.0.1 integration work discovered during P2/P3 review.
+## Purpose
 
 The primary issue is that robot_brain currently exposes memory and cognitive subsystems, but the connected agent may treat memory as an optional tool rather than as an automatic part of the cognitive lifecycle.
 
 The goal of this phase is not to redesign the Memory Engine. The goal is to ensure the existing engines are actually wired together so that normal agent operation automatically retrieves relevant memory and records meaningful experience without requiring the user to explicitly request it.
 
-P4: Automatic Cognitive Memory Lifecycle
+[ ] P4: Automatic Cognitive Memory Lifecycle
 
-Research findings (2026-08-24): AgentLoop already calls `memory_retrieval.retrieve()`
+Research findings: AgentLoop already calls `memory_retrieval.retrieve()`
 at `src/agent/loop_runner.rs:98`. WorkflowEngine does NOT have `memory_retrieval`
 (`src/workflows/engine/types.rs:52`). `read_memory_before_action()` at
 `src/workflows/engine/executor/experience.rs:22` is a stub returning `None`.
 `record_experience_after_action()` at `experience.rs:59` is already live.
 `MemoryRetrieval::retrieve()` has no limit parameter and no error handling.
 `SKIP_MEMORY_READ` list exists (`core.rs:17`) but is not checked.
-- [ ] P4-003 through P4-006 are already mostly [ ] — consolidation, context limits,
+[ ] P4-003 through P4-006 are already mostly [ ] — consolidation, context limits,
 and explicit commands all work. Only P4-002A-D are real implementation gaps.
 
-[VERIFIED 2026-08-25] All micro-tasks completed:
-- [ ] - P4-001A/B: Request lifecycle traced — agent loop has memory retrieval, workflow execution now wired
-- [ ] - P4-002A: Added `memory_retrieval` field to `WorkflowEngine`, updated constructor, implemented real `read_memory_before_action`
-- [ ] - P4-002B: Added `retrieve_with_limit()` with default limit of 10 to prevent context overflow
-- [ ] - P4-002C: `SKIP_MEMORY_READ` list checked at top of `read_memory_before_action`
-- [ ] - P4-002D: Error handling in place — callers handle empty results gracefully
-- [ ] - P4-003A: Experience capture verified — gap (MCP tools) is acceptable
-- [ ] - P4-004-006: consolidation, context limits, explicit commands all work
-- Build: 0 errors, 0 warnings
+[ ] - P4-001A/B: Request lifecycle traced — agent loop has memory retrieval, workflow execution now wired
+[ ] - P4-002A: Added `memory_retrieval` field to `WorkflowEngine`, updated constructor, implemented real `read_memory_before_action`
+[ ] - P4-002B: Added `retrieve_with_limit()` with default limit of 10 to prevent context overflow
+[ ] - P4-002C: `SKIP_MEMORY_READ` list checked at top of `read_memory_before_action`
+[ ] - P4-002D: Error handling in place — callers handle empty results gracefully
+[ ] - P4-003A: Experience capture verified — gap (MCP tools) is acceptable
+[ ] - P4-004-006: consolidation, context limits, explicit commands all work
+[ ] - Build: 0 errors, 0 warnings
 
 ### P4-001: Trace the request lifecycle (~10 min, 2 tasks)
 
-- [ ] **P4-001A**: Agent request path verified: `run_agent_goal` → `AgentLoop::new` → `AgentLoop::run` → planner → `memory_retrieval.retrieve()` (loop_runner.rs:98) → ActionSelector → safety_gate → record_success. Agent loop already has memory retrieval wired.
+- [ ] **P4-001A**: Trace: `run_agent_goal` (agent_handler.rs:76) → `AgentDeps::from_context` (context.rs:55, includes memory_retrieval) → `AgentLoop::run` (loop_runner.rs:88) → `memory_retrieval.retrieve()` (loop_runner.rs:98).
 
-- [ ] **P4-001B**: Workflow request path verified: `start_workflow` → `execute_workflow` → `execute_step_action` → tool dispatch. `read_memory_before_action()` in execute.rs:41 now calls real memory retrieval via `memory_retrieval.retrieve()` — previously was stub returning None.
+- [ ] **P4-001B**: Trace: `start_workflow` (MCP) → `execute_workflow` (execute.rs:10) → `read_memory_before_action` (execute.rs:41) → `self.memory_retrieval.retrieve(&query)` (experience.rs:48).
+
+After verifying both paths:
+1. Run `make gate` and confirm green.
+2. Write CHANGELOG entry.
+3. Delete task lines 172-174 from PLAN.md.
+4. Commit and push.
+5. Move to P4-002.
 
 ### P4-002: Wire memory retrieval into workflow execution (~30 min, 5 tasks)
 

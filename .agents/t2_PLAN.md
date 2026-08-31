@@ -7,23 +7,146 @@ Upgrade the existing subsystems to the v0.0.2 architecture in a dependency-first
 Treat each bullet as a single 10-15 minute increment: one tiny code change, one verification run, then stop.
 Sub-bullets (▸) are children of the parent task above them — complete them in order.
 
+**pre T2-01 uses 5-10 minute increments.** Each `▸` sub-bullet below is ONE tiny, buildable pass for an AI agent:
+a small function/struct, a single wiring call, or one test — followed by `cargo check --release` (or the gate for wired
+tools). Do NOT batch two sub-bullets. If a later task needs the same breakup, apply the same pattern.
+
+## Convention
+- Each `▸` is independently committable: code change -> build/check -> commit -> push -> next.
+- A struct + its fields = one pass; its serde round-trip test = a separate pass.
+- Tool registration is one pass PER TOOL (not per file) so each lands separately.
+
 ## 0. Architecture foundations and invariants
 Set the rules that every v0.0.2 subsystem must preserve.
 
 # pre T2-01 — Research Engine (External Knowledge Acquisition) — FIRST TASK (moved from PLAN.md)
 
-> Source: `research_engine.txt` — full 21-section requirements document.
-> Core principle: The LLM decides it needs information; the Research Engine determines how to obtain it.
+> Source: `.agents/research_engine.md` — the live 21-section spec. Its R1-R16 implementation order, evidence-packet
+> contracts, and Definition of Done are canonical for this task. Core principle: the LLM decides it needs
+> information; the Research Engine determines how to obtain it.
+>
+> Dependencies: Phase 0 (R0) adds the HTTP client (`reqwest` + an HTML parser) to `Cargo.toml` — currently missing,
+> and no provider works without it. Verify-Task note: `src/data_contracts/` currently exists but is EMPTY, and there is
+> NO existing Jina code in `src/` (the "existing Jina integration pattern" claim in research_engine.md is stale).
 
-## Concept / Design Rules / Phased Micro-Tasks (see `.agents/PLAN.md` archive for full text)
+## Phase 0: Foundation and dependencies
+- [ ] **R0** Add the HTTP stack to `Cargo.toml` (one dep per pass, each followed by `cargo check --release`).
+      - [ ] **▸** Add `reqwest` to `[dependencies]`; verify it compiles.
+      - [ ] **▸** Add an HTML-parsing crate (e.g. `scraper`); verify it compiles.
+      - [ ] **▸** Gate the network deps behind an `http` feature flag (so no-HTTP builds stay optional); verify.
+      - [ ] **▸** Add a `JINA_API_KEY` / `BRAVE_API_KEY` config reader (env var helper returning `Option<String>`); verify.
+      - [ ] **▸** Add a TODO-free config note to `README.md` (doc) — no code.
+- [ ] **R1** Create the `src/research/` module skeleton (compile-clean, no logic).
+      - [ ] **▸** Create `src/research/provider.rs` declaring `SearchSource` enum (Web, News, Reddit, HN, Wikipedia); verify.
+      - [ ] **▸** Define `SearchQuery` struct { query, source, max_results, language, region }; verify.
+      - [ ] **▸** Define `SearchResult` struct { title, url, snippet, relevance, source }; verify.
+      - [ ] **▸** Define `SearchResults` struct { results, provider, query, retrieved_at } + serde derives; verify.
+      - [ ] **▸** Define `trait SearchProvider: Send + Sync` { search, name, supports }; verify.
+      - [ ] **▸** Create `src/research/errors.rs` with a minimal `ResearchError` enum (all 6 variants, no logic yet); verify.
+      - [ ] **▸** Create `src/research/mod.rs` that `pub mod`s the submodules; add `pub mod research` to `src/lib.rs`; verify.
+- [ ] **R2** Wire the provider abstraction + a build-check for the trait.
+      - [ ] **▸** Implement `Display` / `std::error::Error` for `ResearchError`; verify.
+      - [ ] **▸** Add a `From<anyhow::Error>` / `From<reqwest::Error>` conversion so `?` works; verify.
+- [ ] **R2b** Add a deterministic mock provider (no network in CI / gate).
+      - [ ] **▸** Define `MockProvider` (fixed 2-3 canned `SearchResult`s) in `src/research/mock.rs`; impl the trait; verify.
+      - [ ] **▸** Add a unit-style `search` smoke test that calls `MockProvider::search()`; verify.
 
-- [ ] Phase A: Foundation (provider-independent core) — `SearchProvider` trait, types, mock provider.
-- [ ] Phase B: First provider + raw MCP tools (`web_search`, `web_open`, `quick_research`, `deep_research`).
-- [ ] Phase C: Pipeline — ranking, selection, passage extraction, contradiction detection, security.
-- [ ] Phase D: Cognitive integration — trigger, experience recording, memory promotion, failover.
-- [ ] Phase E: Hardening — security tests, docs, final gate.
+## Phase B: Core pipeline
+- [ ] **R3** Implement the DuckDuckGo adapter (primary, no API key).
+      - [ ] **▸** `duckduckgo.rs`: `reqwest::get` the search URL and capture the raw HTML body; verify compile.
+      - [ ] **▸** Parse the HTML result block (title + URL) into `SearchResult`; verify.
+      - [ ] **▸** Extract the snippet text from each result; verify.
+      - [ ] **▸** Implement `SearchProvider` for `DuckDuckGo` (name="duckduckgo", supports Web, error on timeout); verify.
+      - [ ] **▸** Add a live-off test using a captured HTML fixture (no network); verify.
+- [ ] **R4** Implement the Jina processing layer (API-key gated; net-new).
+      - [ ] **▸** `jina.rs`: add an authenticated request helper (Bearer `JINA_API_KEY`); verify compile.
+      - [ ] **▸** Add the `extract(url)` -> clean-text function; verify.
+      - [ ] **▸** Add a `rerank(results)` relevance sort helper; verify.
+      - [ ] **▸** Expose via `SearchProvider` where applicable and gate on key presence; verify.
+- [ ] **R5** Build pipeline orchestration (search -> rank -> extract -> compare -> evidence).
+      - [ ] **▸** `pipeline.rs`: add `run_pipeline(query, mode) -> ResearchResult` signature + wire the research refs; verify.
+      - [ ] **▸** Bound raw results: keep max 10 from `search()`; verify.
+      - [ ] **▸** Rank + retain top 5 (relevance desc); verify.
+      - [ ] **▸** Wrap the per-search call in `tokio::time::timeout`; verify.
+      - [ ] **▸** Extract up to top-5 sources to clean text via the extraction layer; verify.
+      - [ ] **▸** Assemble a `ResearchResult` evidence packet; verify.
+- [ ] **R6** Implement quick mode.
+      - [ ] **▸** `quick_research.rs`: `run_quick(query)` flow calling the pipeline with 1-3 searches; verify.
+      - [ ] **▸** Enforce the <5s total timeout; verify.
+      - [ ] **▸** Add a quick-mode evidence-packet smoke test; verify.
+- [ ] **R7** Implement deep mode.
+      - [ ] **▸** `deep_research.rs`: generate 1-3 sub-questions from a seed query (keyword split helper); verify.
+      - [ ] **▸** Run the multi-iteration search loop (2-5 iterations, bounded); verify.
+      - [ ] **▸** Compare overlapping sources for consistency; verify.
+      - [ ] **▸** Detect contradictions (conflicting findings on the same claim) + optional resolution; verify.
+      - [ ] **▸** Add a deep-mode basic smoke test; verify.
+- [ ] **R8** Implement the evidence packet types + serde.
+      - [ ] **▸** `evidence.rs`: `Source` struct { title, url, provider, query_used, retrieved_at, relevance, content }; verify.
+      - [ ] **▸** `Finding` struct { statement, source_url, confidence }; verify.
+      - [ ] **▸** `Contradiction` struct { claim_a, claim_b, source_a_url, source_b_url, resolution }; verify.
+      - [ ] **▸** `ResearchResult` struct { question, queries, sources, findings, contradictions, limitations, confidence, retrieved_at }; verify.
+      - [ ] **▸** Add serde `Serialize`/`Deserialize` on all evidence types; verify.
+      - [ ] **▸** Add a serde round-trip test for `ResearchResult`; verify.
 
-Full specification preserved in `.agents/PLAN.md` (lines 1194-1520, archive copy).
+## Phase C: Security, errors, and context protection
+- [ ] **R9** Error handling (never panic).
+      - [ ] **▸** `errors.rs`: fill the `ResearchError` variants + a `Cancelled` signal path; verify.
+      - [ ] **▸** Add a `with_timeout(fut, dur)` helper wrapping `tokio::time::timeout`; verify.
+      - [ ] **▸** Wire cancellation via a shared `CancellationToken`-style flag into long fetches; verify.
+- [ ] **R9b** Web-content sanitization (prompt-injection defense, DoD #12) — one tiny fn per pass.
+      - [ ] **▸** `sanitize.rs`: `strip_html` (remove tags) helper; verify.
+      - [ ] **▸** `strip_control_chars` + escape embedded text; verify.
+      - [ ] **▸** `cap_and_truncate` (max 5 sources, "and N more" marker); verify.
+      - [ ] **▸** Apply sanitization inside the extraction path so no raw HTML reaches the evidence packet; verify.
+      - [ ] **▸** Add unit tests covering injection-looking content (script tags, prompt text) staying inert; verify.
+- [ ] **R9c** Provider failover (graceful degradation, design rule #6).
+      - [ ] **▸** Add a `try_providers(vec![providers]) -> Result<SearchResults>` fallback-orchestration fn; verify.
+      - [ ] **▸** DuckDuckGo -> (optional) Brave chain, collecting per-provider errors; verify.
+      - [ ] **▸** Emit a single structured `AllProvidersFailed` surface (wrap into `ResearchError`); verify.
+
+## Phase D: Cognitive integration — DEFERRED until Memory/Experience engines are contract-shaped
+> Requires `src/data_contracts/` (T2-08..T2-30) AND the Memory Engine (T2-31..T2-46) AND the Experience Engine
+> (T2-47..T2-61). Do NOT start this phase before those land — it calls into subsystems that are not built yet.
+- [ ] **R10** Wire the 9-tier confidence cascade into `src/agent/decision.rs` (starts after the contract-shaped dependency phase).
+      - [ ] **▸** Add `check_internal_sources(query) -> tier_result` that runs tiers 1-8 in order; verify.
+      - [ ] **▸** Stop at the first tier returning confidence >= 0.7; verify.
+      - [ ] **▸** When all 8 fail, return a `NeedResearch` signal; verify.
+      - [ ] **▸** Trigger `research()` from the cascade; verify.
+      - [ ] **▸** Plumb the 0.7 threshold through the cascade as a named constant; verify.
+- [ ] **R12** Memory promotion (`src/memory/`) — after R10 rebuilds the gate on contract-shaped memory.
+      - [ ] **▸** Add a provenance field path for research-derived memories (url/provider/timestamp); verify.
+      - [ ] **▸** Implement the promotion gate (confidence >= 0.7 AND outcome=solved); verify.
+      - [ ] **▸** Wire promotion into the existing `store_memory` / `get_embedding` surface; verify.
+- [ ] **R13** Experience recording (`src/experience/`).
+      - [ ] **▸** Add a `record_research(query, sources_used, mode, duration, outcome)` helper; verify.
+      - [ ] **▸** Set `experience_type="research"` + context { query, sources[], mode, duration }; verify.
+      - [ ] **▸** Call it from the pipeline exit paths (success + failover); verify.
+
+## Phase E: Tool registration, coverage gate, hardening
+- [ ] **R11** Add raw MCP tools to `src/bridge/tools/search/mod.rs` — ONE tool per pass.
+      - [ ] **▸** `web_search` (input schema + execute fn) + `all()` entry; verify.
+      - [ ] **▸** `web_open`; verify.
+      - [ ] **▸** `web_extract`; verify.
+      - [ ] **▸** `research`; verify.
+      - [ ] **▸** `quick_research`; verify.
+      - [ ] **▸** `deep_research`; verify.
+      - [ ] **▸** `find_error_resolution` (error-focused search, refactored only if a prior tool exists); verify.
+      - [ ] **▸** Wire all new tools into the `register_tools()` Phase 6 (Search) chain in `src/bridge/tools/mod.rs`; verify.
+      - [ ] **▸** Sync the THREE lists (`tool_names()`, `get_tools()`, `execute_tool()`) — a missing `get_tools()` entry is a phantom tool (T1-19); verify against `tools/list`.
+      - [ ] **▸** Scope note: the ~20 long-tail per-source adapters (Wikipedia, Reddit, HN, arXiv, SEC, OSM, Bluesky, Telegram…) are POST-MVP plain `SearchProvider` impls — out of scope here.
+- [ ] **R11b** Add test_suite coverage so "0 untested tools" stays green.
+      - [ ] **▸** Add `TestRequirement` entries for `web_search`, `web_open`, `web_extract` to `function_registry/search_tools.rs`; verify.
+      - [ ] **▸** Add `TestRequirement` entries for `research`, `quick_research`, `deep_research`, `find_error_resolution`; verify.
+      - [ ] **▸** Add the matching id cases to `comprehensive_test/argument_builder.rs`; verify.
+      - [ ] **▸** `cd test_suite && ./target/release/test_suite --probe <TOOL>` per tool to pick `IsSuccess(None)` vs `IsSuccess(Some("false"))`; verify coverage count.
+- [ ] **R15** Context protection enforcement.
+      - [ ] **▸** Enforce the hard 5-source cap at the pipeline exit; verify.
+      - [ ] **▸** Add a token-budget estimate before the LLM call; verify.
+      - [ ] **▸** Emit the "... and N more sources" truncation marker when capped; verify.
+- [ ] **R16** End-to-end gate verification.
+      - [ ] **▸** Wire the 13-step verification path (workflow gate -> research -> cascade -> evidence -> memory -> failover -> cancel) from research_engine.md into a test_suite flow test; verify.
+      - [ ] **▸** Run the FULL gate: `cd test_suite && cargo build --release && ./target/release/test_suite`; ensure tests=100%, warnings=0, code-issues=0, untested-tools=0.
+      - [ ] **▸** Fix any gate failures before claiming done (Verify, Don't Trust).
 
 - [ ] **T2-01** Write a short v0.0.2 architecture note covering persistence, continuity, memory-first design, experience-based learning, and controlled evolution.
 - [ ] **T2-02** Write a short v0.0.2 architecture note covering modularity, explainability, event-driven behavior, confidence-based decisions, and controlled evolution.

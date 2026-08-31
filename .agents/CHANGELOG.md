@@ -239,3 +239,8 @@
 - **P1-001 Audit Partially Implemented Functions — DONE (2026-08-30).** Verified: 0 TODOs, 0 FIXMEs, 0 stub implementations, 0 `todo!()`/`unimplemented!()`/`unreachable!()` macros, 0 underscore-prefixed variables, 0 early-return stubs. All public APIs are MCP tools with production callers. Gate: 454/454 pass, 0 warnings, 0 issues, 0 untested tools.
 - **P3-001 Synchronize Project Status — DONE (2026-08-30).** Added dated verification to all CHANGELOG entries (T1 series), added "Verified State" block to README, confirmed AGENTS.md has same-day gate rule. Gate: 454/454 pass, 0 warnings, 0 issues, 0 untested tools.
 - Remaining work (TIER 2+): Data Contracts, Context/Conversation engines, Execution/Tool engines, AI Runtime, Multimodal, GUI.
+
+---
+PLAN.md cleanup: merged duplicate sections, added enforcement checkpoint
+- Files changed: .agents/PLAN.md,.agents/research_engine.md,.agents/t2_PLAN.md,.agents/trans_batch.md,Makefile
+- Gate: green (148/148 tests, 0 warnings, 0 issues)
