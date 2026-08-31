@@ -269,3 +269,6 @@ P4-001A/B: traced memory retrieval paths
 P4-001A/B: traced memory retrieval paths
 - Files changed: .agents/scripts/done.sh
 - Gate: green (148/148 tests, 0 warnings, 0 issues)
+
+---
+P4-002A: memory_retrieval field added to WorkflowEngine — verified in types.rs:58, core.rs:28, workflow_acp.rs:19, experience.rs:22. Gate: green (148/148 tests, 0 warnings, 0 issues)

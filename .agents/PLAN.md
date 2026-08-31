@@ -193,11 +193,11 @@ After verifying both paths:
 
 #### P4-002A: Add memory_retrieval to WorkflowEngine (~10 min)
 
-- [ ] **P4-002A-1**: Added `memory_retrieval: Option<Arc<MemoryRetrieval>>` field to `WorkflowEngine` struct (types.rs:58). Updated Clone impl.
+- [x] **P4-002A-1**: Added `memory_retrieval: Option<Arc<MemoryRetrieval>>` field to `WorkflowEngine` struct (types.rs:58). Updated Clone impl.
 
-- [ ] **P4-002A-2**: Updated `with_database_and_coordinator()` constructor in core.rs:28 to accept `memory_retrieval` parameter. Updated caller in workflow_acp.rs:19 to pass `memory_retrieval`. Updated mod.rs:140 to pass `memory_retrieval_arc`.
+- [x] **P4-002A-2**: Updated `with_database_and_coordinator()` constructor in core.rs:28 to accept `memory_retrieval` parameter. Updated caller in workflow_acp.rs:19 to pass `memory_retrieval`. Updated mod.rs:140 to pass `memory_retrieval_arc`.
 
-- [ ] **P4-002A-3**: Implemented `read_memory_before_action` in experience.rs:22: checks `SKIP_MEMORY_READ` first, calls `self.memory_retrieval.retrieve(&query)`, returns `ToolOutput::success` with retrieved memories, logs and returns `None` if unavailable.
+- [x] **P4-002A-3**: Implemented `read_memory_before_action` in experience.rs:22: checks `SKIP_MEMORY_READ` first, calls `self.memory_retrieval.retrieve(&query)`, returns `ToolOutput::success` with retrieved memories, logs and returns `None` if unavailable.
 
 #### P4-002B: Bound retrieval results (~5 min)
 
