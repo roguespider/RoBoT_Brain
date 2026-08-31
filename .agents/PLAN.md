@@ -197,9 +197,7 @@ After verifying both paths:
 
 
 
-### P4-005: Context integration (Already [ ] / Verify)
 
-- [ ] **P4-005**: Context engine enforces limits — memory enters through existing context lifecycle, not raw DB output. Verified by reading context module.
 
 ### P4-006: Explicit memory commands remain supported (Already [ ] / Verify)
 
