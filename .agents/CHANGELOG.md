@@ -249,3 +249,8 @@ PLAN.md cleanup: merged duplicate sections, added enforcement checkpoint
 P4-001A/B: traced memory retrieval paths
 - Files changed: .agents/scripts/done.sh
 - Gate: green (148/148 tests, 0 warnings, 0 issues)
+
+---
+P4-002A: workflow memory retrieval wired
+- Files changed: .agents/scripts/done.sh
+- Gate: green (148/148 tests, 0 warnings, 0 issues)
