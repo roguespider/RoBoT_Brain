@@ -193,9 +193,7 @@ After verifying both paths:
 
 
 
-#### P4-002C: Wire SKIP_MEMORY_READ into workflow execution (~5 min)
 
-- [ ] **P4-002C-1**: Check skip list in `read_memory_before_action` (experience.rs:28): calls `Self::should_skip_memory_read(action)` — returns `None` for skipped actions.
 
 #### P4-002D: Error resilience (~10 min)
 
