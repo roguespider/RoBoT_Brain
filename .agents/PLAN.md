@@ -166,9 +166,8 @@ at `src/agent/loop_runner.rs:98`. WorkflowEngine does NOT have `memory_retrieval
 `MemoryRetrieval::retrieve()` has no limit parameter and no error handling.
 `SKIP_MEMORY_READ` list exists (`core.rs:17`) but is not checked.
 [ ] P4-003 through P4-006 are already mostly [ ] — consolidation, context limits,
-and explicit commands all work. Only P4-002A-D are real implementation gaps.
+and explicit commands all work. Only P4-002B-D remain as implementation gaps.
 
-[ ] - P4-002A: Added `memory_retrieval` field to `WorkflowEngine`, updated constructor, implemented real `read_memory_before_action`
 [ ] - P4-002B: Added `retrieve_with_limit()` with default limit of 10 to prevent context overflow
 [ ] - P4-002C: `SKIP_MEMORY_READ` list checked at top of `read_memory_before_action`
 [ ] - P4-002D: Error handling in place — callers handle empty results gracefully
@@ -191,13 +190,7 @@ After verifying both paths:
 
 ### P4-002: Wire memory retrieval into workflow execution (~30 min, 5 tasks)
 
-#### P4-002A: Add memory_retrieval to WorkflowEngine (~10 min)
 
-- [x] **P4-002A-1**: Added `memory_retrieval: Option<Arc<MemoryRetrieval>>` field to `WorkflowEngine` struct (types.rs:58). Updated Clone impl.
-
-- [x] **P4-002A-2**: Updated `with_database_and_coordinator()` constructor in core.rs:28 to accept `memory_retrieval` parameter. Updated caller in workflow_acp.rs:19 to pass `memory_retrieval`. Updated mod.rs:140 to pass `memory_retrieval_arc`.
-
-- [x] **P4-002A-3**: Implemented `read_memory_before_action` in experience.rs:22: checks `SKIP_MEMORY_READ` first, calls `self.memory_retrieval.retrieve(&query)`, returns `ToolOutput::success` with retrieved memories, logs and returns `None` if unavailable.
 
 #### P4-002B: Bound retrieval results (~5 min)
 
