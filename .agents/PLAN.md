@@ -193,9 +193,7 @@ After verifying both paths:
 
 
 
-### P4-003: Automatic experience capture (Verify / ~5 min)
 
-- [ ] **P4-003A**: `record_experience_after_action` called after each workflow step (execute.rs:63). Gap: NOT called for regular MCP tool calls (only workflow steps). This is **acceptable** — MCP tools already have their own experience recording via the tool execution path. No change needed.
 
 ### P4-004: Automatic memory promotion (Already [ ] / Verify)
 
