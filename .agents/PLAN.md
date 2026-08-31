@@ -199,9 +199,7 @@ After verifying both paths:
 
 
 
-### P4-006: Explicit memory commands remain supported (Already [ ] / Verify)
 
-- [ ] **P4-006**: No duplicate memory implementation. Explicit tools operate against same persistent state. Verified by code inspection.
 
 ---
 
