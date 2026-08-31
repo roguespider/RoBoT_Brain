@@ -147,7 +147,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 - Never batch tasks. Never skip. Never assume a task is done — verify it.
 
 [ ] A001-001 Read and apply AGENTS.md and PLAN.md lines 1-140. Do not mark complete. Do not delete. Only skip this one task after reading and applying.
----
+
 [ ] Post-P3: Automatic Cognitive Lifecycle and v0.0.1 Final Integration
 
 ## Purpose
@@ -160,14 +160,7 @@ P4: Automatic Cognitive Memory Lifecycle — ALL COMPLETE (P4-001 through P4-006
 
 Research findings: AgentLoop calls `memory_retrieval.retrieve()` at `loop_runner.rs:98`. WorkflowEngine wired with `memory_retrieval` field (types.rs:59). `read_memory_before_action` calls real retrieval (experience.rs:34). `record_experience_after_action` live (experience.rs:81). `retrieve_with_limit` bounded (retrieval.rs:71). `SKIP_MEMORY_READ` checked (experience.rs:28). P4-003 through P4-006 acceptance criteria all verified.
 
-### P4-001: Trace the request lifecycle (~10 min, 2 tasks)
 
-- [x] **P4-001A**: Verified: `run_agent_goal` → `AgentDeps::from_context` → `AgentLoop::run` → `memory_retrieval.retrieve()` at loop_runner.rs:98.
-
-- [x] **P4-001B**: Verified: `start_workflow` → `execute_workflow` → `read_memory_before_action` at execute.rs:41 → `self.memory_retrieval.retrieve(&query)` at experience.rs:48.
-
-After verifying both paths:
-1. Run `make gate` and confirm green.
 2. Write CHANGELOG entry.
 3. Delete task lines 172-174 from PLAN.md.
 4. Commit and push.
