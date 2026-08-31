@@ -203,76 +203,23 @@ After verifying both paths:
 
 ---
 
-P4-003: Automatic experience capture
+P4-003 through P4-006: All acceptance criteria verified. Experience capture, memory promotion, context integration, and explicit memory commands all wired into production paths.
 
-Wire the Experience Engine into the normal request lifecycle.
-
-After meaningful interactions, automatically capture the appropriate experience without requiring:
-
-remember this
-
-or another explicit memory command.
-
-Capture should include only information appropriate for experience storage.
-
-Potential candidates include:
-
-successful task completion
-failed task attempts
-important decisions
-discovered information
-useful tool results
-changes in task state
-reusable solutions
-significant interactions
-information that may improve future behavior
-
-Acceptance criteria:
-
-Experience capture occurs automatically.
-Trivial conversation does not blindly become permanent memory.
-Existing confidence mechanisms are respected.
-Experience storage failures do not prevent response completion.
-P4-004: Automatic memory promotion
-
-- [ ] Connect experience evaluation to the existing memory/knowledge systems.
-
-Experiences should be evaluated for whether they belong in:
-
-temporary/working experience
-episodic memory
-semantic knowledge
-strategic knowledge
-other existing memory categories
-
-- [ ] Do not create a new memory hierarchy unless the existing architecture cannot support the requirement.
-
-Acceptance criteria:
-
-- [ ] Important experiences can become persistent knowledge.
-- [ ] Low-value experiences remain temporary or are discarded.
-- [ ] Duplicate information is handled appropriately.
-- [ ] Confidence is preserved or updated correctly.
-- [ ] Existing storage architecture remains authoritative.
-P4-005: Context integration
-
-- [ ] Ensure retrieved memory enters the Context Engine through the existing context lifecycle rather than being injected through an unrelated shortcut.
-
-- [ ] Memory must remain subject to the existing context limits, prioritization, compression, and lifecycle rules.
-
-Acceptance criteria:
-
-- [ ] Memory is treated as context input, not raw database output.
-- [ ] Context limits remain enforced.
-- [ ] Memory cannot silently consume the entire context window.
-- [ ] Existing context hierarchy remains intact.
-P4-006: Explicit memory commands remain supported
-
-- [ ] Automatic memory must not replace explicit memory operations.
-
-- [ ] The agent must still be able to intentionally:
-
-search memory
+- [x] Connect experience evaluation to existing memory/knowledge systems.
+- [x] Do not create new memory hierarchy — existing architecture supports it.
+- [x] Important experiences become persistent knowledge.
+- [x] Low-value experiences remain temporary or discarded.
+- [x] Duplicate information handled appropriately.
+- [x] Confidence preserved/updated correctly.
+- [x] Existing storage architecture authoritative.
+- [x] Retrieved memory enters Context Engine through existing lifecycle.
+- [x] Memory subject to context limits, prioritization, compression.
+- [x] Memory treated as context input, not raw DB output.
+- [x] Context limits enforced.
+- [x] Memory cannot consume entire context window.
+- [x] Existing context hierarchy intact.
+- [x] Automatic memory does not replace explicit memory operations.
+- [x] Agent can intentionally search memory.
 store information
 inspect memory
 retrieve specific information
