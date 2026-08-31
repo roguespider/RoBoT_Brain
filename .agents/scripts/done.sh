@@ -44,12 +44,15 @@ echo "CHANGELOG updated."
 
 # 4. Remove ALL completed task lines from PLAN.md
 echo "Removing completed task lines from PLAN.md..."
-TASK_PREFIX=$(echo "$TASK_DESC" | cut -d: -f1 | sed 's/\[\] //' | tr -d ' ' | sed 's|/|\/|g')
+TASK_PREFIX=$(echo "$TASK_DESC" | cut -d: -f1 | sed 's/\[\] //' | tr -d ' ')
 PLAN_FILE="$PROJECT_ROOT/.agents/PLAN.md"
 
-if grep -q "$TASK_PREFIX" "$PLAN_FILE" 2>/dev/null; then
-    # Delete lines matching the task prefix (task lines start with "- [ ]")
-    grep -v "\[\] \*\*$TASK_PREFIX" "$PLAN_FILE" > "$PLAN_FILE.tmp" && mv "$PLAN_FILE.tmp" "$PLAN_FILE"
+# Split on / to handle tasks like "P4-001A/B" → match P4-001A AND P4-001B
+MATCH_PATTERN=$(echo "$TASK_PREFIX" | tr '/' '|')
+
+if grep -q "$MATCH_PATTERN" "$PLAN_FILE" 2>/dev/null; then
+    # Delete lines matching any of the task identifiers
+    grep -v "\[\] \*\*\($MATCH_PATTERN\)" "$PLAN_FILE" > "$PLAN_FILE.tmp" && mv "$PLAN_FILE.tmp" "$PLAN_FILE"
     echo "Deleted task lines matching '$TASK_PREFIX' from PLAN.md"
 fi
 
