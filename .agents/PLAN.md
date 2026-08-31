@@ -173,9 +173,9 @@ and explicit commands all work. P4 complete.
 
 ### P4-001: Trace the request lifecycle (~10 min, 2 tasks)
 
-- [ ] **P4-001A**: Trace: `run_agent_goal` (agent_handler.rs:76) → `AgentDeps::from_context` (context.rs:55, includes memory_retrieval) → `AgentLoop::run` (loop_runner.rs:88) → `memory_retrieval.retrieve()` (loop_runner.rs:98).
+- [x] **P4-001A**: Verified: `run_agent_goal` → `AgentDeps::from_context` → `AgentLoop::run` → `memory_retrieval.retrieve()` at loop_runner.rs:98.
 
-- [ ] **P4-001B**: Trace: `start_workflow` (MCP) → `execute_workflow` (execute.rs:10) → `read_memory_before_action` (execute.rs:41) → `self.memory_retrieval.retrieve(&query)` (experience.rs:48).
+- [x] **P4-001B**: Verified: `start_workflow` → `execute_workflow` → `read_memory_before_action` at execute.rs:41 → `self.memory_retrieval.retrieve(&query)` at experience.rs:48.
 
 After verifying both paths:
 1. Run `make gate` and confirm green.
