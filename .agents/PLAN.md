@@ -192,9 +192,6 @@ After verifying both paths:
 
 
 
-#### P4-002B: Bound retrieval results (~5 min)
-
-- [ ] **P4-002B-1**: Added `retrieve_with_limit()` in retrieval.rs:67 with `limit: usize` parameter. Default `retrieve()` calls `retrieve_with_limit(query, 10)`. After sorting, `.truncate(limit)` prevents context overflow.
 
 #### P4-002C: Wire SKIP_MEMORY_READ into workflow execution (~5 min)
 
