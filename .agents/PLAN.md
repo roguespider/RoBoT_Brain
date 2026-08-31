@@ -195,9 +195,7 @@ After verifying both paths:
 
 
 
-### P4-004: Automatic memory promotion (Already [ ] / Verify)
 
-- [ ] **P4-004**: `MemoryRetrieval::consolidate()` at `memory/retrieval.rs:154-208` with `should_promote()` rules (confidence >= 0.7, importance >= 0.8, access >= 5, knowledge/important/learned tags). Verified live.
 
 ### P4-005: Context integration (Already [ ] / Verify)
 
