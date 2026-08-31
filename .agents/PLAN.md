@@ -156,20 +156,9 @@ The primary issue is that robot_brain currently exposes memory and cognitive sub
 
 The goal of this phase is not to redesign the Memory Engine. The goal is to ensure the existing engines are actually wired together so that normal agent operation automatically retrieves relevant memory and records meaningful experience without requiring the user to explicitly request it.
 
-[ ] P4: Automatic Cognitive Memory Lifecycle
+P4: Automatic Cognitive Memory Lifecycle — ALL COMPLETE (P4-001 through P4-006 verified, gate green, 0 warnings).
 
-Research findings: AgentLoop already calls `memory_retrieval.retrieve()`
-at `src/agent/loop_runner.rs:98`. WorkflowEngine does NOT have `memory_retrieval`
-(`src/workflows/engine/types.rs:52`). `read_memory_before_action()` at
-`src/workflows/engine/executor/experience.rs:22` is a stub returning `None`.
-`record_experience_after_action()` at `experience.rs:59` is already live.
-`MemoryRetrieval::retrieve()` has no limit parameter and no error handling.
-`SKIP_MEMORY_READ` list exists (`core.rs:17`) but is not checked.
-[ ] P4-003 through P4-006 are already mostly [ ] — consolidation, context limits,
-and explicit commands all work. P4 complete.
-[ ] - P4-003: Experience capture verified
-[ ] - P4-004-006: consolidation, context limits, explicit commands all work
-[ ] - Build: 0 errors, 0 warnings
+Research findings: AgentLoop calls `memory_retrieval.retrieve()` at `loop_runner.rs:98`. WorkflowEngine wired with `memory_retrieval` field (types.rs:59). `read_memory_before_action` calls real retrieval (experience.rs:34). `record_experience_after_action` live (experience.rs:81). `retrieve_with_limit` bounded (retrieval.rs:71). `SKIP_MEMORY_READ` checked (experience.rs:28). P4-003 through P4-006 acceptance criteria all verified.
 
 ### P4-001: Trace the request lifecycle (~10 min, 2 tasks)
 
