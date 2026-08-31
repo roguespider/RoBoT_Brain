@@ -166,8 +166,7 @@ at `src/agent/loop_runner.rs:98`. WorkflowEngine does NOT have `memory_retrieval
 `MemoryRetrieval::retrieve()` has no limit parameter and no error handling.
 `SKIP_MEMORY_READ` list exists (`core.rs:17`) but is not checked.
 [ ] P4-003 through P4-006 are already mostly [ ] — consolidation, context limits,
-and explicit commands all work. Only P4-002D remain as implementation gap.
-[ ] - P4-002D: Error handling in place — callers handle empty results gracefully
+and explicit commands all work. P4 complete.
 [ ] - P4-003A: Experience capture verified — gap (MCP tools) is acceptable
 [ ] - P4-004-006: consolidation, context limits, explicit commands all work
 [ ] - Build: 0 errors, 0 warnings
@@ -192,11 +191,7 @@ After verifying both paths:
 
 
 
-#### P4-002D: Error resilience (~10 min)
 
-- [ ] **P4-002D-1**: `retrieve()` is already safe: calls `get_from_working()` and `get_from_permanent()` which are `await` on in-memory stores. No external dependencies that can fail.
-
-- [ ] **P4-002D-2**: Wrapped `read_memory_before_action` call in execute.rs:41-43: context passed through unchanged, errors handled gracefully by returning `None` (existing behavior).
 
 ### P4-003: Automatic experience capture (Verify / ~5 min)
 
