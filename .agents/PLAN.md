@@ -168,7 +168,6 @@ at `src/agent/loop_runner.rs:98`. WorkflowEngine does NOT have `memory_retrieval
 [ ] P4-003 through P4-006 are already mostly [ ] — consolidation, context limits,
 and explicit commands all work. Only P4-002A-D are real implementation gaps.
 
-[ ] - P4-001A/B: Request lifecycle traced — agent loop has memory retrieval, workflow execution now wired
 [ ] - P4-002A: Added `memory_retrieval` field to `WorkflowEngine`, updated constructor, implemented real `read_memory_before_action`
 [ ] - P4-002B: Added `retrieve_with_limit()` with default limit of 10 to prevent context overflow
 [ ] - P4-002C: `SKIP_MEMORY_READ` list checked at top of `read_memory_before_action`

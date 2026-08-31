@@ -42,9 +42,20 @@ echo "---" >> "$PROJECT_ROOT/.agents/CHANGELOG.md"
 echo "$CHANGELOG_ENTRY" >> "$PROJECT_ROOT/.agents/CHANGELOG.md"
 echo "CHANGELOG updated."
 
-# 4. Remove completed task line from PLAN.md (find the task line and delete it)
-# The agent should tell us which line(s) to remove, but we'll try to auto-detect
-echo "Manual step: Remove completed task line(s) from PLAN.md, then run: git add .agents/PLAN.md"
+# 4. Remove completed task line from PLAN.md
+echo "Removing task line from PLAN.md..."
+# Find the line matching the task description prefix and delete it
+TASK_PREFIX=$(echo "$TASK_DESC" | cut -d: -f1 | sed 's/\[\] //' | tr -d ' ')
+PLAN_FILE="$PROJECT_ROOT/.agents/PLAN.md"
+
+if grep -q "$TASK_PREFIX" "$PLAN_FILE" 2>/dev/null; then
+    # Find the line number and delete it
+    LINE_NUM=$(grep -n "$TASK_PREFIX" "$PLAN_FILE" 2>/dev/null | head -1 | cut -d: -f1)
+    if [ -n "$LINE_NUM" ]; then
+        sed -i "${LINE_NUM}d" "$PLAN_FILE"
+        echo "Deleted task line $LINE_NUM from PLAN.md"
+    fi
+fi
 
 # 5. Commit
 git add -A
