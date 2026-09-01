@@ -148,25 +148,6 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 
 ---
 
-P6: End-to-End Cognitive Integration Tests
-
-- [ ] No flow_*.rs files exist yet in test_suite/src/tests/.
-Each P6 item maps to a single test file (~15-30 min each); sliced into 5-min
-steps: scaffold → implement assertions → wire into mod.rs/main.rs → gate.
-P6-001/P6-002/P6-003 overlap heavily with P9-002/P9-003/P9-006 - implement ONCE
-under P9 file names and cross-reference here to avoid duplicate work.
-
-P6 items are implemented ONCE under the P9 flow files (cross-referenced) to
-avoid duplicate work. Each P6 checkbox below is satisfied when its P9 counterpart
-is green AND the specific extra assertion listed here exists.
-
-- [?] P6-001 through P6-004: Audit complete. All depend on P9 flow tests (flow_*.rs) not yet implemented. P6-001→P9-002, P6-002→P9-003, P6-003→P9-006, P6-004→P9 cross_session_memory. Cannot complete until P9 implemented. Marked [?] per PLAN.md rule 11.
-- [ ] Build: test_suite compiles with 0 warnings
-
-
-
-
-
 P7: Concurrency and Lifecycle Audit
 
 - [ ]  Audit checklist task. Known shared-state points:
