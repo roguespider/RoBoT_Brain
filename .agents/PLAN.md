@@ -172,7 +172,7 @@ v0.0.1 is considered complete only when:
  - [x] No untested production tools (0)
  - [x] Automatic memory retrieval works without user instruction (run_agent_goal MCP tool, agent_handler.rs:74)
  - [x] Automatic experience capture works without user instruction (flow_experience_capture.rs test)
- - [ ] Persistent memories survive restart
+ - [x] Persistent memories survive restart (flow_cross_session_memory.rs: Session A stores, kills, Session B retrieves)
  - [ ] Memory failure does not unnecessarily prevent normal operation
  - [ ] Context limits remain enforced
  - [ ] Explicit memory tools remain functional
