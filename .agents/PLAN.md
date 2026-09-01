@@ -173,10 +173,10 @@ v0.0.1 is considered complete only when:
  - [x] Automatic memory retrieval works without user instruction (run_agent_goal MCP tool, agent_handler.rs:74)
  - [x] Automatic experience capture works without user instruction (flow_experience_capture.rs test)
  - [x] Persistent memories survive restart (flow_cross_session_memory.rs: Session A stores, kills, Session B retrieves)
- - [ ] Memory failure does not unnecessarily prevent normal operation
- - [ ] Context limits remain enforced
- - [ ] Explicit memory tools remain functional
- - [ ] No duplicate cognitive/memory implementation has been introduced
+ - [x] Memory failure does not unnecessarily prevent normal operation (memory_failure_isolation.rs test)
+ - [x] Context limits remain enforced (context_pressure.rs test, 210 memories, latency < 10s)
+ - [x] Explicit memory tools remain functional (list_memories, search_memory, store_memory - all in 148/148 pass)
+ - [x] No duplicate cognitive/memory implementation has been introduced (single memory/retrieval codebase, verified)
 - [ ] Important Constraint
 
 Do not expand scope into v0.0.2 architecture during this phase.
