@@ -171,7 +171,7 @@ v0.0.1 is considered complete only when:
  - [x] No known correctness issues (0)
  - [x] No untested production tools (0)
  - [x] Automatic memory retrieval works without user instruction (run_agent_goal MCP tool, agent_handler.rs:74)
- - [ ] Automatic experience capture works without user instruction
+ - [x] Automatic experience capture works without user instruction (flow_experience_capture.rs test)
  - [ ] Persistent memories survive restart
  - [ ] Memory failure does not unnecessarily prevent normal operation
  - [ ] Context limits remain enforced
