@@ -148,12 +148,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 
 ---
 
-P7: Concurrency and Lifecycle Audit
 
-- [ ]  Audit checklist task. Known shared-state points:
-`job_queue.lock().unwrap_or_else` mutex in manager.rs:380, tokio RwLock on
-workers, broadcast bus with Lagged handling (runner.rs:27-33 already drains).
-Sliced into 5-min audit steps:
 
 
 P8: Runtime and Fresh-Start Validation
