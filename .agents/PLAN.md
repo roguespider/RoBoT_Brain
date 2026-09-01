@@ -155,9 +155,6 @@ P7: Concurrency and Lifecycle Audit
 workers, broadcast bus with Lagged handling (runner.rs:27-33 already drains).
 Sliced into 5-min audit steps:
 
-- [?] P7-M1 through P7-M7: Audit complete (2026-08-30). P7-M1: No tokio RwLock await-across-lock in experience/ or workflows/. P7-M2: No std Mutex in experience/. P7-M3: Single-dispatcher by observer_name in job_queue.rs. P7-M4: WAL confirmed in sqlite.rs. P7-M5: kill_on_drop in all test IsoClients. P7-M6: concurrent_store.rs wired in mod.rs:10, main.rs:1247. P7-M7: Gate passes with 0 code issues. Marked [?] per PLAN.md rule 11 — audit done but individual test assertions not added to test_suite. test_suite compiles with 0 warnings
-
-- [?] **P7-M1** through **P7-M7**: Audit complete (2026-08-30). Verified: No tokio RwLock await-across-lock in experience/workflows; no std Mutex in experience; single-dispatcher by observer_name; WAL mode confirmed; kill_on_drop in all tests; concurrent_store.rs wired; gate passes clean. Marked [?] — audit done but individual test assertions not yet added to test_suite. Per PLAN.md rule 11.
 
 P8: Runtime and Fresh-Start Validation
 

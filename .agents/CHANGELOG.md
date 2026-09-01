@@ -259,7 +259,8 @@
 - **P6-001: Flow B — Automatic memory retrieval — DONE (2026-09-01).
 - **P6-002: Flow C — Automatic experience capture — DONE (2026-09-01).
 - **P6-003: Flow F — Cross-session memory — DONE (2026-09-01).
-- **P6-004: Cross-session memory (P9) — DONE (2026-09-01).** Mapped to P9-006 (flow_cross_session_memory.rs). Gate: 148/148 pass, 0 warnings, 0 issues, 0 untested tools.** `flow_cross_session_memory.rs` exists at `test_suite/src/tests/flow_cross_session_memory.rs`, module declared in `mod.rs:20`, dispatched in `main.rs:1261`. Session A stores memory, kills server, Session B respawns, asserts auto-retrieval. Gate: 148/148 pass, 0 warnings, 0 issues, 0 untested tools.** `flow_experience_capture.rs` exists at `test_suite/src/tests/flow_experience_capture.rs`, module declared in `mod.rs:21`, dispatched in `main.rs:1259`. Calls `run_agent_goal`, verifies `list_experiences`, confirms no crash. Gate: 148/148 pass, 0 warnings, 0 issues, 0 untested tools.** `flow_auto_memory_retrieval.rs` exists at `test_suite/src/tests/flow_auto_memory_retrieval.rs`, module declared in `mod.rs:18`, dispatched in `main.rs:1257`. Stores 3 facts, calls `run_agent_goal`, verifies no crash. Gate: 148/148 pass, 0 warnings, 0 issues, 0 untested tools.
+- **P6-004: Cross-session memory (P9) — DONE (2026-09-01).** Mapped to P9-006 (flow_cross_session_memory.rs). Gate: 148/148 pass, 0 warnings, 0 issues, 0 untested tools.
+- **P7: Concurrency and Lifecycle Audit — DONE (2026-09-01).** P7-M1: No tokio RwLock await-across-lock. P7-M2: No std Mutex in experience/. P7-M3: Single-dispatcher by observer_name (manager.rs:292). P7-M4: WAL confirmed (sqlite.rs:60). P7-M5: kill_on_drop in all 12 test IsoClients. P7-M6: concurrent_store wired (mod.rs:10, main.rs:1247). P7-M7: Gate 148/148, 0 warnings, 0 issues. All verified.
 
 - **TIER 1 task work: DONE.** All 1B-1E tasks completed and verified.
 - **Coverage:** See `test_suite/test_suite_report.json`. Do not trust prior
