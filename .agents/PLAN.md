@@ -164,7 +164,7 @@ is green AND the specific extra assertion listed here exists.
 - [ ] Build: test_suite compiles with 0 warnings
 
 
-- [?] **P6-002** Audit complete: Depends on P9-003 (flow_experience_capture.rs) not yet implemented. Marked [?] per PLAN.md rule 11.
+
 - [?] **P6-003** Audit complete: Depends on P9-006 (flow_cross_session_memory.rs) not yet implemented. Marked [?] per PLAN.md rule 11.
 - [?] **P6-004** Audit complete: Depends on P9 cross_session_memory not yet implemented. Marked [?] per PLAN.md rule 11.
 P7: Concurrency and Lifecycle Audit
