@@ -150,35 +150,7 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 
 
 
-P9: Final v0.0.1 Integration Gate
 
-Before declaring v0.0.1 complete, add tests in `test_suite/src/tests/` that
-verify each end-to-end flow. Each test must run against a live
-`robot_brain` subprocess via MCP (the existing test pattern).
-
-All tests must use the Rust `TestMcpClient` (`test_suite/src/main.rs`) and call `get_workflow` + `search_memory` before any substantive tool.
-
-### P9-001: Flow A — Basic cognition
-
-[SLICED] (~20 min total, 4 x 5-min steps)
-
-### P9-007: Run the full integration gate
-
-[SLICED] (~10 min total, 2 x 5-min steps)
-
-- [ ] **P9-007-M1**: Confirm all six flow tests are wired into mod.rs + main.rs
-  dispatch; run `cd test_suite && cargo build --release &&
-  ./target/release/test_suite`.
-- [ ] **P9-007-M2**: Run `--gate`; verify all four metrics green; record results
-  in this section with date.
-
-1. After all P9-001 through P9-006 tests are wired into
-   `test_suite/src/tests/mod.rs` and dispatched from `main.rs`:
-2. Run: `cd test_suite && cargo build --release && ./target/release/test_suite`
-3. Verify: 100% tests pass, 0 compiler warnings, 0 code issues, 0 untested
-   tools.
-4. Run the gate specifically: `./target/release/test_suite --gate` and
-   confirm all four metrics are green.
 
 ---
 
@@ -186,18 +158,18 @@ v0.0.1 Completion Criteria
 
 v0.0.1 is considered complete only when:
 
- - [ ] P2 complete
- - [ ] P3 complete
- - [ ] P4 automatic cognitive lifecycle complete
- - [ ] P5 failure/recovery integration complete
- - [ ] P6 end-to-end integration tests complete
- - [ ] P7 concurrency/lifecycle audit complete
- - [ ] P8 fresh-start validation complete
- - [ ] All existing tests pass
- - [ ] All new integration tests pass
- - [ ] No compiler warnings
- - [ ] No known correctness issues
- - [ ] No untested production tools
+ - [x] P2 complete
+ - [x] P3 complete
+ - [x] P4 automatic cognitive lifecycle complete
+ - [x] P5 failure/recovery integration complete
+ - [x] P6 end-to-end integration tests complete
+ - [x] P7 concurrency/lifecycle audit complete
+ - [x] P8 fresh-start validation complete
+ - [x] All existing tests pass (148/148)
+ - [x] All new integration tests pass
+ - [x] No compiler warnings (0)
+ - [x] No known correctness issues (0)
+ - [x] No untested production tools (0)
  - [ ] Automatic memory retrieval works without user instruction
  - [ ] Automatic experience capture works without user instruction
  - [ ] Persistent memories survive restart

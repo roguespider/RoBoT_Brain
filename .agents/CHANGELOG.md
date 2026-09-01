@@ -264,6 +264,9 @@
 - **P8-M6**: Audit complete (manual testing for corrupted state matrix). Verified.
 - **P8-M7**: fresh_start.rs exists (mod.rs:23, main.rs:1251). Covers M1-M5. Verified.
 - **P8: Runtime and Fresh-Start Validation — DONE (2026-09-01).** M6 audit complete, M7 implemented.
+- **P9-007-M1**: 6 flow tests wired (mod.rs:20-25, main.rs:1252-1271). Verified.
+- **P9-007-M2**: Gate green: 148/148, 0 warnings, 0 issues, 0 untested tools. Verified.
+- **P9: Final v0.0.1 Integration Gate — DONE (2026-09-01).** All flow tests wired, gate green.
 
 - **TIER 1 task work: DONE.** All 1B-1E tasks completed and verified.
 - **Coverage:** See `test_suite/test_suite_report.json`. Do not trust prior
