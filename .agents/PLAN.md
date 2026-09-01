@@ -166,7 +166,7 @@ is green AND the specific extra assertion listed here exists.
 
 
 
-- [?] **P6-004** Audit complete: Depends on P9 cross_session_memory not yet implemented. Marked [?] per PLAN.md rule 11.
+
 P7: Concurrency and Lifecycle Audit
 
 - [ ]  Audit checklist task. Known shared-state points:
