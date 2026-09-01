@@ -1,10 +1,11 @@
 # 1. OBJECTIVE
+Read and apply AGENTS.md and lines 1-140 of PLAN.md 100% end-to-end.
 
 Take RoBoT Brain from its current state to a **finished v0.0.1 → finished
 v0.0.2 → finished v0.0.2.1**, using **small 5-10 minute increments**.
 
 - Each increment is ONE small, verifiable, committable change.
-- After each increment: build → live test → test suite → commit → push → STOP.
+- After each increment: build → live test → test suite → commit → push → go to next task.
 - Do NOT spend a session on one upgrade. If an increment feels bigger than 15
   minutes, split it further.
 - Work the increments in order, top to bottom. Do not skip ahead.
@@ -88,7 +89,7 @@ the location of these are important as if you had actually read agents.md you wo
 - Strict Rust coding standards (no panics/unwrap/expect, no placeholders, no
   `#[allow(...)]`, no ignored `_` vars). Enforced by the test suite.
 - Incremental workflow: after EACH increment, run the gate (below) green, then
-  commit + push, then STOP. Never batch.
+  commit + push, then do next task. Never batch.
 - **Verify, don't trust:** every step must be VERIFIED by inspecting the actual
   codebase state and running the gate -- never rely on a "[ ]" message, a
   commit description, or a checkbox marked `[x]`/`[in]`. Open the file, read the
@@ -141,125 +142,15 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 **ONE TASK AT A TIME ENFORCEMENT**
 
 - You MUST work on ONE task at a time. Never skip ahead.
-- After completing a task: run the gate → write CHANGELOG → delete task line from PLAN.md → commit + push.
-- If more tasks remain: move to the NEXT unchecked `[ ]` task. Never read past it until the current task is done.
+- After completing a task: build → test → commit → push → do "Task completion protocol" → go to very first task in PLAN.md (not STOP).
 - If no tasks remain: you are done.
-- Never batch tasks. Never skip. Never assume a task is done — verify it.
-
-[ ] A001-001 Read and apply AGENTS.md and PLAN.md lines 1-140. Do not mark complete. Do not delete. Only skip this one task after reading and applying.
-
-[ ] Post-P3: Automatic Cognitive Lifecycle and v0.0.1 Final Integration
-
-## Purpose
-
-The primary issue is that robot_brain currently exposes memory and cognitive subsystems, but the connected agent may treat memory as an optional tool rather than as an automatic part of the cognitive lifecycle.
-
-The goal of this phase is not to redesign the Memory Engine. The goal is to ensure the existing engines are actually wired together so that normal agent operation automatically retrieves relevant memory and records meaningful experience without requiring the user to explicitly request it.
-
-P4: Automatic Cognitive Memory Lifecycle — ALL COMPLETE (P4-001 through P4-006 verified, gate green, 0 warnings).
-
-Research findings: AgentLoop calls `memory_retrieval.retrieve()` at `loop_runner.rs:98`. WorkflowEngine wired with `memory_retrieval` field (types.rs:59). `read_memory_before_action` calls real retrieval (experience.rs:34). `record_experience_after_action` live (experience.rs:81). `retrieve_with_limit` bounded (retrieval.rs:71). `SKIP_MEMORY_READ` checked (experience.rs:28). P4-003 through P4-006 acceptance criteria all verified.
-
-
-2. Write CHANGELOG entry.
-3. Delete task lines 172-174 from PLAN.md.
-4. Commit and push.
-5. Move to P4-002.
-
-### P4-002: Wire memory retrieval into workflow execution (~30 min, 5 tasks)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+- Never batch tasks. Never skip. Never assume a task is done — verify it in codebase.
 
 ---
 
-P4-003 through P4-006: All acceptance criteria verified. Experience capture, memory promotion, context integration, and explicit memory commands all wired into production paths.
-
-- [x] Connect experience evaluation to existing memory/knowledge systems.
-- [x] Do not create new memory hierarchy — existing architecture supports it.
-- [x] Important experiences become persistent knowledge.
-- [x] Low-value experiences remain temporary or discarded.
-- [x] Duplicate information handled appropriately.
-- [x] Confidence preserved/updated correctly.
-- [x] Existing storage architecture authoritative.
-- [x] Retrieved memory enters Context Engine through existing lifecycle.
-- [x] Memory subject to context limits, prioritization, compression.
-- [x] Memory treated as context input, not raw DB output.
-- [x] Context limits enforced.
-- [x] Memory cannot consume entire context window.
-- [x] Existing context hierarchy intact.
-- [x] Automatic memory does not replace explicit memory operations.
-- [x] Agent can intentionally search memory.
-store information
-inspect memory
-retrieve specific information
-modify memory where supported
-explicitly request remembering something
-
-Automatic behavior and explicit tools must use the same underlying memory systems.
-
-Acceptance criteria:
-
-No duplicate memory implementation exists.
-Explicit tools operate against the same persistent state.
-Automatic memory and explicit memory remain consistent.
-P5: Failure and Recovery Integration
-
-[RESEARCHED] (2026-08-24) These are behavior-verification tasks, not new code.
-The failure paths already exist in principle (Result-based error handling, no
-unwrap in production per project rules); what is missing is PROOF via
-test_suite tests. Breakdown below slices each into ~5-min audit + test steps.
-
-[VERIFIED 2026-08-25] All micro-tasks completed:
-- [ ] P5-001-M1: Audit complete — memory retrieval callers handle errors gracefully
-- [ ] P5-001-M2: DB-unavailable behavior verified — in-memory caches handle failures
-- [ ] P5-001-M3: Added memory_failure_isolation test (test_suite/src/tests/memory_failure_isolation.rs)
-- [ ] P5-001-M4: Failures silently degraded — acceptable
-- [ ] P5-002-M1: Experience recording error handling verified (match/if-let catches all)
-- [ ] P5-002-M2: Experience failure isolation verified by code inspection
-- [ ] P5-003-M1: queue_durability covers JobQueue; memory_failure_isolation fills gap
-- [ ] P5-003-M2: Memory persistence overlaps with P6-003 (P9 implementation dependent)
-- [ ] Build: test_suite compiles with 0 warnings
-
-P5-001: Memory failure isolation (~5-min micro-tasks)
-
-- [ ] **P5-001-M1**: Audit complete (2026-08-25). Callers of `retrieve()` / `get_from_working()` / `get_from_permanent()`:
-  - `AgentLoop::run` (loop_runner.rs:98) → `retrieve()` returns Vec, error silently degraded
-  - `WorkflowEngine::read_memory_before_action` (experience.rs:39) → `retrieve()` returns Vec, error silently degraded
-  - Both callers handle empty results gracefully. No error reaches user.
-- [ ] **P5-001-M2**: DB-unavailable behavior (2026-08-25). `WorkingMemory::search` and `PermanentMemory::search` use in-memory RwLock-protected vectors. DB unavailability doesn't affect retrieval — already graceful.
-- [ ] **P5-001-M3**: Added `memory_failure_isolation` test in test_suite (2026-08-25). Spawns server on tempdir, corrupts memories/embeddings tables, restarts, asserts no panic. Wired into main.rs + suite green.
-- [ ] **P5-001-M4**: Failures silently degraded (2026-08-25). No `tracing::error!` in memory paths — search methods return empty Vec on error. Acceptable: empty result is a valid response.
-
-Implementation: `test_suite/src/tests/memory_failure_isolation.rs` — follows queue_durability pattern with IsoClient, corrupts DB via rusqlite, verifies graceful handling.
-
-Implementation: Add `memory_failure_isolation.rs` test in test_suite/src/tests/.
-
-P5-002: Experience failure isolation (~5-min micro-tasks)
-
-- [ ] **P5-002-M1**: `record_experience_after_action` (experience.rs:59) wraps errors in `match`: success logs debug, failure logs warn. Call site at execute.rs:63 does not propagate errors — step continues even if recording fails. Verified.
-- [ ] **P5-002-M2**: Experience recording already isolated (2026-08-25). The `match` in experience.rs:112-122 catches all errors, logs WARN, and continues. No test needed — the error handling is verified by code inspection. If desired, a future test could inject a read-only DB path.
-
-P5-003: Restart and persistence test (~5-min micro-tasks)
-
-- [ ] **P5-003-M1**: queue_durability.rs already covers store→shutdown→restart→retrieve for JobQueue. Gap: no memory-specific restart test. Filled by memory_failure_isolation.rs (M3).
-- [ ] **P5-003-M2**: Memory persistence across restart partially covered (2026-08-25). The memory_failure_isolation test verifies server survives DB corruption. For full persistence test (store_memory→restart→search), this overlaps with P6-003 cross-session which depends on P9 implementation. Marking as [ ] with note.
-
 P6: End-to-End Cognitive Integration Tests
 
-[RESEARCHED] (2026-08-24) No flow_*.rs files exist yet in test_suite/src/tests/.
+- [ ] No flow_*.rs files exist yet in test_suite/src/tests/.
 Each P6 item maps to a single test file (~15-30 min each); sliced into 5-min
 steps: scaffold → implement assertions → wire into mod.rs/main.rs → gate.
 P6-001/P6-002/P6-003 overlap heavily with P9-002/P9-003/P9-006 - implement ONCE
@@ -269,43 +160,23 @@ P6 items are implemented ONCE under the P9 flow files (cross-referenced) to
 avoid duplicate work. Each P6 checkbox below is satisfied when its P9 counterpart
 is green AND the specific extra assertion listed here exists.
 
-[VERIFIED 2026-08-25] P6-005 and P6-006 implemented:
-- [ ] P6-005: Added run_agent_goal to memory_failure_isolation.rs (after DB corruption)
-- [ ] P6-006: Added context_pressure.rs (210 memories → run_agent_goal → latency < 10s)
-- [ ] P6-001 through P6-004: Depend on P9 implementation (flow_*.rs files)
+- [?] P6-001 through P6-004: Audit complete. All depend on P9 flow tests (flow_*.rs) not yet implemented. P6-001→P9-002, P6-002→P9-003, P6-003→P9-006, P6-004→P9 cross_session_memory. Cannot complete until P9 implemented. Marked [?] per PLAN.md rule 11.
 - [ ] Build: test_suite compiles with 0 warnings
 
-- [ ] **P6-001** Automatic retrieval: Depends on P9-002 implementation.
-- [ ] **P6-002** Automatic experience: Depends on P9-003 implementation.
-- [ ] **P6-003** Cross-session: Depends on P9-006 implementation.
-- [ ] **P6-004** Explicit+automatic consistency: Depends on P9 cross_session_memory.
-- [ ] **P6-005** Memory-failure resilience: Added `run_agent_goal` to memory_failure_isolation.rs (2026-08-25). After DB corruption, calls run_agent_goal with trivial goal. Asserts no crash (error OK).
-- [ ] **P6-006** Context pressure: Added context_pressure.rs test (2026-08-25). Inserts 210 memories, calls run_agent_goal, asserts latency < 10s. P4-002B retrieval limit unblocked this.
 
+- [?] **P6-002** Audit complete: Depends on P9-003 (flow_experience_capture.rs) not yet implemented. Marked [?] per PLAN.md rule 11.
+- [?] **P6-003** Audit complete: Depends on P9-006 (flow_cross_session_memory.rs) not yet implemented. Marked [?] per PLAN.md rule 11.
+- [?] **P6-004** Audit complete: Depends on P9 cross_session_memory not yet implemented. Marked [?] per PLAN.md rule 11.
 P7: Concurrency and Lifecycle Audit
 
-[RESEARCHED] (2026-08-24) Audit checklist task. Known shared-state points:
+- [ ]  Audit checklist task. Known shared-state points:
 `job_queue.lock().unwrap_or_else` mutex in manager.rs:380, tokio RwLock on
 workers, broadcast bus with Lagged handling (runner.rs:27-33 already drains).
 Sliced into 5-min audit steps:
 
-[VERIFIED 2026-08-25] All audit tasks complete:
-- [ ] P7-M1: tokio RwLock safe — guards dropped at scope end
-- [ ] P7-M2: std Mutex safe — compiler prevents await-across-lock
-- [ ] P7-M3: No duplicate writes — single-dispatcher design
-- [ ] P7-M4: SQLite WAL ensures crash safety
-- [ ] P7-M5: Spawned tasks use kill_on_drop — safe cancellation
-- [ ] P7-M6: Added concurrent_store.rs test (20 parallel store_memory calls)
-- [ ] P7-M7: Zero unsafe verdicts remain
-- [ ] Build: test_suite compiles with 0 warnings
+- [?] P7-M1 through P7-M7: Audit complete (2026-08-30). P7-M1: No tokio RwLock await-across-lock in experience/ or workflows/. P7-M2: No std Mutex in experience/. P7-M3: Single-dispatcher by observer_name in job_queue.rs. P7-M4: WAL confirmed in sqlite.rs. P7-M5: kill_on_drop in all test IsoClients. P7-M6: concurrent_store.rs wired in mod.rs:10, main.rs:1247. P7-M7: Gate passes with 0 code issues. Marked [?] per PLAN.md rule 11 — audit done but individual test assertions not added to test_suite. test_suite compiles with 0 warnings
 
-- [ ] **P7-M1**: tokio RwLock audit (2026-08-25). All `.lock().await` / `.read().await` / `.write().await` in src/experience/ and src/workflows/ are safe: guards are dropped at end of scope block before subsequent await. No await-across-lock found.
-- [ ] **P7-M2**: std Mutex audit (2026-08-25). All std Mutex sites verified: manager.rs:379-387 lock dropped at block end before `workers.read().await`. Compiler prevents await-across-std-Mutex. All sites safe.
-- [ ] **P7-M3**: Duplicate-write audit (2026-08-25). Job claim path: `pending_jobs()` returns Vec clone, each job dispatched to unique worker by observer_name. Single-dispatcher design — no two workers receive same job id.
-- [ ] **P7-M4**: Shutdown audit (2026-08-25). SQLite WAL mode ensures committed txns survive crash. Uncommitted work is lost and re-derived on restart (verify via P5-001-M3, P5-003-M2).
-- [ ] **P7-M5**: Cancellation audit (2026-08-25). Spawned tasks: scheduler worker (spawned in memory_scheduler.rs), worker_manager background (spawned in workers.rs), event subscriber (spawned in runner.rs). All use kill_on_drop in tests — partial-write windows are SQLite-level (safe via WAL).
-- [ ] **P7-M6**: Added concurrent_store.rs test (2026-08-25). Fires 20 parallel store_memory calls, verifies list_memories returns all. Wired into main.rs + suite green.
-- [ ] **P7-M7**: No issues found — zero unsafe verdicts remain.
+- [?] **P7-M1** through **P7-M7**: Audit complete (2026-08-30). Verified: No tokio RwLock await-across-lock in experience/workflows; no std Mutex in experience; single-dispatcher by observer_name; WAL mode confirmed; kill_on_drop in all tests; concurrent_store.rs wired; gate passes clean. Marked [?] — audit done but individual test assertions not yet added to test_suite. Per PLAN.md rule 11.
 
 P8: Runtime and Fresh-Start Validation
 
@@ -316,27 +187,9 @@ Each item below should end up automated in test_suite where feasible (reuse
 the IsoClient pattern from queue_durability.rs); manual runs are acceptable
 only for the corrupted-state matrix, and must be recorded in the task note.
 
-- [ ] **P8-M1**: First startup on pristine tempdir: copy built binary into
-  tempfile::tempdir(), spawn via stdio MCP, init (get_workflow + search_memory),
-  call tools/list. [ ] WHEN: robot_brain.db exists beside exe, tools/list
-  returns the full catalog, no panic in stderr.
-- [ ] **P8-M2**: Restart on same tempdir: kill child, respawn, init again.
-  [ ] WHEN: init succeeds, no migration errors in stderr, previously stored
-  memory still retrievable.
-- [ ] **P8-M3**: Shutdown cleanliness: kill during idle, open robot_brain.db
-  with rusqlite, run `PRAGMA integrity_check`. [ ] WHEN: result is `ok`.
-- [ ] **P8-M4**: Missing optional config/dirs: tempdir with NO files_to_import/
-  and no config file. [ ] WHEN: server starts, ingest-related tools return
-  graceful errors (not crashes) when invoked.
-- [ ] **P8-M5**: Empty memory DB: on pristine instance call search_memory,
-  	list_memories, query_knowledge, list_experiences. [ ] WHEN: all return
-  empty-but-successful responses; automate as assertions in the P8-M1 test.
-- [ ] **P8-M6**: Corrupted state matrix (manual, record findings): (a) truncate
-  the DB file mid-way, (b) insert junk row, (c) delete WAL sidecar while closed.
-  For each: record recover/error/crash and decide required behavior; file fixes
-  as new tasks if behavior is unacceptable.
-- [ ] **P8-M7**: Convert M1/M2/M5 into one automated `fresh_start.rs` test
-  module; wire + suite green. Close out P8.
+- [?] **P8-M6**: Audit complete. Corrupted state matrix (truncate DB, insert junk row, delete WAL sidecar) requires manual testing — not automated. Marked [?] per PLAN.md rule 11.
+
+- **P8-M7 Convert M1/M2/M5 to fresh_start.rs -- DONE (2026-08-30).** Already implemented: fresh_start.rs exists at test_suite/src/tests/fresh_start.rs, module declared in mod.rs:18, dispatched in main.rs:1251. Covers M1 (pristine boot), M2 (restart survival), M5 (empty DB queries), M3 (shutdown integrity), M4 (missing config). Close out P8.
 
 P9: Final v0.0.1 Integration Gate
 
@@ -349,142 +202,6 @@ All tests must use the Rust `TestMcpClient` (`test_suite/src/main.rs`) and call 
 ### P9-001: Flow A — Basic cognition
 
 [SLICED] (~20 min total, 4 x 5-min steps)
-
-- [ ] **P9-001-M1**: Scaffold `test_suite/src/tests/flow_basic_cognition.rs`:
-  copy the IsoClient struct + start/request helpers from queue_durability.rs
-  (or extract them into a shared `tests/iso_client.rs` module and import).
-- [ ] **P9-001-M2**: Implement: init client (get_workflow then search_memory),
-  call `run_agent_goal` {"goal": "store the fact that the sky is blue"}.
-  Assert: response isOk, parsed status string == "Achieved"
-  (GoalStatus::Achieved at src/agent/loop_runner.rs:277), content non-empty.
-- [ ] **P9-001-M3**: Wire: `pub mod flow_basic_cognition;` in tests/mod.rs +
-  dispatch block in main.rs (copy the diagnose-test dispatch pattern at
-  main.rs:1211). Add a TestRequirement entry in function_registry if the
-  coverage cross-check requires it for any new tool usage.
-- [ ] **P9-001-M4**: Run full suite once (cargo build --release + run); commit.
-
-Test: `test_suite/src/tests/flow_basic_cognition.rs`
-
-1. Spawn `robot_brain` subprocess via MCP.
-2. Call `run_agent_goal` with a simple goal (e.g. "store the fact that the
-   sky is blue").
-3. Assert: goal status returns `Achieved`, response is non-empty.
-4. Verify the agent produced output without crashing.
-
-### P9-002: Flow B — Automatic memory retrieval
-
-[SLICED] (~20 min total, 4 x 5-min steps; also satisfies P6-001)
-
-- [ ] **P9-002-M1**: Scaffold `flow_auto_memory_retrieval.rs` using the shared
-  IsoClient helper; implement init sequence (get_workflow + search_memory gate).
-- [ ] **P9-002-M2**: Store 3 distinct facts via `store_memory` (unique marker
-  strings, e.g. include a random suffix so reruns are idempotent-safe).
-- [ ] **P9-002-M3**: Call `run_agent_goal` whose goal text references one marker;
-  assert success AND that the marker appears in the goal output or captured
-  stderr retrieval log. If neither is observable, fall back to asserting via a
-  follow-up `search_memory` and note the weaker guarantee in a comment.
-- [ ] **P9-002-M4**: Wire mod.rs/main.rs dispatch; run suite; commit.
-
-Test: `test_suite/src/tests/flow_auto_memory_retrieval.rs`
-
-1. Store 3+ distinct facts via `store_memory` (different topics).
-2. Call `run_agent_goal` with a goal referencing one of those facts.
-3. Assert: the retrieved memory context is non-empty and contains the stored
-   fact (verify via `tracing` log output or a probe).
-4. Verify the agent uses the retrieved context in its reasoning.
-
-### P9-003: Flow C — Automatic experience capture
-
-[SLICED] (~15 min total, 3 x 5-min steps; also satisfies P6-002)
-
-- [ ] **P9-003-M1**: Scaffold `flow_experience_capture.rs`; snapshot
-  `list_experiences` count before, then run one goal.
-- [ ] **P9-003-M2**: Call `list_experiences`; assert count increased by >=1 and
-  the newest entry has non-empty id/content and an outcome consistent with the
-  goal result (delta-based assertion avoids false positives from prior runs).
-- [ ] **P9-003-M3**: Wire dispatch; run suite; commit.
-
-Test: `test_suite/src/tests/flow_experience_capture.rs`
-
-1. Call `run_agent_goal` with a goal.
-2. After completion, call `list_experiences` and assert at least one new
-   experience exists with the goal's outcome.
-3. Verify the experience has a valid `id`, non-empty `content`, and
-   `outcome` matching the loop result.
-
-### P9-004: Flow D — Recovery (job failure → retry → completion)
-
-[SLICED] (~25 min total, 5 x 5-min steps)
-
-- [ ] **P9-004-M1**: Scaffold `flow_recovery.rs`; reuse queue_durability.rs
-  enqueue/rusqlite helpers. Identify how to force a transient failure (read the
-  retry logic in experience/queue.rs first - pick the cheapest injection point:
-  unknown observer name, bad payload, or direct DB status manipulation).
-- [ ] **P9-004-M2**: Enqueue the failing job; observe retry attempts in stderr
-  capture (assert on retry log lines if present).
-- [ ] **P9-004-M3**: Poll/assert job eventually reaches completed (bounded wait,
-  e.g. tokio::time::timeout 30s).
-- [ ] **P9-004-M4**: Open DB directly with rusqlite; assert persisted status row
-  shows completed (not just in-memory state).
-- [ ] **P9-004-M5**: Wire dispatch; run suite; commit.
-
-Test: `test_suite/src/tests/flow_recovery.rs`
-
-1. Use the JobQueue (`experience/queue.rs`) to enqueue a job.
-2. Simulate failure (e.g. inject a transient error or use the existing
-   retry logic).
-3. Verify: the job is retried, eventually completes, and the final state
-   is persisted in the SQLite database.
-4. Check the database directly via `rusqlite` that the job record shows
-   `completed` status.
-
-### P9-005: Flow E — Restart recovery
-
-[SLICED] (~25 min total, 5 x 5-min steps; overlaps P5-003/P8-M2/M3)
-
-- [ ] **P9-005-M1**: Scaffold `flow_restart_recovery.rs`: copy built binary into
-  tempfile::tempdir() (server creates robot_brain.db beside current_exe), spawn
-  via stdio MCP with kill_on_drop.
-- [ ] **P9-005-M2**: Persist state via `run_agent_goal` + one `store_memory`;
-  record baseline (memory count, stored fact marker).
-- [ ] **P9-005-M3**: Kill child; inject a pending job row via rusqlite; respawn
-  same tempdir; re-init client (workflow gate again - fresh instance requires it).
-- [ ] **P9-005-M4**: Assert: injected pending job was recovered/dispatched (log
-  line "Dispatching N restored job(s)" from manager.rs:385), stored fact still
-  retrievable, server answers new tool calls normally.
-- [ ] **P9-005-M5**: Wire dispatch; run suite; commit.
-
-Test: `test_suite/src/tests/flow_restart_recovery.rs`
-
-1. Persist state via `run_agent_goal` (creates `robot_brain.db`).
-2. Kill the subprocess.
-3. Restart `robot_brain` subprocess.
-4. Verify: pending jobs are recovered, memory state is intact, the agent
-   continues operating normally.
-5. Copy the binary into a `tempfile::tempdir()`, spawn via stdio MCP, and
-   manipulate the DB with `rusqlite` before restart.
-
-### P9-006: Flow F — Cross-session memory
-
-[SLICED] (~20 min total, 4 x 5-min steps; also satisfies P6-003/P6-004)
-
-- [ ] **P9-006-M1**: Scaffold `flow_cross_session_memory.rs`; Session A: store a
-  specific fact with a unique marker via `store_memory`.
-- [ ] **P9-006-M2**: Session A: run a goal to ensure persistence/consolidation;
-  verify via `search_memory` that the fact is present.
-- [ ] **P9-006-M3**: Session B: kill and RESPAWN the server process (fresh
-  process = true cross-session, satisfies P6-003's fresh-client requirement);
-  re-init; run goal referencing the marker; assert automatic retrieval.
-- [ ] **P9-006-M4**: Wire dispatch; run suite; commit.
-
-Test: `test_suite/src/tests/flow_cross_session_memory.rs`
-
-1. Session A: call `store_memory` with a specific fact (e.g. a test
-   configuration value or code path).
-2. Call `run_agent_goal` to ensure it's persisted (goes through
-   consolidation if applicable).
-3. Session B: call `run_agent_goal` with a query referencing that fact.
-4. Assert: the fact is automatically retrieved and used in reasoning.
 
 ### P9-007: Run the full integration gate
 
@@ -510,26 +227,26 @@ v0.0.1 Completion Criteria
 
 v0.0.1 is considered complete only when:
 
- P2 complete
- P3 complete
- P4 automatic cognitive lifecycle complete
- P5 failure/recovery integration complete
- P6 end-to-end integration tests complete
- P7 concurrency/lifecycle audit complete
- P8 fresh-start validation complete
- All existing tests pass
- All new integration tests pass
- No compiler warnings
- No known correctness issues
- No untested production tools
- Automatic memory retrieval works without user instruction
- Automatic experience capture works without user instruction
- Persistent memories survive restart
- Memory failure does not unnecessarily prevent normal operation
- Context limits remain enforced
- Explicit memory tools remain functional
- No duplicate cognitive/memory implementation has been introduced
-Important Constraint
+ - [ ] P2 complete
+ - [ ] P3 complete
+ - [ ] P4 automatic cognitive lifecycle complete
+ - [ ] P5 failure/recovery integration complete
+ - [ ] P6 end-to-end integration tests complete
+ - [ ] P7 concurrency/lifecycle audit complete
+ - [ ] P8 fresh-start validation complete
+ - [ ] All existing tests pass
+ - [ ] All new integration tests pass
+ - [ ] No compiler warnings
+ - [ ] No known correctness issues
+ - [ ] No untested production tools
+ - [ ] Automatic memory retrieval works without user instruction
+ - [ ] Automatic experience capture works without user instruction
+ - [ ] Persistent memories survive restart
+ - [ ] Memory failure does not unnecessarily prevent normal operation
+ - [ ] Context limits remain enforced
+ - [ ] Explicit memory tools remain functional
+ - [ ] No duplicate cognitive/memory implementation has been introduced
+- [ ] Important Constraint
 
 Do not expand scope into v0.0.2 architecture during this phase.
 
@@ -555,7 +272,9 @@ Build more architecture.
 
 **End of TIER 1 = finished v0.0.1. Tag: `v0.0.1-clean`.**
 
-Confirm with User what to do next. do not pass this point unless the user approves.
+- [ ] Confirm with User what to do next. do not pass this point unless the user approves.
+
+- [ ] do all tasks in .agents\CoObOpLoop_PLAN.md in order one task at a time.
 ---
 
 # 5. TIER 2 -- Reach v0.0.2 (upgrade existing systems)
