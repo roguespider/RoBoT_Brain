@@ -150,20 +150,6 @@ first; AI Runtime (Candle) comes last as the local provider behind the
 
 
 
-
-P8: Runtime and Fresh-Start Validation
-
-[RESEARCHED] (2026-08-24) Fresh-start matrix task. Overlaps with P2-001E-M2
-(tempdir launch diff). Sliced:
-
-Each item below should end up automated in test_suite where feasible (reuse
-the IsoClient pattern from queue_durability.rs); manual runs are acceptable
-only for the corrupted-state matrix, and must be recorded in the task note.
-
-- [?] **P8-M6**: Audit complete. Corrupted state matrix (truncate DB, insert junk row, delete WAL sidecar) requires manual testing — not automated. Marked [?] per PLAN.md rule 11.
-
-- **P8-M7 Convert M1/M2/M5 to fresh_start.rs -- DONE (2026-08-30).** Already implemented: fresh_start.rs exists at test_suite/src/tests/fresh_start.rs, module declared in mod.rs:18, dispatched in main.rs:1251. Covers M1 (pristine boot), M2 (restart survival), M5 (empty DB queries), M3 (shutdown integrity), M4 (missing config). Close out P8.
-
 P9: Final v0.0.1 Integration Gate
 
 Before declaring v0.0.1 complete, add tests in `test_suite/src/tests/` that

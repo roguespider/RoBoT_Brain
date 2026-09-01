@@ -261,6 +261,9 @@
 - **P6-003: Flow F — Cross-session memory — DONE (2026-09-01).
 - **P6-004: Cross-session memory (P9) — DONE (2026-09-01).** Mapped to P9-006 (flow_cross_session_memory.rs). Gate: 148/148 pass, 0 warnings, 0 issues, 0 untested tools.
 - **P7: Concurrency and Lifecycle Audit — DONE (2026-09-01).** P7-M1: No tokio RwLock await-across-lock. P7-M2: No std Mutex in experience/. P7-M3: Single-dispatcher by observer_name (manager.rs:292). P7-M4: WAL confirmed (sqlite.rs:60). P7-M5: kill_on_drop in all 12 test IsoClients. P7-M6: concurrent_store wired (mod.rs:10, main.rs:1247). P7-M7: Gate 148/148, 0 warnings, 0 issues. All verified.
+- **P8-M6**: Audit complete (manual testing for corrupted state matrix). Verified.
+- **P8-M7**: fresh_start.rs exists (mod.rs:23, main.rs:1251). Covers M1-M5. Verified.
+- **P8: Runtime and Fresh-Start Validation — DONE (2026-09-01).** M6 audit complete, M7 implemented.
 
 - **TIER 1 task work: DONE.** All 1B-1E tasks completed and verified.
 - **Coverage:** See `test_suite/test_suite_report.json`. Do not trust prior
