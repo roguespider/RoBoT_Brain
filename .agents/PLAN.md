@@ -170,7 +170,7 @@ v0.0.1 is considered complete only when:
  - [x] No compiler warnings (0)
  - [x] No known correctness issues (0)
  - [x] No untested production tools (0)
- - [ ] Automatic memory retrieval works without user instruction
+ - [x] Automatic memory retrieval works without user instruction (run_agent_goal MCP tool, agent_handler.rs:74)
  - [ ] Automatic experience capture works without user instruction
  - [ ] Persistent memories survive restart
  - [ ] Memory failure does not unnecessarily prevent normal operation
