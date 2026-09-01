@@ -165,7 +165,7 @@ is green AND the specific extra assertion listed here exists.
 
 
 
-- [?] **P6-003** Audit complete: Depends on P9-006 (flow_cross_session_memory.rs) not yet implemented. Marked [?] per PLAN.md rule 11.
+
 - [?] **P6-004** Audit complete: Depends on P9 cross_session_memory not yet implemented. Marked [?] per PLAN.md rule 11.
 P7: Concurrency and Lifecycle Audit
 
