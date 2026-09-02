@@ -9,6 +9,8 @@
 
 - **CoObOpLoop T0.5 Create `src/cooboploop/sources.rs` -- DONE (2026-09-01).** File exists. Architecture §3.
 
+- **CoObOpLoop T0.6 Create `src/cooboploop/evaluation.rs` -- DONE (2026-09-01).** File exists with 162 lines: EvaluationCriteria, PriorityPolicy enum, GoalEvaluator with compute_priority() (§A.2 formula). Architecture §5.
+
 ---
 
 # TIER 1 -- Completed (Consolidated)
