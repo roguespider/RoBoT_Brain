@@ -3,7 +3,7 @@
 > Historical record of completed work. Forward planning lives in [PLAN.md](PLAN.md).
 > Append new completed work here so PLAN.md stays focused on what needs to be done.
 
-- **CoObOpLoop T0 Foundation (read tasks) -- DONE (2026-09-01).** T0.1: verified `src/experience/queue.rs` (experience worker job queue, Architecture §23.5). T0.2: verified `src/agent/types.rs` (agent goal/status types, Architecture §5.7). Both read-only, no code changes.
+- **CoObOpLoop T0.3 Create `src/cooboploop/mod.rs` with `pub mod` declarations -- DONE (2026-09-01).** Verified 14 submodule declarations: capability, evaluation, hardware, human, idle, inspection, learning, loop_runner, opportunity, queue, research, self_improvement, sources, strategic. Architecture §1, §3-§23.
 
 ---
 
