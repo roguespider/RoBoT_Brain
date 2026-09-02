@@ -1,5 +1,7 @@
 # Completed Work (CHANGELOG)
 
+- **CoObOpLoop T0.1 Read `src/experience/queue.rs` top 20 lines -- DONE (2026-09-01).** Verified file exists with experience worker job queue (Architecture §23.5), proper imports, and JobStatus enum at line 20. Documentation/read task, no code changes.
+
 > Historical record of completed work. Forward planning lives in [PLAN.md](PLAN.md).
 > Append new completed work here so PLAN.md stays focused on what needs to be done.
 - **P9-006 Flow F — Cross-session memory -- DONE (2026-08-31).** Created `test_suite/src/tests/flow_cross_session_memory.rs` with IsoClient: Session A stores memory with unique marker via store_memory, calls run_agent_goal for persistence; Session B respawns server, calls run_agent_goal referencing marker, verifies search_memory retrieval. Zero .expect/.unwrap/let _ — all errors use ok_or_else/match. Module declared mod.rs:19, dispatched main.rs:1269. Gate: 148/148 pass, 0 warnings, 0 issues, 0 untested tools.
