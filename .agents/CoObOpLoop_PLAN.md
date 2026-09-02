@@ -322,7 +322,6 @@ The architecture says sources "SHOULD eventually connect" (§17). The discovery 
 
 ## T0 Foundation (each <10 min)
 
-- [x] T0.12 Create `src/cooboploop/opportunity.rs` (empty) `[§17]`
 - [x] T0.13 Update `src/cooboploop/mod.rs` to include `pub mod opportunity;`
 - [x] T0.14 Create `src/cooboploop/self_improvement.rs` (empty) `[§14]`
 - [x] T0.15 Update `src/cooboploop/mod.rs` to include `pub mod self_improvement;`

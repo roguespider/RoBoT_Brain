@@ -21,6 +21,8 @@
 
 - **CoObOpLoop T0.11 Update `src/cooboploop/mod.rs` to include `pub mod idle;` -- DONE (2026-09-01).** Declaration exists at mod.rs:13.
 
+- **CoObOpLoop T0.12 Create `src/cooboploop/opportunity.rs` -- DONE (2026-09-01).** File exists with 47 lines: Opportunity struct, OpportunityIntake (add/get_pending). Architecture §17.
+
 ---
 
 # TIER 1 -- Completed (Consolidated)
