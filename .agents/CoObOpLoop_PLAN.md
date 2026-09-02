@@ -322,7 +322,6 @@ The architecture says sources "SHOULD eventually connect" (§17). The discovery 
 
 ## T0 Foundation (each <10 min)
 
-- [x] T0.8 Create `src/cooboploop/loop_runner.rs` (empty) `[§7]`
 - [x] T0.9 Add `pub mod cooboploop;` to `src/lib.rs` `[§1]`
 - [x] T0.10 Create `src/cooboploop/idle.rs` (empty) `[§9-10]`
 - [x] T0.11 Update `src/cooboploop/mod.rs` to include `pub mod idle;`
