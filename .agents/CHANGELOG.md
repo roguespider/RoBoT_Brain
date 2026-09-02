@@ -19,6 +19,8 @@
 
 - **CoObOpLoop T0.10 Create `src/cooboploop/idle.rs` -- DONE (2026-09-01).** File exists with 62 lines: IdlePhase enum, IdleState (should_wait/set_interval). Architecture §9-10.
 
+- **CoObOpLoop T0.11 Update `src/cooboploop/mod.rs` to include `pub mod idle;` -- DONE (2026-09-01).** Declaration exists at mod.rs:13.
+
 ---
 
 # TIER 1 -- Completed (Consolidated)
