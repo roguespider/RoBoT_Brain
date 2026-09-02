@@ -322,7 +322,6 @@ The architecture says sources "SHOULD eventually connect" (§17). The discovery 
 
 ## T0 Foundation (each <10 min)
 
-- [x] T0.2 Read `src/agent/types.rs` top 20 lines `[§2]`
 - [x] T0.3 Create `src/cooboploop/mod.rs` with `pub mod` declarations for all modules below `[§1 mapping]`
 - [x] T0.4 Create `src/cooboploop/queue.rs` (empty file) `[§4]`
 - [x] T0.5 Create `src/cooboploop/sources.rs` (empty) `[§3]`
@@ -377,7 +376,7 @@ The architecture says sources "SHOULD eventually connect" (§17). The discovery 
 - [x] T1.23 Wire `enqueue()` to INSERT INTO objectives `[§4 + §A.4]`
 - [x] T1.24 Wire `get()` to SELECT FROM objectives WHERE id `[§4 + §A.4]`
 - [x] T1.25 Wire `update()` to UPDATE objectives SET ... WHERE id `[§4 + §A.4]`
-- [ ] T1.26 Add `cooboploop_enqueue_goal` MCP handler — accepts params per §A.5 schema `[§4 + §A.5]`
+- [ ] T1.26 Add `cooboploop_enqueue_goal` MCP handler `[§4 + §A.5]`
 - [ ] T1.27 Add `cooboploop_list_goals` MCP handler — optional status_filter param `[§4 + §A.5]`
 - [ ] T1.28 Add `cooboploop_get_goal` MCP handler — requires goal_id `[§4 + §A.5]`
 - [ ] T1.29 Add `cooboploop_update_goal_status` MCP handler — requires goal_id + new_status `[§4 + §A.5]`
