@@ -6,6 +6,17 @@ Each task is annotated with the architecture section it implements (e.g., `§4`)
 
 ---
 
+## References (read in this order before starting)
+
+1. **`AGENTS.md`** — entry point: workflow gate, build commands, coding standards
+2. **`.agents/context_save.md`** — if it exists, contains the handoff from the last session; resolve it first
+3. **`robot_architecture/CoObOpLoop.md`** — architectural source for these tasks (sections §3-§22)
+4. **`.agents/TEST_SUITE_NOTES.md`** — testing conventions and gate behavior
+
+Every task in this plan implements one or more sections of `CoObOpLoop.md`. When the task says "completes §4 gap", that refers to the corresponding section there.
+
+---
+
 ## Design Decisions Appendix (Section A of this document)
 
 **Reference these before starting any task.** These resolve ambiguities left open by the architecture specification.
@@ -320,102 +331,8 @@ The architecture says sources "SHOULD eventually connect" (§17). The discovery 
 
 ---
 
-## T0 Foundation (each <10 min)
-
-- [x] T0.13 Update `src/cooboploop/mod.rs` to include `pub mod opportunity;`
-- [x] T0.14 Create `src/cooboploop/self_improvement.rs` (empty) `[§14]`
-- [x] T0.15 Update `src/cooboploop/mod.rs` to include `pub mod self_improvement;`
-- [x] T0.16 Create `src/cooboploop/strategic.rs` (empty) `[§18-19]`
-- [x] T0.17 Update `src/cooboploop/mod.rs` to include `pub mod strategic;`
-- [x] T0.18 Create `src/cooboploop/human.rs` (empty) `[§16]`
-- [x] T0.19 Update `src/cooboploop/mod.rs` to include `pub mod human;`
-- [x] T0.20 Create `src/cooboploop/research.rs` (empty) `[§11]`
-- [x] T0.21 Update `src/cooboploop/mod.rs` to include `pub mod research;`
-- [x] T0.22 Create `src/cooboploop/hardware.rs` (empty) `[§12]`
-- [x] T0.23 Update `src/cooboploop/mod.rs` to include `pub mod hardware;`
-- [x] T0.24 Create `src/cooboploop/inspection.rs` (empty) `[§13]`
-- [x] T0.25 Update `src/cooboploop/mod.rs` to include `pub mod inspection;`
-- [x] T0.26 Create `src/cooboploop/learning.rs` (empty) `[§15]`
-- [x] T0.27 Update `src/cooboploop/mod.rs` to include `pub mod learning;`
-
-## T1 Queue States (§4) — each <10 min
-
-- [x] T1.1 Add `GoalStatus` enum (13 variants) to `queue.rs` `[§4]`
-- [x] T1.2 Add `is_terminal()` method on `GoalStatus` `[§4 + §A.1]`
-- [x] T1.3 Add `valid_transition()` method `[§4 + §A.1]`
-- [x] T1.4 Add `AgentGoal` struct with `id: String` field `[§4]`
-- [x] T1.5 Add `priority: f32` field to `AgentGoal` `[§4 + §A.2]`
-- [x] T1.6 Add `source: ObjectiveSource` field to `AgentGoal` `[§3 + §4]`
-- [x] T1.7 Add `status: GoalStatus` field to `AgentGoal` `[§4]`
-- [x] T1.8 Add `dependencies: Vec<String>` field to `AgentGoal` (goal IDs) `[§4]`
-- [x] T1.9 Add `deadline: Option<chrono::DateTime<chrono::Utc>>` field to `AgentGoal` `[§4]`
-- [x] T1.10 Add `expected_value: f32` field to `AgentGoal` `[§4 + §A.2]`
-- [x] T1.11 Add `risk: f32` field to `AgentGoal` `[§4 + §A.2]`
-- [x] T1.12 Add `learning_value: f32` field to `AgentGoal` `[§4 + §A.2]`
-- [x] T1.13 Add `required_capabilities: Vec<String>` field to `AgentGoal` `[§4]`
-- [x] T1.14 Add `execution_history: Vec<ExecutionRecord>` field to `AgentGoal` (ExecutionRecord = { timestamp, from_status, to_status }) `[§4]`
-- [x] T1.15 Add `completion_state: Option<String>` field to `AgentGoal` `[§4]`
-- [x] T1.16 Add `ObjectiveQueue::new()` constructor `[§4]`
-- [x] T1.17 Add `ObjectiveQueue::enqueue()` stub `[§4 + §A.5]`
-- [x] T1.18 Add `ObjectiveQueue::get()` stub `[§4]`
-- [x] T1.19 Add `ObjectiveQueue::update()` stub `[§4]`
-- [x] T1.20 Add `ObjectiveQueue::transition()` `[§4 + §A.1]`
-- [x] T1.21 Add SQLite schema for `objectives` table from §A.4 `[§4 + §A.4]`
-- [x] T1.22 Add `ObjectiveQueue::open()` using rusqlite `[§4 + §A.4]`
-- [x] T1.23 Wire `enqueue()` to INSERT INTO objectives `[§4 + §A.4]`
-- [x] T1.24 Wire `get()` to SELECT FROM objectives WHERE id `[§4 + §A.4]`
-- [x] T1.25 Wire `update()` to UPDATE objectives SET ... WHERE id `[§4 + §A.4]`
-- [ ] T1.26 Add `cooboploop_enqueue_goal` MCP handler `[§4 + §A.5]`
-- [ ] T1.27 Add `cooboploop_list_goals` MCP handler — optional status_filter param `[§4 + §A.5]`
-- [ ] T1.28 Add `cooboploop_get_goal` MCP handler — requires goal_id `[§4 + §A.5]`
-- [ ] T1.29 Add `cooboploop_update_goal_status` MCP handler — requires goal_id + new_status `[§4 + §A.5]`
-- [ ] T1.30 Add registry entry for `cooboploop_enqueue_goal` `[§4]`
-- [ ] T1.31 Add registry entry for `cooboploop_list_goals` `[§4]`
-- [ ] T1.32 Add registry entry for `cooboploop_get_goal` `[§4]`
-- [ ] T1.33 Add registry entry for `cooboploop_update_goal_status` `[§4]`
-- [ ] T1.34 Test: enqueue goal → get goal → update status to ACCEPTED → verify status changed `[§4]`
-- [ ] T1.35 `cargo check --release` passes and gate is green
-
-## T2 Sources (§3) — each <10 min
-
-- [ ] T2.1 Add `ObjectiveSource` enum (5 variants: Human, ExternalOpportunity, SystemGenerated, Learning, SelfImprovement) to `sources.rs` `[§3]`
-- [ ] T2.2 Add `HumanOrigin` enum (6 variants: user_request, instruction, correction, project, maintenance_request, strategic_goal) `[§3.1]`
-- [ ] T2.3 Add `ExternalSource` enum (9 variants: freelance_job, dev_bounty, research_opportunity, grant, competition, open_source_task, available_project, hardware_opportunity, user_request) `[§3.2]`
-- [ ] T2.4 Add `SystemTrigger` enum (13 variants: unresolved_error, failed_test, detected_bug, degraded_performance, memory_inconsistency, hardware_problem, software_dependency_problem, stale_component, missing_documentation, security_issue, reliability_issue, incomplete_implementation, failed_experiment) `[§3.3]`
-- [ ] T2.5 Add `LearningTrigger` enum (4 variants: repeated_failure, insufficient_understanding, repeated_human_intervention, capability_gap) `[§3.4]`
-- [ ] T2.6 Add `ImprovementTarget` enum (13 variants: reasoning_workflow, planning, tool_usage, memory_retrieval, memory_organization, execution_reliability, testing, hardware_utilization, inference_performance, software_architecture, resource_utilization, error_detection, recovery_procedure) `[§3.5]`
-- [ ] T2.7 Add `ObjectiveSourceProvider` trait with methods: `source_type() -> ObjectiveSource`, `discover() -> Vec<Objective>`, `name() -> &str` (3 methods) `[§3 + §A.8]`
-- [ ] T2.8 Add `ObjectiveSourceRegistry` struct — holds Vec<Box<dyn ObjectiveSourceProvider>> `[§3 + §A.8]`
-- [ ] T2.9 Add `register()` method to registry — pushes provider into Vec `[§3 + §A.8]`
-- [ ] T2.10 Add `discover_all()` method to registry — iterates providers, collects all discoveries `[§3 + §A.8]`
-- [ ] T2.11 Implement `HumanInputSource` (stub) — returns HumanOrigin, name = "human_input" `[§3.1 + §A.8]`
-- [ ] T2.12 Implement `SystemGeneratedSource` (stub) — returns SystemTrigger, name = "system" `[§3.3 + §A.8]`
-- [ ] T2.13 Implement `LearningObjectiveSource` (stub) — returns LearningTrigger, name = "learning" `[§3.4 + §A.8]`
-- [ ] T2.14 Implement `SelfImprovementSource` (stub) — returns ImprovementTarget, name = "self_improvement" `[§3.5 + §A.8]`
-- [ ] T2.15 Implement `ExternalOpportunitySource` (stub) — returns ExternalSource, name = "external" `[§3.2 + §A.8]`
-- [ ] T2.16 Wire all 5 sources into `ObjectiveSourceRegistry::init()` — registers each in order `[§3 + §A.8]`
-- [ ] T2.17 Add `cooboploop_run_source_discovery` MCP handler — optional source_type filter, returns list of discovered objectives `[§3 + §A.5]`
-- [ ] T2.18 Add registry entry for `cooboploop_run_source_discovery` `[§3]`
-
-## T3 Evaluation (§5) — each <10 min
-
-- [ ] T3.1 Add `EvaluationCriteria` struct (10 fields: expected_value, probability_of_success, urgency, deadline, resource_cost, time_cost, risk, learning_value, strategic_value, required_capabilities) `[§5]`
-- [ ] T3.2 Add `ResourceCost` struct (5 fields: cpu_hours, memory_mb, disk_mb, network_mb, human_hours) `[§5]`
-- [ ] T3.3 Add `CapabilityRequirement` enum (4 variants: sufficient, uncertain, insufficient, unavailable) `[§6]`
-- [ ] T3.4 Add `compute_priority()` function using formula from §A.2: `Priority = expected_value × urgency × (1.0 - risk) × learning_value × strategic_value ÷ cost` with field mappings from §A.2 `[§5 + §A.2]`
-- [ ] T3.5 Add `PriorityPolicy` trait with method: `compute(criteria: &EvaluationCriteria) -> f32` `[§5]`
-- [ ] T3.6 Add `DefaultPriorityPolicy` impl — uses the §A.2 formula `[§5 + §A.2]`
-- [ ] T3.7 Add `ConservativePriorityPolicy` impl — same formula but multiplies by 0.8 to deprioritize risky objectives `[§5]`
-- [ ] T3.8 Add `PriorityPolicyRegistry` struct with method to swap policy at runtime `[§5]`
-- [ ] T3.9 Add `cooboploop_evaluate_goal` MCP handler — accepts goal_id, returns EvaluationCriteria with computed fields `[§5 + §A.5]`
-- [ ] T3.10 Add `cooboploop_reprioritize_queue` MCP handler — recomputes priority for all queue goals, returns updated list `[§5 + §A.5]`
-- [ ] T3.11 Add `cooboploop_set_priority_policy` MCP handler — accepts policy name ("default" or "conservative"), updates policy `[§5 + §A.5]`
-- [ ] T3.12 Add registry entries for T3.9-T3.11 `[§5]`
-- [ ] T3.13 Test: compute_priority with zero cost returns 0.0; compute_priority with max values returns > 1.0 `[§5]`
-
 ## T4 Capability (§6) — each <10 min
 
-- [ ] T4.1 Add `CapabilityId` enum with base variants: Rust, MCP, HTTP, SQLite, Testing + `Custom(String)` for extensibility `[§6]`
 - [ ] T4.2 Add `CapabilityAssessment` struct (5 fields: id, name, level: f32, last_assessed: Option<DateTime>, success_rate: f32) `[§6]`
 - [ ] T4.3 Add `CapabilityRegistry` struct — wraps SQLite connection + in-memory cache `[§6]`
 - [ ] T4.4 Add SQLite table `capabilities` from §A.4 `[§6 + §A.4]`
@@ -722,3 +639,30 @@ The architecture says sources "SHOULD eventually connect" (§17). The discovery 
 Total micro-tasks: ~280 (was ~200). Expanded with: 22 T0 module creation tasks (for all conformance-mapped modules), 1 design decisions appendix (8 sections resolving all architecture gaps), explicit MCP parameter schemas (38 tools), explicit state transition rules (13 states, 3 rules), SQLite schema (5 tables), and Plan/Execute stage interface specifications.
 
 **Before starting any task, read Section A (Design Decisions) above. It contains all decisions that resolve architecture ambiguities.**
+
+---
+
+# Conformance Map (§23)
+
+Maps architecture sections to implementation files.
+
+- §1 Purpose → src/cooboploop/mod.rs
+- §2 Core Principle → src/cooboploop/loop_runner.rs
+- §3 Sources → src/cooboploop/sources.rs
+- §4 Queue → src/cooboploop/queue.rs
+- §5 Evaluation → src/cooboploop/evaluation.rs
+- §6 Capability → src/cooboploop/capability.rs
+- §7 Loop → src/cooboploop/loop_runner.rs
+- §8 Post-Task → src/cooboploop/loop_runner.rs
+- §9-10 Idle → src/cooboploop/idle.rs
+- §11 Research → src/cooboploop/research.rs
+- §12 Hardware → src/cooboploop/hardware.rs
+- §13 Inspection → src/cooboploop/inspection.rs
+- §14 Self-Improvement → src/cooboploop/self_improvement.rs
+- §15 Learning → src/cooboploop/learning.rs
+- §16 Human → src/cooboploop/human.rs
+- §17 Opportunity → src/cooboploop/opportunity.rs
+- §18-19 Strategic → src/cooboploop/strategic.rs
+- §20 Cycle → src/cooboploop/loop_runner.rs
+- §21-22 Principles → src/cooboploop/loop_runner.rs, src/cooboploop/capability.rs
+- §23 Definition → this file
