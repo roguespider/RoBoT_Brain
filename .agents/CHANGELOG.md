@@ -7,6 +7,8 @@
 
 - **CoObOpLoop T0.4 Create `src/cooboploop/queue.rs` -- DONE (2026-09-01).** File exists with 239 lines (GoalStatus enum, AgentGoal struct, ObjectiveQueue with SQLite). Architecture §4.
 
+- **CoObOpLoop T0.5 Create `src/cooboploop/sources.rs` -- DONE (2026-09-01).** File exists. Architecture §3.
+
 ---
 
 # TIER 1 -- Completed (Consolidated)
