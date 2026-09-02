@@ -322,7 +322,6 @@ The architecture says sources "SHOULD eventually connect" (§17). The discovery 
 
 ## T0 Foundation (each <10 min)
 
-- [x] T0.4 Create `src/cooboploop/queue.rs` (empty file) `[§4]`
 - [x] T0.5 Create `src/cooboploop/sources.rs` (empty) `[§3]`
 - [x] T0.6 Create `src/cooboploop/evaluation.rs` (empty) `[§5]`
 - [x] T0.7 Create `src/cooboploop/capability.rs` (empty) `[§6]`

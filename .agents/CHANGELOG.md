@@ -5,6 +5,8 @@
 
 - **CoObOpLoop T0.3 Create `src/cooboploop/mod.rs` with `pub mod` declarations -- DONE (2026-09-01).** Verified 14 submodule declarations: capability, evaluation, hardware, human, idle, inspection, learning, loop_runner, opportunity, queue, research, self_improvement, sources, strategic. Architecture §1, §3-§23.
 
+- **CoObOpLoop T0.4 Create `src/cooboploop/queue.rs` -- DONE (2026-09-01).** File exists with 239 lines (GoalStatus enum, AgentGoal struct, ObjectiveQueue with SQLite). Architecture §4.
+
 ---
 
 # TIER 1 -- Completed (Consolidated)
