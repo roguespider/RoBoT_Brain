@@ -15,6 +15,8 @@
 
 - **CoObOpLoop T0.8 Create `src/cooboploop/loop_runner.rs` -- DONE (2026-09-01).** File exists with 111 lines: LoopStage, LoopStatus, LoopRunner (start/stop/pause/run_cycle). Architecture §7.
 
+- **CoObOpLoop T0.9 Add `pub mod cooboploop;` to `src/lib.rs` -- DONE (2026-09-01).** Declaration exists at `src/lib.rs:14`. Architecture §1.
+
 ---
 
 # TIER 1 -- Completed (Consolidated)

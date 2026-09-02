@@ -322,7 +322,6 @@ The architecture says sources "SHOULD eventually connect" (§17). The discovery 
 
 ## T0 Foundation (each <10 min)
 
-- [x] T0.9 Add `pub mod cooboploop;` to `src/lib.rs` `[§1]`
 - [x] T0.10 Create `src/cooboploop/idle.rs` (empty) `[§9-10]`
 - [x] T0.11 Update `src/cooboploop/mod.rs` to include `pub mod idle;`
 - [x] T0.12 Create `src/cooboploop/opportunity.rs` (empty) `[§17]`
@@ -341,7 +340,6 @@ The architecture says sources "SHOULD eventually connect" (§17). The discovery 
 - [x] T0.25 Update `src/cooboploop/mod.rs` to include `pub mod inspection;`
 - [x] T0.26 Create `src/cooboploop/learning.rs` (empty) `[§15]`
 - [x] T0.27 Update `src/cooboploop/mod.rs` to include `pub mod learning;`
-- [x] T0.28 `cargo check --release` passes with skeletons
 
 ## T1 Queue States (§4) — each <10 min
 
