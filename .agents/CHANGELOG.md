@@ -3,6 +3,8 @@
 > Historical record of completed work. Forward planning lives in [PLAN.md](PLAN.md).
 > Append new completed work here so PLAN.md stays focused on what needs to be done.
 
+- **CoObOpLoop T8.9 Add `HardwareRegistry::update()` — DONE (2026-09-06).** Method at `hardware.rs:487-521` saves `HardwareProfile` to `hardware_snapshots` table via parameterized INSERT. Serializes `network_interfaces` and `supported_runtimes` to JSON. Compilation: 0 errors.
+
 - **CoObOpLoop T8.8 Add SQLite table `hardware_snapshots` — DONE (2026-09-06).** Table created in `HardwareRegistry::open()` at `hardware.rs:468-481` with fields: id, snapshot_at, cpu_model, cpu_cores, memory_total_mb, memory_available_mb, storage_total_gb, storage_available_gb, gpu_model, network_interfaces, thermal_state, other. Initialization via `CREATE TABLE IF NOT EXISTS`. Compilation: 0 errors.
 
 - **CoObOpLoop T8.7 Add `HardwareDiscovery::detect()` — DONE (2026-09-06).** `detect()` method at `hardware.rs:338-342` returns `HardwareProfile` from platform probes (CPU, memory, storage, GPU, network, thermal, runtimes). Compilation: 0 errors, 0 warnings.
