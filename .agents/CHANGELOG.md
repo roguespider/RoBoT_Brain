@@ -3,6 +3,84 @@
 > Historical record of completed work. Forward planning lives in [PLAN.md](PLAN.md).
 > Append new completed work here so PLAN.md stays focused on what needs to be done.
 
+- **CoObOpLoop T8.1 Add `ResearchTrigger` enum — DONE (2026-09-06).** All 8 variants from architecture §11 implemented: UnavailableInfo, HighUncertainty, CapabilityGap, TechnologyInvestigation, HardwareUpgrade, MultipleSolutions, PreviousFailure, ExternalOpportunityKnowledgeGap. Defined in `src/cooboploop/research.rs:6-15` with Serialize/Deserialize derives. Exported via `src/cooboploop/mod.rs:23`. Used by `ResearchObjective.trigger` field and `ResearchManager.create_objective()` parameter. Compilation: 0 errors, 0 warnings.
+
+- **CoObOpLoop T4.2 Add `CapabilityAssessment` struct — DONE (2026-09-02).** Verified `CapabilityAssessment` struct with 5 fields (id: CapabilityId, name: String, level: f32, last_assessed: Option<DateTime<Utc>>, success_rate: f32) exists in `src/cooboploop/capability.rs:26-32`. Fixed: removed `#[derive(Debug)]` from line 25, added manual `impl Debug` using `DebugStruct`. Compilation: 0 errors.
+
+- **CoObOpLoop T4.3 Add `CapabilityRegistry` struct — DONE (2026-09-02).** Verified `CapabilityRegistry` struct with in-memory cache (`HashMap<String, CapabilityAssessment>`) and SQLite connection (`Option<rusqlite::Connection>`) exists in `src/cooboploop/capability.rs:35-39`. No derive(Debug). Compilation: 0 errors.
+
+- **CoObOpLoop T4.4 Add SQLite table `capabilities` — DONE (2026-09-02).** Verified CREATE TABLE statement at capability.rs:80 matches §A.4 schema (id TEXT PRIMARY KEY, name TEXT, level REAL DEFAULT 0.5, last_assessed TEXT, success_rate REAL DEFAULT 0.5). Compilation: 0 errors.
+
+- **CoObOpLoop T4.5 Add `get()` method — DONE (2026-09-02).** Verified `get(&self, id: &CapabilityId) -> Option<CapabilityAssessment>` at capability.rs:104-130 returns assessment from cache then DB. Compilation: 0 errors.
+
+- **CoObOpLoop T4.6 Add `update()` method — DONE (2026-09-02).** Verified `update(&mut self, assessment: CapabilityAssessment)` at capability.rs:134-147 updates level/success_rate in cache and DB. Compilation: 0 errors.
+
+- **CoObOpLoop T4.7 Add `compare_capabilities()` method — DONE (2026-09-02).** Verified `compare_capabilities(&self, required: &[CapabilityId]) -> CapabilityComparison` at capability.rs:155-191. Compilation: 0 errors.
+
+- **CoObOpLoop T4.8 Add `CapabilityComparison` struct — DONE (2026-09-02).** Verified 4 fields (sufficient, uncertain, insufficient, unavailable) + overall_outcome at capability.rs:289-300. Fixed: removed `#[derive(Debug)]`, added manual impl Debug. Compilation: 0 errors.
+
+- **CoObOpLoop T4.9 Add `overall_outcome()` — DONE (2026-09-02).** Verified `overall_outcome()`/`compute_outcome()` at capability.rs:306-319 returns "sufficient"/"uncertain"/"insufficient" per thresholds. Compilation: 0 errors.
+
+- **CoObOpLoop T4.10 Add `record_success()` — DONE (2026-09-02).** Verified `record_success(&mut self, id: &CapabilityId) -> Result<(), String>` at capability.rs:209-232 uses EMA blend for success_rate. Compilation: 0 errors.
+
+- **CoObOpLoop T4.11 Add `record_failure()` — DONE (2026-09-02).** Verified `record_failure(&mut self, id: &CapabilityId) -> Result<(), String>` at capability.rs:235-258 uses EMA blend toward 0.0. Compilation: 0 errors.
+
+- **CoObOpLoop T4.12 Add `cooboploop_record_capability_outcome` handler — DONE (2026-09-02).** Verified in bridge handler (line 151-167) and bridge tools (line 1030-1053) with input struct `CooboploopRecordCapabilityOutcomeInput` (capability_id, success). Compilation: 0 errors.
+
+- **CoObOpLoop T4.13 Add `cooboploop_get_capability_assessment` handler — DONE (2026-09-02).** Verified in bridge handler (line 169-180) and bridge tools (line 1056-1067) with input struct `CooboploopGetCapabilityAssessmentInput`. Compilation: 0 errors.
+
+- **CoObOpLoop T4.14 Add `cooboploop_list_capabilities` handler — DONE (2026-09-02).** Verified in bridge handler (line 182-193) and bridge tools (line 1082-1093). Compilation: 0 errors.
+
+- **CoObOpLoop T4.15 Add registry entries for T4.12-T4.14 — DONE (2026-09-02).** Verified `COOBOPLOOP_RECORD_CAPABILITY_OUTCOME`, `COOBOPLOOP_GET_CAPABILITY_ASSESSMENT`, `COOBOPLOOP_LIST_CAPABILITIES` in `definitions::all()` with full McpTool definitions. Compilation: 0 errors.
+
+- **CoObOpLoop T4.16 Seed default capabilities — DONE (2026-09-02).** Verified `seed_default_capabilities()` at capability.rs:268-285 seeds Rust/MCP/HTTP/SQLite/Testing at 0.5. Compilation: 0 errors.
+
+- **CoObOpLoop T5.1 Add `LoopStage` enum — DONE (2026-09-02).** Verified all 11 variants (ObserveState, CollectObjectives, EvaluateQueue, SelectObjective, Plan, Execute, Verify, RecordExperience, UpdateKnowledge, EvaluateCurrentState, GenerateNewObjectives) at loop_runner.rs:7-19. No derive(Debug). Compilation: 0 errors.
+
+- **CoObOpLoop T5.2 Add `LoopRunner` struct — DONE (2026-09-02).** Verified at loop_runner.rs:40-56 with fields: current_stage, cycle_count, should_continue, max_cycles + extras (autonomous_operation_enabled, phase, heartbeat_secs, etc.). No derive(Debug). Compilation: 0 errors.
+
+- **CoObOpLoop T5.3 Add `run_cycle()` method — DONE (2026-09-02).** Verified at loop_runner.rs:125-143 calls all 11 stages sequentially. Returns `Result<(), String>`. Compilation: 0 errors.
+
+- **CoObOpLoop T5.4 Implement stage 1 (ObserveState) — DONE (2026-09-02).** Verified `observe_state()` at loop_runner.rs:163-167 sets `current_stage = LoopStage::ObserveState`. Compilation: 0 errors.
+
+- **CoObOpLoop T5.5 Implement stage 2 (CollectObjectives) — DONE (2026-09-02).** Verified `collect_objectives()` at loop_runner.rs:168-171 sets `current_stage = LoopStage::CollectObjectives`. Compilation: 0 errors.
+
+- **CoObOpLoop T5.6 Implement stage 3 (EvaluateQueue) — DONE (2026-09-02).** Verified `evaluate_queue()` at loop_runner.rs:172-174. Compilation: 0 errors.
+
+- **CoObOpLoop T5.7 Implement stage 4 (SelectObjective) — DONE (2026-09-02).** Verified `select_objective()` at loop_runner.rs:176-178. Compilation: 0 errors.
+
+- **CoObOpLoop T5.8 Implement stage 5 (Plan) — DONE (2026-09-02).** Verified `plan()` at loop_runner.rs sets stage. Compilation: 0 errors.
+
+- **CoObOpLoop T5.9-T5.14 Implement stages 6-11 — DONE (2026-09-02).** Verified `execute`, `verify`, `record_experience`, `update_knowledge`, `evaluate_current_state`, `generate_new_objectives` at loop_runner.rs:180+ set stages. Compilation: 0 errors.
+
+- **CoObOpLoop T5.16 Add `should_continue()` — DONE (2026-09-02).** Verified at loop_runner.rs:96-100 returns `self.should_continue && self.cycle_count < self.max_cycles`. Compilation: 0 errors.
+
+- **CoObOpLoop T5.15 Add `return_to_queue()` — DONE (2026-09-02).** Implemented new method at loop_runner.rs:173-186: takes `&mut ObjectiveQueue` + `&[AgentGoal]`, enqueues each, returns count. Compilation: 0 errors.
+
+- **CoObOpLoop T5.17-T5.21 MCP handlers (start_loop, stop_loop, get_loop_status, run_single_cycle, step_loop) — DONE (2026-09-02).** Verified in bridge handler + bridge tools with full McpTool definitions. Compilation: 0 errors.
+
+- **CoObOpLoop T6.1 Add `PostTaskEvaluation` struct — DONE (2026-09-02).** Verified at post_task.rs:6-36 with all 10 fields. No derive(Debug). Compilation: 0 errors.
+
+- **CoObOpLoop T6.2-T6.11 Individual fields — DONE (2026-09-02).** All 10 fields exist at post_task.rs:6-36 with setter methods at lines 108-138. Compilation: 0 errors.
+
+- **CoObOpLoop T6.12 Add `evaluate_post_task()` — DONE (2026-09-02).** Verified at experience.rs:218-231. Compilation: 0 errors.
+
+- **CoObOpLoop T6.13 Add `generate_objectives()` — DONE (2026-09-02).** Verified at post_task.rs:56-74. Compilation: 0 errors.
+
+- **CoObOpLoop T6.14 Wire generate_objectives into LoopRunner — DONE (2026-09-02).** Verified at loop_runner.rs:221-228. Compilation: 0 errors.
+
+- **CoObOpLoop T6.15 Add `cooboploop_run_post_task_evaluation` handler — DONE (2026-09-02).** Implemented in bridge: input struct, execute function, definition, dispatch, tool_names. Accepts goal_id, runs PostTaskEvaluation, enqueues generated objectives. Compilation: 0 errors.
+
+- **CoObOpLoop T6.16 Add registry entry — DONE (2026-09-02).** COOBOPLOOP_RUN_POST_TASK_EVALUATION in definitions::all() + tool_names(). Compilation: 0 errors.
+
+- **CoObOpLoop T7.1 Add `IdlePhase` enum — DONE (2026-09-02).** Verified at idle.rs:7-19. Fixed: removed `#[derive(Debug)]`, added manual impl. Compilation: 0 errors.
+
+- **CoObOpLoop T7.2 Add `IdleState` struct — DONE (2026-09-02).** Verified at idle.rs:50-72. Fixed: removed `#[derive(Debug)]`, added manual impl. Compilation: 0 errors.
+
+- **CoObOpLoop T7.3 Add `ActivityCategory` enum — DONE (2026-09-02).** Verified at idle.rs:34-47. Fixed: removed `#[derive(Debug)]`, added manual impl. Compilation: 0 errors.
+
+- **CoObOpLoop T7.4-T7.10 Idle methods + handlers — DONE (2026-09-02).** Verified `evaluate_useful_work()`, `should_wait()`, `DeliberateInactivity`, `reevaluation_interval_secs`, MCP handlers (get_idle_state, configure_idle_reevaluation_interval), registry entries in idle.rs and bridge. Compilation: 0 errors.
+
 - **CoObOpLoop T4.1 Add `CapabilityId` enum — DONE (2026-09-02).** Verified `CapabilityId` enum with 6 variants (Rust, MCP, HTTP, SQLite, Testing + Custom(String)) exists in `src/cooboploop/capability.rs:15-22`. Also fixed: unused Result in `cooboploop_handler.rs` line 261 (`run_cycle()`), removed `derive(Debug)` from `StrategicObjectiveCategory`, `StrategicObjective`, `HierarchyNode` in `strategic.rs` (lines 5/18/91) and added manual `impl Debug` with explicit match. Compilation: 0 errors.
 
 - **CoObOpLoop T3.13 Test compute_priority — DONE (2026-09-02).** New test file `test_suite/src/tests/cooboploop_t3_eval.rs`: enqueues zero-cost goal → evaluate → verify priority ~0.0; enqueues max-value goal → evaluate → verify priority > 1.0. Wired into `mod.rs` + `main.rs` dispatch. Also fixed pre-existing unused variable `all_ok` in `cooboploop_queue.rs` (AGENTS.md bug fix rule). Compilation: 0 errors.

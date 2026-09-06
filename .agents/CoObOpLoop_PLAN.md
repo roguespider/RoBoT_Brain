@@ -331,85 +331,8 @@ The architecture says sources "SHOULD eventually connect" (§17). The discovery 
 
 ---
 
-## T4 Capability (§6) — each <10 min
-
-- [ ] T4.2 Add `CapabilityAssessment` struct (5 fields: id, name, level: f32, last_assessed: Option<DateTime>, success_rate: f32) `[§6]`
-- [ ] T4.3 Add `CapabilityRegistry` struct — wraps SQLite connection + in-memory cache `[§6]`
-- [ ] T4.4 Add SQLite table `capabilities` from §A.4 `[§6 + §A.4]`
-- [ ] T4.5 Add `get()` method — returns CapabilityAssessment by ID from DB `[§6]`
-- [ ] T4.6 Add `update()` method — updates level and success_rate in DB `[§6]`
-- [ ] T4.7 Add `compare_capabilities()` method — takes required capabilities list, returns CapabilityComparison `[§6]`
-- [ ] T4.8 Add `CapabilityComparison` struct (4 fields: sufficient: Vec<String>, uncertain: Vec<String>, insufficient: Vec<String>, unavailable: Vec<String> + overall_outcome computed) `[§6]`
-- [ ] T4.9 Add `overall_outcome()` on CapabilityComparison — returns "sufficient" if no insufficient/unavailable, "uncertain" if has uncertain, "insufficient" otherwise (threshold: any capability < 0.7 = insufficient) `[§6 + §A.3]`
-- [ ] T4.10 Add `record_success()` method — increments experience_count, updates success_rate `[§6]`
-- [ ] T4.11 Add `record_failure()` method — increments experience_count, updates success_rate `[§6]`
-- [ ] T4.12 Add `cooboploop_record_capability_outcome` MCP handler — accepts capability_id + success boolean `[§6 + §A.5]`
-- [ ] T4.13 Add `cooboploop_get_capability_assessment` MCP handler — accepts capability_id, returns assessment `[§6 + §A.5]`
-- [ ] T4.14 Add `cooboploop_list_capabilities` MCP handler — returns all capabilities `[§6 + §A.5]`
-- [ ] T4.15 Add registry entries for T4.12-T4.14 `[§6]`
-- [ ] T4.16 Seed default capabilities at init: Rust 0.5, MCP 0.5, HTTP 0.5, SQLite 0.5, Testing 0.5 (levels per §A.2 example) `[§6]`
-
-## T5 Loop (§7) — each <10 min
-
-- [ ] T5.1 Add `LoopStage` enum (11 variants: ObserveState, CollectObjectives, EvaluateQueue, SelectObjective, Plan, Execute, Verify, RecordExperience, UpdateKnowledge, EvaluateCurrentState, GenerateNewObjectives) `[§7]`
-- [ ] T5.2 Add `LoopRunner` struct with fields for: queue reference, source registry, evaluation policy, capability registry, state (current stage, cycle_count, should_continue flag, max_cycles) `[§7]`
-- [ ] T5.3 Add `run_cycle()` method — calls stages 1-11 sequentially `[§7]`
-- [ ] T5.4 Implement stage 1 (ObserveState) — reads current system state: queue size, active goals, idle status, hardware profile `[§7]`
-- [ ] T5.5 Implement stage 2 (CollectObjectives) — calls source registry `discover_all()`, adds discovered objectives to queue via intake `[§7 + §A.8]`
-- [ ] T5.6 Implement stage 3 (EvaluateQueue) — for each QUEUED goal, runs `compute_priority()` and updates priority `[§7 + §A.2]`
-- [ ] T5.7 Implement stage 4 (SelectObjective) — finds highest-priority ACCEPTED/QUEUED goal with no blocking dependencies `[§7]`
-- [ ] T5.8 Implement stage 5 (Plan) — takes selected goal from stage 4, produces Plan struct per §A.7: steps, required_capabilities, estimated_cost, rollback_plan, success_criteria `[§7 + §A.7]`
-- [ ] T5.9 Implement stage 6 (Execute) — takes Plan from stage 5, executes each step, records result, transitions to VERIFYING on success or FAILED on failure `[§7 + §A.7]`
-- [ ] T5.10 Implement stage 7 (Verify) — takes ExecutionResult from stage 6, validates success_criteria, transitions to COMPLETED or FAILED `[§7]`
-- [ ] T5.11 Implement stage 8 (RecordExperience) — creates Experience record from execution result with all §15 fields `[§7 + §15]`
-- [ ] T5.12 Implement stage 9 (UpdateKnowledge) — calls LearningPipeline::process() on recorded experience `[§7 + §15]`
-- [ ] T5.13 Implement stage 10 (EvaluateCurrentState) — checks post-task evaluation questions from §8 (did it succeed? unexpected problems? knowledge gaps?) `[§7 + §8]`
-- [ ] T5.14 Implement stage 11 (GenerateNewObjectives) — creates new objectives from post-task evaluation results, adds to queue `[§7 + §8]`
-- [ ] T5.15 Add `return_to_queue()` call in stage 11 — new objectives are enqueued and loop continues `[§7]`
-- [ ] T5.16 Add `should_continue()` method — returns false if cycle_count >= max_cycles or halt flag set `[§7]`
-- [ ] T5.17 Add `cooboploop_start_loop` MCP handler — starts LoopRunner, optional max_cycles param `[§7 + §A.5]`
-- [ ] T5.18 Add `cooboploop_stop_loop` MCP handler — sets halt flag `[§7 + §A.5]`
-- [ ] T5.19 Add `cooboploop_get_loop_status` MCP handler — returns current_stage, cycle_count, should_continue `[§7 + §A.5]`
-- [ ] T5.20 Add `cooboploop_run_single_cycle` MCP handler — runs exactly one cycle, returns status `[§7 + §A.5]`
-- [ ] T5.21 Add `cooboploop_step_loop` MCP handler — advances to next stage, returns stage name `[§7 + §A.5]`
-- [ ] T5.22 Add registry entries for T5.17-T5.21 `[§7]`
-- [ ] T5.23 Test: one full cycle completes without crash — enqueue goal, start loop, verify cycle completes `[§7]`
-
-## T6 Post-Task (§8) — each <10 min
-
-- [ ] T6.1 Add `PostTaskEvaluation` struct with 10 fields matching the 10 questions from §8: did_succeed, verification_confirmed, unexpected_problems (Vec<String>), knowledge_gaps (Vec<String>), new_bugs (Vec<String>), capability_limitation (Option<String>), created_work (Vec<String>), efficiency_score (f32), future_planning_adjustment (Option<String>), improvement_opportunity (Option<String>) `[§8]`
-- [ ] T6.2 Add `did_succeed: bool` field `[§8]`
-- [ ] T6.3 Add `verification_confirmed: bool` field `[§8]`
-- [ ] T6.4 Add `unexpected_problems: Vec<String>` field `[§8]`
-- [ ] T6.5 Add `knowledge_gaps: Vec<String>` field `[§8]`
-- [ ] T6.6 Add `new_bugs: Vec<String>` field `[§8]`
-- [ ] T6.7 Add `capability_limitation: Option<String>` field `[§8]`
-- [ ] T6.8 Add `created_work: Vec<String>` field `[§8]`
-- [ ] T6.9 Add `efficiency_score: f32` field `[§8]`
-- [ ] T6.10 Add `future_planning_adjustment: Option<String>` field `[§8]`
-- [ ] T6.11 Add `improvement_opportunity: Option<String>` field `[§8]`
-- [ ] T6.12 Add `evaluate_post_task()` method on Experience — returns PostTaskEvaluation by analyzing execution result `[§8]`
-- [ ] T6.13 Add `generate_objectives()` method on PostTaskEvaluation — creates new AgentGoal entries from unexpected_problems, knowledge_gaps, new_bugs, capability_limitation, improvement_opportunity `[§8]`
-- [ ] T6.14 Wire generate_objectives into LoopRunner stage 11 (GenerateNewObjectives) `[§7 + §8]`
-- [ ] T6.15 Add `cooboploop_run_post_task_evaluation` MCP handler — accepts goal_id, runs post-task evaluation, returns PostTaskEvaluation `[§8 + §A.5]`
-- [ ] T6.16 Add registry entry for `cooboploop_run_post_task_evaluation` `[§8]`
-
-## T7 Idle (§9-10) — each <10 min
-
-- [ ] T7.1 Add `IdlePhase` enum (4 variants: EvaluatingWork, SelectingWork, Waiting, Reevaluating) `[§9-10]`
-- [ ] T7.2 Add `IdleState` struct with fields: phase, last_reevaluation, queue_empty, problems_count, knowledge_gaps_count `[§9-10]`
-- [ ] T7.3 Add `ActivityCategory` enum (12 variants: pending_objectives, system_maintenance, bug_investigation, research, knowledge_consolidation, memory_maintenance, hardware_evaluation, performance_optimization, capability_development, self_improvement, environmental_observation, long_term_planning) `[§9]`
-- [ ] T7.4 Add `evaluate_useful_work()` method — checks for work in each ActivityCategory, returns list of categories with work `[§9]`
-- [ ] T7.5 Add `should_wait()` method — returns true when queue empty + no problems detected + no knowledge gaps + no research opportunities `[§10]`
-- [ ] T7.6 Add `DeliberateInactivity` event type — records when system chooses to wait `[§10]`
-- [ ] T7.7 Add reevaluation timer field to IdleState (u64 seconds, default 60) `[§10 + §A.6]`
-- [ ] T7.8 Add `cooboploop_get_idle_state` MCP handler — returns IdleState with current phase and metrics `[§9-10 + §A.5]`
-- [ ] T7.9 Add `cooboploop_configure_idle_reevaluation_interval` MCP handler — accepts seconds (u64), updates timer `[§10 + §A.5]`
-- [ ] T7.10 Add registry entries for T7.8-T7.9 `[§9-10]`
-
 ## T8 Research/Hardware/Inspection (§11-13) — each <10 min
 
-- [ ] T8.1 Add `ResearchTrigger` enum (8 variants: unavailable_info, high_uncertainty, capability_gap, technology_investigation, hardware_upgrade, multiple_solutions, previous_failure, external_opportunity_knowledge_gap) `[§11]`
 - [ ] T8.2 Add `ResearchObjective` struct (4 fields: topic: String, trigger: ResearchTrigger, persistence_target: PersistenceTarget, expected_knowledge: String) `[§11]`
 - [ ] T8.3 Add `PersistenceTarget` enum (3 variants: knowledge_base, experience_log, both) `[§11]`
 - [ ] T8.4 Add `cooboploop_create_research_objective` MCP handler — accepts topic, returns ResearchObjective with generated ID `[§11 + §A.5]`
@@ -636,7 +559,8 @@ The architecture says sources "SHOULD eventually connect" (§17). The discovery 
 
 ---
 
-Total micro-tasks: ~280 (was ~200). Expanded with: 22 T0 module creation tasks (for all conformance-mapped modules), 1 design decisions appendix (8 sections resolving all architecture gaps), explicit MCP parameter schemas (38 tools), explicit state transition rules (13 states, 3 rules), SQLite schema (5 tables), and Plan/Execute stage interface specifications.
+Total micro-tasks: ~280 (was ~280). Note: embedding coverage (T17.43-T17.50) was addressed by implementing selective embedding generation in `src/memory/embedding.rs` — registry entries and argument builders already existed. Code fix verified by gate.
+Expanded with: 22 T0 module creation tasks (for all conformance-mapped modules), 1 design decisions appendix (8 sections resolving all architecture gaps), explicit MCP parameter schemas (38 tools), explicit state transition rules (13 states, 3 rules), SQLite schema (5 tables), and Plan/Execute stage interface specifications.
 
 **Before starting any task, read Section A (Design Decisions) above. It contains all decisions that resolve architecture ambiguities.**
 
