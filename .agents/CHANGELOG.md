@@ -3,6 +3,8 @@
 > Historical record of completed work. Forward planning lives in [PLAN.md](PLAN.md).
 > Append new completed work here so PLAN.md stays focused on what needs to be done.
 
+- **CoObOpLoop T8.6 Add `HardwareProfile` struct — DONE (2026-09-06).** All 10 fields from architecture §12: cpu_model, cpu_cores, memory_total_mb, memory_available_mb, storage_total_gb, storage_available_gb, gpu_model, network_interfaces, thermal_state, supported_runtimes. Defined in `src/cooboploop/hardware.rs:6-17`. Compilation: 0 errors, 0 warnings.
+
 - **CoObOpLoop T8.5 Add registry entry for `cooboploop_create_research_objective` — DONE (2026-09-06).** Entry in `src/bridge/tools/cooboploop/mod.rs:528-549` with `topic` (required), `priority`, `persistence_target` parameters. Listed in `tool_names()` at `cooboploop_handler.rs:98`. Dispatched in `execute_tool()`. Compilation: 0 errors.
 
 - **CoObOpLoop T8.4 Add `cooboploop_create_research_objective` MCP handler — DONE (2026-09-06).** Handler in `src/bridge/tools/cooboploop/mod.rs:1276-1315` accepts `topic` and optional `persistence_target`, creates ResearchObjective via ResearchManager, returns generated ID. Dispatched from `cooboploop_handler.rs:368-374`. Compilation: 0 errors.

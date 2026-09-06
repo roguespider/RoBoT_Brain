@@ -333,7 +333,6 @@ The architecture says sources "SHOULD eventually connect" (§17). The discovery 
 
 ## T8 Research/Hardware/Inspection (§11-13) — each <10 min
 
-- [ ] T8.6 Add `HardwareProfile` struct (10 fields: cpu_model, cpu_cores, memory_total_mb, memory_available_mb, storage_total_gb, storage_available_gb, gpu_model, network_interfaces (Vec<String>), thermal_state, supported_runtimes (Vec<String>)) `[§12]`
 - [ ] T8.7 Add `HardwareDiscovery::detect()` stub — returns HardwareProfile with placeholder values `[§12]`
 - [ ] T8.8 Add SQLite table `hardware_snapshots` from §A.4 `[§12 + §A.4]`
 - [ ] T8.9 Add `HardwareRegistry::update()` — saves HardwareProfile to hardware_snapshots table `[§12 + §A.4]`
