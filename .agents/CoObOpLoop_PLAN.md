@@ -333,7 +333,6 @@ The architecture says sources "SHOULD eventually connect" (§17). The discovery 
 
 ## T8 Research/Hardware/Inspection (§11-13) — each <10 min
 
-- [ ] T8.8 Add SQLite table `hardware_snapshots` from §A.4 `[§12 + §A.4]`
 - [ ] T8.9 Add `HardwareRegistry::update()` — saves HardwareProfile to hardware_snapshots table `[§12 + §A.4]`
 - [ ] T8.10 Add `cooboploop_get_hardware_profile` MCP handler — returns latest HardwareProfile `[§12 + §A.5]`
 - [ ] T8.11 Add `cooboploop_detect_hardware_changes` MCP handler — compares current detect() with latest snapshot, returns diff `[§12 + §A.5]`
