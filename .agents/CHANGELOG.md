@@ -3,6 +3,8 @@
 > Historical record of completed work. Forward planning lives in [PLAN.md](PLAN.md).
 > Append new completed work here so PLAN.md stays focused on what needs to be done.
 
+- **CoObOpLoop T8.5 Add registry entry for `cooboploop_create_research_objective` — DONE (2026-09-06).** Entry in `src/bridge/tools/cooboploop/mod.rs:528-549` with `topic` (required), `priority`, `persistence_target` parameters. Listed in `tool_names()` at `cooboploop_handler.rs:98`. Dispatched in `execute_tool()`. Compilation: 0 errors.
+
 - **CoObOpLoop T8.4 Add `cooboploop_create_research_objective` MCP handler — DONE (2026-09-06).** Handler in `src/bridge/tools/cooboploop/mod.rs:1276-1315` accepts `topic` and optional `persistence_target`, creates ResearchObjective via ResearchManager, returns generated ID. Dispatched from `cooboploop_handler.rs:368-374`. Compilation: 0 errors.
 
 - **CoObOpLoop T8.3 Add `PersistenceTarget` enum — DONE (2026-09-06).** All 3 variants from architecture §11 implemented: KnowledgeBase, ExperienceLog, Both. Defined in `src/cooboploop/research.rs:18-23` with Serialize/Deserialize derives. Used by `ResearchObjective.persistence_target` field and `ResearchManager.create_objective()` parameter. Compilation: 0 errors, 0 warnings.
