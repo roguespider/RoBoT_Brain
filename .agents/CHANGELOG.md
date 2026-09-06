@@ -3,6 +3,8 @@
 > Historical record of completed work. Forward planning lives in [PLAN.md](PLAN.md).
 > Append new completed work here so PLAN.md stays focused on what needs to be done.
 
+- **CoObOpLoop T8.7 Add `HardwareDiscovery::detect()` — DONE (2026-09-06).** `detect()` method at `hardware.rs:338-342` returns `HardwareProfile` from platform probes (CPU, memory, storage, GPU, network, thermal, runtimes). Compilation: 0 errors, 0 warnings.
+
 - **CoObOpLoop T8.6 Add `HardwareProfile` struct — DONE (2026-09-06).** All 10 fields from architecture §12: cpu_model, cpu_cores, memory_total_mb, memory_available_mb, storage_total_gb, storage_available_gb, gpu_model, network_interfaces, thermal_state, supported_runtimes. Defined in `src/cooboploop/hardware.rs:6-17`. Compilation: 0 errors, 0 warnings.
 
 - **CoObOpLoop T8.5 Add registry entry for `cooboploop_create_research_objective` — DONE (2026-09-06).** Entry in `src/bridge/tools/cooboploop/mod.rs:528-549` with `topic` (required), `priority`, `persistence_target` parameters. Listed in `tool_names()` at `cooboploop_handler.rs:98`. Dispatched in `execute_tool()`. Compilation: 0 errors.
