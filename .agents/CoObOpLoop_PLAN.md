@@ -333,7 +333,6 @@ The architecture says sources "SHOULD eventually connect" (§17). The discovery 
 
 ## T8 Research/Hardware/Inspection (§11-13) — each <10 min
 
-- [ ] T8.3 Add `PersistenceTarget` enum (3 variants: knowledge_base, experience_log, both) `[§11]`
 - [ ] T8.4 Add `cooboploop_create_research_objective` MCP handler — accepts topic, returns ResearchObjective with generated ID `[§11 + §A.5]`
 - [ ] T8.5 Add registry entry for `cooboploop_create_research_objective` `[§11]`
 - [ ] T8.6 Add `HardwareProfile` struct (10 fields: cpu_model, cpu_cores, memory_total_mb, memory_available_mb, storage_total_gb, storage_available_gb, gpu_model, network_interfaces (Vec<String>), thermal_state, supported_runtimes (Vec<String>)) `[§12]`
