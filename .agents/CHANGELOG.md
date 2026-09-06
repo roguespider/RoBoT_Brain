@@ -3,6 +3,8 @@
 > Historical record of completed work. Forward planning lives in [PLAN.md](PLAN.md).
 > Append new completed work here so PLAN.md stays focused on what needs to be done.
 
+- **CoObOpLoop T8.2 Add `ResearchObjective` struct — DONE (2026-09-06).** All 4 fields from architecture §11 implemented: topic (String), trigger (ResearchTrigger), persistence_target (PersistenceTarget), expected_knowledge (String). Defined in `src/cooboploop/research.rs:27-32` with Serialize/Deserialize derives. Used by `ResearchManager.create_objective()` and returned by `cooboploop_create_research_objective` handler. Compilation: 0 errors, 0 warnings.
+
 - **CoObOpLoop T8.1 Add `ResearchTrigger` enum — DONE (2026-09-06).** All 8 variants from architecture §11 implemented: UnavailableInfo, HighUncertainty, CapabilityGap, TechnologyInvestigation, HardwareUpgrade, MultipleSolutions, PreviousFailure, ExternalOpportunityKnowledgeGap. Defined in `src/cooboploop/research.rs:6-15` with Serialize/Deserialize derives. Exported via `src/cooboploop/mod.rs:23`. Used by `ResearchObjective.trigger` field and `ResearchManager.create_objective()` parameter. Compilation: 0 errors, 0 warnings.
 
 - **CoObOpLoop T4.2 Add `CapabilityAssessment` struct — DONE (2026-09-02).** Verified `CapabilityAssessment` struct with 5 fields (id: CapabilityId, name: String, level: f32, last_assessed: Option<DateTime<Utc>>, success_rate: f32) exists in `src/cooboploop/capability.rs:26-32`. Fixed: removed `#[derive(Debug)]` from line 25, added manual `impl Debug` using `DebugStruct`. Compilation: 0 errors.
