@@ -7,8 +7,8 @@ target/
 LLModel/
 
 # Generated test output (do not commit)
-test_suite/test_suite_output.txt
-test_suite/test_suite_report.json
+agents/scripts/test_suite2/test_suite_output.txt
+agents/scripts/test_suite2/test_suite_report.json
 
 # Python live-test cache
 __pycache__/
@@ -18,3 +18,5 @@ __pycache__/
 # independent binary crate. Neither lock file should be committed.
 Cargo.lock
 test_suite/Cargo.lock
+.agents/*
+.agents/scripts/
