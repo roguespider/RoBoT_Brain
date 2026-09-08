@@ -22,12 +22,13 @@ use crate::TestMcpClient;
 use crate::TestStats;
 use std::io::Write;
 
+/// Parse the JSON payload from a tool result's content[0].text.
+/// Handles both raw MCP responses and already-parsed results.
 fn payload_json(result: &serde_json::Value) -> anyhow::Result<serde_json::Value> {
-    let text = result
-        .pointer("/content/0/text")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| anyhow::anyhow!("no content text in tool result"))?;
-    Ok(serde_json::from_str(text)?)
+    if let Some(text) = result.pointer("/content/0/text").and_then(|v| v.as_str()) {
+        return Ok(serde_json::from_str(text)?);
+    }
+    Ok(result.clone())
 }
 
 fn unique_suffix() -> String {
@@ -100,7 +101,8 @@ pub async fn run_semantic_chunker_tests(
     // --- test_code_parsing ---
     // Create a .rs file with >=2 functions. parse_code produces a hierarchy
     // tree with >=2 children (one per function). chunks_created >= 2.
-    let code_content = "fn main() {\n    println!(\"Hello\");\n}\n\nfn other() {\n    do_something();\n}\n";
+    let code_content =
+        "fn main() {\n    println!(\"Hello\");\n}\n\nfn other() {\n    do_something();\n}\n";
     let code_path = make_temp_file("rs", code_content);
     let code_result = client
         .call_tool(

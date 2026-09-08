@@ -53,3 +53,28 @@ cd test_suite && cargo build --release && ./target/release/test_suite --gate
 
 All four metrics must pass: `tests` (100%), `compiler_warnings` (0),
 `code_issues` (0), `untested_tools` (0). See AGENTS.md Quality Gate.
+
+---
+
+# CHANGELOG Maintenance (periodic)
+
+> CHANGELOG.md has grown to 330+ lines with duplicate entries. Run this
+> maintenance periodically to consolidate overlapping entries.
+
+## When to apply
+
+- CHANGELOG.md exceeds ~200 lines, OR
+- Duplicate/overlapping entries are visible (same work described multiple times), OR
+- Before adding new entries to keep it readable.
+
+## How to consolidate
+
+1. Group entries by feature/subsystem (P-series, T-series, CoObOpLoop, etc.)
+2. Merge entries that describe the same work (e.g., P9-001 through P9-006 → one entry)
+3. Keep the most detailed entry, remove redundant ones
+4. Preserve gate counts and commit hashes where available
+5. After consolidating, commit and push
+
+## Status (2026-09-01)
+
+Consolidated from ~330 lines to ~70 lines. Next check: when it grows past ~150 lines again.

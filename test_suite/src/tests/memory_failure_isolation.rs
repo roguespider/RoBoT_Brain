@@ -5,7 +5,7 @@
 //! returns empty/error result).
 
 use std::process::Stdio;
-use std::time::Duration;
+use std::time::{Duration, Instant};
 
 use rusqlite::Connection;
 use serde_json::Value;
@@ -74,55 +74,67 @@ impl IsoClient {
         self.next_id += 1;
         let raw = serde_json::to_string(&req)?;
         self.stdin
-            .write_all(format!("{}\x1e", raw).as_bytes())
+            .write_all(format!("{}\n", raw).as_bytes())
             .await?;
         self.stdin.flush().await?;
         Ok(())
     }
 
-    async fn read_response(&mut self) -> anyhow::Result<Value> {
-        let mut line = String::new();
+    async fn initialize(&mut self) -> anyhow::Result<()> {
+        let id = self.next_id;
+        self.send(
+            "initialize",
+            serde_json::json!({
+                "protocolVersion": "2025-03-26",
+                "capabilities": { "tools": {} },
+                "clientInfo": { "name": "memory_failure_isolation", "version": "1.0.0" }
+            }),
+        )
+        .await?;
+        // Consume the initialize response, matching by exact id.
+        self.recv_until(id).await?;
+        // notifications/initialized carries no id (see `send`), so the server
+        // does not reply to it. This is required by the MCP protocol before
+        // the server will accept tool calls.
+        self.send("notifications/initialized", serde_json::json!({}))
+            .await?;
+        Ok(())
+    }
+
+    /// Read lines until a JSON-RPC response with the given `id` is found,
+    /// skipping notifications and out-of-band messages.
+    async fn recv_until(&mut self, expected_id: u64) -> anyhow::Result<Value> {
         loop {
-            line.clear();
-            self.stdout.read_line(&mut line).await?;
-            if line.is_empty() {
-                return Err(anyhow::anyhow!("stdin closed"));
+            let mut line = String::new();
+            let bytes = self.stdout.read_line(&mut line).await?;
+            if bytes == 0 {
+                return Err(anyhow::anyhow!("server stdout closed"));
             }
             if line.trim().is_empty() {
                 continue;
             }
-            // Strip envelope if present
             if line.starts_with('{') {
-                let v: Value = serde_json::from_str(&line)?;
-                return Ok(v);
+                let resp: Value = serde_json::from_str(&line)?;
+                if resp.get("id").and_then(|v| v.as_u64()) == Some(expected_id) {
+                    return Ok(resp);
+                }
+                // Otherwise it is a notification or a response to a different
+                // request; ignore it and keep reading.
             }
         }
     }
 
-    async fn call_tool(&mut self, tool: &str, params: Value) -> anyhow::Result<Value> {
-        self.send(
-            "tools/call",
-            serde_json::json!({
-                "name": tool,
-                "arguments": params,
-            }),
-        )
-        .await?;
-        let resp = self.read_response().await?;
-        Ok(resp)
-    }
-
-    async fn initialize(&mut self) -> anyhow::Result<()> {
-        self.send("initialize", serde_json::json!({})).await?;
-        self.read_response().await?;
-        Ok(())
-    }
-
     async fn pass_workflow_gate(&mut self) -> anyhow::Result<()> {
         // Workflow gate: get_workflow
-        self.send("get_workflow", serde_json::json!({})).await?;
-        self.read_response().await?;
+        let id1 = self.next_id;
+        self.send(
+            "get_workflow",
+            serde_json::json!({ "purpose": "p5-verification" }),
+        )
+        .await?;
+        self.recv_until(id1).await?;
         // Memory gate: search_memory (any query)
+        let id2 = self.next_id;
         self.send(
             "search_memory",
             serde_json::json!({
@@ -131,8 +143,21 @@ impl IsoClient {
             }),
         )
         .await?;
-        let _ = self.read_response().await?;
+        self.recv_until(id2).await?;
         Ok(())
+    }
+
+    async fn call_tool(&mut self, name: &str, params: Value) -> anyhow::Result<Value> {
+        let id = self.next_id;
+        self.send(
+            "tools/call",
+            serde_json::json!({
+                "name": name,
+                "arguments": params,
+            }),
+        )
+        .await?;
+        self.recv_until(id).await
     }
 
     async fn shutdown(&mut self) {
@@ -148,27 +173,46 @@ impl IsoClient {
 pub async fn memory_failure_isolation(stats: &mut TestStats) {
     println!("\n[P5-001] Memory failure isolation:");
 
-    // Find the server binary
+    // Find the server binary — print the resolved path for diagnostics.
     let Some(bin) = crate::paths::server_binary() else {
         crate::teeprintln!("  [SKIP] server binary not found");
         stats.skipped += 1;
         return;
     };
+    eprintln!("  [INFO] Using server binary: {}", bin.display());
 
     let dir = tempfile::tempdir().unwrap();
     let server_path = dir.path().join("robot_brain");
-    std::fs::copy(bin, &server_path).unwrap();
+    std::fs::copy(&bin, &server_path).unwrap();
     let db_path = dir.path().join("robot_brain.db");
 
-    // Phase 1: boot server so tables exist
-    let mut c1 = match IsoClient::start(&server_path).await {
-        Ok(c) => c,
-        Err(e) => {
-            crate::teeprintln!("  [FAIL] phase1 start — {}", e);
-            stats.failed += 1;
-            return;
-        }
-    };
+    // Phase 1: boot server so tables exist — with timeout to prevent indefinite hang.
+    crate::teeprintln!("  Phase 1: boot server (fresh DB)");
+    let start = Instant::now();
+    let mut c1 =
+        match tokio::time::timeout(Duration::from_secs(45), IsoClient::start(&server_path)).await {
+            Ok(Ok(c)) => {
+                crate::teeprintln!(
+                    "  [OK] Phase 1 complete ({:.1}s)",
+                    start.elapsed().as_secs_f64()
+                );
+                c
+            }
+            Ok(Err(e)) => {
+                crate::teeprintln!(
+                    "  [FAIL] Phase 1 start failed after {:.1}s: {}",
+                    start.elapsed().as_secs_f64(),
+                    e
+                );
+                stats.failed += 1;
+                return;
+            }
+            Err(_) => {
+                crate::teeprintln!("  [FAIL] Phase 1 timed out after 45s (server hung on startup)");
+                stats.failed += 1;
+                return;
+            }
+        };
 
     // Verify baseline: search_memory works
     let _baseline = match c1
@@ -200,36 +244,68 @@ pub async fn memory_failure_isolation(stats: &mut TestStats) {
     tokio::time::sleep(Duration::from_millis(200)).await;
 
     // Phase 2: corrupt the memories table
-    {
-        let conn = Connection::open(&db_path).unwrap();
-        // Insert junk data directly into the memories table
+    crate::teeprintln!("  Phase 2: corrupt DB tables");
+    let corrupt_result = (|| -> anyhow::Result<()> {
+        let conn = Connection::open(&db_path)?;
+        // Insert junk data directly into the memories table (matching actual schema).
         conn.execute(
-            "INSERT OR REPLACE INTO memories (id, content, memory_type, confidence, importance, tags)
-             VALUES ('corrupted_row', 'corrupted_content', 'working', 0.5, 0.5, '[]')",
+            "INSERT OR REPLACE INTO memories (id, content, memory_type, confidence, importance, created_at, updated_at)
+             VALUES ('corrupted_row', 'corrupted_content', 'working', 0.5, 0.5, '2024-01-01T00:00:00Z', '2024-01-01T00:00:00Z')",
             [],
-        )
-        .unwrap();
-        // Also corrupt the embeddings table to stress the retrieval path
+        )?;
+        // Also corrupt the memory_embeddings table to stress the retrieval path.
+        // Schema: id TEXT, memory_id TEXT, embedding BLOB, model TEXT
+        let blob = vec![0u8; 32];
         conn.execute(
-            "INSERT OR REPLACE INTO embeddings (id, memory_id, embedding)
-             VALUES ('corrupted_embedding', 'corrupted_row', 'not_a_valid_json_array')",
-            [],
-        )
-        .unwrap();
-        crate::teeprintln!("  • injected corrupted rows into memories + embeddings");
-    }
-
-    // Phase 3: restart server and verify graceful handling
-    let mut c2 = match IsoClient::start(&server_path).await {
-        Ok(c) => c,
+            "INSERT OR REPLACE INTO memory_embeddings (id, memory_id, embedding, model)
+             VALUES ('corrupted_embedding', 'corrupted_row', ?, 'corrupted_model')",
+            rusqlite::params![blob],
+        )?;
+        Ok(())
+    })();
+    match corrupt_result {
+        Ok(()) => {
+            crate::teeprintln!("  [OK] injected corrupted rows into memories + embeddings");
+        }
         Err(e) => {
-            crate::teeprintln!("  [FAIL] phase2 start — {}", e);
+            crate::teeprintln!("  [FAIL] failed to corrupt DB: {}", e);
             stats.failed += 1;
             return;
         }
-    };
+    }
+
+    // Phase 3: restart server and verify graceful handling
+    crate::teeprintln!("  Phase 3: restart server with corrupted DB");
+    let phase3_start = Instant::now();
+    let mut c2 =
+        match tokio::time::timeout(Duration::from_secs(45), IsoClient::start(&server_path)).await {
+            Ok(Ok(c)) => {
+                crate::teeprintln!(
+                    "  [OK] Phase 3 server started ({:.1}s)",
+                    phase3_start.elapsed().as_secs_f64()
+                );
+                c
+            }
+            Ok(Err(e)) => {
+                crate::teeprintln!(
+                    "  [FAIL] Phase 3 start failed after {:.1}s: {}",
+                    phase3_start.elapsed().as_secs_f64(),
+                    e
+                );
+                stats.failed += 1;
+                return;
+            }
+            Err(_) => {
+                crate::teeprintln!(
+                    "  [FAIL] Phase 3 timed out after 45s (server hanging on corrupted DB startup)"
+                );
+                stats.failed += 1;
+                return;
+            }
+        };
 
     // Verify search_memory still works after corruption (no panic)
+    let phase4_start = Instant::now();
     let after_corruption = c2
         .call_tool(
             "search_memory",
@@ -262,8 +338,13 @@ pub async fn memory_failure_isolation(stats: &mut TestStats) {
             stats.passed += 1;
         }
     }
+    crate::teeprintln!(
+        "  [INFO] Phase 4 search_memory test complete ({:.1}s)",
+        phase4_start.elapsed().as_secs_f64()
+    );
 
     // Verify list_memories also works
+    let phase5_start = Instant::now();
     let list_result = c2
         .call_tool(
             "list_memories",
@@ -283,8 +364,13 @@ pub async fn memory_failure_isolation(stats: &mut TestStats) {
             stats.passed += 1;
         }
     }
+    crate::teeprintln!(
+        "  [INFO] Phase 5 list_memories test complete ({:.1}s)",
+        phase5_start.elapsed().as_secs_f64()
+    );
 
     // P6-005: Memory-failure resilience — run_agent_goal with corrupted DB
+    let phase6_start = Instant::now();
     let goal_result = c2
         .call_tool(
             "run_agent_goal",
@@ -316,7 +402,12 @@ pub async fn memory_failure_isolation(stats: &mut TestStats) {
             stats.passed += 1;
         }
     }
+    crate::teeprintln!(
+        "  [INFO] Phase 6 run_agent_goal test complete ({:.1}s)",
+        phase6_start.elapsed().as_secs_f64()
+    );
 
     // Cleanup
     c2.shutdown().await;
+    crate::teeprintln!("  [DONE] P5-001 memory failure isolation complete");
 }

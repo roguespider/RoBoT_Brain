@@ -33,13 +33,18 @@ ok()   { printf "${GRN}=== %s OK ===${RST}\n" "$1"; }
 step "1/1" "test_suite (build + connect + test + code analysis)"
 (
     cd test_suite
-    # Clean robot_brain before building to ensure a fresh build.
-    cargo clean -p robot_brain || true
-    if ! cargo build --release; then
-        fail "test_suite build failed"
+    # Only rebuild test_suite if its own source changed; robot_brain is rebuilt
+    # by test_suite internally (build_server). Skip rebuild when only robot_brain
+    # code changed to save time.
+    if git diff --quiet HEAD -- test_suite/src 2>/dev/null || [ -n "$(git status --porcelain -- test_suite/src 2>/dev/null)" ]; then
+        printf "[REBUILD] test_suite source changed, rebuilding test_suite\n"
+        cargo clean -p robot_brain || true
+        if ! cargo build --release; then
+            fail "test_suite build failed"
+        fi
+    else
+        printf "[SKIP] test_suite binary up-to-date (only robot_brain changed or no changes)\n"
     fi
-    # Run the suite. It may exit non-zero due to code-quality issues even
-    # when all tests pass; we parse the JSON report for the final verdict.
     ./target/release/test_suite || true
 )
 REPORT="$REPO_ROOT/test_suite/test_suite_report.json"

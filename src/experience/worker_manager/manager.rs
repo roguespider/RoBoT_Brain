@@ -64,6 +64,18 @@ impl JobRegistry {
             .ok()
             .and_then(|m| m.get(job_id).cloned())
     }
+
+    /// Find the original job ID for a retry job ID.
+    /// Looks up a different job entry that shares the same experience_id.
+    /// Returns None if this is the original job itself.
+    fn find_original_job_id(&self, job_id: &str) -> Option<String> {
+        let exp_id = self.get_experience_id(job_id)?;
+        let mapping = self.mapping.lock().ok()?;
+        mapping
+            .iter()
+            .find(|(_, v)| **v == exp_id)
+            .and_then(|(k, _)| if k != job_id { Some(k.clone()) } else { None })
+    }
 }
 
 /// Manages workers for all registered observers
@@ -136,29 +148,47 @@ impl WorkerManager {
             let jq = self.job_queue.clone();
             let on = name.clone();
             Arc::new(move |job_id: &str, error: String| {
+                // Find the original job ID. When a retry exhausts its attempts,
+                // we need to mark the original job as failed, not the retry's ID.
+                let original_job_id = jr
+                    .find_original_job_id(job_id)
+                    .unwrap_or_else(|| job_id.to_string());
+
                 if let Some(exp_id) = jr.get_experience_id(job_id) {
                     tracing::warn!(
-                        "Worker {} permanently failed job {} (experience {}): {}",
+                        "Worker {} permanently failed job {} (original {} experience {}): {}",
                         on,
                         job_id,
+                        original_job_id,
                         exp_id,
                         error
                     );
                 }
                 let mut q = jq.lock().unwrap_or_else(|e| e.into_inner());
-                q.mark_failed(job_id, error).unwrap_or_else(|e| {
-                    tracing::warn!("Failed to mark job {} failed: {}", job_id, e);
+                q.mark_failed(&original_job_id, error).unwrap_or_else(|e| {
+                    tracing::warn!("Failed to mark job {} failed: {}", original_job_id, e);
                 });
             })
         };
 
         // Retry callback: register the new retry job ID in the registry so
-        // that the on_complete/on_failed callbacks can later find it
+        // that the on_complete/on_failed callbacks can later find it,
+        // and reset the original job back to Pending in the durable queue
         // (P0-003: durable queue/worker state synchronization).
         let on_retry: OnRetryCallback = {
             let jr = self.job_registry.clone();
+            let jq = self.job_queue.clone();
             Arc::new(move |new_job_id: &str, original_job_id: &str| {
                 jr.register(new_job_id, original_job_id);
+                // Reset original job to Pending so it can be retried.
+                let mut q = jq.lock().unwrap_or_else(|e| e.into_inner());
+                q.mark_complete(original_job_id).unwrap_or_else(|e| {
+                    tracing::warn!(
+                        "Failed to reset original job {} to completed on retry: {}",
+                        original_job_id,
+                        e
+                    );
+                });
             })
         };
 

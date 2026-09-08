@@ -14,12 +14,13 @@
 use crate::TestMcpClient;
 use crate::TestStats;
 
+/// Parse the JSON payload from a tool result's content[0].text.
+/// Handles both raw MCP responses and already-parsed results.
 fn payload_json(result: &serde_json::Value) -> anyhow::Result<serde_json::Value> {
-    let text = result
-        .pointer("/content/0/text")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| anyhow::anyhow!("no content text in tool result"))?;
-    Ok(serde_json::from_str(text)?)
+    if let Some(text) = result.pointer("/content/0/text").and_then(|v| v.as_str()) {
+        return Ok(serde_json::from_str(text)?);
+    }
+    Ok(result.clone())
 }
 
 fn items_contains(items: &serde_json::Value, marker: &str) -> bool {
@@ -101,7 +102,10 @@ pub async fn run_knowledge_query_tests(
     let (text_rust_found, text_python_absent) = match text_query {
         Ok(r) => {
             let v = payload_json(&r).ok().unwrap_or_default();
-            let items = v.get("items").cloned().unwrap_or(serde_json::Value::Array(vec![]));
+            let items = v
+                .get("items")
+                .cloned()
+                .unwrap_or(serde_json::Value::Array(vec![]));
             let rust_found = items_contains(&items, &format!("RustIsFast-{}", suffix));
             let python_absent = !items_contains(&items, &format!("PythonIsEasy-{}", suffix));
             (rust_found, python_absent)
@@ -113,7 +117,9 @@ pub async fn run_knowledge_query_tests(
         }
     };
     if text_rust_found && text_python_absent {
-        crate::teeprintln!("  [OK] text filter: rust item found, python item excluded (apply_query text)");
+        crate::teeprintln!(
+            "  [OK] text filter: rust item found, python item excluded (apply_query text)"
+        );
         stats.passed += 1;
     } else {
         crate::teeprintln!(
@@ -176,7 +182,10 @@ pub async fn run_knowledge_query_tests(
     let (high_found, low_absent) = match conf_query {
         Ok(r) => {
             let v = payload_json(&r).ok().unwrap_or_default();
-            let items = v.get("items").cloned().unwrap_or(serde_json::Value::Array(vec![]));
+            let items = v
+                .get("items")
+                .cloned()
+                .unwrap_or(serde_json::Value::Array(vec![]));
             let hf = items_contains(&items, &format!("HighConfShared-{}", conf_suffix));
             let la = !items_contains(&items, &format!("LowConfShared-{}", conf_suffix));
             (hf, la)
@@ -188,7 +197,9 @@ pub async fn run_knowledge_query_tests(
         }
     };
     if high_found && low_absent {
-        crate::teeprintln!("  [OK] confidence filter: high-conf found, low-conf excluded (apply_query min_confidence)");
+        crate::teeprintln!(
+            "  [OK] confidence filter: high-conf found, low-conf excluded (apply_query min_confidence)"
+        );
         stats.passed += 1;
     } else {
         crate::teeprintln!(
@@ -264,10 +275,14 @@ pub async fn run_knowledge_query_tests(
         }
     };
     if high_is_best {
-        crate::teeprintln!("  [OK] ranking: high-conf(0.9) is best_match over low-conf(0.3) (rank_items)");
+        crate::teeprintln!(
+            "  [OK] ranking: high-conf(0.9) is best_match over low-conf(0.3) (rank_items)"
+        );
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  [FAIL] ranking: high-conf not best_match (expected HighMatchRank first)");
+        crate::teeprintln!(
+            "  [FAIL] ranking: high-conf not best_match (expected HighMatchRank first)"
+        );
         stats.failed += 1;
     }
 

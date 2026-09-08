@@ -72,52 +72,56 @@ impl IsoClient {
         self.next_id += 1;
         let raw = serde_json::to_string(&req)?;
         self.stdin
-            .write_all(format!("{}\x1e", raw).as_bytes())
+            .write_all(format!("{}\n", raw).as_bytes())
             .await?;
         self.stdin.flush().await?;
         Ok(())
     }
 
-    async fn read_response(&mut self) -> anyhow::Result<Value> {
-        let mut line = String::new();
+    /// Read lines until a JSON-RPC response with the given `id` is found,
+    /// skipping notifications and out-of-band messages.
+    async fn recv_until(&mut self, expected_id: u64) -> anyhow::Result<Value> {
         loop {
-            line.clear();
-            self.stdout.read_line(&mut line).await?;
-            if line.is_empty() {
-                return Err(anyhow::anyhow!("stdin closed"));
+            let mut line = String::new();
+            let bytes = self.stdout.read_line(&mut line).await?;
+            if bytes == 0 {
+                return Err(anyhow::anyhow!("server stdout closed"));
             }
             if line.trim().is_empty() {
                 continue;
             }
             if line.starts_with('{') {
-                let v: Value = serde_json::from_str(&line)?;
-                return Ok(v);
+                let resp: Value = serde_json::from_str(&line)?;
+                if resp.get("id").and_then(|v| v.as_u64()) == Some(expected_id) {
+                    return Ok(resp);
+                }
+                // Otherwise it is a notification or a response to a different
+                // request; ignore it and keep reading.
             }
         }
     }
 
-    async fn call_tool(&mut self, tool: &str, params: Value) -> anyhow::Result<Value> {
+    async fn initialize(&mut self) -> anyhow::Result<()> {
+        let id = self.next_id;
         self.send(
-            "tools/call",
+            "initialize",
             serde_json::json!({
-                "name": tool,
-                "arguments": params,
+                "protocolVersion": "2025-03-26",
+                "capabilities": {"tools": {}},
+                "clientInfo": {"name":"test","version":"1.0"}
             }),
         )
         .await?;
-        let resp = self.read_response().await?;
-        Ok(resp)
-    }
-
-    async fn initialize(&mut self) -> anyhow::Result<()> {
-        self.send("initialize", serde_json::json!({})).await?;
-        self.read_response().await?;
+        self.recv_until(id).await?;
+        self.send("notifications/initialized", Value::Null).await?;
         Ok(())
     }
 
     async fn pass_workflow_gate(&mut self) -> anyhow::Result<()> {
+        let id1 = self.next_id;
         self.send("get_workflow", serde_json::json!({})).await?;
-        self.read_response().await?;
+        self.recv_until(id1).await?;
+        let id2 = self.next_id;
         self.send(
             "search_memory",
             serde_json::json!({
@@ -126,8 +130,21 @@ impl IsoClient {
             }),
         )
         .await?;
-        let _ = self.read_response().await?;
+        self.recv_until(id2).await?;
         Ok(())
+    }
+
+    async fn call_tool(&mut self, name: &str, params: Value) -> anyhow::Result<Value> {
+        let id = self.next_id;
+        self.send(
+            "tools/call",
+            serde_json::json!({
+                "name": name,
+                "arguments": params,
+            }),
+        )
+        .await?;
+        self.recv_until(id).await
     }
 
     async fn shutdown(&mut self) {

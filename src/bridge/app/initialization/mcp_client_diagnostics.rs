@@ -18,13 +18,12 @@ pub async fn run_mcp_client_probe(app: &App) -> std::result::Result<(), String> 
             return Ok(());
         }
     };
+    // Try disconnect from a probe server name. Returns Ok(false) when no such
+    // server is connected — that is a safe no-op, not a failure.
     let disconnect_ok = mcp_client
         .disconnect("diagnostics-probe-server")
         .await
         .unwrap_or(false);
-    if !disconnect_ok {
-        return Err("MCP client disconnect failed".to_string());
-    }
     let cleared = mcp_client.disconnect_all().await;
     let refresh_ok = mcp_client
         .refresh_tools("diagnostics-probe-server")

@@ -27,12 +27,16 @@ use crate::TestMcpClient;
 use crate::TestStats;
 
 /// Parse the JSON payload from a tool result's content[0].text.
+/// Handles both raw MCP responses (with content[0].text) and already-parsed
+/// results returned by TestMcpClient::call_tool (which auto-parses the
+/// content text into a JSON object).
 fn payload_json(result: &serde_json::Value) -> anyhow::Result<serde_json::Value> {
-    let text = result
-        .pointer("/content/0/text")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| anyhow::anyhow!("no content text in tool result"))?;
-    Ok(serde_json::from_str(text)?)
+    // Check if this is a raw MCP response with content[0].text
+    if let Some(text) = result.pointer("/content/0/text").and_then(|v| v.as_str()) {
+        return Ok(serde_json::from_str(text)?);
+    }
+    // Already parsed by call_tool — return as-is
+    Ok(result.clone())
 }
 
 /// f32-stored traits compare with tolerance (avoid 0.7 vs 0.699999988079071).
@@ -43,7 +47,10 @@ fn approx(a: f64, b: f64) -> bool {
 /// Reset personality to the "balanced" preset so tests start from known state.
 async fn reset_to_balanced(client: &mut TestMcpClient) {
     let _ = client
-        .call_tool("apply_personality_preset", serde_json::json!({ "preset": "balanced" }))
+        .call_tool(
+            "apply_personality_preset",
+            serde_json::json!({ "preset": "balanced" }),
+        )
         .await;
 }
 
@@ -55,7 +62,10 @@ pub async fn run_personality_tests(
 
     // --- test_default_personality ---
     reset_to_balanced(client).await;
-    let default_ok = match client.call_tool("get_personality", serde_json::json!({})).await {
+    let default_ok = match client
+        .call_tool("get_personality", serde_json::json!({}))
+        .await
+    {
         Ok(r) => payload_json(&r)
             .ok()
             .map(|v| {
@@ -75,7 +85,9 @@ pub async fn run_personality_tests(
         }
     };
     if default_ok {
-        crate::teeprintln!("  [OK] default personality: preset=balanced, curiosity=0.7 (Personality::new defaults)");
+        crate::teeprintln!(
+            "  [OK] default personality: preset=balanced, curiosity=0.7 (Personality::new defaults)"
+        );
         stats.passed += 1;
     } else {
         crate::teeprintln!("  [FAIL] default personality: expected preset=balanced, curiosity=0.7");
@@ -85,7 +97,10 @@ pub async fn run_personality_tests(
     // --- test_apply_preset (valid) ---
     reset_to_balanced(client).await;
     let apply_ok = match client
-        .call_tool("apply_personality_preset", serde_json::json!({ "preset": "analytical" }))
+        .call_tool(
+            "apply_personality_preset",
+            serde_json::json!({ "preset": "analytical" }),
+        )
         .await
     {
         Ok(r) => {
@@ -96,11 +111,15 @@ pub async fn run_personality_tests(
             if !applied {
                 false
             } else {
-                match client.call_tool("get_personality", serde_json::json!({})).await {
+                match client
+                    .call_tool("get_personality", serde_json::json!({}))
+                    .await
+                {
                     Ok(g) => payload_json(&g)
                         .ok()
                         .map(|v| {
-                            let preset = v.get("preset").and_then(|p| p.as_str()) == Some("analytical");
+                            let preset =
+                                v.get("preset").and_then(|p| p.as_str()) == Some("analytical");
                             let caution = v
                                 .pointer("/traits/caution")
                                 .and_then(|t| t.as_f64())
@@ -125,7 +144,9 @@ pub async fn run_personality_tests(
         }
     };
     if apply_ok {
-        crate::teeprintln!("  [OK] apply preset: analytical applied, caution=0.8, thoroughness=0.95 (Personality::apply_preset valid)");
+        crate::teeprintln!(
+            "  [OK] apply preset: analytical applied, caution=0.8, thoroughness=0.95 (Personality::apply_preset valid)"
+        );
         stats.passed += 1;
     } else {
         crate::teeprintln!("  [FAIL] apply preset: analytical not applied or traits wrong");
@@ -135,7 +156,10 @@ pub async fn run_personality_tests(
     // --- test_apply_invalid_preset ---
     reset_to_balanced(client).await;
     let invalid_ok = match client
-        .call_tool("apply_personality_preset", serde_json::json!({ "preset": "nonexistent_preset_xyz" }))
+        .call_tool(
+            "apply_personality_preset",
+            serde_json::json!({ "preset": "nonexistent_preset_xyz" }),
+        )
         .await
     {
         Ok(r) => {
@@ -146,11 +170,16 @@ pub async fn run_personality_tests(
             if !applied_false {
                 false
             } else {
-                match client.call_tool("get_personality", serde_json::json!({})).await {
+                match client
+                    .call_tool("get_personality", serde_json::json!({}))
+                    .await
+                {
                     Ok(g) => payload_json(&g)
                         .ok()
                         .and_then(|v| {
-                            v.get("preset").and_then(|p| p.as_str()).map(|s| s == "balanced")
+                            v.get("preset")
+                                .and_then(|p| p.as_str())
+                                .map(|s| s == "balanced")
                         })
                         .unwrap_or(false),
                     Err(_) => false,
@@ -164,16 +193,23 @@ pub async fn run_personality_tests(
         }
     };
     if invalid_ok {
-        crate::teeprintln!("  [OK] invalid preset: applied=false, preset stays balanced (Personality::apply_preset invalid)");
+        crate::teeprintln!(
+            "  [OK] invalid preset: applied=false, preset stays balanced (Personality::apply_preset invalid)"
+        );
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  [FAIL] invalid preset: should report applied=false and leave preset unchanged");
+        crate::teeprintln!(
+            "  [FAIL] invalid preset: should report applied=false and leave preset unchanged"
+        );
         stats.failed += 1;
     }
 
     // --- test_list_presets ---
     reset_to_balanced(client).await;
-    let list_ok = match client.call_tool("list_personality_presets", serde_json::json!({})).await {
+    let list_ok = match client
+        .call_tool("list_personality_presets", serde_json::json!({}))
+        .await
+    {
         Ok(r) => payload_json(&r)
             .ok()
             .map(|v| {
@@ -195,7 +231,9 @@ pub async fn run_personality_tests(
         }
     };
     if list_ok {
-        crate::teeprintln!("  [OK] list presets: balanced/analytical/creative present (Personality::list_presets)");
+        crate::teeprintln!(
+            "  [OK] list presets: balanced/analytical/creative present (Personality::list_presets)"
+        );
         stats.passed += 1;
     } else {
         crate::teeprintln!("  [FAIL] list presets: expected balanced/analytical/creative");
@@ -237,7 +275,9 @@ pub async fn run_personality_tests(
         }
     };
     if set_ok {
-        crate::teeprintln!("  [OK] set trait: curiosity set to 0.9 and reflected in get (Personality::set_traits)");
+        crate::teeprintln!(
+            "  [OK] set trait: curiosity set to 0.9 and reflected in get (Personality::set_traits)"
+        );
         stats.passed += 1;
     } else {
         crate::teeprintln!("  [FAIL] set trait: curiosity not updated to 0.9");
@@ -260,19 +300,27 @@ pub async fn run_personality_tests(
                 .await
                 .ok()
                 .and_then(|r| payload_json(&r).ok())
-                .and_then(|v| v.get("communication_style").and_then(|s| s.as_str()).map(String::from));
+                .and_then(|v| {
+                    v.get("communication_style")
+                        .and_then(|s| s.as_str())
+                        .map(String::from)
+                });
             if got.as_deref() != Some(expect) {
                 all_match = false;
                 crate::teeprintln!(
                     "  [FAIL] comm style: verbosity={} expected {} got {:?} (get_communication_style)",
-                    verbosity, expect, got
+                    verbosity,
+                    expect,
+                    got
                 );
             }
         }
         all_match
     };
     if style_ok {
-        crate::teeprintln!("  [OK] communication style: verbosity 0.2/0.5/0.8 -> Concise/Balanced/Detailed (get_communication_style)");
+        crate::teeprintln!(
+            "  [OK] communication style: verbosity 0.2/0.5/0.8 -> Concise/Balanced/Detailed (get_communication_style)"
+        );
         stats.passed += 1;
     } else {
         stats.failed += 1;
@@ -282,17 +330,35 @@ pub async fn run_personality_tests(
     reset_to_balanced(client).await;
     let content = "Line 1\nLine 2\nLine 3\nLine 4\nLine 5\nLine 6";
     let fmt_ok = match (
-        client.call_tool("format_response", serde_json::json!({ "content": content, "style": "detailed" })).await,
-        client.call_tool("format_response", serde_json::json!({ "content": content, "style": "concise" })).await,
+        client
+            .call_tool(
+                "format_response",
+                serde_json::json!({ "content": content, "style": "detailed" }),
+            )
+            .await,
+        client
+            .call_tool(
+                "format_response",
+                serde_json::json!({ "content": content, "style": "concise" }),
+            )
+            .await,
     ) {
         (Ok(d), Ok(co)) => {
             let detailed = payload_json(&d)
                 .ok()
-                .and_then(|v| v.get("formatted").and_then(|f| f.as_str()).map(String::from))
+                .and_then(|v| {
+                    v.get("formatted")
+                        .and_then(|f| f.as_str())
+                        .map(String::from)
+                })
                 .unwrap_or_default();
             let concise = payload_json(&co)
                 .ok()
-                .and_then(|v| v.get("formatted").and_then(|f| f.as_str()).map(String::from))
+                .and_then(|v| {
+                    v.get("formatted")
+                        .and_then(|f| f.as_str())
+                        .map(String::from)
+                })
                 .unwrap_or_default();
             // Detailed keeps all 6 lines; concise is shorter than detailed.
             detailed.lines().count() == 6 && concise.len() < detailed.len()
@@ -304,17 +370,24 @@ pub async fn run_personality_tests(
         }
     };
     if fmt_ok {
-        crate::teeprintln!("  [OK] format response: detailed keeps all lines, concise is shorter (CommunicationStyle::format_response)");
+        crate::teeprintln!(
+            "  [OK] format response: detailed keeps all lines, concise is shorter (CommunicationStyle::format_response)"
+        );
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  [FAIL] format response: detailed should keep all 6 lines and be longer than concise");
+        crate::teeprintln!(
+            "  [FAIL] format response: detailed should keep all 6 lines and be longer than concise"
+        );
         stats.failed += 1;
     }
 
     // --- test_decide (get_personality_decision with cautious preset) ---
     reset_to_balanced(client).await;
     let _ = client
-        .call_tool("apply_personality_preset", serde_json::json!({ "preset": "cautious" }))
+        .call_tool(
+            "apply_personality_preset",
+            serde_json::json!({ "preset": "cautious" }),
+        )
         .await;
     let decide_ok = match client
         .call_tool(
@@ -346,10 +419,14 @@ pub async fn run_personality_tests(
         }
     };
     if decide_ok {
-        crate::teeprintln!("  [OK] decide: cautious preset -> reason mentions cautious, approach Thorough (Personality::decide)");
+        crate::teeprintln!(
+            "  [OK] decide: cautious preset -> reason mentions cautious, approach Thorough (Personality::decide)"
+        );
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  [FAIL] decide: cautious preset should mention cautious and yield Thorough approach");
+        crate::teeprintln!(
+            "  [FAIL] decide: cautious preset should mention cautious and yield Thorough approach"
+        );
         stats.failed += 1;
     }
 

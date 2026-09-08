@@ -150,6 +150,14 @@ impl IsoClient {
         Ok(())
     }
 
+    /// Call the MCP protocol method `tools/list` to get available tools.
+    async fn list_tools(&mut self) -> anyhow::Result<Value> {
+        let id = self
+            .send_request("tools/list", serde_json::json!({}))
+            .await?;
+        self.recv_until(id).await
+    }
+
     async fn call_tool(&mut self, name: &str, args: Value) -> anyhow::Result<Value> {
         let id = self
             .send_request(
@@ -228,11 +236,13 @@ pub async fn run_fresh_start_tests(stats: &mut TestStats) -> anyhow::Result<()> 
     crate::teeprintln!("  [OK] M1: robot_brain.db created beside exe");
 
     // Verify tools/list returns a non-empty catalog.
-    let tools_resp = client.call_tool("tools/list", serde_json::json!({})).await;
+    // The MCP protocol returns {"result": {"tools": [...]}}.
+    let tools_resp = client.list_tools().await;
     match tools_resp {
         Ok(resp) => {
             let tools_count = resp
-                .pointer("/result/tools")
+                .get("result")
+                .and_then(|r| r.get("tools"))
                 .and_then(|v| v.as_array())
                 .map(|a| a.len())
                 .unwrap_or(0);
@@ -321,10 +331,7 @@ pub async fn run_fresh_start_tests(stats: &mut TestStats) -> anyhow::Result<()> 
     let mut client3 = match IsoClient::start(&server_path).await {
         Ok(c) => Some(c),
         Err(e) => {
-            crate::teeprintln!(
-                "  [WARN] M3: could not boot for shutdown check: {}",
-                e
-            );
+            crate::teeprintln!("  [WARN] M3: could not boot for shutdown check: {}", e);
             None
         }
     };

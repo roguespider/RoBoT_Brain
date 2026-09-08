@@ -1189,7 +1189,8 @@ async fn main() -> anyhow::Result<()> {
     teeprintln!("{}", "#".repeat(120));
 
     let phase = PhaseTimer::start("BUILD + SETUP");
-    let server_path = build_server().await?;
+    // Reuse the already-built server_path from the first build_server call
+    // above to avoid the double-build that wastes time on cargo clean + rebuild.
     let env = setup_test_environment(&server_path)?;
     let mut client = TestMcpClient::new(&env.server_path).await?;
     phase.done();
@@ -1226,6 +1227,16 @@ async fn main() -> anyhow::Result<()> {
 
     // T1-10: verify the SQLite JobQueue survives a process restart.
     tests::queue_durability::run_queue_durability_tests(&mut stats).await?;
+
+    // P0-001: verify queue lifecycle (channel-full, worker failure, successful completion).
+    tests::queue_durability::run_queue_lifecycle_tests(&mut stats).await?;
+
+    // P0-002: verify unique durable job IDs when multiple observers subscribe
+    // to the same event (multiple observers cannot overwrite each other).
+    tests::queue_durability::run_p002_unique_job_identity_tests(&mut stats).await?;
+
+    // P0-003: verify durable queue / worker state synchronization (retry lifecycle).
+    tests::queue_durability::run_p003_retry_lifecycle_tests(&mut stats).await?;
 
     // P5-001-M3: verify memory failure isolation (corrupted DB → no panic).
     tests::memory_failure_isolation::memory_failure_isolation(&mut stats).await;

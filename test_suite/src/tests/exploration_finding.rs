@@ -19,17 +19,17 @@
 use crate::TestMcpClient;
 use crate::TestStats;
 
-/// Extract the JSON payload carried in `result.content[0].text`.
-fn payload_text(result: &serde_json::Value) -> anyhow::Result<&str> {
-    result
-        .pointer("/content/0/text")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| anyhow::anyhow!("no content text in tool result"))
-}
-
 /// Parse the tool result's text payload as JSON.
+/// Handles both raw MCP responses (with content[0].text) and already-parsed
+/// results returned by TestMcpClient::call_tool (which auto-parses the
+/// content text into a JSON object).
 fn payload_json(result: &serde_json::Value) -> anyhow::Result<serde_json::Value> {
-    Ok(serde_json::from_str(payload_text(result)?)?)
+    // Check for raw MCP response first
+    if let Some(text) = result.pointer("/content/0/text").and_then(|v| v.as_str()) {
+        return Ok(serde_json::from_str(text)?);
+    }
+    // Already parsed by call_tool — return as-is
+    Ok(result.clone())
 }
 
 pub async fn run_exploration_finding_tests(
@@ -105,10 +105,15 @@ pub async fn run_exploration_finding_tests(
         }
     };
     if finding_count == 1 {
-        crate::teeprintln!("  [OK] complete_exploration created 1 finding (ExplorationFinding::new)");
+        crate::teeprintln!(
+            "  [OK] complete_exploration created 1 finding (ExplorationFinding::new)"
+        );
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  [FAIL] complete_exploration finding_count={} (expected 1)", finding_count);
+        crate::teeprintln!(
+            "  [FAIL] complete_exploration finding_count={} (expected 1)",
+            finding_count
+        );
         stats.failed += 1;
         return Ok(());
     }
@@ -132,14 +137,13 @@ pub async fn run_exploration_finding_tests(
                             .and_then(|i| i.as_str())
                             .unwrap_or("")
                             .to_string();
-                        let promoted = f
-                            .get("promoted")
-                            .and_then(|p| p.as_bool())
-                            .unwrap_or(true);
+                        let promoted = f.get("promoted").and_then(|p| p.as_bool()).unwrap_or(true);
                         (id, promoted)
                     }
                     None => {
-                        crate::teeprintln!("  [FAIL] get_exploration_status — no findings in payload");
+                        crate::teeprintln!(
+                            "  [FAIL] get_exploration_status — no findings in payload"
+                        );
                         stats.failed += 1;
                         return Ok(());
                     }

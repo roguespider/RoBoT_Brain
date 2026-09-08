@@ -19,12 +19,16 @@
 use crate::TestMcpClient;
 use crate::TestStats;
 
+/// Parse the JSON payload from a tool result's content[0].text.
+/// Handles both raw MCP responses (with content[0].text) and already-parsed
+/// results returned by TestMcpClient::call_tool (which auto-parses the
+/// content text into a JSON object).
 fn payload_json(result: &serde_json::Value) -> anyhow::Result<serde_json::Value> {
-    let text = result
-        .pointer("/content/0/text")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| anyhow::anyhow!("no content text in tool result"))?;
-    Ok(serde_json::from_str(text)?)
+    if let Some(text) = result.pointer("/content/0/text").and_then(|v| v.as_str()) {
+        return Ok(serde_json::from_str(text)?);
+    }
+    // Already parsed by call_tool — return as-is
+    Ok(result.clone())
 }
 
 fn unique_suffix() -> String {
@@ -109,7 +113,10 @@ pub async fn run_embeddings_tests(
         }
     };
     if !found {
-        crate::teeprintln!("  [FAIL] get_embedding: embedding not found after store (memory_id={})", memory_id);
+        crate::teeprintln!(
+            "  [FAIL] get_embedding: embedding not found after store (memory_id={})",
+            memory_id
+        );
         stats.failed += 1;
         return Ok(());
     }
@@ -158,7 +165,9 @@ pub async fn run_embeddings_tests(
         }
     };
     if not_found {
-        crate::teeprintln!("  [OK] get+delete embedding by memory_id: store->found->delete->not found");
+        crate::teeprintln!(
+            "  [OK] get+delete embedding by memory_id: store->found->delete->not found"
+        );
         stats.passed += 1;
     } else {
         crate::teeprintln!("  [FAIL] get_embedding: still found after delete (expected not found)");

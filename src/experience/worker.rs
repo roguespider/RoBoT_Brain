@@ -163,6 +163,12 @@ impl ExperienceWorker {
                     observer_name,
                     job_id
                 );
+                // Mark the job as failed in the durable queue so it is not
+                // silently lost (P0-001: durable queue completion semantics).
+                if let Some(cb) = &self.on_failed {
+                    let job_id_str = job_id.to_string();
+                    cb(&job_id_str, "Event type not accepted by this observer".to_string());
+                }
                 continue;
             }
 

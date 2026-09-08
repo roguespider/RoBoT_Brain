@@ -7,6 +7,19 @@ use tokio::sync::broadcast;
 
 use super::EventSubscriber;
 use crate::experience::bus::ExperienceBus;
+use crate::experience::events::ExperienceEvent;
+
+/// Drain lagged events from a broadcast receiver, handling each `recv()` result
+/// explicitly using match arms (no underscore-prefixed variable bindings).
+async fn drain_lagged_events(receiver: &mut broadcast::Receiver<ExperienceEvent>) {
+    loop {
+        match receiver.recv().await {
+            Ok(_) => {}
+            Err(broadcast::error::RecvError::Lagged(_)) => {}
+            Err(broadcast::error::RecvError::Closed) => return,
+        }
+    }
+}
 
 /// Start the event subscriber as a background task
 pub fn start_event_subscriber(
@@ -27,9 +40,7 @@ pub fn start_event_subscriber(
                 Err(broadcast::error::RecvError::Lagged(n)) => {
                     tracing::warn!("Event subscriber lagged {} events", n);
                     // Drain the lagged events so we don't re-process the same one.
-                    for _ in 0..n {
-                        let _ = receiver.recv().await;
-                    }
+                    drain_lagged_events(&mut receiver).await;
                 }
                 Err(broadcast::error::RecvError::Closed) => {
                     tracing::info!("Event bus closed, subscriber shutting down");

@@ -26,12 +26,13 @@
 use crate::TestMcpClient;
 use crate::TestStats;
 
+/// Parse the JSON payload from a tool result's content[0].text.
+/// Handles both raw MCP responses and already-parsed results.
 fn payload_json(result: &serde_json::Value) -> anyhow::Result<serde_json::Value> {
-    let text = result
-        .pointer("/content/0/text")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| anyhow::anyhow!("no content text in tool result"))?;
-    Ok(serde_json::from_str(text)?)
+    if let Some(text) = result.pointer("/content/0/text").and_then(|v| v.as_str()) {
+        return Ok(serde_json::from_str(text)?);
+    }
+    Ok(result.clone())
 }
 
 fn unique_suffix() -> String {
@@ -44,10 +45,7 @@ fn unique_suffix() -> String {
 }
 
 /// Store a memory and return its content marker for later search verification.
-async fn store_memory(
-    client: &mut TestMcpClient,
-    content: &str,
-) -> anyhow::Result<()> {
+async fn store_memory(client: &mut TestMcpClient, content: &str) -> anyhow::Result<()> {
     client
         .call_tool(
             "store_memory",
@@ -84,15 +82,13 @@ pub async fn run_memory_retrieval_tests(
         Ok(r) => payload_json(&r)
             .ok()
             .and_then(|v| {
-                v.get("results")
-                    .and_then(|r| r.as_array())
-                    .map(|arr| {
-                        arr.iter().any(|item| {
-                            item.get("content")
-                                .and_then(|c| c.as_str())
-                                .is_some_and(|c| c.contains(&marker))
-                        })
+                v.get("results").and_then(|r| r.as_array()).map(|arr| {
+                    arr.iter().any(|item| {
+                        item.get("content")
+                            .and_then(|c| c.as_str())
+                            .is_some_and(|c| c.contains(&marker))
                     })
+                })
             })
             .unwrap_or(false),
         Err(e) => {
@@ -102,10 +98,15 @@ pub async fn run_memory_retrieval_tests(
         }
     };
     if found {
-        crate::teeprintln!("  [OK] retrieve working: stored item found in search results (get_from_working via retrieve)");
+        crate::teeprintln!(
+            "  [OK] retrieve working: stored item found in search results (get_from_working via retrieve)"
+        );
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  [FAIL] retrieve working: marker not found in results (marker={})", marker);
+        crate::teeprintln!(
+            "  [FAIL] retrieve working: marker not found in results (marker={})",
+            marker
+        );
         stats.failed += 1;
         return Ok(());
     }
@@ -129,7 +130,10 @@ pub async fn run_memory_retrieval_tests(
     let (found_alpha, found_beta) = match unified_result {
         Ok(r) => {
             let v = payload_json(&r).ok().unwrap_or_default();
-            let results = v.get("results").cloned().unwrap_or(serde_json::Value::Array(vec![]));
+            let results = v
+                .get("results")
+                .cloned()
+                .unwrap_or(serde_json::Value::Array(vec![]));
             let fa = results
                 .as_array()
                 .map(|arr| {
@@ -159,7 +163,9 @@ pub async fn run_memory_retrieval_tests(
         }
     };
     if found_alpha && found_beta {
-        crate::teeprintln!("  [OK] retrieve unified: both items found in search results (retrieve unions results)");
+        crate::teeprintln!(
+            "  [OK] retrieve unified: both items found in search results (retrieve unions results)"
+        );
         stats.passed += 1;
     } else {
         crate::teeprintln!(

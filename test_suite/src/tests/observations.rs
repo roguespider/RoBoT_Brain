@@ -22,12 +22,13 @@ use crate::TestMcpClient;
 use crate::TestStats;
 
 /// Extract the JSON payload carried in `result.content[0].text`.
+/// Parse the JSON payload from a tool result's content[0].text.
+/// Handles both raw MCP responses and already-parsed results.
 fn payload_json(result: &serde_json::Value) -> anyhow::Result<serde_json::Value> {
-    let text = result
-        .pointer("/content/0/text")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| anyhow::anyhow!("no content text in tool result"))?;
-    Ok(serde_json::from_str(text)?)
+    if let Some(text) = result.pointer("/content/0/text").and_then(|v| v.as_str()) {
+        return Ok(serde_json::from_str(text)?);
+    }
+    Ok(result.clone())
 }
 
 pub async fn run_observations_tests(

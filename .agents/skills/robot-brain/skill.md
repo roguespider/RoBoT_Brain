@@ -124,15 +124,6 @@ Create hypothesis: "Using module-based refactoring reduces compilation time for 
 | `LLM_API_KEY` | API key for LLM | Required |
 | `LLM_MODEL` | Model name | `anthropic/claude-sonnet-4-5-20250929` |
 
-## Example Script
-
-See `.agents/examples/robot_brain_agent.py` for a complete integration example:
-
-```bash
-export LLM_API_KEY="your-key"
-python .agents/examples/robot_brain_agent.py -m "Search memory for architecture patterns"
-```
-
 ## Live Testing
 
 The fastest way to verify the server works after compiling is `test_suite` (Rust, built into the test suite):
@@ -146,8 +137,4 @@ cd test_suite && cargo build --release && ./target/release/test_suite
 
 # Introspect one tool's live inputSchema (required/optional params)
 ./target/release/test_suite --probe register_agent
-```
-
-
-
-`mcp_client.py` is stdlib-only (no dependencies), auto-detects the binary via `ROBOT_BRAIN_PATH` or relative path, and runs the `get_workflow`→`search_memory` gate inside `init()`.
+``

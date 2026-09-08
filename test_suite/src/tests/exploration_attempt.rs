@@ -21,12 +21,13 @@
 use crate::TestMcpClient;
 use crate::TestStats;
 
+/// Parse the JSON payload from a tool result's content[0].text.
+/// Handles both raw MCP responses and already-parsed results.
 fn payload_json(result: &serde_json::Value) -> anyhow::Result<serde_json::Value> {
-    let text = result
-        .pointer("/content/0/text")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| anyhow::anyhow!("no content text in tool result"))?;
-    Ok(serde_json::from_str(text)?)
+    if let Some(text) = result.pointer("/content/0/text").and_then(|v| v.as_str()) {
+        return Ok(serde_json::from_str(text)?);
+    }
+    Ok(result.clone())
 }
 
 pub async fn run_exploration_attempt_tests(
@@ -46,13 +47,11 @@ pub async fn run_exploration_attempt_tests(
         )
         .await;
     let exploration_id = match start_result {
-        Ok(r) => payload_json(&r)
-            .ok()
-            .and_then(|v| {
-                v.get("exploration_id")
-                    .and_then(|i| i.as_str())
-                    .map(|s| s.to_string())
-            }),
+        Ok(r) => payload_json(&r).ok().and_then(|v| {
+            v.get("exploration_id")
+                .and_then(|i| i.as_str())
+                .map(|s| s.to_string())
+        }),
         Err(e) => {
             crate::teeprintln!("  [FAIL] start_exploration — {}", e);
             stats.failed += 1;
@@ -94,7 +93,10 @@ pub async fn run_exploration_attempt_tests(
         crate::teeprintln!("  [OK] record_attempt(success) created 1 attempt (new()+builders)");
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  [FAIL] record_attempt(success) count={} (expected 1)", count1);
+        crate::teeprintln!(
+            "  [FAIL] record_attempt(success) count={} (expected 1)",
+            count1
+        );
         stats.failed += 1;
         return Ok(());
     }
@@ -126,7 +128,10 @@ pub async fn run_exploration_attempt_tests(
         crate::teeprintln!("  [OK] record_attempt(failure) created 2nd attempt");
         stats.passed += 1;
     } else {
-        crate::teeprintln!("  [FAIL] record_attempt(failure) count={} (expected 2)", count2);
+        crate::teeprintln!(
+            "  [FAIL] record_attempt(failure) count={} (expected 2)",
+            count2
+        );
         stats.failed += 1;
         return Ok(());
     }
@@ -192,9 +197,7 @@ pub async fn run_exploration_attempt_tests(
         .and_then(|a| a.get("actual_result").and_then(|a| a.as_str()))
         .unwrap_or("");
     if !success1 && act1 == "Still broken" {
-        crate::teeprintln!(
-            "  [OK] attempt[1] success=false (with_actual_result mismatch branch)"
-        );
+        crate::teeprintln!("  [OK] attempt[1] success=false (with_actual_result mismatch branch)");
         stats.passed += 1;
     } else {
         crate::teeprintln!(
