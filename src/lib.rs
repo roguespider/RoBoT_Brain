@@ -6,6 +6,7 @@ pub mod experience;
 pub mod knowledge;
 pub mod learning;
 pub mod memory;
+pub mod models;
 pub mod personality;
 pub mod planner;
 pub mod research;
