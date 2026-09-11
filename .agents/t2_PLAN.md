@@ -34,10 +34,7 @@ Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architec
 
 
 
-- [ ] **T2-05** — Write the shared invariants for identity and correlation — Chapter 5 (Data Contracts, "API boundaries") + Chapter 16 (Cognitive Coordination Layer).
-  - **▸** Create `.agents/notes/invariants.md`. Section 1: identity (UUID v4 for entities, never reuse, no PII in IDs) citing Chapter 5.
-  - **▸** Section 2: correlation (every event carries `correlation_id`, every response carries `reply_to`) citing Chapter 16.1.
-  - **▸** Add a checklist at the bottom: "All public types MUST have an `id` and a `correlation_id` field". Commit.
+
 - [ ] **T2-06** — Write the shared invariants for provenance, evidence, uncertainty, failure visibility, and versioned evolution — Chapter 5 (Data Contracts) + Chapter 19 (Confidence System).
   - **▸** Append to `.agents/notes/invariants.md`. Section 3: provenance (`source`, `source_kind`, `created_by`) on every record.
   - **▸** Section 4: evidence (every claim links to at least one `Evidence` record or marks itself "ungrounded").
