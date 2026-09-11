@@ -31,18 +31,7 @@ Upgrade the existing subsystems to the v0.0.2 architecture in a dependency-first
 ## 0. Architecture foundations and invariants
 Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Part I, Chapters 1-4.
 
-- [ ] **T2-01** — Write a short v0.0.2 architecture note covering persistence, continuity, memory-first design, experience-based learning, and controlled evolution — Chapter 1 (Vision and Philosophy) + Chapter 2 (Core Design Principles, items 3 and 5).
-  - **▸** Create `.agents/notes/v0_0_2_foundation.md` with a "Memory-First Design" section (1 paragraph citing Chapter 2.3 "Memory-first architecture").
-  - **▸** Add an "Experience-Based Learning" section (1 paragraph citing Chapter 2.5 "Controlled evolution" and Chapter 10 "Learning Engine" header).
-  - **▸** Add a "Persistence and Continuity" section (1 paragraph citing Chapter 17 "Memory Architecture" — memory hierarchy, promotion, lifecycle).
-  - **▸** Add a "Controlled Evolution" section (1 paragraph citing Chapter 2.6 "Controlled evolution").
-  - **▸** Verify: `test -f .agents/notes/v0_0_2_foundation.md && wc -l .agents/notes/v0_0_2_foundation.md` shows >= 20 lines. Commit.
-- [ ] **T2-02** — Write a short v0.0.2 architecture note covering modularity, explainability, event-driven behavior, confidence-based decisions, and controlled evolution — Chapter 2 (Core Design Principles, items 1, 2, 4, 5).
-  - **▸** Append a "Modularity" section to `.agents/notes/v0_0_2_foundation.md` citing Chapter 2.1.
-  - **▸** Append "Explainability" citing Chapter 2.2 and Chapter 19 "Confidence System".
-  - **▸** Append "Event-Driven Design" citing Chapter 2.4 and Chapter 16 "Cognitive Coordination Layer".
-  - **▸** Append "Confidence-Based Decisions" citing Chapter 2.5 (different angle) and Chapter 19.1 "Confidence scoring".
-  - **▸** Append "Controlled Evolution" cross-link to T2-01's section. Commit.
+
 - [ ] **T2-03** — Write a subsystem ownership map with one owner per subsystem and no hidden cross-ownership — Chapter 3 (High Level System Overview, "Major subsystem relationships").
   - **▸** Create `.agents/notes/subsystem_ownership.md` with a table: subsystem | owning module path | primary responsibility | v0.0.2 chapter. Cover all 16 chapters (6-22) of Part II+III+IV.
   - **▸** Verify each row points to exactly one `src/<subsystem>/` directory in the codebase: `ls src/`.

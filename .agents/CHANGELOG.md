@@ -1,5 +1,17 @@
 # Changelog
 
+## TIER 2 — Reach v0.0.2
+
+### T2-01 — Architecture Foundation Note
+- **Files:** `.agents/notes/v0_0_2_foundation.md`
+- **Change:** Created foundation note with 4 sections: Memory-First Design (Ch 2.3), Experience-Based Learning (Ch 2.5 + Ch 10), Persistence and Continuity (Ch 17), Controlled Evolution (Ch 2.6). 84 lines.
+- **Verification:** File exists, 84 lines (>= 20 required)
+
+### T2-02 — Modularity and Decision Principles
+- **Files:** `.agents/notes/v0_0_2_foundation.md`
+- **Change:** Appended 5 sections: Modularity (Ch 2.1), Explainability (Ch 2.2 + Ch 19), Event-Driven Design (Ch 2.4 + Ch 16), Confidence-Based Decisions (Ch 2.5 + Ch 19.1), Controlled Evolution cross-link
+- **Verification:** File appended, verified line count increased
+
 ## Research Engine — Phase 0: HTTP Foundation (R0)
 
 ### Completed Tasks
