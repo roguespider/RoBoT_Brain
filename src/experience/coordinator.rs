@@ -69,12 +69,16 @@ impl ExperienceCoordinator {
 
         // Publish Scored event
         let scored_event = ExperienceEvent::scored(experience.id, score.clone());
-        let _ = self.bus.publish(scored_event);
+        self.bus.publish(scored_event).unwrap_or_else(|e| {
+            tracing::debug!("Failed to publish scored event: {e}");
+        });
 
         // Publish ExperienceRecorded event with full experience for downstream processing
         // This triggers the learning pipeline: Reflection → Hypothesis → Knowledge → Reputation
         let recorded_event = ExperienceEvent::experience_recorded(experience.clone());
-        let _ = self.bus.publish(recorded_event);
+        self.bus.publish(recorded_event).unwrap_or_else(|e| {
+            tracing::debug!("Failed to publish recorded event: {e}");
+        });
 
         experience
     }
@@ -88,7 +92,9 @@ impl ExperienceCoordinator {
             exploration_id,
             Uuid::parse_str(id).unwrap_or_default(),
         );
-        let _ = self.bus.publish(event);
+        self.bus.publish(event).unwrap_or_else(|e| {
+            tracing::debug!("Failed to publish exploration completed event: {e}");
+        });
         tokio::spawn(async move {
             metrics
                 .increment(metric_names::EXPLORATIONS_COMPLETED)

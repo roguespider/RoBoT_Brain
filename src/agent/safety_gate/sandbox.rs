@@ -17,7 +17,7 @@ use std::collections::HashSet;
 use super::types::ActionRisk;
 
 /// Resource subsystems the sandbox can grant access to.
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+#[derive(Clone, PartialEq, Eq, Hash)]
 pub enum ResourceScope {
     Memory,
     Knowledge,
@@ -28,14 +28,40 @@ pub enum ResourceScope {
     External,
 }
 
+impl std::fmt::Debug for ResourceScope {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Memory => write!(f, "ResourceScope::Memory"),
+            Self::Knowledge => write!(f, "ResourceScope::Knowledge"),
+            Self::Experience => write!(f, "ResourceScope::Experience"),
+            Self::Planner => write!(f, "ResourceScope::Planner"),
+            Self::Workflow => write!(f, "ResourceScope::Workflow"),
+            Self::Acp => write!(f, "ResourceScope::Acp"),
+            Self::External => write!(f, "ResourceScope::External"),
+        }
+    }
+}
+
 /// Configuration for the sandbox.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SandboxConfig {
     /// Maximum mutations permitted per loop iteration. Prevents runaway write
     /// amplification (Architecture §16 sandboxing).
     pub max_mutations_per_iteration: usize,
     /// Resource scopes the loop is permitted to access.
     pub allowed_scopes: HashSet<ResourceScope>,
+}
+
+impl std::fmt::Debug for SandboxConfig {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SandboxConfig")
+            .field(
+                "max_mutations_per_iteration",
+                &self.max_mutations_per_iteration,
+            )
+            .field("allowed_scopes", &self.allowed_scopes)
+            .finish()
+    }
 }
 
 impl Default for SandboxConfig {
@@ -120,9 +146,7 @@ impl Sandbox {
             "query_knowledge" | "add_knowledge" | "get_knowledge" | "global_search" => {
                 ResourceScope::Knowledge
             }
-            "record_experience" | "list_experiences" | "get_insights" => {
-                ResourceScope::Experience
-            }
+            "record_experience" | "list_experiences" | "get_insights" => ResourceScope::Experience,
             "create_plan" | "get_plan" | "list_plans" => ResourceScope::Planner,
             "create_workflow" | "start_workflow" | "list_workflows" => ResourceScope::Workflow,
             "register_agent" | "route_acp_message" | "list_agents" => ResourceScope::Acp,

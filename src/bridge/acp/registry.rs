@@ -14,6 +14,12 @@ pub struct AcpRegistry {
     agents: std::sync::RwLock<HashMap<AcpAgentId, Arc<dyn AcpAgent>>>,
 }
 
+impl Default for AcpRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl AcpRegistry {
     pub fn new() -> Self {
         Self {
@@ -24,20 +30,29 @@ impl AcpRegistry {
     /// Register an agent
     pub fn register(&self, agent: Arc<dyn AcpAgent>) -> Result<()> {
         let id = agent.id().clone();
-        let mut agents = self.agents.write().map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
+        let mut agents = self
+            .agents
+            .write()
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         agents.insert(id, agent);
         Ok(())
     }
 
     /// Unregister an agent
     pub fn unregister(&self, id: &AcpAgentId) -> Result<Option<Arc<dyn AcpAgent>>> {
-        let mut agents = self.agents.write().map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
+        let mut agents = self
+            .agents
+            .write()
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         Ok(agents.remove(id))
     }
 
     /// Get an agent by ID
     pub fn get(&self, id: &AcpAgentId) -> Result<Option<Arc<dyn AcpAgent>>> {
-        let agents = self.agents.read().map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
+        let agents = self
+            .agents
+            .read()
+            .map_err(|e| anyhow::anyhow!("Lock poisoned: {:?}", e))?;
         Ok(agents.get(id).cloned())
     }
 
@@ -65,10 +80,6 @@ impl AcpRegistry {
 
     /// Number of registered agents.
     pub fn count(&self) -> usize {
-        self.agents
-            .read()
-            .map(|agents| agents.len())
-            .unwrap_or(0)
+        self.agents.read().map(|agents| agents.len()).unwrap_or(0)
     }
 }
-

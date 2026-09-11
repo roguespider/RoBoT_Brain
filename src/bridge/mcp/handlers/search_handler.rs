@@ -1,10 +1,12 @@
 // src/bridge/tools/handlers/search_handler.rs
 // Search tools handler - handles global search and recommendations
 
-use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
+use crate::bridge::mcp::handlers::{
+    HandlerError, HandlerInitError, HandlerInitResult, ToolHandler,
+};
 use crate::bridge::tools::search;
-use crate::bridge::mcp::handlers::{HandlerError, HandlerInitError, HandlerInitResult, ToolHandler};
+use std::sync::Arc;
 
 /// Handler for search-related tools
 #[derive(Clone)]
@@ -14,9 +16,7 @@ pub struct SearchToolsHandler {
 
 impl SearchToolsHandler {
     /// Create a new search tools handler
-    pub fn new(
-        context: Arc<McpContext>,
-    ) -> HandlerInitResult<Self> {
+    pub fn new(context: Arc<McpContext>) -> HandlerInitResult<Self> {
         // Validate that required dependencies exist
         if context.database.connection().is_err() {
             return Err(HandlerInitError::new(
@@ -84,7 +84,8 @@ impl ToolHandler for SearchToolsHandler {
                     },
                     "required": ["query"]
                 })),
-            ).with_title("Global Search"),
+            )
+            .with_title("Global Search"),
             rmcp::model::Tool::new(
                 "get_recommendations",
                 "Get recommendations based on patterns and history",
@@ -94,7 +95,8 @@ impl ToolHandler for SearchToolsHandler {
                         "category": { "type": "string", "description": "Recommendation category" }
                     }
                 })),
-            ).with_title("Get Recommendations"),
+            )
+            .with_title("Get Recommendations"),
             rmcp::model::Tool::new(
                 "get_reputation",
                 "Get reputation/quality score for a tool or approach",
@@ -105,31 +107,39 @@ impl ToolHandler for SearchToolsHandler {
                     },
                     "required": ["tool_name"]
                 })),
-            ).with_title("Get Reputation"),
+            )
+            .with_title("Get Reputation"),
         ]
     }
 
-    async fn execute_tool(&self, name: &str, args: serde_json::Value) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
-            match name {
-                "global_search" => {
-                    let input: search::GlobalSearchInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_global_search(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "get_recommendations" => {
-                    let input: search::GetRecommendationsInput = serde_json::from_value(args)
-                        .unwrap_or_default();
-                    self.execute_get_recommendations(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "get_reputation" => {
-                    let input: search::GetReputationInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_get_reputation(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                _ => Err(HandlerError::ToolNotFound(name.to_string()))
+    async fn execute_tool(
+        &self,
+        name: &str,
+        args: serde_json::Value,
+    ) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
+        match name {
+            "global_search" => {
+                let input: search::GlobalSearchInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_global_search(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
             }
+            "get_recommendations" => {
+                let input: search::GetRecommendationsInput =
+                    serde_json::from_value(args).unwrap_or_default();
+                self.execute_get_recommendations(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "get_reputation" => {
+                let input: search::GetReputationInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_get_reputation(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            _ => Err(HandlerError::ToolNotFound(name.to_string())),
+        }
     }
 }

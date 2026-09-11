@@ -352,32 +352,33 @@ pub mod definitions {
 }
 
 /// Execute register_skill tool
-pub async fn execute_register_skill(
-    input: RegisterSkillInput,
-    context: &McpContext,
-) -> Result<ToolOutput> {
+pub async fn execute_register_skill(input: RegisterSkillInput, context: &McpContext) -> ToolOutput {
+    let category = match parse_category(&input.category) {
+        Ok(c) => c,
+        Err(e) => return ToolOutput::error(format!("Invalid category: {}", e)),
+    };
+
     let skill = Skill::new(SkillMetadata {
         name: input.name,
         description: input.description,
-        category: parse_category(&input.category)?,
+        category,
         version: input.version.unwrap_or_else(|| "1.0.0".to_string()),
         author: input.author,
         tags: input.tags.unwrap_or_default(),
         examples: input.examples.unwrap_or_default(),
     });
 
-    let skill_id = context
-        .skills
-        .register(skill)
-        .await
-        .map_err(|e| anyhow::anyhow!("{}", e))?;
+    let skill_id = match context.skills.register(skill).await {
+        Ok(id) => id,
+        Err(e) => return ToolOutput::error(format!("Failed to register skill: {}", e)),
+    };
 
-    Ok(ToolOutput::success(serde_json::json!({
+    ToolOutput::success(serde_json::json!({
         "status": "registered",
         "id": skill_id,
         "skill_id": skill_id,
         "message": "Skill registered successfully"
-    })))
+    }))
 }
 
 /// Execute discover_skill tool - create skill from experience
@@ -416,14 +417,13 @@ pub async fn execute_discover_skill(
 }
 
 /// Execute get_skill tool
-pub async fn execute_get_skill(input: GetSkillInput, context: &McpContext) -> Result<ToolOutput> {
-    let skill = context
-        .skills
-        .get(&input.skill_id)
-        .await
-        .ok_or_else(|| anyhow::anyhow!("Skill not found: {}", input.skill_id))?;
+pub async fn execute_get_skill(input: GetSkillInput, context: &McpContext) -> ToolOutput {
+    let skill = match context.skills.get(&input.skill_id).await {
+        Some(s) => s,
+        None => return ToolOutput::error(format!("Skill not found: {}", input.skill_id)),
+    };
 
-    Ok(ToolOutput::success(serde_json::json!({
+    ToolOutput::success(serde_json::json!({
         "skill": {
             "id": skill.id,
             "name": skill.metadata.name,
@@ -445,7 +445,7 @@ pub async fn execute_get_skill(input: GetSkillInput, context: &McpContext) -> Re
                 SkillSource::Learned { .. } => "learned",
             }
         }
-    })))
+    }))
 }
 
 /// Execute list_skills tool

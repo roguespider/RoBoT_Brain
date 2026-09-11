@@ -53,10 +53,7 @@ pub async fn execute_connect_mcp_server(
     let client = match get_mcp_client() {
         Some(c) => c,
         None => {
-            return Ok(ToolOutput::success(serde_json::json!({
-                "success": false,
-                "error": "MCP client not initialized"
-            })));
+            return Ok(ToolOutput::error("MCP client not initialized"));
         }
     };
 
@@ -70,7 +67,6 @@ pub async fn execute_connect_mcp_server(
             let servers = client.list_servers().await;
             let tool_count = client.list_all_tools().await.len();
             Ok(ToolOutput::success(serde_json::json!({
-                "success": true,
                 "server": input.name,
                 "total_servers": total,
                 "connected": connected,
@@ -78,10 +74,7 @@ pub async fn execute_connect_mcp_server(
                 "tools": tool_count
             })))
         }
-        Err(e) => Ok(ToolOutput::success(serde_json::json!({
-            "success": false,
-            "error": e.to_string()
-        }))),
+        Err(e) => Ok(ToolOutput::error(e.to_string())),
     }
 }
 
@@ -90,10 +83,7 @@ pub async fn execute_call_mcp_tool(input: CallMcpToolInput) -> Result<ToolOutput
     let client = match get_mcp_client() {
         Some(c) => c,
         None => {
-            return Ok(ToolOutput::success(serde_json::json!({
-                "success": false,
-                "error": "MCP client not initialized"
-            })));
+            return Ok(ToolOutput::error("MCP client not initialized"));
         }
     };
 
@@ -102,10 +92,10 @@ pub async fn execute_call_mcp_tool(input: CallMcpToolInput) -> Result<ToolOutput
         Some(args_str) => match serde_json::from_str(&args_str) {
             Ok(v) => Some(v),
             Err(e) => {
-                return Ok(ToolOutput::success(serde_json::json!({
-                    "success": false,
-                    "error": format!("Invalid JSON in arguments: {}", e)
-                })));
+                return Ok(ToolOutput::error(format!(
+                    "Invalid JSON in arguments: {}",
+                    e
+                )));
             }
         },
         None => None,
@@ -122,7 +112,6 @@ pub async fn execute_call_mcp_tool(input: CallMcpToolInput) -> Result<ToolOutput
                 .await
                 .unwrap_or_default();
             Ok(ToolOutput::success(serde_json::json!({
-                "success": true,
                 "result": result,
                 "tool_info": tool_info,
                 "server": server
@@ -147,11 +136,11 @@ pub async fn execute_call_mcp_tool(input: CallMcpToolInput) -> Result<ToolOutput
                 }
                 None => all_tools.iter().map(|t| t.name.to_string()).collect(),
             };
-            Ok(ToolOutput::success(serde_json::json!({
-                "success": false,
-                "error": e.to_string(),
-                "available_tools": available
-            })))
+            Ok(ToolOutput::error(format!(
+                "{}\nAvailable tools: {}",
+                e,
+                available.join(", ")
+            )))
         }
     }
 }

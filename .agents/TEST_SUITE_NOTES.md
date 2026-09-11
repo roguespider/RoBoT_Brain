@@ -4,34 +4,42 @@
 > test_suite reports work. Consult when diagnosing test failures or coverage
 > gaps; not needed at session start.
 
-The test suite was upgraded to surface previously-invisible problems and make
-failure diagnosis faster. All improvements are implemented and verified.
+## Architecture — test_suite2 (replaced legacy Rust test_suite)
 
-## Contract — what the suite enforces (for upgrade work)
+The legacy Rust `test_suite/` at the repo root has been **replaced** by
+`.agents/scripts/test_suite2/` — a **Python-based** functional test suite that
+tests the **compiled** robot_brain binary via the MCP protocol. The Rust
+component is retained only for the **coverage gate** (code-quality, lint,
+tool-coverage cross-check) and is now located at
+`.agents/scripts/test_suite2/` (see `gate.sh` line 28).
 
-> This is the durable contract I rely on during upgrades. If a change breaks any
-> of these, the gate is red and the change is not done.
-
-### Build + run (the gotcha)
-
-`test_suite/` is a SEPARATE independent project (own `Cargo.toml`/`Cargo.lock`),
-NOT a workspace member. `cargo build -p test_suite` / `cargo run --package
-test_suite` from the repo root FAILS with "package ID did not match". Build and
-run it from its own directory:
+### Build + run
 
 ```bash
-cd test_suite && cargo build --release && ./target/release/test_suite
+# The verify gate (preferred — builds robot_brain, runs both Rust and Python tests):
+make gate
+# Or directly:
+./.agents/scripts/gate.sh
+
+# Python functional tests only:
+python3 -m pytest .agents/scripts/test_suite2/ -v
+# Or via the orchestrator:
+.agents/scripts/test_suite2/test_runner.sh
+
+# Legacy Rust coverage gate only (from test_suite2 dir):
+cd .agents/scripts/test_suite2 && cargo build --release && ./target/release/test_suite
 ```
 
-Outputs: `test_suite/test_suite_output.txt` (text) and
-`test_suite/test_suite_report.json` (machine-readable).
+### Output
+
+- Rust report: `.agents/scripts/test_suite2/test_suite_report.json`
+- Python output: `.agents/scripts/test_suite2/python_test_output.txt`
 
 ### Exit-code semantics
 
-- Exit 0 ONLY when fully clean (all tests pass, 0 code-quality issues, 0 lint
-  errors, 0 lint warnings, no coverage gaps).
-- Exit 1 if anything needs review (failing tests, error tests, untested tools,
-  phantom tools, compiler errors/warnings, code-quality issues).
+- Exit 0 ONLY when fully clean (all Python tests pass, Rust coverage gate green,
+  0 code-quality issues, 0 lint errors, 0 lint warnings, no coverage gaps).
+- Exit 1 if anything needs review.
 - CI can gate on the exit code.
 
 ### The 5 success criteria (must all be true for exit 0)
@@ -44,130 +52,105 @@ Outputs: `test_suite/test_suite_output.txt` (text) and
 
 ### Test execution order (5 phases)
 
-1. Code Analysis — source code quality check (regex patterns, see below).
-2. Lint Analysis — clippy + cargo check.
-3. Comprehensive Tests — FunctionRegistry-based tool tests.
-4. Traditional Tests — individual tool category tests.
-5. MCP Workflow Integration — agent workflow usage validation.
+1. **Code Analysis** — source code quality check (regex patterns in Rust suite).
+2. **Lint Analysis** — clippy + cargo check (Rust suite).
+3. **Comprehensive Tests** — FunctionRegistry-based tool tests (Rust suite).
+4. **Traditional Tests** — individual tool category tests (Python suite).
+5. **MCP Workflow Integration** — agent workflow usage validation (Python suite).
 
-### Code-analyzer patterns (what it flags)
+### Code-analyzer patterns (what the Rust suite flags)
 
-- `#[allow(...)]` / `#![allow(...)]` annotations (regex:
-  `#\s*\[\s*allow\s*\([^)]*\)`). NOTE: the analyzer's regex catches outer
-  `#[allow]` but the verdict/exit-code path relies on `cargo build`/clippy to
-  catch inner `#![allow]`. Run both.
-- `unimplemented!()` / `todo!()` macros.
-- `panic!()` with stub-like messages.
-- Early-return stubs (functions that only return Ok/Err immediately).
-- Placeholder return patterns.
-- Fallback regex is "." (always valid) via `get_fallback_regex()`. The
-  `CodePatterns` struct compiles: `allow_annotation`, `dead_code_allow`,
-  `unimplemented`, `todo`, `panic`, `underscore_prefix`.
+- `#[allow(...)]` / `#![allow(...)]` annotations
+- `unimplemented!()` / `todo!()` macros
+- `panic!()` with stub-like messages
+- Early-return stubs
+- Placeholder return patterns
+- `underscore_prefix` — `_variable` patterns
 
 ### Tool coverage cross-check
 
-After `tools/list`, diffs server-exposed tool names against the
+After `tools/list`, the Rust suite diffs server-exposed tool names against the
 FunctionRegistry's tested tool names. Produces:
 - **untested tools** (server exposes, no test) — counted in the verdict.
 - **phantom tools** (registry tests, server doesn't expose) — registration gap.
 
-This is why the suite exits non-zero at 60.9% coverage even with 333/333 tests
-passing. Closing coverage gaps is part of upgrade work (see PLAN.md T3-29).
+## What changed (from legacy Rust test_suite to test_suite2)
 
-## What changed
+1. **Relocated from repo root to `.agents/scripts/test_suite2/`**
+   The old `test_suite/` at the repo root has been removed. All test infrastructure
+   now lives under `.agents/scripts/test_suite2/`. The `Makefile` `suite` target
+   still references `test_suite/` — update it to `test_suite2` when the Rust
+   port is complete.
 
-1. **Server stderr capture** (`src/main.rs`)
-   - `TestMcpClient` now pipes `stderr` (previously only stdout/stdin).
-   - A background task streams server `tracing` logs into a 500-line ring
-     buffer (`ServerLogBuffer`).
-   - On any non-passing `TestResult`, the runner attaches the 15 most recent
-     server log lines plus any lines mentioning that tool name
-     (`runner.rs` -> `TestResult.server_logs`).
-   - Failed/error test detail views print these logs inline, so a bare
-     "Tool returned error: X" now shows the server-side `WARN`/`ERROR` context
-     that explains *why*.
+2. **Python-first for functional testing**
+   Python/pytest now handles functional, end-to-end, and integration tests.
+   Tests communicate with robot_brain via stdio MCP protocol — no source access.
+   `mcp_client.py` provides the MCP client; `conftest.py` provides pytest fixtures.
 
-2. **Tool coverage cross-check** (`src/test_results/mod.rs` `CoverageReport`,
-   `src/comprehensive_test/mod.rs`, `src/test_results/display/coverage.rs`)
-   - After `tools/list`, the suite diffs the server's exposed tool names
-     against the `FunctionRegistry`'s tested tool names.
-   - Produces two lists: **untested tools** (server exposes, no test) and
-     **phantom tools** (registry tests, server doesn't expose).
-   - Rendered as a dedicated report section and counted in the verdict.
-   - This turned the previous misleading "100% coverage" into an honest
-     "81.2% coverage - 18 server tools untested".
+3. **Rust retained for coverage gate only**
+   The Rust binary (`test_suite` at `.agents/scripts/test_suite2/`) handles:
+   code-quality analysis, lint checks, FunctionRegistry-based tool coverage
+   cross-check, and schema probing (`--probe`).
 
-3. **Machine-readable JSON report** (`src/test_results/json_report.rs`)
-   - Full report serialized to `test_suite_report.json` alongside the text
-     output: summary, coverage, consolidated issues, all results, lint/code
-     issues.
-   - Enables run-to-run diffing, CI gating, and tooling to filter/group
-     (e.g. "newly failing since last run", "new warnings").
+4. **Shell orchestrator (`test_runner.sh`)**
+   The Python orchestrator runs the full functional test suite: builds
+   robot_brain if needed, starts the server, runs all pytest phases, stops
+   the server, and writes output to `python_test_output.txt`.
 
-4. **Consolidated issues view** (`src/test_results/display/consolidated.rs`)
-   - One table grouping every problem kind: failing tests, error tests,
-     untested tools, phantom tools, compiler errors/warnings, code-quality
-     issues - each with category, tool/file:line, message, severity, and a
-     suggested action.
-   - Previously these were scattered across separate sections of a 1300+ line
-     text file.
+5. **Machine-readable JSON report** (Rust suite)
+   Full report serialized to `test_suite_report.json`: summary, coverage,
+   consolidated issues, all results, lint/code issues. Enables run-to-run
+   diffing and CI gating.
 
-5. **Non-zero exit code on any issue**
-   - `has_issues()` now includes coverage gaps, lint errors, and lint warnings
-     (not just test failures).
-   - Exit code is 1 if anything needs review; 0 only when fully clean.
-   - CI can gate on the exit code.
+6. **Consolidated issues view** (Rust suite)
+   One table grouping every problem kind: failing tests, error tests, untested
+   tools, phantom tools, compiler errors/warnings, code-quality issues.
 
-## Current coverage gaps surfaced by the cross-check
+7. **Non-zero exit code on any issue** (gate.sh)
+   The gate checks all four metrics: `passed`, `failed+errors`,
+   `compiler_warnings`, `code_issues`, `untested_tools`. Any non-zero count
+   causes the gate to fail.
 
-These are tools the server exposes but the `FunctionRegistry` does not test
-(see `test_suite_report.json` -> `coverage.untested_tools` for the live list):
+## Current coverage gaps (from Rust suite FunctionRegistry)
+
+These are tools the server exposes but the FunctionRegistry does not test:
 
 - **ACP tools**: `route_acp_message`, `register_agent`, `unregister_agent`,
   `list_acp_agents`, `acp_agent_count`, `acp_registry`, `acp_router`,
-  `create_acp_message`, `get_agent_capabilities` - tested separately in
-  `tests/acp/` but not in the `FunctionRegistry` pipeline.
-- **Evidence/Observation**: `get_evidence`, `list_evidence`,
-  `list_observations`.
-- **Knowledge**: `get_knowledge` (only `query_knowledge`/`add_knowledge`
-  tested).
-- **Workflow**: `set_workflow_variable`.
-- **Memory**: `archive_memory`, `link_memories`.
-- **Search**: `ranked_search`.
-- **System**: `get_system_status`.
+  `create_acp_message`, `get_agent_capabilities`
+- **Evidence/Observation**: `get_evidence`, `list_evidence`, `list_observations`
+- **Knowledge**: `get_knowledge` (only `query_knowledge`/`add_knowledge` tested)
+- **Workflow**: `set_workflow_variable`
+- **Memory**: `archive_memory`, `link_memories`
+- **Search**: `ranked_search`
+- **System**: `get_system_status`
 
-**Phantom tools** (registry tests but server doesn't expose): the embedding
-tools (`store_embedding`, `get_embedding`, `search_similar`, `list_embeddings`,
-`delete_embedding`, `get_embedding_stats`) - these are registered as MCP tools
-in the registry but the server's `tools/list` does not return them, indicating
-a registration wiring gap in robot_brain.
+**Phantom tools** (registry tests but server doesn't expose): embedding tools
+(`store_embedding`, `get_embedding`, `search_similar`, `list_embeddings`,
+`delete_embedding`, `get_embedding_stats`) — registration wiring gap.
 
 ## How to use the new outputs
 
 ```bash
-# Run (from test_suite/ or repo root; paths resolve at runtime)
-./target/release/test_suite
+# Run the full gate:
+make gate
 
-# Text report (human-readable, unchanged location)
-test_suite/test_suite_output.txt
+# Run Python tests only:
+python3 -m pytest .agents/scripts/test_suite2/ -v
 
-# JSON report (machine-readable, for diffing/CI)
-test_suite/test_suite_report.json
+# Read Rust report:
+python3 -c "import json; d=json.load(open('.agents/scripts/test_suite2/test_suite_report.json')); print(json.dumps(d['summary'], indent=2))"
 
-# CI gating: exit code is non-zero on any issue
-./target/release/test_suite && echo "clean" || echo "issues found"
-
-# Diff two runs (example)
-jq '.summary' test_suite_report.json
-jq '.issues | map(.kind) | group_by(.) | map({(.[0]): length})' test_suite_report.json
+# Diff two runs:
+python3 -c "import json; d=json.load(open('test_suite_report.json')); print(d.get('coverage', {}).get('untested_tools', []))"
 ```
 
 ## Still not tested (future work)
 
-- **Schema-validation matrix**: every tool - missing/extra/wrong-type fields.
+- **Schema-validation matrix**: every tool — missing/extra/wrong-type fields.
 - **Edge cases**: malformed JSON, boundary values, Unicode, empty strings,
   large payloads, concurrent calls, timeouts.
 - **End-to-end learning loop**: `record_experience` -> `validate_hypothesis` ->
-  `promote_to_knowledge` (overlaps with v2.0 P0).
+  `promote_to_knowledge`.
 - **State isolation**: tests share one server instance; no per-test rollback.
 - **Performance baselines**: durations reported but never gated.

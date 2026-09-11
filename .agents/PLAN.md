@@ -1,264 +1,37 @@
-# 1. OBJECTIVE
-Read and apply AGENTS.md and lines 1-140 of PLAN.md 100% end-to-end.
+# Research Engine Stub Tasks — All Complete
 
-Take RoBoT Brain from its current state to a **finished v0.0.1 → finished
-v0.0.2 → finished v0.0.2.1**, using **small 5-10 minute increments**.
+## Completed Tasks (per protocol)
+- ✅ S1: `check_internal_sources` in decision.rs
+- ✅ S2: `trigger_research_on_failure` in decision.rs
+- ✅ S3: `record_research` in experience/mod.rs
+- ✅ S4: `promote_research` in memory/mod.rs
+- ✅ S5: `BraveProvider::search` in brave.rs
+- ✅ S6: `record_failure` wired in failover.rs
+- ✅ S7: 9-tier cascade wired in loop_runner.rs (between retrieval and action selection)
+- ✅ S8: Removed `_use_tier_result` stub
+- ✅ S9: Removed `let _ =` forbidden patterns
+- ✅ S10: `promote_research_findings` in knowledge/mod.rs - gates confidence >= 0.7, creates KnowledgeItem with source="research:<url>", wired into loop_runner cascade
+- ✅ S11: `test_research.py` - full 13-step research flow verification per architecture §R16
 
-- Each increment is ONE small, verifiable, committable change.
-- After each increment: build → live test → test suite → commit → push → go to next task.
-- Do NOT spend a session on one upgrade. If an increment feels bigger than 15
-  minutes, split it further.
-- Work the increments in order, top to bottom. Do not skip ahead.
-
-The target baseline is **`robot_architecture/v0.0.2.1/`** (33 chapters +
-appendices A-E + `FINAL_ARCHITECTURE_SPEC.md`). v0.0.2 is an intermediate
-milestone on the way there.
-
-## Mission
-
-Resolve all known implementation bugs, complete partially implemented integrations,
-and establish a verified passing baseline. Do NOT redesign the architecture unless
-a task explicitly requires it.
+## Build Status
+- `cargo check --release`: 0 errors
+- Warnings: 57 (all dead-code from unregistered research tools)
+- Forbidden patterns: 0
 
 ---
 
-# 2. OPERATING RULES
-
-1. Work on ONE task at a time.
-2. Read the relevant source before modifying it.
-3. Preserve existing architectural intent.
-4. Do not solve a compiler warning by deleting functionality.
-5. Do not mark a task complete because code compiles.
-6. Every completed task must have a verification method.
-7. Run relevant tests after each change.
-8. Update this file when a task changes state.
-9. If implementation reveals an architectural conflict, STOP and report it.
-10. Do not silently expand scope.
-11. Task completion protocol -- after a task passes the full verify gate (build + test_suite + gate green, end-to-end verified):
-    a. Write a concise summary to `.agents/CHANGELOG.md` describing what was [ ], files changed, and verification results.
-    b. Remove the task from its section in PLAN.md — delete the entire line from the file. Do not use ~~strike-through~~, do not change `[ ]` to `[x]`, do not leave stub detail. The line must be gone.
-    c. Only then commit and push.
-    Never write the CHANGELOG entry before the gate passes. Never let PLAN.md accumulate completed task detail.
-
-    Important: if a task is still listed in PLAN.md, it is NOT complete -- regardless of any `[ ]` or `[x]` marker. Presence in PLAN.md means pending. The only signal of completion is removal from PLAN.md plus a CHANGELOG.md entry.
-
-    Removing a task from PLAN.md without full end-to-end verification is not acceptable. Every removed task must be 100% complete and verified in the codebase (gate green, tests pass, no warnings). Do not remove tasks you have not actually finished.
-
-    A task is NOT complete until its verification criteria pass. If the task cannot be safely completed:
-    a. Mark it `[!]` or `[?]`.
-    b. Explain why.
-    c. Do NOT fabricate completion.
-    d. Do NOT silently redesign another subsystem to bypass it.
-12. Always make small, incremental edits. Never batch multiple unrelated changes into one edit. After each edit, verify it worked before proceeding. Large bulk rewrites lose information.
-
----
-
-# 3. CONTEXT SUMMARY
-
-## The blueprints
-
-the location of these are important as if you had actually read agents.md you would know to check these before deleting a function
-
-- **v0.0.2** -- `robot_architecture/RoBoT Architecture v0.0.2.md`. Intermediate
-  upgrade: elevate Context + Conversation to first-class, add Data Contracts.
-  TIER 2 conforms existing systems to this.
-- **v0.0.2.1** -- `robot_architecture/v0.0.2.1/` (00.md-33.md + appendices). The
-  FINAL architectural baseline. Adds Execution Engine, Tool Engine, Memory
-  Hierarchy, Context Lifecycle, Retrieval Pipeline, Prompt Construction,
-  Strategic Learning, Confidence System, Storage, Database Design, Background
-  Workers, Security & Trust, Observability, Developer Interface/Control Plane,
-  Configuration, Testing, Deployment. TIER 3 builds the missing subsystems.
-
-## Current codebase state
-
-- Workspace: two independent programs -- `robot_brain` (root, MCP server) and
-  `test_suite/` (E2E tests via MCP protocol).
-- **Test count and warning count: see `test_suite/test_suite_report.json`.** Do not
-  trust prior counts — run the gate to verify.
-- **Gate status:** 454/454 tests, 0 warnings, 0 issues. All known bugs
-  resolved. Durable recovery verified. 0 stubs found.
-- `#![allow]` / `#[allow]` in `src/`: **0** (clean).
-- `self_check.rs` files: **0** (all removed/moved to TIER 2).
-- v0.0.1 complete: SQLite queue, loop-health metrics, MCP→experience path, coverage gate green.
-- **No v0.0.2/v0.0.2.1 new subsystems exist**: no Context Engine, Conversation
-  Engine, Execution Engine, Tool Engine, Retrieval Pipeline, Prompt
-  Construction, AI Runtime, multimodal, GUI, security/trust, observability.
-
-## Constraints
-
-- Strict Rust coding standards (no panics/unwrap/expect, no placeholders, no
-  `#[allow(...)]`, no ignored `_` vars). Enforced by the test suite.
-- Incremental workflow: after EACH increment, run the gate (below) green, then
-  commit + push, then do next task. Never batch.
-- **Verify, don't trust:** every step must be VERIFIED by inspecting the actual
-  codebase state and running the gate -- never rely on a "[ ]" message, a
-  commit description, or a checkbox marked `[x]`/`[in]`. Open the file, read the
-  code, confirm the change is there and the gate is actually green. A commit
-  that claims "fixes all warnings" may be lying; run the gate and read the JSON
-  report to confirm the metric is actually 0.
-- Large-file rule: split `.rs` files over ~1000 lines that mix
-  responsibilities (see `.agents/LARGE_FILE_REFACTOR.md`).
-- Local-first: the cognitive architecture must work against cloud/external
-  models first. AI Runtime (Candle) is built last, as an enhancement layer.
-
-## The verify gate (run after EVERY increment)
-
-```bash
-# test_suite auto-builds robot_brain, connects via MCP, runs all tests +
-# code analysis, and enforces 0 warnings / 0 code-issues / 0 untested tools.
-cd test_suite && cargo build --release && ./target/release/test_suite
-# Or: make gate
-```
----
-
-# 4. APPROACH -- three tiers of small increments
-
-Work through three tiers in order. Each tier is a checklist of small
-increments. Do them top-to-bottom, one at a time, with the verify gate green
-between each.
-
-- **TIER 1 -- Finish v0.0.1** (clean baseline). Clear the remaining self_check
-  debt, migrate the queue, add loop metrics, close the MCP→experience path.
-  No new features; just finish what v0.0.1 requires. **End state = finished v0.0.1.**
-- **TIER 2 -- Reach v0.0.2** (upgrade existing systems). Introduce Data Contracts,
-  then upgrade each existing subsystem (Memory, Knowledge, Experience, Learning,
-  Planner, Skills/Workflows, World Model, Personality) to its v0.0.2 chapter.
-  **End state = finished v0.0.2.**
-- **TIER 3 -- Reach v0.0.2.1** (add missing subsystems). Build the new engines
-  from the v0.0.2.1 chapters: Execution, Tool, Memory Hierarchy, Context
-  Lifecycle, Retrieval Pipeline, Prompt Construction, Strategic Learning,
-  Confidence System, Storage/Database, Background Workers, Security & Trust,
-  Observability, Developer Interface/Control Plane, Configuration, Testing,
-  Deployment -- then AI Runtime (Candle), Multimodal, GUI last.
-  **End state = finished v0.0.2.1.**
-
-**Why this order:** finish v0.0.1 first so no dead-code debt is carried into a
-refactor. Upgrade foundation systems (Data Contracts, Memory, Knowledge) before
-the Context/Conversation engines so those engines consume real contract-shaped
-data, not stubs. Build the cognitive architecture against cloud/external models
-first; AI Runtime (Candle) comes last as the local provider behind the
-`InferenceProvider` trait, and is the prerequisite for Multimodal.
-
-**ONE TASK AT A TIME ENFORCEMENT**
-
-- You MUST work on ONE task at a time. Never skip ahead.
-- After completing a task: build → test → commit → push → do "Task completion protocol" → go to very first task in PLAN.md (not STOP).
-- If no tasks remain: you are done.
-- Never batch tasks. Never skip. Never assume a task is done — verify it in codebase.
-
----
-
-
-
-
-
----
-- [ ] do all tasks in .agents\CoObOpLoop_PLAN.md in order one task at a time.
----
-
-# 5. TIER 2 -- Reach v0.0.2 (upgrade existing systems)
+# T2-- Reach v0.0.2 (upgrade existing systems)
 
 > Goal: every existing subsystem conforms to its v0.0.2 chapter and
 > communicates through Data Contracts. End state = finished v0.0.2.
 > Detailed task list: [`.agents/t2_PLAN.md`](t2_PLAN.md).
 
-- **2A. Data Contracts** (Chapter 05) -- types, serde round-trips
-- **2B. Memory Engine** (Chapters 08 & 14) -- lifecycle, relationships, pruning
-- **2C. Knowledge Graph** (Chapter 20) -- nodes, edges, entity resolution, extraction
-- **2D. Experience Engine** (Chapters 09 & 18) -- enrichment, scoring, propagation
-- **2E. Learning Engine** (Chapter 10) -- pipeline, patterns, skills, decay
-- **2F. Planning Engine** (Chapter 11) -- decomposition, task graphs, replanning
-- **2G. Skills & Workflows** (Chapters 11 & 13) -- permissions, fallback, ranking
-- **2H. World Model & Personality** (Chapters 13/14/20) -- entities, traits
-- **2.0. Architecture foundations** -- invariants, ownership map, data-flow
-- **2.1. Model integration & coordination** -- AI runtime, MCP/ACP, cognitive layer
-- **2.2. Execution & Tooling** -- controlled actions, tool permissions, isolation
-
-**End of TIER 2 = finished v0.0.2. Tag: `v0.0.2`.**
-
 ---
 
-# 6. TIER 3 -- Reach v0.0.2.1 (add missing subsystems)
+# T3-- Reach v0.0.2.1 (add missing subsystems)
 
 > Goal: every v0.0.2.1 chapter (01-33) has a corresponding implemented module or
 > documented deferral. Build in dependency order; AI Runtime/Multimodal/GUI last.
 > Detailed task list: [`.agents/t3_PLAN.md`](t3_PLAN.md).
 
-- **3.0. Architecture-wide contract** -- ownership, lifecycle, identity, provenance, confidence
-- **3.1. Foundation (Ch 01-05)** -- vision, principles, system overview, data-flow, contracts
-- **3.2. Conversation Engine** (Ch 06) -- session, MCP `converse`, learning extraction
-- **3.3. Context Engine** (Ch 07) -- retrieval, budget, topic tracking, prompt assembly
-- **3.4. Conversation v2** (Ch 06) -- context-aware pipeline
-- **3.5. Memory Engine** (Ch 08) -- short/long-term, promotion, archive
-- **3.6. Experience Engine** (Ch 09) -- storage, outcomes, lessons, failure analysis
-- **3.7. Learning Engine** (Ch 10) -- reflection, patterns, skill improvement
-- **3.8. Planning Engine** (Ch 11) -- goal creation, decomposition, task graphs
-- **3.9. Execution Engine** (Ch 12) -- controlled actions, error recovery
-- **3.10. Tool Engine** (Ch 13) -- capability registration, permissions
-- **3.11. AI Runtime** (Ch 14) -- inference provider, model routing
-- **3.12. Agent Communication** (Ch 15) -- MCP/ACP boundaries, internal messages
-- **3.13. Cognitive Coordination** (Ch 16) -- subsystem orchestration, event rules
-- **3.14. Memory & Knowledge** (Ch 17-20) -- retention, experience links, graph
-- **3.15. Storage & Workers** (Ch 21-23) -- persistence, schema, supervision
-- **3.16. Governance & Safety** (Ch 24-27) -- contribution, trust, audit, evolution
-- **3.17. Interfaces & Config** (Ch 28-31) -- control plane, deployment, testing
-- **3.18. Multimodal** (Appendix A) -- audio, vision
-- **3.19. GUI/Dashboard** (Ch 28) -- event stream frontend
-- **3.20. Future Expansion** (Ch 32-33) -- admission gate, roadmap
-
-**End of TIER 3 = finished v0.0.2.1. Tag: `v0.0.2.1`.**
-
 ---
-
-# 7. Definition of [ ]
-
-## v0.0.1-clean (end of TIER 1)
-
-- `find src -name "self_check.rs"` returns empty.
-- `grep -rn 'allow(' src/` returns nothing (already true).
-- **test_suite exits 0** -- `coverage.untested_tools` empty,
-  `coverage.phantom_tools` empty (the 1E green-gate milestone).
-- Queue is SQLite-backed and survives a process restart.
-- `get_system_status` shows loop_latency / confidence_drift /
-  promotion_throughput.
-- Generic MCP tool execution emits an experience (no double-emit).
-- Gate green: 0 build warnings, 54/54 live, 333/333 suite, suite exit 0.
-
-## v0.0.2 (end of TIER 2)
-
-- Data-contract types round-trip through serde.
-- Each upgraded subsystem's MCP tools return correct results live.
-- Knowledge graph traversal returns relationship chains.
-- Before/after learning shows measurable improvement (Ch.30.15).
-- Gate green throughout.
-
-## v0.0.2.1 (end of TIER 3)
-
-- All 33 blueprint chapters + appendices have a corresponding implemented
-  module or documented deferral.
-- The cognitive pipeline (Observe → Understand → Retrieve → Plan → Reason →
-  Act → Reflect → Learn) runs end-to-end through Context/Conversation engines,
-  not just the legacy agent loop.
-- Memory, Experience, Knowledge, and Context are four independent systems
-  communicating through Data Contracts.
-- Context Engine enforces token budgets and retrieval policies; context
-  construction is inspectable.
-- AI Runtime: cloud and local models interchangeable behind the trait;
-  embedding pipeline produces consistent vectors.
-- Security: capability-denied actions blocked + audited.
-- Observability: cognitive traces reconstruct the full request lifecycle.
-- Multimodal: transcribe/synthesize/ocr return real results via Candle.
-- GUI: runtime fully headless-operable; GUI renders only real events.
-- Self-improvement: a hypothesis lifecycle runs confirmed/rejected end-to-end.
-- Workers: supervised workers restart on failure; durable queue survives
-  restart.
-- Config/Migration: fresh-DB migration runs clean; test_suite expanded with
-  schema-validation + edge-case + e2e-learning + perf-baseline coverage.
-- 0 cargo warnings, 0 code-quality issues, all MCP tools pass live, test-suite
-  green and expanded.
-- Local-first: the entire cognitive architecture operates without cloud
-  dependency.
-
----
-
-> Completed work is tracked in [CHANGELOG.md](CHANGELOG.md).

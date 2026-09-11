@@ -7,8 +7,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// Memory layer type - Per Architecture §6.3
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Default)]
 pub enum MemoryLayer {
     /// Working Memory - Temporary information used during active tasks
     #[default]
@@ -58,8 +57,7 @@ impl std::fmt::Display for MemoryType {
 }
 
 /// Memory status - Per Architecture §6.3
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Default)]
 pub enum MemoryStatus {
     /// Active and accessible
     #[default]
@@ -72,6 +70,20 @@ pub enum MemoryStatus {
     PendingDeletion,
 }
 
+/// Provenance tracking for research results promoted to memory.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ResearchProvenance {
+    pub url: String,
+    pub provider: String,
+    pub timestamp: chrono::DateTime<chrono::Utc>,
+    pub query: String,
+}
+
+#[derive(Debug, Clone)]
+pub enum MemoryError {
+    InsufficientConfidence,
+    StorageFailed,
+}
 
 /// A memory item - Per Architecture §6.3
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -171,12 +183,11 @@ impl MemoryItem {
     }
 }
 
-
 // ============================================================
 // CONVERSION TO/FROM DATABASE MODELS
 // ============================================================
 
-use crate::database::models::{MemoryCard, HierarchyLevel};
+use crate::database::models::{HierarchyLevel, MemoryCard};
 
 impl From<&MemoryCard> for MemoryItem {
     fn from(card: &MemoryCard) -> Self {
@@ -208,7 +219,10 @@ impl From<&MemoryCard> for MemoryItem {
             last_consolidated: None,
             access_count: card.access_count,
             tags: Vec::new(),
-            source: card.file_source.clone().unwrap_or_else(|| "database".to_string()),
+            source: card
+                .file_source
+                .clone()
+                .unwrap_or_else(|| "database".to_string()),
             related_ids: Vec::new(),
         }
     }

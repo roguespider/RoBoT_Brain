@@ -5,9 +5,9 @@ use anyhow::Result;
 use rusqlite::{Connection, params};
 use uuid::Uuid;
 
+use crate::experience::reputation::score::Reputation;
 use crate::experience::types::Experience;
 use crate::experience::types::maturity::KnowledgeMaturity;
-use crate::experience::reputation::score::Reputation;
 
 use super::helpers::parse_time;
 
@@ -22,7 +22,7 @@ pub fn list_experiences(conn: &Connection, limit: usize) -> Result<Vec<Experienc
 
     let mut experiences = Vec::new();
     let mut rows = stmt.query(params![limit as i64])?;
-    
+
     while let Some(row) = rows.next()? {
         let id_str: String = row.get(0)?;
         let context_json: String = row.get(4)?;
@@ -36,19 +36,36 @@ pub fn list_experiences(conn: &Connection, limit: usize) -> Result<Vec<Experienc
         let metadata_json: String = row.get(19)?;
 
         experiences.push(Experience {
-            id: Uuid::parse_str(&id_str).map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
+            id: Uuid::parse_str(&id_str)
+                .map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
             title: row.get(1)?,
             description: row.get(2)?,
-            experience_type: serde_json::from_str(&row.get::<_, String>(3)?).unwrap_or(crate::experience::types::ExperienceType::ToolExecution),
+            experience_type: serde_json::from_str(&row.get::<_, String>(3)?)
+                .unwrap_or(crate::experience::types::ExperienceType::ToolExecution),
             context: serde_json::from_str(&context_json).unwrap_or_default(),
-            outcome: serde_json::from_str(&outcome_json).unwrap_or_else(|_| crate::experience::types::ExperienceOutcome::success()),
+            outcome: serde_json::from_str(&outcome_json)
+                .unwrap_or_else(|_| crate::experience::types::ExperienceOutcome::success()),
             score: serde_json::from_str(&score_json).ok(),
             timestamp: parse_time(&row.get::<_, String>(7)?),
             observation_ids: serde_json::from_str(&obs_json).unwrap_or_default(),
             encounter_ids: serde_json::from_str(&row.get::<_, String>(9)?).unwrap_or_default(),
-            maturity: serde_json::from_str(&row.get::<_, String>(10)?).unwrap_or(KnowledgeMaturity::Emerging),
+            maturity: serde_json::from_str(&row.get::<_, String>(10)?)
+                .unwrap_or(KnowledgeMaturity::Emerging),
             confidence: row.get(11)?,
-            lessons: serde_json::from_str(&lessons_json).unwrap_or_default(),
+            lessons_learned: serde_json::from_str(&lessons_json).unwrap_or_default(),
+            objective: String::new(),
+            initial_assumptions: Vec::new(),
+            plan: String::new(),
+            actions: Vec::new(),
+            tools_used: Vec::new(),
+            results: Vec::new(),
+            failures: Vec::new(),
+            corrections: Vec::new(),
+            successful_strategies: Vec::new(),
+            unsuccessful_strategies: Vec::new(),
+            discovered_constraints: Vec::new(),
+            discovered_capabilities: Vec::new(),
+            final_outcome: String::new(),
             evidence_count: row.get::<_, i64>(12)? as usize,
             evidence_ids: serde_json::from_str(&evidence_ids_json).unwrap_or_default(),
             tags: serde_json::from_str(&tags_json).unwrap_or_default(),
@@ -66,12 +83,12 @@ pub fn list_experiences(conn: &Connection, limit: usize) -> Result<Vec<Experienc
 pub fn list_reputations(conn: &Connection) -> Result<Vec<Reputation>> {
     let mut stmt = conn.prepare(
         "SELECT id, score, factors, observations, successes, failures, updated_at, history
-         FROM reputations"
+         FROM reputations",
     )?;
 
     let mut reputations = Vec::new();
     let mut rows = stmt.query([])?;
-    
+
     while let Some(row) = rows.next()? {
         reputations.push(Reputation {
             id: row.get(0)?,

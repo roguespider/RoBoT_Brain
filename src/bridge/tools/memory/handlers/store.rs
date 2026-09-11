@@ -12,12 +12,12 @@ use crate::bridge::tools::ToolOutput;
 use crate::database::models::{MemoryCard, Observation};
 use crate::database::queries;
 use crate::database::sqlite::SqliteDatabase;
-use crate::experience::types::{
-    Experience, ExperienceContext, ExperienceOutcome, ExperienceType,
-};
+use crate::experience::types::{Experience, ExperienceContext, ExperienceOutcome, ExperienceType};
+use crate::learning::memory_state::{MemoryState, StateTransition};
+use crate::learning::promotion::PromotionPolicy;
+use crate::memory::WorkingMemory;
 use crate::memory::repository::{MemoryRepository, SqliteMemoryRepository};
 use crate::memory::types::{MemoryItem, MemoryLayer};
-use crate::memory::WorkingMemory;
 
 use super::super::helpers::{convert_memory_type_to_memory, parse_memory_type};
 use super::super::types::StoreMemoryInput;
@@ -98,10 +98,87 @@ pub async fn execute_store_memory(
     let repo = SqliteMemoryRepository::new((**database).clone());
     MemoryRepository::store(&repo, &memory_item)?;
 
+    // Store embedding: client-provided embedding takes priority.
+    // Falls back to hash-based generation if not provided (per docs "Selective Embedding".
+    let memory_conf = memory_item.confidence;
+    let memory_imp = memory_item.importance;
+    let memory_uuid = memory_item.id;
+
+    // Use the same threshold from the embedding module so the handler and
+    // generator stay in sync. Memories below 0.3 on BOTH dimensions are skipped.
+    const SELECTIVE_EMBED_THRESHOLD: f32 = 0.3;
+
+    let embedding = if let Some(emb) = input.embedding {
+        // Client (LLM) provided a real embedding vector
+        Some((emb, "client".to_string()))
+    } else if memory_conf >= SELECTIVE_EMBED_THRESHOLD && memory_imp >= SELECTIVE_EMBED_THRESHOLD {
+        // Selective: memories meeting threshold get hash-based fallback
+        crate::memory::generate_embedding(&memory_item.content, memory_conf, memory_imp)
+            .map(|emb| (emb, "hash-based".to_string()))
+    } else {
+        // Low-value memories use hybrid retrieval (graph + symbolic search)
+        None
+    };
+
+    if let Some((embedding, model)) = embedding {
+        let emb_model =
+            crate::database::models::MemoryEmbedding::new(memory_uuid, embedding, model);
+        let conn2 = database.connection()?;
+        if let Err(e) = queries::insert_embedding(&conn2, &emb_model) {
+            tracing::warn!(
+                "Failed to store embedding for memory {}: {}",
+                memory_uuid,
+                e
+            );
+        }
+    }
+
+    // Trigger promotion evaluation per Architecture §15.3:
+    // When memory is stored, evaluate against promotion policy.
+    let policy = PromotionPolicy::default();
+    let current_time = chrono::Utc::now();
+
+    // Validate initial state transition (Architecture §7.2: state machine must be valid)
+    let is_valid = MemoryState::Active.can_transition(StateTransition::Observe);
+    if !is_valid {
+        tracing::warn!("Invalid initial memory state transition detected");
+    }
+    let target_state = MemoryState::Active.transition_to(StateTransition::Observe);
+    tracing::debug!("Memory state transition: Active -> {:?}", target_state);
+
+    let evaluation = policy.evaluate(
+        MemoryState::Active,
+        memory_imp,
+        1, // access_count (first store)
+        0, // repeated_count
+        0, // confirmation_count
+        current_time,
+    );
+    if let Some(transition) = &evaluation.recommended_transition {
+        tracing::debug!(
+            "Promotion evaluation for memory {}: {} ({}): {}",
+            memory_uuid,
+            evaluation.reason,
+            transition,
+            evaluation.confidence_delta
+        );
+    }
+
+    // Calculate adjusted confidence using promotion policy (Architecture §15.4)
+    let adjusted_confidence = policy.calculate_confidence(
+        0.5, // base confidence for new memory
+        MemoryState::Active,
+        1, // access_count
+        0, // confirmations
+    );
+    tracing::debug!("Memory confidence after promotion policy: {adjusted_confidence:.3}");
+
     tracing::info!(
         "Memory stored in Working Memory cache with observation and experience: \
          memory_id={}, observation_id={}, experience_id={}",
-        memory_id, observation_id, experience_id
+        memory_id,
+        observation_id,
+        experience_id
     );
 
     Ok(ToolOutput::success(serde_json::json!({
@@ -111,6 +188,7 @@ pub async fn execute_store_memory(
         "observation_id": observation_id.to_string(),
         "experience_id": experience_id.to_string(),
         "layer": "working",
-        "note": "Per Architecture §9: Memory will be evaluated before promotion to Permanent layer"
+        "promotion_evaluated": evaluation.should_promote,
+        "note": "Per Architecture §15.3: Promotion pipeline evaluated on store"
     })))
 }

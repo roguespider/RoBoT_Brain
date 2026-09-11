@@ -5,14 +5,29 @@
 use serde::{Deserialize, Serialize};
 
 /// Empty capability marker
-#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+#[derive(Clone, Serialize, Deserialize, Default)]
 pub struct McpEmpty;
 
+impl std::fmt::Debug for McpEmpty {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("McpEmpty").finish()
+    }
+}
+
 /// Resources capability
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct McpResourcesCapability {
     pub subscribe: Option<bool>,
     pub list_changed: Option<bool>,
+}
+
+impl std::fmt::Debug for McpResourcesCapability {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("McpResourcesCapability")
+            .field("subscribe", &self.subscribe)
+            .field("list_changed", &self.list_changed)
+            .finish()
+    }
 }
 
 impl Default for McpResourcesCapability {
@@ -25,7 +40,7 @@ impl Default for McpResourcesCapability {
 }
 
 /// Server capabilities
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct McpCapabilities {
     #[serde(default)]
     pub tools: Option<McpEmpty>,
@@ -35,6 +50,17 @@ pub struct McpCapabilities {
     pub prompts: Option<McpEmpty>,
     #[serde(default)]
     pub logging: Option<McpEmpty>,
+}
+
+impl std::fmt::Debug for McpCapabilities {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("McpCapabilities")
+            .field("tools", &self.tools)
+            .field("resources", &self.resources)
+            .field("prompts", &self.prompts)
+            .field("logging", &self.logging)
+            .finish()
+    }
 }
 
 impl McpCapabilities {

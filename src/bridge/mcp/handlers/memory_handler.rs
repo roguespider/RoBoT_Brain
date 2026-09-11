@@ -55,7 +55,7 @@ impl MemoryToolsHandler {
     pub async fn execute_get_memory(
         &self,
         input: memory::GetMemoryInput,
-    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    ) -> crate::bridge::tools::ToolOutput {
         memory::execute_get_memory(
             input,
             &self.context.database,
@@ -382,103 +382,101 @@ impl ToolHandler for MemoryToolsHandler {
         name: &str,
         args: serde_json::Value,
     ) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
-            match name {
-                "store_memory" => {
-                    let input: memory::StoreMemoryInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_store_memory(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "search_memory" => {
-                    let input: memory::SearchMemoryInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_search_memory(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "get_memory" => {
-                    let input: memory::GetMemoryInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_get_memory(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "list_memories" => {
-                    let input: memory::ListMemoriesInput =
-                        serde_json::from_value(args).unwrap_or_default();
-                    self.execute_list_memories(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "store_embedding" => {
-                    let input: memory::StoreEmbeddingInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_store_embedding(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "get_embedding" => {
-                    let input: memory::GetEmbeddingInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_get_embedding(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "search_similar" => {
-                    let input: memory::SearchSimilarInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_search_similar(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "list_embeddings" => {
-                    let input: memory::ListEmbeddingsInput =
-                        serde_json::from_value(args).unwrap_or_default();
-                    self.execute_list_embeddings(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "delete_embedding" => {
-                    let input: memory::DeleteEmbeddingInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_delete_embedding(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "get_embedding_stats" => self
-                    .execute_get_embedding_stats()
+        match name {
+            "store_memory" => {
+                let input: memory::StoreMemoryInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_store_memory(input)
                     .await
-                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string())),
-                "archive_memory" => {
-                    let input: memory::ArchiveMemoryInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_archive_memory(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "delete_memory_by_id" => {
-                    let input: memory::DeleteMemoryInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_delete_memory_by_id(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "link_memories" => {
-                    let input: memory::LinkMemoriesInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_link_memories(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "ranked_search" => {
-                    let input: memory::RankedSearchInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_ranked_search(input)
-                        .await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                _ => Err(HandlerError::ToolNotFound(name.to_string())),
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
             }
+            "search_memory" => {
+                let input: memory::SearchMemoryInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_search_memory(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "get_memory" => {
+                let input: memory::GetMemoryInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                Ok(self.execute_get_memory(input).await)
+            }
+            "list_memories" => {
+                let input: memory::ListMemoriesInput =
+                    serde_json::from_value(args).unwrap_or_default();
+                self.execute_list_memories(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "store_embedding" => {
+                let input: memory::StoreEmbeddingInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_store_embedding(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "get_embedding" => {
+                let input: memory::GetEmbeddingInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_get_embedding(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "search_similar" => {
+                let input: memory::SearchSimilarInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_search_similar(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "list_embeddings" => {
+                let input: memory::ListEmbeddingsInput =
+                    serde_json::from_value(args).unwrap_or_default();
+                self.execute_list_embeddings(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "delete_embedding" => {
+                let input: memory::DeleteEmbeddingInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_delete_embedding(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "get_embedding_stats" => self
+                .execute_get_embedding_stats()
+                .await
+                .map_err(|e| HandlerError::ExecutionFailed(e.to_string())),
+            "archive_memory" => {
+                let input: memory::ArchiveMemoryInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_archive_memory(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "delete_memory_by_id" => {
+                let input: memory::DeleteMemoryInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_delete_memory_by_id(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "link_memories" => {
+                let input: memory::LinkMemoriesInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_link_memories(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "ranked_search" => {
+                let input: memory::RankedSearchInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_ranked_search(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            _ => Err(HandlerError::ToolNotFound(name.to_string())),
+        }
     }
 }

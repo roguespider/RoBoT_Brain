@@ -11,6 +11,8 @@ mod memory;
 mod personality;
 mod planner;
 
+mod cooboploop;
+mod research;
 mod skills;
 mod workflows;
 mod world_model;

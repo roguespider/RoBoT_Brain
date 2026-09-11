@@ -7,20 +7,19 @@
 // - No single tool can cause MCP or any other tool to fail
 // - Graceful degradation: if a handler fails, log warning but continue
 
-pub mod types;
-pub mod helpers;
 pub mod handler;
+pub mod helpers;
+pub mod types;
 
 pub use handler::run_stdio_server;
 
+use rmcp::ErrorData;
 use rmcp::handler::server::ServerHandler;
 use rmcp::model::{
-    CallToolRequestParams, CallToolResult, ContentBlock,
-    ListToolsResult, PaginatedRequestParams, ServerCapabilities, 
-    ServerInfo, Implementation, Tool
+    CallToolRequestParams, CallToolResult, ContentBlock, Implementation, ListToolsResult,
+    PaginatedRequestParams, ServerCapabilities, ServerInfo, Tool,
 };
 use rmcp::service::RequestContext;
-use rmcp::ErrorData;
 
 use crate::bridge::mcp::handlers::HandlerError;
 
@@ -51,9 +50,16 @@ impl ServerHandler for types::McpServerHandler {
         // Exercise check_multiple_tools to verify the enforcement gate can
         // batch-check the full tool catalog (Architecture §22).
         let tool_names: Vec<String> = tools.iter().map(|t| t.name.clone().into_owned()).collect();
-        let enforcement_result = self.enforcer.check_multiple_tools(&self.session_id, &tool_names).await;
+        let enforcement_result = self
+            .enforcer
+            .check_multiple_tools(&self.session_id, &tool_names)
+            .await;
         let enforcement_ok = enforcement_result.is_ok();
-        tracing::debug!("batch enforcement check on {} tools: ok={}", tool_names.len(), enforcement_ok);
+        tracing::debug!(
+            "batch enforcement check on {} tools: ok={}",
+            tool_names.len(),
+            enforcement_ok
+        );
 
         // Clean up expired enforcement sessions on each tool listing so the
         // session table does not grow unbounded (Architecture §22).
@@ -62,7 +68,11 @@ impl ServerHandler for types::McpServerHandler {
 
         // Debug snapshot of the current session state for observability.
         if let Some(state) = self.get_session_state().await {
-            tracing::debug!("session {} wf_retrieved={}", state.session_id, state.workflow_retrieved);
+            tracing::debug!(
+                "session {} wf_retrieved={}",
+                state.session_id,
+                state.workflow_retrieved
+            );
         }
 
         Ok(ListToolsResult {
@@ -78,12 +88,16 @@ impl ServerHandler for types::McpServerHandler {
         _: RequestContext<rmcp::RoleServer>,
     ) -> Result<CallToolResult, ErrorData> {
         let tool_name: &str = &request.name;
-        let arguments = request.arguments.map(serde_json::Value::Object)
+        let arguments = request
+            .arguments
+            .map(serde_json::Value::Object)
             .unwrap_or(serde_json::Value::Object(serde_json::Map::new()));
 
         // Check workflow enforcement FIRST - agent MUST follow workflows
         if let Err(e) = self.check_workflow_enforcement(tool_name).await {
-            let content = vec![crate::bridge::rmcp::helpers::enforcement_error_to_content(e)];
+            let content = vec![crate::bridge::rmcp::helpers::enforcement_error_to_content(
+                e,
+            )];
             return Ok(CallToolResult::error(content));
         }
 
@@ -92,7 +106,8 @@ impl ServerHandler for types::McpServerHandler {
         // exercise the WorkflowEnforcer methods (Architecture §22).
         match tool_name {
             "get_workflow" => {
-                let purpose = arguments.get("purpose")
+                let purpose = arguments
+                    .get("purpose")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
                 if let Some(p) = purpose {
@@ -100,7 +115,8 @@ impl ServerHandler for types::McpServerHandler {
                 }
             }
             "search_memory" | "query_knowledge" => {
-                let query = arguments.get("query")
+                let query = arguments
+                    .get("query")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
                 self.record_memory_searched(query).await;
@@ -115,7 +131,8 @@ impl ServerHandler for types::McpServerHandler {
         match self.handlers.call_tool(tool_name, arguments.clone()).await {
             Ok(result) => {
                 // Record tool execution for workflow tracking
-                let query = arguments.get("query")
+                let query = arguments
+                    .get("query")
                     .and_then(|v| v.as_str())
                     .map(|s| s.to_string());
                 self.record_tool_execution(tool_name, query).await;
@@ -124,7 +141,8 @@ impl ServerHandler for types::McpServerHandler {
                 // learning spine advances without the caller manually
                 // recording (Architecture §2.04, TASK-V2-05).
                 let was_successful = result.success;
-                self.emit_tool_experience(tool_name, was_successful, &arguments).await;
+                self.emit_tool_experience(tool_name, was_successful, &arguments)
+                    .await;
 
                 // Build the response content via the shared helper, which
                 // encodes both success and failure payloads consistently.
@@ -138,15 +156,24 @@ impl ServerHandler for types::McpServerHandler {
             Err(err) => {
                 // Auto-record the handler-level failure as an experience too
                 // (Architecture §2.04, TASK-V2-05).
-                self.emit_tool_experience(tool_name, false, &arguments).await;
+                self.emit_tool_experience(tool_name, false, &arguments)
+                    .await;
 
-                // Return tool-level error (not protocol error)
+                // Return tool-level error (not protocol error) as structured JSON
+                // so the client sees { success: false, error: "..." }
                 let error_msg = match err {
                     HandlerError::ToolNotFound(name) => format!("Tool not found: {}", name),
                     HandlerError::ExecutionFailed(msg) => msg,
                     HandlerError::InvalidParams(msg) => format!("Invalid parameters: {}", msg),
                 };
-                let content = vec![ContentBlock::text(error_msg)];
+                let error_json = serde_json::json!({
+                    "success": false,
+                    "error": error_msg
+                });
+                // Use compact format to ensure single-line output for line-based protocol
+                let content = vec![ContentBlock::text(
+                    serde_json::to_string(&error_json).unwrap_or_default(),
+                )];
                 Ok(CallToolResult::error(content))
             }
         }

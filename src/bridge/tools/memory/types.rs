@@ -13,6 +13,8 @@ pub struct StoreMemoryInput {
     pub confidence: Option<f32>,
     pub importance: Option<f32>,
     pub tags: Option<Vec<String>>,
+    /// Optional embedding vector for semantic search. If omitted, server generates a hash-based fallback.
+    pub embedding: Option<Vec<f32>>,
 }
 
 /// Tool: Search memories

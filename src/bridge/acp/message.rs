@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
 /// ACP message envelope
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct AcpMessage {
     pub id: String,
     pub sender: AcpAgentId,
@@ -17,6 +17,22 @@ pub struct AcpMessage {
     pub conversation_id: Option<String>,
     pub reply_to: Option<String>,
     pub ttl: u32,
+}
+
+impl std::fmt::Debug for AcpMessage {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AcpMessage")
+            .field("id", &self.id)
+            .field("sender", &self.sender)
+            .field("receiver", &self.receiver)
+            .field("message_type", &self.message_type)
+            .field("payload", &self.payload)
+            .field("timestamp", &self.timestamp)
+            .field("conversation_id", &self.conversation_id)
+            .field("reply_to", &self.reply_to)
+            .field("ttl", &self.ttl)
+            .finish()
+    }
 }
 
 impl AcpMessage {
@@ -55,14 +71,22 @@ impl AcpMessage {
         reply.reply_to = Some(self.id.clone());
         reply
     }
-
 }
 
 /// Agent identifier
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub struct AcpAgentId {
     pub agent_type: String,
     pub instance_id: String,
+}
+
+impl std::fmt::Debug for AcpAgentId {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AcpAgentId")
+            .field("agent_type", &self.agent_type)
+            .field("instance_id", &self.instance_id)
+            .finish()
+    }
 }
 
 impl AcpAgentId {
@@ -78,7 +102,6 @@ impl AcpAgentId {
     pub fn uri(&self) -> String {
         format!("acp://{}/{}", self.agent_type, self.instance_id)
     }
-
 }
 
 impl std::fmt::Display for AcpAgentId {
@@ -88,7 +111,7 @@ impl std::fmt::Display for AcpAgentId {
 }
 
 /// ACP message types
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum AcpMessageType {
     /// Request: asking the receiver to perform an action
@@ -109,6 +132,22 @@ pub enum AcpMessageType {
     Unsubscribe,
     /// Publish: publish an event
     Publish,
+}
+
+impl std::fmt::Debug for AcpMessageType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Request => write!(f, "AcpMessageType::Request"),
+            Self::Response => write!(f, "AcpMessageType::Response"),
+            Self::Query => write!(f, "AcpMessageType::Query"),
+            Self::Inform => write!(f, "AcpMessageType::Inform"),
+            Self::Ack => write!(f, "AcpMessageType::Ack"),
+            Self::Error => write!(f, "AcpMessageType::Error"),
+            Self::Subscribe => write!(f, "AcpMessageType::Subscribe"),
+            Self::Unsubscribe => write!(f, "AcpMessageType::Unsubscribe"),
+            Self::Publish => write!(f, "AcpMessageType::Publish"),
+        }
+    }
 }
 
 impl AcpMessageType {
@@ -132,4 +171,3 @@ impl AcpMessageType {
         )
     }
 }
-

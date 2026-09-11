@@ -34,10 +34,11 @@ pub(crate) async fn build_memory_scheduler(
 ) -> anyhow::Result<MemorySchedulerResult> {
     // Create memory system
     let working_memory_core = Arc::new(MemWorkingMemory::new(1000));
-    let permanent_memory = Arc::new(PermanentMemory::new(10000));
+    let permanent_memory = Arc::new(PermanentMemory::new_with_db(10000, database.clone()));
     let memory_retrieval = Arc::new(MemoryRetrieval::new(
         working_memory_core.clone(),
         permanent_memory.clone(),
+        database.clone(),
     ));
 
     // Create memory pipeline

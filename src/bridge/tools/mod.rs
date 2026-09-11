@@ -1,9 +1,5 @@
-
-
-
 // src/tools/mod.rs
 // MCP tools for Zed Editor integration
-
 
 use serde::{Deserialize, Serialize};
 use std::sync::{Arc, Mutex};
@@ -41,6 +37,7 @@ impl ToolOutput {
 }
 
 pub mod agent;
+pub mod cooboploop;
 pub mod experience;
 pub mod exploration;
 pub mod hypothesis;
@@ -156,6 +153,7 @@ pub fn register_tools() {
         .chain(hypothesis_tools)
         .chain(skills_tools)
         .chain(ingestor_tools)
+        .chain(cooboploop::definitions::all())
         .collect();
 
     // Update registry using mutex lock with error handling
@@ -168,25 +166,29 @@ pub fn register_tools() {
             // Handle poisoned mutex gracefully
             let mut reg = poisoned.into_inner();
             reg.tools = all_tools;
-            tracing::info!("Total MCP tools registered (recovered from poison): {}", reg.tools.len());
+            tracing::info!(
+                "Total MCP tools registered (recovered from poison): {}",
+                reg.tools.len()
+            );
         }
     }
 }
 
-/// Get all registered tools
-pub async fn get_tools_async() -> Vec<crate::bridge::mcp::McpTool> {
-    // Use blocking lock inside async context (safe since it's only read)
+/// Return a point-in-time copy of all registered tools.
+pub fn registered_tools_snapshot() -> Vec<crate::bridge::mcp::McpTool> {
     match TOOL_REGISTRY.get() {
-        Some(registry) => {
-            match registry.lock() {
-                Ok(reg) => reg.tools.clone(),
-                Err(poisoned) => {
-                    // Return tools from poisoned state
-                    let reg = poisoned.into_inner();
-                    reg.tools.clone()
-                }
-            }
-        }
-        None => Vec::new(),  // Return empty vec when registry not initialized
+        Some(registry) => match registry.lock() {
+            Ok(registered) => registered.tools.clone(),
+            Err(poisoned) => poisoned.into_inner().tools.clone(),
+        },
+        None => Vec::new(),
     }
+}
+
+/// Get all registered tools.
+pub async fn get_tools_async() -> Vec<crate::bridge::mcp::McpTool> {
+    use crate::cooboploop::llm_provider::ToolRegistry as ReplaceableToolRegistry;
+
+    let registry = crate::cooboploop::llm_provider::DefaultToolRegistry;
+    ReplaceableToolRegistry::list_tools(&registry)
 }

@@ -16,6 +16,12 @@ use crate::experience::{
 #[derive(Clone)]
 pub struct ExperienceScorer;
 
+impl Default for ExperienceScorer {
+    fn default() -> Self {
+        Self
+    }
+}
+
 impl ExperienceScorer {
     pub fn new() -> Self {
         Self
@@ -89,10 +95,10 @@ impl ExperienceScorer {
         };
 
         // Bonus for experiences with lessons learned
-        let lesson_bonus = if experience.lessons.is_empty() {
+        let lesson_bonus = if experience.lessons_learned.is_empty() {
             0.0
         } else {
-            (experience.lessons.len() as f32).min(0.2)
+            (experience.lessons_learned.len() as f32).min(0.2)
         };
 
         // Adjust based on confidence spread from default
@@ -108,6 +114,7 @@ impl ExperienceScorer {
             OutcomeKind::Failure => 0.2,
             OutcomeKind::Timeout => 0.1,
             OutcomeKind::Interrupted => 0.3,
+            OutcomeKind::Unknown => 0.0,
         }
     }
 }

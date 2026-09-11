@@ -1,7 +1,7 @@
 //! Shared types for the safety gate (Architecture §16).
 
 /// The safety gate's verdict on a proposed action.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum SafetyDecision {
     /// The action is cleared to execute.
     Allow,
@@ -13,9 +13,22 @@ pub enum SafetyDecision {
     },
 }
 
+impl std::fmt::Debug for SafetyDecision {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Allow => write!(f, "SafetyDecision::Allow"),
+            Self::Block { reason, report } => f
+                .debug_struct("SafetyDecision::Block")
+                .field("reason", reason)
+                .field("report", report)
+                .finish(),
+        }
+    }
+}
+
 /// Action categories the gate recognizes. Read/learn actions are auto-allowed;
 /// everything else is blocked pending a permission model.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Clone, Copy, PartialEq, Eq)]
 pub enum ActionRisk {
     /// Read-only retrieval or learning action (memory/knowledge/experience
     /// lookup, planning, reflection). Safe to run autonomously.
@@ -29,12 +42,22 @@ pub enum ActionRisk {
     Destructive,
 }
 
+impl std::fmt::Debug for ActionRisk {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::Read => write!(f, "ActionRisk::Read"),
+            Self::Mutate => write!(f, "ActionRisk::Mutate"),
+            Self::Destructive => write!(f, "ActionRisk::Destructive"),
+        }
+    }
+}
+
 /// Structured uncertainty report produced when an action is evaluated.
 ///
 /// Per Architecture §16 "uncertainty reporting" — when the gate blocks or
 /// conditionally allows an action, it emits a structured report so the loop
 /// can record *why* in the experience, not just *that* it was blocked.
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct UncertaintyReport {
     /// Human-readable summary of all concerns.
     pub summary: String,
@@ -46,6 +69,18 @@ pub struct UncertaintyReport {
     pub sandbox_blocked: bool,
     /// Number of supporting evidence items across all channels.
     pub evidence_count: usize,
+}
+
+impl std::fmt::Debug for UncertaintyReport {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("UncertaintyReport")
+            .field("summary", &self.summary)
+            .field("hallucination_risk", &self.hallucination_risk)
+            .field("low_confidence", &self.low_confidence)
+            .field("sandbox_blocked", &self.sandbox_blocked)
+            .field("evidence_count", &self.evidence_count)
+            .finish()
+    }
 }
 
 impl UncertaintyReport {
@@ -86,7 +121,7 @@ impl UncertaintyReport {
 }
 
 /// An entry in the rollback journal recording a mutation for potential reversal.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct RollbackEntry {
     /// Unique ID for this journal entry.
     pub id: String,
@@ -98,6 +133,18 @@ pub struct RollbackEntry {
     pub target_id: String,
     /// Whether this entry has been rolled back.
     pub rolled_back: bool,
+}
+
+impl std::fmt::Debug for RollbackEntry {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RollbackEntry")
+            .field("id", &self.id)
+            .field("action", &self.action)
+            .field("timestamp", &self.timestamp)
+            .field("target_id", &self.target_id)
+            .field("rolled_back", &self.rolled_back)
+            .finish()
+    }
 }
 
 impl RollbackEntry {

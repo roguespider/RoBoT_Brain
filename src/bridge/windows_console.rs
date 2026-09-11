@@ -29,8 +29,8 @@ pub fn attach_console() {
                 // But tokio's async IO may need explicit handling
 
                 // Force reopen the standard handles by touching them
-                let _ = std::io::stdout();
-                let _ = std::io::stderr();
+                drop(std::io::stdout());
+                drop(std::io::stderr());
             } else {
                 // Failed to attach - likely running without a console at all
                 // This is expected when running as a true Windows GUI application

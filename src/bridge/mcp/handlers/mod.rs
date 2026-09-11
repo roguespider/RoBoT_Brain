@@ -15,6 +15,7 @@ use std::sync::Arc;
 
 pub mod acp_handler;
 pub mod agent_handler;
+pub mod cooboploop_handler;
 pub mod experience_handler;
 pub mod exploration_handler;
 pub mod hypothesis_handler;
@@ -33,10 +34,19 @@ pub mod world_model_handler;
 pub type HandlerInitResult<T> = Result<T, HandlerInitError>;
 
 /// Error during handler initialization
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct HandlerInitError {
     pub category: String,
     pub message: String,
+}
+
+impl std::fmt::Debug for HandlerInitError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HandlerInitError")
+            .field("category", &self.category)
+            .field("message", &self.message)
+            .finish()
+    }
 }
 
 impl HandlerInitError {
@@ -49,7 +59,7 @@ impl HandlerInitError {
 }
 
 /// Error when executing a tool via MCP
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub enum HandlerError {
     /// Tool was not found
     ToolNotFound(String),
@@ -57,6 +67,25 @@ pub enum HandlerError {
     ExecutionFailed(String),
     /// Invalid parameters
     InvalidParams(String),
+}
+
+impl std::fmt::Debug for HandlerError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::ToolNotFound(name) => f
+                .debug_struct("HandlerError::ToolNotFound")
+                .field("name", name)
+                .finish(),
+            Self::ExecutionFailed(msg) => f
+                .debug_struct("HandlerError::ExecutionFailed")
+                .field("msg", msg)
+                .finish(),
+            Self::InvalidParams(msg) => f
+                .debug_struct("HandlerError::InvalidParams")
+                .field("msg", msg)
+                .finish(),
+        }
+    }
 }
 
 impl std::fmt::Display for HandlerError {
@@ -96,11 +125,11 @@ pub trait ToolHandler: Send + Sync {
     /// Execute a tool by name with arguments
     ///
     /// Each handler must implement this to handle its own tool execution.
-    async fn execute_tool(
+    fn execute_tool(
         &self,
         name: &str,
         args: serde_json::Value,
-    ) -> Result<crate::bridge::tools::ToolOutput, HandlerError>;
+    ) -> impl std::future::Future<Output = Result<crate::bridge::tools::ToolOutput, HandlerError>> + Send;
 }
 
 /// Convert serde_json::Value to Arc<serde_json::Map<String, serde_json::Value>>
@@ -122,6 +151,7 @@ pub fn json_to_schema(
 
 pub use acp_handler::AcpToolsHandler;
 pub use agent_handler::AgentToolsHandler;
+pub use cooboploop_handler::CooboploopToolsHandler;
 pub use experience_handler::ExperienceToolsHandler;
 pub use exploration_handler::ExplorationToolsHandler;
 pub use hypothesis_handler::HypothesisToolsHandler;
@@ -139,6 +169,7 @@ pub use world_model_handler::WorldModelToolsHandler;
 /// Collection of all tool handlers with graceful degradation
 #[derive(Clone, Default)]
 pub struct ToolHandlerCollection {
+    pub cooboploop: Option<CooboploopToolsHandler>,
     pub acp: Option<AcpToolsHandler>,
     pub agent: Option<AgentToolsHandler>,
     pub experience: Option<ExperienceToolsHandler>,
@@ -183,6 +214,23 @@ impl ToolHandlerCollection {
             }
             Err(e) => {
                 tracing::warn!("Failed to initialize ACP tools handler: {}", e.message);
+                errors.push(e);
+            }
+        }
+
+        match CooboploopToolsHandler::new(context.clone()) {
+            Ok(handler) => {
+                tracing::info!(
+                    "Cooboploop tools handler initialized with {} tools",
+                    handler.tool_names().len()
+                );
+                collection.cooboploop = Some(handler);
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "Failed to initialize cooboploop tools handler: {}",
+                    e.message
+                );
                 errors.push(e);
             }
         }
@@ -420,6 +468,9 @@ impl ToolHandlerCollection {
         if let Some(ref h) = self.acp {
             count += h.tool_names().len();
         }
+        if let Some(ref h) = self.cooboploop {
+            count += h.tool_names().len();
+        }
         if let Some(ref h) = self.agent {
             count += h.tool_names().len();
         }
@@ -469,6 +520,7 @@ impl ToolHandlerCollection {
     pub fn is_healthy(&self) -> bool {
         // At least one handler should be healthy
         self.acp.as_ref().is_some_and(|h| h.is_healthy())
+            || self.cooboploop.as_ref().is_some_and(|h| h.is_healthy())
             || self.agent.as_ref().is_some_and(|h| h.is_healthy())
             || self.experience.as_ref().is_some_and(|h| h.is_healthy())
             || self.exploration.as_ref().is_some_and(|h| h.is_healthy())
@@ -489,6 +541,9 @@ impl ToolHandlerCollection {
     pub fn get_all_tools(&self) -> Vec<rmcp::model::Tool> {
         let mut tools = Vec::new();
         if let Some(ref h) = self.acp {
+            tools.extend(h.get_tools());
+        }
+        if let Some(ref h) = self.cooboploop {
             tools.extend(h.get_tools());
         }
         if let Some(ref h) = self.agent {
@@ -540,6 +595,13 @@ impl ToolHandlerCollection {
     pub fn get_tool(&self, name: &str) -> Option<rmcp::model::Tool> {
         if let Some(tool) = self
             .acp
+            .as_ref()
+            .and_then(|h| h.get_tools().into_iter().find(|t| t.name == name))
+        {
+            return Some(tool);
+        }
+        if let Some(tool) = self
+            .cooboploop
             .as_ref()
             .and_then(|h| h.get_tools().into_iter().find(|t| t.name == name))
         {
@@ -670,6 +732,7 @@ impl ToolHandlerCollection {
         }
 
         try_handler!(self.acp);
+        try_handler!(self.cooboploop);
         try_handler!(self.agent);
         try_handler!(self.experience);
         try_handler!(self.exploration);

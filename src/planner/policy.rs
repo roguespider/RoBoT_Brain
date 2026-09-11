@@ -56,7 +56,7 @@ pub enum PolicyAction {
 
 /// Context for policy evaluation
 #[derive(Debug, Clone, Serialize, Deserialize)]
-pub(crate) struct PolicyContext {
+pub struct PolicyContext {
     pub task_type: Option<String>,
     pub task_description: Option<String>,
     pub confidence: f32,

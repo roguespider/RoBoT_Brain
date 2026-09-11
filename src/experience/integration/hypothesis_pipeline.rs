@@ -102,7 +102,9 @@ impl HypothesisPipeline {
 
                 // Publish HypothesisGenerated event
                 let event = ExperienceEvent::hypothesis_generated(experience.id, Uuid::new_v4());
-                let _ = self.bus.publish(event);
+                self.bus.publish(event).unwrap_or_else(|e| {
+                    tracing::debug!("Failed to publish hypothesis generated event: {e}");
+                });
 
                 tracing::info!("Generated hypothesis: {}", id);
                 return Ok(vec![id]);
@@ -139,7 +141,9 @@ impl HypothesisPipeline {
                 // is published on the bus for the exploration subsystem.
                 if self.config.auto_explore {
                     let explore_event = ExperienceEvent::exploration_started(Uuid::new_v4());
-                    let _ = self.bus.publish(explore_event);
+                    self.bus.publish(explore_event).unwrap_or_else(|e| {
+                        tracing::debug!("Failed to publish exploration started event: {e}");
+                    });
                     tracing::info!("Auto-exploring validated hypothesis {}", hypothesis_id);
                 }
             }
@@ -288,7 +292,9 @@ impl HypothesisPipeline {
             hypothesis_id.to_string(),
             validated,
         );
-        let _ = self.bus.publish(event);
+        self.bus.publish(event).unwrap_or_else(|e| {
+            tracing::debug!("Failed to publish hypothesis validated event: {e}");
+        });
         Ok(())
     }
 }

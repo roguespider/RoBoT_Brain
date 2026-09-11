@@ -9,10 +9,21 @@ use anyhow::Result;
 impl EventSubscriber {
     /// Generate reflection from experience
     pub(crate) async fn generate_reflection(&self, experience: &Experience) -> Result<()> {
-        let _ = self
+        let result = self
             .reflection_engine
             .generate_from_single(experience, format!("Reflection on: {}", experience.title))
-            .await;
+            .await
+            .map_err(|e| {
+                tracing::debug!(
+                    "Failed to generate reflection for experience {}: {e}",
+                    experience.id
+                );
+                e
+            });
+        if result.is_err() {
+            tracing::info!("Generated reflection for experience: {}", experience.id);
+            return Ok(());
+        }
 
         tracing::info!("Generated reflection for experience: {}", experience.id);
         Ok(())
@@ -30,27 +41,28 @@ impl EventSubscriber {
         // Use hypothesis engine to process the experience
         // If high-scoring, create a behavior via evolution engine
         if let Some(score) = &experience.score
-            && score.confidence > 0.7 {
-                // Create an insight from the high-confidence experience
-                let mut insight = crate::experience::reflection::insight::Insight::new(
-                    uuid::Uuid::new_v4().to_string(),
-                    format!("Insight from: {}", experience.title),
-                    format!("High-confidence experience: {:?}", experience.outcome),
-                    crate::experience::reflection::insight::InsightType::Pattern,
-                );
-                insight.confidence = score.confidence;
-                insight.add_experience(experience.id.to_string());
+            && score.confidence > 0.7
+        {
+            // Create an insight from the high-confidence experience
+            let mut insight = crate::experience::reflection::insight::Insight::new(
+                uuid::Uuid::new_v4().to_string(),
+                format!("Insight from: {}", experience.title),
+                format!("High-confidence experience: {:?}", experience.outcome),
+                crate::experience::reflection::insight::InsightType::Pattern,
+            );
+            insight.confidence = score.confidence;
+            insight.add_experience(experience.id.to_string());
 
-                let behavior = self
-                    .evolution_engine
-                    .create_behavior_from_insight(&insight)
-                    .await;
-                tracing::info!(
-                    "Created behavior from high-confidence experience: {} (behavior_ok={})",
-                    experience.id,
-                    behavior.is_ok()
-                );
-            }
+            let behavior = self
+                .evolution_engine
+                .create_behavior_from_insight(&insight)
+                .await;
+            tracing::info!(
+                "Created behavior from high-confidence experience: {} (behavior_ok={})",
+                experience.id,
+                behavior.is_ok()
+            );
+        }
 
         // Record current hypothesis graph state for diagnostics so the stored
         // hypothesis engine remains an active participant (Architecture §11).
@@ -104,8 +116,10 @@ impl EventSubscriber {
     ) -> Result<()> {
         // If hypothesis is validated, create knowledge from it
         // Per Architecture §2.5: "Hypothesis is a temporary model waiting for evidence"
-        let is_validated = hypothesis.status == crate::experience::hypothesis::core::hypothesis::HypothesisStatus::Supported
-            || hypothesis.status == crate::experience::hypothesis::core::hypothesis::HypothesisStatus::Active;
+        let is_validated = hypothesis.status
+            == crate::experience::hypothesis::core::hypothesis::HypothesisStatus::Supported
+            || hypothesis.status
+                == crate::experience::hypothesis::core::hypothesis::HypothesisStatus::Active;
 
         if is_validated {
             let knowledge_content = format!(
@@ -127,7 +141,10 @@ impl EventSubscriber {
                     added_id
                 );
             } else {
-                tracing::debug!("Validated hypothesis would create knowledge: {}", knowledge_content);
+                tracing::debug!(
+                    "Validated hypothesis would create knowledge: {}",
+                    knowledge_content
+                );
             }
         }
 

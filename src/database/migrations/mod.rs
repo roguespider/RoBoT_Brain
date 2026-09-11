@@ -11,12 +11,13 @@ use rusqlite::Connection;
 
 use crate::database::sqlite::SqliteDatabase;
 
-pub mod core_data_storage;
-pub mod tracking;
-pub mod scheduling;
 pub mod advanced_features;
+pub mod cooboploop;
+pub mod core_data_storage;
 pub mod hierarchical_memory;
 pub mod job_queue;
+pub mod scheduling;
+pub mod tracking;
 
 /// Run all pending migrations.
 pub fn run(database: &SqliteDatabase) -> Result<()> {
@@ -32,7 +33,7 @@ fn run_migrations(conn: &Connection) -> Result<()> {
     let mut version = current_version(conn)?;
 
     // Run all pending migrations sequentially
-    while version < 12 {
+    while version < 13 {
         match version {
             0..=2 => {
                 core_data_storage::run(conn)?;
@@ -54,6 +55,10 @@ fn run_migrations(conn: &Connection) -> Result<()> {
             11 => {
                 job_queue::run(conn)?;
                 version = 12;
+            }
+            12 => {
+                cooboploop::run(conn)?;
+                version = 13;
             }
             _ => break,
         }
@@ -101,4 +106,3 @@ fn set_version(conn: &Connection, version: i32) -> Result<()> {
 
     Ok(())
 }
-

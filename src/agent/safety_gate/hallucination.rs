@@ -15,7 +15,7 @@
 use crate::agent::decision::{ActionConfidence, ConfidenceComponents, SelectedAction};
 
 /// Result of a hallucination check.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct HallucinationCheck {
     /// Whether a hallucination risk was detected.
     pub risk_detected: bool,
@@ -25,6 +25,17 @@ pub struct HallucinationCheck {
     pub evidence_channels: usize,
     /// Total number of evidence items across all channels.
     pub evidence_count: usize,
+}
+
+impl std::fmt::Debug for HallucinationCheck {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("HallucinationCheck")
+            .field("risk_detected", &self.risk_detected)
+            .field("reason", &self.reason)
+            .field("evidence_channels", &self.evidence_channels)
+            .field("evidence_count", &self.evidence_count)
+            .finish()
+    }
 }
 
 impl HallucinationCheck {
@@ -125,10 +136,7 @@ impl HallucinationCheck {
 /// This implements the "hallucination handling" requirement: when risk is
 /// detected, the confidence is penalized so the safety gate's threshold
 /// check is more likely to block the action.
-pub fn apply_hallucination_penalty(
-    confidence: &mut ActionConfidence,
-    check: &HallucinationCheck,
-) {
+pub fn apply_hallucination_penalty(confidence: &mut ActionConfidence, check: &HallucinationCheck) {
     if check.risk_detected {
         // Penalize by 0.15 — enough to push borderline actions below
         // threshold without making all hallucination-flagged actions

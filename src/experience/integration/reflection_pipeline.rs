@@ -6,15 +6,15 @@
 //! "Reflection transforms experience into understanding"
 //! Reflection asks: What happened? Why did it happen? Was the result expected? What should change?
 
-use std::sync::Arc;
 use anyhow::Result;
+use std::sync::Arc;
 use uuid::Uuid;
 
 use crate::experience::bus::ExperienceBus;
 use crate::experience::events::ExperienceEvent;
-use crate::experience::types::Experience;
-use crate::experience::reflection::{ReflectionEngine, ReflectionType, ReflectionStatus};
 use crate::experience::reflection::types::Reflection;
+use crate::experience::reflection::{ReflectionEngine, ReflectionStatus, ReflectionType};
+use crate::experience::types::Experience;
 
 /// Reflection pipeline that processes experiences into insights
 pub struct ReflectionPipeline {
@@ -48,9 +48,7 @@ impl ReflectionPipeline {
         let title = self.generate_title(experience, reflection_type.clone());
 
         // Create reflection
-        let reflection = self.engine
-            .generate_from_single(experience, title)
-            .await?;
+        let reflection = self.engine.generate_from_single(experience, title).await?;
 
         // Add detailed description
         let mut reflection = reflection;
@@ -73,9 +71,15 @@ impl ReflectionPipeline {
             experience.id,
             Uuid::parse_str(&reflection.id).unwrap_or_default(),
         );
-        let _ = self.bus.publish(event);
+        self.bus.publish(event).unwrap_or_else(|e| {
+            tracing::debug!("Failed to publish reflection completed event: {e}");
+        });
 
-        tracing::info!("Generated {:?} reflection for experience {}", reflection_type, experience.id);
+        tracing::info!(
+            "Generated {:?} reflection for experience {}",
+            reflection_type,
+            experience.id
+        );
         Ok(Some(reflection))
     }
 
@@ -116,7 +120,11 @@ impl ReflectionPipeline {
     }
 
     /// Generate detailed description for reflection
-    fn generate_description(&self, experience: &Experience, reflection_type: ReflectionType) -> String {
+    fn generate_description(
+        &self,
+        experience: &Experience,
+        reflection_type: ReflectionType,
+    ) -> String {
         let mut desc = String::new();
 
         match reflection_type {
@@ -156,9 +164,10 @@ impl ReflectionPipeline {
             OutcomeKind::Failure => {
                 lessons.push("failed_outcome".to_string());
                 if let Some(reason) = &experience.outcome.error
-                    && !reason.is_empty() {
-                        lessons.push(format!("failure_reason:{}", reason));
-                    }
+                    && !reason.is_empty()
+                {
+                    lessons.push(format!("failure_reason:{}", reason));
+                }
             }
             _ => {}
         }
@@ -184,11 +193,14 @@ impl ReflectionPipeline {
     async fn publish_insights(&self, reflection: &Reflection) -> Result<()> {
         // Create insights for validated reflections
         if reflection.status == ReflectionStatus::Validated {
-            let insight = self.engine.create_insight(
-                reflection.title.clone(),
-                reflection.description.clone(),
-                vec![reflection.id.clone()],
-            ).await?;
+            let insight = self
+                .engine
+                .create_insight(
+                    reflection.title.clone(),
+                    reflection.description.clone(),
+                    vec![reflection.id.clone()],
+                )
+                .await?;
 
             tracing::info!("Created insight from validated reflection: {}", insight.id);
         }

@@ -46,7 +46,7 @@ jobs:
             ~/.cargo/registry
             ~/.cargo/git
             target
-            test_suite/target
+            .agents/scripts/test_suite2/target
           key: gate-${{ runner.os }}-${{ hashFiles('**/Cargo.lock') }}
           restore-keys: gate-${{ runner.os }}-
 
@@ -59,6 +59,6 @@ jobs:
         with:
           name: gate-report
           path: |
-            test_suite/test_suite_report.json
-            test_suite/test_suite_output.txt
+            .agents/scripts/test_suite2/test_suite_report.json
+            .agents/scripts/test_suite2/test_suite_output.txt
           if-no-files-found: ignore

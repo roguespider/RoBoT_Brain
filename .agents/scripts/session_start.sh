@@ -46,7 +46,7 @@ for f in .agents/STARTUP.md AGENTS.md .agents/PLAN.md; do
     fi
 done
 
-step "2/5 — RUN the verify gate and PRINT the four metrics"
+step "2/5" — RUN the verify gate (test_suite2 + Rust) and PRINT metrics"
 smack "Do NOT trust memory. Run the gate now."
 if ! .agents/scripts/gate.sh >/tmp/session_gate.log 2>&1; then
     GATE_GREEN=0
@@ -56,7 +56,7 @@ else
     ok "gate green"
 fi
 # Extract metrics regardless of pass/fail (gate may be red on warnings).
-REPORT="$REPO_ROOT/test_suite/test_suite_report.json"
+REPORT="$REPO_ROOT/.agents/scripts/test_suite2/test_suite_report.json"
 PASS=$(python3 -c "import json;d=json.load(open('$REPORT'));s=d.get('summary',{});print(s.get('passed',0))" 2>/dev/null || echo 0)
 TOTAL=$(python3 -c "import json;d=json.load(open('$REPORT'));s=d.get('summary',{});print(s.get('total',0))" 2>/dev/null || echo 0)
 WARN=$(python3 -c "import json;d=json.load(open('$REPORT'));s=d.get('summary',{});print(s.get('compiler_warnings',0))" 2>/dev/null || echo 0)
@@ -64,6 +64,15 @@ ISSUES=$(python3 -c "import json;d=json.load(open('$REPORT'));s=d.get('summary',
 UNTESTED=$(python3 -c "import json;d=json.load(open('$REPORT'));c=d.get('coverage',{});print(len(c.get('untested_tools',[])))" 2>/dev/null || echo 0)
 printf "  tests: %s/%s | warnings: %s | code_issues: %s | untested: %s | gate_green: %s\n" \
     "$PASS" "$TOTAL" "$WARN" "$ISSUES" "$UNTESTED" "$GATE_GREEN"
+
+# Report Python test results (test_suite2)
+PY_OUTPUT="$REPO_ROOT/.agents/scripts/test_suite2/python_test_output.txt"
+if [ -f "$PY_OUTPUT" ]; then
+    PY_RESULT=$(grep -E "passed|failed" "$PY_OUTPUT" 2>/dev/null | tail -1 || echo "")
+    if [ -n "$PY_RESULT" ]; then
+        printf "  Python: %s\n" "$PY_RESULT"
+    fi
+fi
 
 step "3/5 — CONNECT to live robot_brain MCP server (YOURSELF)"
 smack "test_suite is NOT enough. Connect yourself and call a real tool."

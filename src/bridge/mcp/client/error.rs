@@ -2,11 +2,21 @@
 //! Tool error types for MCP client
 
 /// Tool invocation error
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct ToolError {
     pub message: String,
     pub server: String,
     pub tool: String,
+}
+
+impl std::fmt::Debug for ToolError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ToolError")
+            .field("message", &self.message)
+            .field("server", &self.server)
+            .field("tool", &self.tool)
+            .finish()
+    }
 }
 
 impl ToolError {

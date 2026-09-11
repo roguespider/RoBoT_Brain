@@ -64,6 +64,35 @@ pub struct KnowledgeItem {
 }
 
 impl KnowledgeItem {
+    /// Create a new knowledge item
+    pub fn new(
+        id: String,
+        knowledge_type: KnowledgeType,
+        statement: String,
+        confidence: f32,
+        source: KnowledgeSource,
+        tags: Vec<String>,
+    ) -> Self {
+        let now = Utc::now();
+        Self {
+            id: Uuid::parse_str(&id).unwrap_or_else(|_| Uuid::new_v4()),
+            statement,
+            knowledge_type,
+            confidence: KnowledgeConfidence::new(confidence),
+            status: KnowledgeStatus::New,
+            source,
+            supporting_evidence: Vec::new(),
+            contradicting_evidence: Vec::new(),
+            relations: Vec::new(),
+            created_at: now,
+            updated_at: now,
+            success_count: 0,
+            failure_count: 0,
+            tags,
+            metadata: HashMap::new(),
+        }
+    }
+
     /// Create a new knowledge item from reflection output
     pub fn from_reflection(insight: &str, confidence: f32, source_experience: Uuid) -> Self {
         let now = Utc::now();

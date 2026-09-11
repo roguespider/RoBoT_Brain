@@ -9,11 +9,21 @@ use super::agent::AcpAgent;
 use super::message::{AcpAgentId, AcpMessage};
 
 /// System agent capabilities
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct SystemCapability {
     pub name: String,
     pub description: String,
     pub version: String,
+}
+
+impl std::fmt::Debug for SystemCapability {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SystemCapability")
+            .field("name", &self.name)
+            .field("description", &self.description)
+            .field("version", &self.version)
+            .finish()
+    }
 }
 
 /// System agent for handling ACP messages

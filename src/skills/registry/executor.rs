@@ -139,7 +139,9 @@ impl SkillExecutor {
     /// Record execution in registry and update metrics
     async fn record_execution(&self, skill_id: &str, result: &ExecutionResult, duration_ms: u64) {
         // Update registry
-        let _ = self.registry.record_usage(skill_id, result.success).await;
+        self.registry.record_usage(skill_id, result.success).await.unwrap_or_else(|e| {
+            tracing::debug!("Failed to record skill usage for {skill_id}: {e}");
+        });
 
         // Update local metrics
         match self.metrics.lock() {
