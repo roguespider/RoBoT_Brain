@@ -41,11 +41,7 @@ Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architec
   - **▸** Section 5: uncertainty (every numeric score has a `confidence` field 0.0-1.0) citing Chapter 19.1.
   - **▸** Section 6: failure visibility (no silent fallbacks; every error path emits an `Error` event) citing Chapter 16.2.
   - **▸** Section 7: versioned evolution (every contract has a `version: SemVer` field) citing Chapter 5.1. Commit.
-- [ ] **T2-07** — Write the v0.0.2 communication model note: event-driven coordination instead of direct implementation coupling — Chapter 16 (Cognitive Coordination Layer) + Chapter 15.4 (Internal communication).
-  - **▸** Create `.agents/notes/communication_model.md`. Section 1: "Subsystems MUST NOT call each other directly — they emit events and react to events" citing Chapter 16.1.
-  - **▸** Section 2: event schema (kind, payload, source, correlation_id, timestamp) citing Chapter 5.2 "Event contracts".
-  - **▸** Section 3: where events are stored (an append-only `events` log table) citing Chapter 21 "Storage Architecture".
-  - **▸** Section 4: "MCP tools are the ONLY entry point for external callers; ACP is the ONLY entry point for other agents" citing Chapter 15.1-15.3. Commit.
+
 
 ---
 
