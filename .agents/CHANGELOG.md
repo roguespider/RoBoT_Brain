@@ -17,6 +17,21 @@
 - **Change:** Ownership table for all 16 subsystems with module paths, responsibilities, chapter references. Includes "ownership rule" prohibiting hidden cross-ownership via direct imports.
 - **Verification:** File exists, 35 lines, all 16 subsystem directories verified
 
+### T2-04 — Data Flow Path
+- **Files:** `.agents/notes/data_flow.md`
+- **Change:** 4 sections: Input Processing (Ch 4.2), Internal Pipelines (Ch 4.3+3.3), Output Generation (Ch 4.4), System Boundaries (Ch 4.5). Includes canonical pipeline flow and trust boundary rules.
+- **Verification:** File exists, 52 lines
+
+### T2-05 — Identity and Correlation Invariants
+- **Files:** `.agents/notes/invariants.md`
+- **Change:** Identity (Ch 5: UUID v4, no reuse, no PII, opaque), Correlation (Ch 16.1: correlation_id, reply_to, request tracing)
+- **Verification:** File exists, section 1-2 present
+
+### T2-06 — Provenance, Evidence, Uncertainty, Failure, Version Invariants
+- **Files:** `.agents/notes/invariants.md`
+- **Change:** Provenance (Ch 5.2+19: source, source_kind, created_by), Evidence (link to Evidence or mark ungrounded), Uncertainty (Ch 19.1: confidence 0.0-1.0, >= 0.7 for promotion), Failure Visibility (Ch 16.2: no silent fallbacks, emit Error events), Versioned Evolution (Ch 5.1: SemVer, backward-compatible increments)
+- **Verification:** File exists, sections 3-6 present with checklist
+
 ## Research Engine — Phase 0: HTTP Foundation (R0)
 
 ### Completed Tasks
