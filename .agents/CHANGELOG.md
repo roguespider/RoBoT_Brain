@@ -12,6 +12,11 @@
 - **Change:** Appended 5 sections: Modularity (Ch 2.1), Explainability (Ch 2.2 + Ch 19), Event-Driven Design (Ch 2.4 + Ch 16), Confidence-Based Decisions (Ch 2.5 + Ch 19.1), Controlled Evolution cross-link
 - **Verification:** File appended, verified line count increased
 
+### T2-03 — Subsystem Ownership Map
+- **Files:** `.agents/notes/subsystem_ownership.md`
+- **Change:** Ownership table for all 16 subsystems with module paths, responsibilities, chapter references. Includes "ownership rule" prohibiting hidden cross-ownership via direct imports.
+- **Verification:** File exists, 35 lines, all 16 subsystem directories verified
+
 ## Research Engine — Phase 0: HTTP Foundation (R0)
 
 ### Completed Tasks

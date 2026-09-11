@@ -32,10 +32,7 @@ Upgrade the existing subsystems to the v0.0.2 architecture in a dependency-first
 Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Part I, Chapters 1-4.
 
 
-- [ ] **T2-03** — Write a subsystem ownership map with one owner per subsystem and no hidden cross-ownership — Chapter 3 (High Level System Overview, "Major subsystem relationships").
-  - **▸** Create `.agents/notes/subsystem_ownership.md` with a table: subsystem | owning module path | primary responsibility | v0.0.2 chapter. Cover all 16 chapters (6-22) of Part II+III+IV.
-  - **▸** Verify each row points to exactly one `src/<subsystem>/` directory in the codebase: `ls src/`.
-  - **▸** Add a "no hidden cross-ownership" rule: any inter-subsystem call goes through an event, not a direct import. Commit.
+
 - [ ] **T2-04** — Write the canonical data-flow path for inputs, internal pipelines, and outputs — Chapter 4 (Data Flow Architecture).
   - **▸** Create `.agents/notes/data_flow.md`. Section 1: input processing (request → validation → intent parsing) citing Chapter 4.2.
   - **▸** Section 2: internal pipelines (Memory → Knowledge → Planning → Execution → Experience → Learning) citing Chapter 4.3 and the cognitive pipeline in Chapter 3.3.
