@@ -17,6 +17,9 @@ __pycache__/
 # Cargo.lock — robot_brain is a binary crate; test_suite is a separate
 # independent binary crate. Neither lock file should be committed.
 Cargo.lock
-test_suite/Cargo.lock
+
+# these are for user and local agent only
 .agents/*
-.agents/scripts/
+.agents/
+AGENTS.md
+.github/

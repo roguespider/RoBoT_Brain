@@ -4,13 +4,14 @@
 use serde::{Deserialize, Serialize};
 
 /// Overall outcome kind.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, schemars::JsonSchema)]
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, schemars::JsonSchema)]
 pub enum OutcomeKind {
     Success,
     Failure,
     Partial,
     Timeout,
     Interrupted,
+    Unknown,
 }
 
 /// Outcome of an experience.

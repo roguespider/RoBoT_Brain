@@ -10,40 +10,97 @@ use crate::bridge::mcp::McpContext;
 use crate::bridge::mcp::handlers::{HandlerError, HandlerInitResult, ToolHandler};
 
 /// ACP tools input types
-#[derive(Debug, Deserialize, Serialize)]
+#[derive(Deserialize, Serialize)]
 pub struct ListAcpAgentsInput {}
 
-#[derive(Debug, Deserialize, Serialize)]
+impl std::fmt::Debug for ListAcpAgentsInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ListAcpAgentsInput").finish()
+    }
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct AcpAgentCountInput {}
 
-#[derive(Debug, Deserialize, Serialize)]
+impl std::fmt::Debug for AcpAgentCountInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AcpAgentCountInput").finish()
+    }
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct GetAcpRouterInput {}
 
-#[derive(Debug, Deserialize, Serialize)]
+impl std::fmt::Debug for GetAcpRouterInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GetAcpRouterInput").finish()
+    }
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct GetAcpRegistryInput {}
 
-#[derive(Debug, Deserialize, Serialize)]
+impl std::fmt::Debug for GetAcpRegistryInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GetAcpRegistryInput").finish()
+    }
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct GetAgentCapabilitiesInput {
     pub agent_id: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+impl std::fmt::Debug for GetAgentCapabilitiesInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GetAgentCapabilitiesInput")
+            .field("agent_id", &self.agent_id)
+            .finish()
+    }
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct GetSystemStatusInput {}
 
-#[derive(Debug, Deserialize, Serialize)]
+impl std::fmt::Debug for GetSystemStatusInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("GetSystemStatusInput").finish()
+    }
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct RegisterAgentInput {
     pub agent_type: String,
     pub instance_id: String,
     pub capabilities: Vec<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+impl std::fmt::Debug for RegisterAgentInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RegisterAgentInput")
+            .field("agent_type", &self.agent_type)
+            .field("instance_id", &self.instance_id)
+            .field("capabilities", &self.capabilities)
+            .finish()
+    }
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct UnregisterAgentInput {
     pub agent_type: String,
     pub instance_id: String,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+impl std::fmt::Debug for UnregisterAgentInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("UnregisterAgentInput")
+            .field("agent_type", &self.agent_type)
+            .field("instance_id", &self.instance_id)
+            .finish()
+    }
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct CreateAcpMessageInput {
     pub sender: Option<AcpAgentIdInput>,
     pub receiver: Option<AcpAgentIdInput>,
@@ -54,7 +111,21 @@ pub struct CreateAcpMessageInput {
     pub conversation_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+impl std::fmt::Debug for CreateAcpMessageInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("CreateAcpMessageInput")
+            .field("sender", &self.sender)
+            .field("receiver", &self.receiver)
+            .field("message_type", &self.message_type)
+            .field("payload", &self.payload)
+            .field("ttl", &self.ttl)
+            .field("reply_to", &self.reply_to)
+            .field("conversation_id", &self.conversation_id)
+            .finish()
+    }
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct RouteAcpMessageInput {
     pub sender: Option<AcpAgentIdInput>,
     pub receiver: Option<AcpAgentIdInput>,
@@ -65,10 +136,33 @@ pub struct RouteAcpMessageInput {
     pub conversation_id: Option<String>,
 }
 
-#[derive(Debug, Deserialize, Serialize)]
+impl std::fmt::Debug for RouteAcpMessageInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("RouteAcpMessageInput")
+            .field("sender", &self.sender)
+            .field("receiver", &self.receiver)
+            .field("message_type", &self.message_type)
+            .field("payload", &self.payload)
+            .field("ttl", &self.ttl)
+            .field("reply_to", &self.reply_to)
+            .field("conversation_id", &self.conversation_id)
+            .finish()
+    }
+}
+
+#[derive(Deserialize, Serialize)]
 pub struct AcpAgentIdInput {
     pub agent_type: String,
     pub instance_id: String,
+}
+
+impl std::fmt::Debug for AcpAgentIdInput {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AcpAgentIdInput")
+            .field("agent_type", &self.agent_type)
+            .field("instance_id", &self.instance_id)
+            .finish()
+    }
 }
 
 /// Dynamic ACP agent for registration

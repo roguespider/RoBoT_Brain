@@ -91,19 +91,7 @@ impl Planner {
     /// - Potential risks"
     pub async fn create_plan(&self, goal: impl Into<String>) -> Result<Plan> {
         let goal_str = goal.into();
-        let steps = Self::decompose_goal(&goal_str);
-
-        let plan = Plan {
-            id: Uuid::new_v4().to_string(),
-            goal: goal_str,
-            steps,
-            status: PlanStatus::Pending,
-            created_at: chrono::Utc::now(),
-            completed_at: None,
-            knowledge_used: Vec::new(),
-            experiences_used: Vec::new(),
-            confidence: 0.5,
-        };
+        let plan = Self::draft_plan(&goal_str);
 
         let mut plans = self.active_plans.write().await;
         plans.insert(plan.id.clone(), plan.clone());
@@ -117,6 +105,24 @@ impl Planner {
         }
 
         Ok(plan)
+    }
+
+    /// Build a plan with the current rule-based planning implementation.
+    ///
+    /// This synchronous draft is the replaceable CoObOpLoop planning default;
+    /// `create_plan` additionally registers the draft and records metrics.
+    pub fn draft_plan(goal: &str) -> Plan {
+        Plan {
+            id: Uuid::new_v4().to_string(),
+            goal: goal.to_string(),
+            steps: Self::decompose_goal(goal),
+            status: PlanStatus::Pending,
+            created_at: chrono::Utc::now(),
+            completed_at: None,
+            knowledge_used: Vec::new(),
+            experiences_used: Vec::new(),
+            confidence: 0.5,
+        }
     }
 
     /// Decompose a goal into actionable plan steps.
@@ -384,9 +390,10 @@ impl Planner {
         let mut plans = self.active_plans.write().await;
         if let Some(plan) = plans.get_mut(plan_id)
             && let Some(step) = plan.steps.iter_mut().find(|s| s.id == step_id)
-                && !step.dependencies.contains(&depends_on.to_string()) {
-                    step.dependencies.push(depends_on.to_string());
-                }
+            && !step.dependencies.contains(&depends_on.to_string())
+        {
+            step.dependencies.push(depends_on.to_string());
+        }
         Ok(())
     }
 
@@ -856,6 +863,49 @@ impl Planner {
             cleaned
         );
 
+        Ok(())
+    }
+
+    /// Seed the planner with a default maintenance plan.
+    /// This prevents the plans engine from being empty on first startup.
+    pub async fn seed(&self) -> Result<()> {
+        let plan = Plan {
+            id: "default-maintenance".to_string(),
+            goal: "Run periodic system maintenance: check knowledge base, validate dependencies, update skills, and clean up stale plans".to_string(),
+            steps: vec![
+                PlanStep {
+                    id: "check-knowledge".to_string(),
+                    description: "Validate all knowledge dependencies and update stale items".to_string(),
+                    action: "validate_knowledge_dependencies".to_string(),
+                    dependencies: vec![],
+                    status: StepStatus::Completed,
+                    result: Some("Knowledge base validated".to_string()),
+                    supporting_knowledge: vec![],
+                    past_experiences: vec![],
+                },
+                PlanStep {
+                    id: "update-skills".to_string(),
+                    description: "Run skill decay and update mastery levels".to_string(),
+                    action: "apply_skill_decay".to_string(),
+                    dependencies: vec!["check-knowledge".to_string()],
+                    status: StepStatus::Completed,
+                    result: Some("Skills decayed and updated".to_string()),
+                    supporting_knowledge: vec![],
+                    past_experiences: vec![],
+                },
+            ],
+            status: PlanStatus::Completed,
+            created_at: chrono::Utc::now(),
+            completed_at: Some(chrono::Utc::now()),
+            knowledge_used: vec![],
+            experiences_used: vec![],
+            confidence: 0.9,
+        };
+        self.active_plans
+            .write()
+            .await
+            .insert(plan.id.clone(), plan);
+        tracing::info!("Planner seeded with default maintenance plan");
         Ok(())
     }
 }

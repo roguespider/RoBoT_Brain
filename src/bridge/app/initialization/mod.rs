@@ -101,6 +101,8 @@ impl App {
         )
         .await;
         let knowledge_store = learning.knowledge_store;
+        // Seed knowledge store with project rules so the knowledge base is not empty
+        knowledge_store.seed().await;
         let skills_registry = learning.skills_registry;
         let learning_coordinator = learning.learning_coordinator;
         let event_subscriber = learning.event_subscriber;
@@ -145,7 +147,8 @@ impl App {
                 &policy_engine,
                 &shared_personality,
                 Some(memory_retrieval_arc),
-            );
+            )
+            .await;
 
         // Create MCP context with all systems
         let world_model = Arc::new(crate::world_model::WorldModel::new());

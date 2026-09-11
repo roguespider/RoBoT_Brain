@@ -256,6 +256,7 @@ fn outcome_kind_to_experience_outcome(kind: OutcomeKind) -> ExperienceOutcome {
         OutcomeKind::Partial => ExperienceOutcome::partial("Partial success"),
         OutcomeKind::Timeout => ExperienceOutcome::timeout(),
         OutcomeKind::Interrupted => ExperienceOutcome::interrupted(),
+        OutcomeKind::Unknown => ExperienceOutcome::partial("Unknown outcome"),
     }
 }
 
@@ -318,11 +319,15 @@ pub async fn execute_record_experience(
     let memory = crate::database::models::MemoryCard::from_experience(&processed);
     queries::insert_memory(&conn, &memory)?;
 
+    // Wire evaluate_post_task / post_task_summary: compute summary from processed experience
+    let summary = processed.post_task_summary();
+
     Ok(ToolOutput::success(serde_json::json!({
         "success": true,
         "message": "Experience recorded successfully",
         "id": processed.id.to_string(),
-        "title": processed.title
+        "title": processed.title,
+        "post_task_summary": summary,
     })))
 }
 

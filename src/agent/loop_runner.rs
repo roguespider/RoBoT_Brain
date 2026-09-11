@@ -24,12 +24,12 @@ use anyhow::Result;
 use crate::experience::types::{ExperienceContext, ExperienceOutcome, ExperienceType, OutcomeKind};
 
 use super::context::AgentDeps;
-use super::decision::ActionSelector;
+use super::decision::{ActionSelector, check_internal_sources, trigger_research_on_failure};
 use super::safety_gate::SafetyDecision;
 use super::types::{AgentGoal, GoalStatus};
 
 /// What the loop produced for a goal.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct AgentLoopOutcome {
     pub goal_id: String,
     pub status: GoalStatus,
@@ -40,6 +40,19 @@ pub struct AgentLoopOutcome {
     pub abstain_reason: Option<String>,
     /// The experience id recorded for this goal attempt.
     pub experience_id: Option<String>,
+}
+
+impl std::fmt::Debug for AgentLoopOutcome {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("AgentLoopOutcome")
+            .field("goal_id", &self.goal_id)
+            .field("status", &self.status)
+            .field("action_description", &self.action_description)
+            .field("confidence_value", &self.confidence_value)
+            .field("abstain_reason", &self.abstain_reason)
+            .field("experience_id", &self.experience_id)
+            .finish()
+    }
 }
 
 /// The goal-driven agent loop. Owns no business logic; composes `AgentDeps`.
@@ -102,38 +115,82 @@ impl AgentLoop {
             .knowledge_store
             .search(goal.description.as_str())
             .await;
-        let experiences: Vec<_> = memory
+        let experience_memory_items: Vec<_> = memory
             .iter()
             .filter(|r| r.item.memory_type == crate::memory::types::MemoryType::Experience)
             .map(|r| r.item.clone())
             .collect();
+
+        // Build Experience records from memory items for both cascade check
+        // and action selection (avoids duplicate work).
+        let experiences: Vec<_> = experience_memory_items
+            .iter()
+            .map(|m| crate::experience::types::Experience {
+                id: m.id,
+                score: Some(crate::experience::types::ExperienceScore {
+                    confidence: m.confidence,
+                    importance: m.confidence,
+                    novelty: 0.0,
+                    reliability: m.confidence,
+                }),
+                ..crate::experience::types::Experience::new(
+                    m.content.clone(),
+                    m.content.clone(),
+                    ExperienceType::MemoryLookup,
+                    Vec::new(),
+                )
+            })
+            .collect();
+
+        // 2b. 9-tier cascade (Architecture §R10): check internal sources
+        // before selecting an action. If all tiers fail, trigger research
+        // as the last resort.
+        let cascade_result = check_internal_sources(&memory, &knowledge, &experiences);
+        match cascade_result {
+            crate::agent::decision::TierResult::MemoryPassed => {
+                tracing::debug!("Internal sources passed cascade: memory");
+            }
+            crate::agent::decision::TierResult::KnowledgePassed => {
+                tracing::debug!("Internal sources passed cascade: knowledge");
+            }
+            crate::agent::decision::TierResult::ExperiencePassed => {
+                tracing::debug!("Internal sources passed cascade: experience");
+            }
+            crate::agent::decision::TierResult::AllFailed => {
+                tracing::warn!("All internal source tiers failed — triggering research cascade");
+                if let Some(research_result) = trigger_research_on_failure(&goal.description).await
+                {
+                    tracing::info!(
+                        research_confidence = research_result.confidence,
+                        source_count = research_result.sources.len(),
+                        "Research cascade returned {} source(s) at confidence {:.2}",
+                        research_result.sources.len(),
+                        research_result.confidence
+                    );
+                    // S10: Promote high-confidence research findings to knowledge store.
+                    let knowledge_store = self.deps.persistence.knowledge_store.clone();
+                    let found = crate::knowledge::promote_research_findings(
+                        &knowledge_store,
+                        &research_result.findings,
+                        &goal.description,
+                    )
+                    .await;
+                    tracing::info!(
+                        knowledge_items_promoted = found,
+                        "Research findings promoted to knowledge store"
+                    );
+                } else {
+                    tracing::warn!("Research cascade returned no results");
+                }
+            }
+        }
 
         // 3. Select the best-supported action (§5.7).
         let selected = ActionSelector::select(
             &plan.steps,
             &memory,
             &knowledge,
-            // The selector expects past Experience records; we synthesize
-            // lightweight ones from memory items so the confidence blend has a
-            // real experience channel without a second DB round-trip.
-            &experiences
-                .iter()
-                .map(|m| crate::experience::types::Experience {
-                    id: m.id,
-                    score: Some(crate::experience::types::ExperienceScore {
-                        confidence: m.confidence,
-                        importance: m.confidence,
-                        novelty: 0.0,
-                        reliability: m.confidence,
-                    }),
-                    ..crate::experience::types::Experience::new(
-                        m.content.clone(),
-                        m.content.clone(),
-                        ExperienceType::MemoryLookup,
-                        Vec::new(),
-                    )
-                })
-                .collect::<Vec<_>>(),
+            &experiences,
             goal.confidence_threshold,
         );
 

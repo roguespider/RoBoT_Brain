@@ -1,8 +1,8 @@
 // src/learning/promotion.rs
 //! Memory promotion policies and evaluation logic
 
-use serde::{Deserialize, Serialize};
 use chrono::{DateTime, Utc};
+use serde::{Deserialize, Serialize};
 
 use super::memory_state::{MemoryState, StateTransition};
 
@@ -11,28 +11,28 @@ use super::memory_state::{MemoryState, StateTransition};
 pub struct PromotionPolicy {
     /// Minimum importance to be eligible for promotion
     pub min_importance: f32,
-    
+
     /// Minimum access count for promotion
     pub min_access_count: u32,
-    
+
     /// Maximum age in days before automatic rejection
     pub max_age_days: i64,
-    
+
     /// Number of confirmations required for auto-promotion
     pub confirmations_for_auto_promote: u32,
-    
+
     /// TTL in seconds for Active state (0 = no TTL)
     pub active_ttl_seconds: u64,
-    
+
     /// TTL in seconds for Dormant state before Expired (0 = no TTL)
     pub dormant_ttl_seconds: u64,
-    
+
     /// Maximum repeated count before forcing decision
     pub max_repeated_before_decision: u32,
-    
+
     /// Confidence boost for repeated access
     pub repeated_confidence_boost: f32,
-    
+
     /// Confidence boost for confirmed state
     pub confirmed_confidence_boost: f32,
 }
@@ -44,8 +44,8 @@ impl Default for PromotionPolicy {
             min_access_count: 3,
             max_age_days: 30,
             confirmations_for_auto_promote: 3,
-            active_ttl_seconds: 3600,      // 1 hour
-            dormant_ttl_seconds: 86400,    // 24 hours
+            active_ttl_seconds: 3600,   // 1 hour
+            dormant_ttl_seconds: 86400, // 24 hours
             max_repeated_before_decision: 5,
             repeated_confidence_boost: 0.1,
             confirmed_confidence_boost: 0.3,
@@ -77,7 +77,7 @@ impl PromotionPolicy {
     ) -> PromotionEvaluation {
         let age = Utc::now() - created_at;
         let age_days = age.num_days();
-        
+
         // Check if too old
         if age_days > self.max_age_days {
             return PromotionEvaluation {
@@ -89,11 +89,12 @@ impl PromotionPolicy {
                 reason: format!("Memory too old ({} days)", age_days),
             };
         }
-        
+
         match state {
             MemoryState::Active => {
                 // Check if should timeout to dormant
-                if self.active_ttl_seconds > 0 && age.num_seconds() > self.active_ttl_seconds as i64 {
+                if self.active_ttl_seconds > 0 && age.num_seconds() > self.active_ttl_seconds as i64
+                {
                     if access_count >= self.min_access_count {
                         PromotionEvaluation {
                             should_promote: true,
@@ -113,7 +114,8 @@ impl PromotionPolicy {
                             reason: "TTL expired, moving to dormant".to_string(),
                         }
                     }
-                } else if importance >= self.min_importance && access_count >= self.min_access_count {
+                } else if importance >= self.min_importance && access_count >= self.min_access_count
+                {
                     PromotionEvaluation {
                         should_promote: true,
                         should_reject: false,
@@ -133,7 +135,7 @@ impl PromotionPolicy {
                     }
                 }
             }
-            
+
             MemoryState::Dormant => {
                 if age.num_seconds() > self.dormant_ttl_seconds as i64 {
                     PromotionEvaluation {
@@ -155,7 +157,7 @@ impl PromotionPolicy {
                     }
                 }
             }
-            
+
             MemoryState::Expired => {
                 if importance >= self.min_importance {
                     PromotionEvaluation {
@@ -177,7 +179,7 @@ impl PromotionPolicy {
                     }
                 }
             }
-            
+
             MemoryState::Repeated => {
                 if repeated_count >= self.max_repeated_before_decision {
                     if confirmation_count >= self.confirmations_for_auto_promote {
@@ -210,42 +212,36 @@ impl PromotionPolicy {
                     }
                 }
             }
-            
-            MemoryState::Confirmed => {
-                PromotionEvaluation {
-                    should_promote: true,
-                    should_reject: false,
-                    should_revive: false,
-                    recommended_transition: Some(StateTransition::Promote),
-                    confidence_delta: self.confirmed_confidence_boost,
-                    reason: "Confirmed, ready for promotion".to_string(),
-                }
-            }
-            
-            MemoryState::Contradicted => {
-                PromotionEvaluation {
-                    should_promote: false,
-                    should_reject: true,
-                    should_revive: false,
-                    recommended_transition: Some(StateTransition::Reject),
-                    confidence_delta: -0.5,
-                    reason: "Contradicted, rejecting".to_string(),
-                }
-            }
-            
-            MemoryState::Promoted | MemoryState::Rejected => {
-                PromotionEvaluation {
-                    should_promote: false,
-                    should_reject: false,
-                    should_revive: false,
-                    recommended_transition: None,
-                    confidence_delta: 0.0,
-                    reason: "Terminal state".to_string(),
-                }
-            }
+
+            MemoryState::Confirmed => PromotionEvaluation {
+                should_promote: true,
+                should_reject: false,
+                should_revive: false,
+                recommended_transition: Some(StateTransition::Promote),
+                confidence_delta: self.confirmed_confidence_boost,
+                reason: "Confirmed, ready for promotion".to_string(),
+            },
+
+            MemoryState::Contradicted => PromotionEvaluation {
+                should_promote: false,
+                should_reject: true,
+                should_revive: false,
+                recommended_transition: Some(StateTransition::Reject),
+                confidence_delta: -0.5,
+                reason: "Contradicted, rejecting".to_string(),
+            },
+
+            MemoryState::Promoted | MemoryState::Rejected => PromotionEvaluation {
+                should_promote: false,
+                should_reject: false,
+                should_revive: false,
+                recommended_transition: None,
+                confidence_delta: 0.0,
+                reason: "Terminal state".to_string(),
+            },
         }
     }
-    
+
     /// Calculate new confidence based on state and transitions
     pub fn calculate_confidence(
         &self,
@@ -255,15 +251,15 @@ impl PromotionPolicy {
         confirmations: u32,
     ) -> f32 {
         let mut confidence = current_confidence;
-        
+
         // Boost from repeated access
         let repeat_boost = (access_count as f32 * self.repeated_confidence_boost).min(0.3);
         confidence += repeat_boost;
-        
+
         // Boost from confirmations
         let confirm_boost = (confirmations as f32 * self.confirmed_confidence_boost).min(0.4);
         confidence += confirm_boost;
-        
+
         // State-based adjustments
         match state {
             MemoryState::Confirmed => confidence += 0.1,
@@ -271,8 +267,8 @@ impl PromotionPolicy {
             MemoryState::Rejected => confidence = 0.0,
             _ => {}
         }
-        
+
         // Clamp to [0.0, 1.0]
-        confidence.max(0.0).min(1.0)
+        confidence.clamp(0.0, 1.0)
     }
 }

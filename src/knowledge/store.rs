@@ -2,34 +2,36 @@
 
 //! Knowledge store - repository for managing knowledge items
 
-
 use std::collections::HashMap;
 use std::sync::Arc;
 use tokio::sync::RwLock;
 use uuid::Uuid;
 
-use super::types::{KnowledgeItem, KnowledgeStatus, KnowledgeType, RelationType, KnowledgeDependency, DependencyType, KnowledgeVersionInfo};
+use super::types::{
+    DependencyType, KnowledgeDependency, KnowledgeItem, KnowledgeStatus, KnowledgeType,
+    KnowledgeVersionInfo, RelationType,
+};
 
 /// Knowledge store - manages all knowledge items
 pub struct KnowledgeStore {
     /// All knowledge items by ID
     items: Arc<RwLock<HashMap<Uuid, KnowledgeItem>>>,
-    
+
     /// Index by type for fast lookup
     by_type: Arc<RwLock<HashMap<KnowledgeType, Vec<Uuid>>>>,
-    
+
     /// Index by tag for fast lookup
     by_tag: Arc<RwLock<HashMap<String, Vec<Uuid>>>>,
-    
+
     /// Dependency index: knowledge_id -> list of dependencies
     dependencies: Arc<RwLock<HashMap<Uuid, Vec<KnowledgeDependency>>>>,
-    
+
     /// Reverse dependency index: knowledge_id -> list of dependents
     dependents: Arc<RwLock<HashMap<Uuid, Vec<Uuid>>>>,
-    
+
     /// Version info for each knowledge item
     versions: Arc<RwLock<HashMap<Uuid, KnowledgeVersionInfo>>>,
-    
+
     /// Maximum items to retain
     max_items: usize,
 }
@@ -51,11 +53,11 @@ impl KnowledgeStore {
     /// Add a new knowledge item
     pub async fn add(&self, item: KnowledgeItem) -> Uuid {
         let id = item.id;
-        
+
         // Add to main store
         let mut items = self.items.write().await;
         items.insert(id, item.clone());
-        
+
         // Update type index
         {
             let mut by_type = self.by_type.write().await;
@@ -64,7 +66,7 @@ impl KnowledgeStore {
                 .or_default()
                 .push(id);
         }
-        
+
         // Update tag index
         {
             let mut by_tag = self.by_tag.write().await;
@@ -72,13 +74,13 @@ impl KnowledgeStore {
                 by_tag.entry(tag.clone()).or_default().push(id);
             }
         }
-        
+
         // Enforce max items - remove lowest confidence if over limit
         if items.len() > self.max_items {
             drop(items); // Release lock before recursive call
             self.prune_low_confidence().await;
         }
-        
+
         tracing::info!("[Knowledge] Added knowledge item: {}", id);
         id
     }
@@ -136,11 +138,7 @@ impl KnowledgeStore {
         let items = self.items.read().await;
         by_type
             .get(knowledge_type)
-            .map(|ids| {
-                ids.iter()
-                    .filter_map(|id| items.get(id).cloned())
-                    .collect()
-            })
+            .map(|ids| ids.iter().filter_map(|id| items.get(id).cloned()).collect())
             .unwrap_or_default()
     }
 
@@ -150,11 +148,7 @@ impl KnowledgeStore {
         let items = self.items.read().await;
         by_tag
             .get(tag)
-            .map(|ids| {
-                ids.iter()
-                    .filter_map(|id| items.get(id).cloned())
-                    .collect()
-            })
+            .map(|ids| ids.iter().filter_map(|id| items.get(id).cloned()).collect())
             .unwrap_or_default()
     }
 
@@ -214,7 +208,7 @@ impl KnowledgeStore {
         strength: f32,
     ) -> bool {
         let mut items = self.items.write().await;
-        
+
         if let Some(source) = items.get_mut(&source_id) {
             source.relations.push(super::types::KnowledgeRelation {
                 target_id,
@@ -253,11 +247,12 @@ impl KnowledgeStore {
     pub async fn activate(&self, id: Uuid) -> bool {
         let mut items = self.items.write().await;
         if let Some(item) = items.get_mut(&id)
-            && (item.status == KnowledgeStatus::New || item.status == KnowledgeStatus::Validating) {
-                item.status = KnowledgeStatus::Active;
-                item.updated_at = chrono::Utc::now();
-                return true;
-            }
+            && (item.status == KnowledgeStatus::New || item.status == KnowledgeStatus::Validating)
+        {
+            item.status = KnowledgeStatus::Active;
+            item.updated_at = chrono::Utc::now();
+            return true;
+        }
         false
     }
 
@@ -286,7 +281,7 @@ impl KnowledgeStore {
     /// Prune low-confidence items when over capacity
     async fn prune_low_confidence(&self) {
         let mut items = self.items.write().await;
-        
+
         // Sort by confidence, keep highest
         let mut sorted: Vec<_> = items.values().collect();
         sorted.sort_by(|a, b| {
@@ -294,18 +289,19 @@ impl KnowledgeStore {
                 .partial_cmp(&a.overall_confidence())
                 .unwrap_or(std::cmp::Ordering::Equal)
         });
-        
+
         // Remove bottom 10% - collect IDs first to avoid borrow issues
         let to_remove = sorted.len() / 10;
-        let ids_to_remove: Vec<_> = sorted.into_iter()
+        let ids_to_remove: Vec<_> = sorted
+            .into_iter()
             .take(to_remove)
             .map(|item| item.id)
             .collect();
-        
+
         for id in ids_to_remove {
             items.remove(&id);
         }
-        
+
         tracing::info!("[Knowledge] Pruned {} low-confidence items", to_remove);
     }
 
@@ -313,16 +309,19 @@ impl KnowledgeStore {
     pub async fn stats(&self) -> KnowledgeStats {
         let items = self.items.read().await;
         let total = items.len();
-        let active = items.values().filter(|i| i.status == KnowledgeStatus::Active).count();
+        let active = items
+            .values()
+            .filter(|i| i.status == KnowledgeStatus::Active)
+            .count();
         let mature = items.values().filter(|i| i.is_mature()).count();
         let needs_review = items.values().filter(|i| i.needs_review()).count();
-        
+
         let avg_confidence: f32 = if total > 0 {
             items.values().map(|i| i.overall_confidence()).sum::<f32>() / total as f32
         } else {
             0.0
         };
-        
+
         KnowledgeStats {
             total,
             active,
@@ -337,7 +336,7 @@ impl KnowledgeStore {
     // ========================================================================
 
     /// Add a dependency to a knowledge item
-    /// 
+    ///
     /// Per Architecture: Knowledge dependencies track which knowledge items
     /// rely on other knowledge items to function correctly.
     pub async fn add_dependency(
@@ -360,7 +359,7 @@ impl KnowledgeStore {
                 .with_version(v),
             None => KnowledgeDependency::new(knowledge_id, depends_on_id, dependency_type),
         };
-        
+
         // Add to dependency index
         {
             let mut deps = self.dependencies.write().await;
@@ -368,7 +367,7 @@ impl KnowledgeStore {
                 .or_insert_with(Vec::new)
                 .push(dependency);
         }
-        
+
         // Add to reverse index (dependents)
         {
             let mut rev = self.dependents.write().await;
@@ -376,52 +375,52 @@ impl KnowledgeStore {
                 .or_insert_with(Vec::new)
                 .push(knowledge_id);
         }
-        
+
         tracing::debug!("Added dependency: {} -> {}", knowledge_id, depends_on_id);
         true
     }
-    
+
     /// Remove a dependency
     pub async fn remove_dependency(&self, knowledge_id: &Uuid, depends_on_id: &Uuid) -> bool {
         let mut deps = self.dependencies.write().await;
         let mut rev = self.dependents.write().await;
-        
+
         // Remove from dependency index
         if let Some(d) = deps.get_mut(knowledge_id) {
             d.retain(|dep| dep.dependency_id != *depends_on_id);
         }
-        
+
         // Remove from reverse index
         if let Some(r) = rev.get_mut(depends_on_id) {
             r.retain(|&id| id != *knowledge_id);
         }
-        
+
         true
     }
-    
+
     /// Get all dependencies for a knowledge item
     pub async fn get_dependencies(&self, knowledge_id: &Uuid) -> Vec<KnowledgeDependency> {
         let deps = self.dependencies.read().await;
         deps.get(knowledge_id).cloned().unwrap_or_default()
     }
-    
+
     /// Get all items that depend on this knowledge item
     pub async fn get_dependents(&self, knowledge_id: &Uuid) -> Vec<Uuid> {
         let rev = self.dependents.read().await;
         rev.get(knowledge_id).cloned().unwrap_or_default()
     }
-    
+
     /// Check if a knowledge item's dependencies are satisfied
     pub async fn check_dependencies(&self, knowledge_id: &Uuid) -> DependencyCheckResult {
         let deps = self.dependencies.read().await;
         let items = self.items.read().await;
-        
+
         let mut result = DependencyCheckResult {
             satisfied: Vec::new(),
             unsatisfied: Vec::new(),
             conflicts: Vec::new(),
         };
-        
+
         if let Some(deps) = deps.get(knowledge_id) {
             for dep in deps {
                 match dep.dependency_type {
@@ -429,7 +428,9 @@ impl KnowledgeStore {
                         if items.contains_key(&dep.dependency_id) {
                             // Check version constraint if present
                             if let Some(ref constraint) = dep.version_constraint {
-                                if let Some(versions) = self.versions.read().await.get(&dep.dependency_id) {
+                                if let Some(versions) =
+                                    self.versions.read().await.get(&dep.dependency_id)
+                                {
                                     if let Some(ver) = versions.get_active() {
                                         if ver.satisfies_constraint(constraint) {
                                             result.satisfied.push(dep.dependency_id);
@@ -448,12 +449,12 @@ impl KnowledgeStore {
                         } else {
                             result.unsatisfied.push(dep.dependency_id);
                         }
-                    },
+                    }
                     DependencyType::Conflict => {
                         if items.contains_key(&dep.dependency_id) {
                             result.conflicts.push(dep.dependency_id);
                         }
-                    },
+                    }
                     _ => {
                         // Optional dependencies are always satisfied if present
                         if items.contains_key(&dep.dependency_id) {
@@ -463,16 +464,16 @@ impl KnowledgeStore {
                 }
             }
         }
-        
+
         result
     }
-    
+
     /// Get all items that would be affected if this knowledge item changed
     pub async fn get_impact_set(&self, knowledge_id: &Uuid) -> Vec<Uuid> {
         let mut impact = Vec::new();
         let mut visited = std::collections::HashSet::new();
         let mut queue = vec![*knowledge_id];
-        
+
         while let Some(current) = queue.pop() {
             if visited.insert(current) {
                 let dependents = self.get_dependents(&current).await;
@@ -484,15 +485,15 @@ impl KnowledgeStore {
                 }
             }
         }
-        
+
         impact
     }
-    
+
     /// Validate all dependencies in the knowledge store
     pub async fn validate_all_dependencies(&self) -> Vec<DependencyValidation> {
         let mut validations = Vec::new();
         let items = self.items.read().await;
-        
+
         for id in items.keys() {
             let result = self.check_dependencies(id).await;
             if !result.unsatisfied.is_empty() || !result.conflicts.is_empty() {
@@ -502,7 +503,7 @@ impl KnowledgeStore {
                 });
             }
         }
-        
+
         validations
     }
 
@@ -517,21 +518,25 @@ impl KnowledgeStore {
             return false;
         }
         drop(items);
-        
+
         let version_info = KnowledgeVersionInfo::new(initial_version);
         let mut versions = self.versions.write().await;
         versions.insert(knowledge_id, version_info);
-        
-        tracing::debug!("Initialized version {} for knowledge {}", initial_version, knowledge_id);
+
+        tracing::debug!(
+            "Initialized version {} for knowledge {}",
+            initial_version,
+            knowledge_id
+        );
         true
     }
-    
+
     /// Get version info for a knowledge item
     pub async fn get_version_info(&self, knowledge_id: &Uuid) -> Option<KnowledgeVersionInfo> {
         let versions = self.versions.read().await;
         versions.get(knowledge_id).cloned()
     }
-    
+
     /// Bump version number for a knowledge item
     pub async fn bump_version(&self, knowledge_id: &Uuid, bump_type: VersionBumpType) -> bool {
         let mut versions = self.versions.write().await;
@@ -542,7 +547,12 @@ impl KnowledgeStore {
                 VersionBumpType::Minor => info.bump_minor(),
                 VersionBumpType::Patch => info.bump_patch(),
             }
-            tracing::info!("Bumped version {} -> {} for knowledge {}", current, info.current_version, knowledge_id);
+            tracing::info!(
+                "Bumped version {} -> {} for knowledge {}",
+                current,
+                info.current_version,
+                knowledge_id
+            );
             true
         } else {
             // Initialize with 0.0.1
@@ -555,6 +565,84 @@ impl KnowledgeStore {
             versions.insert(*knowledge_id, info);
             true
         }
+    }
+
+    /// Seed the knowledge store with default knowledge about the project.
+    /// This prevents the knowledge base from being empty on first startup.
+    pub async fn seed(&self) {
+        use super::types::KnowledgeSource;
+        let default_items = vec![
+            KnowledgeItem::new(
+                "project-is-rust-workspace".to_string(),
+                KnowledgeType::Fact,
+                "RoBoT Brain is a Rust workspace with two independent programs: robot_brain (MCP server) and test_suite (test harness). They do not depend on each other's source code.".to_string(),
+                0.95,
+                KnowledgeSource::User,
+                vec!["rust".to_string(), "workspace".to_string(), "architecture".to_string()],
+            ),
+            KnowledgeItem::new(
+                "build-command-is-test-suite".to_string(),
+                KnowledgeType::Procedure,
+                "The test_suite auto-builds robot_brain. Never run cargo build -p robot_brain separately. The gate command is: cd test_suite && cargo build --release && ./target/release/test_suite --gate".to_string(),
+                0.9,
+                KnowledgeSource::User,
+                vec!["build".to_string(), "test_suite".to_string(), "gate".to_string()],
+            ),
+            KnowledgeItem::new(
+                "strict-rust-coding-standards".to_string(),
+                KnowledgeType::Rule,
+                "NO unwrap/expect/panic/assert/todo!/unimplemented!, NO [allow(* pattern)], NO underscore-prefixed ignored variables, NO code deletion, no [cfg(test)] in src/, no decorative emoji. All tests live in test_suite/.".to_string(),
+                0.95,
+                KnowledgeSource::User,
+                vec!["rust".to_string(), "standards".to_string(), "coding-standards".to_string()],
+            ),
+            KnowledgeItem::new(
+                "incremental-workflow".to_string(),
+                KnowledgeType::Procedure,
+                "Do ONE thing, verify it works, push to GitHub, then work on the next thing. NEVER batch multiple unrelated changes into a single commit or session step.".to_string(),
+                0.9,
+                KnowledgeSource::User,
+                vec!["workflow".to_string(), "process".to_string(), "incremental".to_string()],
+            ),
+            KnowledgeItem::new(
+                "verify-dont-trust".to_string(),
+                KnowledgeType::Rule,
+                "Never rely on a 'done' message — yours, a prior session's, or a commit description. Verify each step by inspecting the actual codebase state. The quality gate is the verifier.".to_string(),
+                0.9,
+                KnowledgeSource::User,
+                vec!["workflow".to_string(), "verification".to_string(), "principles".to_string()],
+            ),
+            KnowledgeItem::new(
+                "memory-hybrid-retrieval".to_string(),
+                KnowledgeType::Causality,
+                "Memory retrieval uses hybrid approach: symbolic search (keyword matching) + vector search (cosine similarity on embeddings). Keyword results weighted 60%, vector results 40%, merged by relevance.".to_string(),
+                0.85,
+                KnowledgeSource::Tool,
+                vec!["memory".to_string(), "retrieval".to_string(), "architecture".to_string()],
+            ),
+            KnowledgeItem::new(
+                "embedding-selective".to_string(),
+                KnowledgeType::Rule,
+                "Only memories with confidence >= 0.3 AND importance >= 0.3 receive embeddings. Default store_memory values (0.5/0.5) qualify. This is the selective embedding principle.".to_string(),
+                0.85,
+                KnowledgeSource::Tool,
+                vec!["embedding".to_string(), "vector".to_string(), "memory".to_string()],
+            ),
+            KnowledgeItem::new(
+                "cooboploop-architecture".to_string(),
+                KnowledgeType::Concept,
+                "The CoObOpLoop (Cognitive Observe-Operate-Plan Loop) provides goal-driven autonomy with 23 architecture sections covering queue, evaluation, capabilities, idle states, hardware, learning, and strategic objectives.".to_string(),
+                0.8,
+                KnowledgeSource::User,
+                vec!["cooboploop".to_string(), "architecture".to_string(), "autonomy".to_string()],
+            ),
+        ];
+        let count = default_items.len();
+        for item in default_items {
+            let id = self.add(item).await;
+            debug_assert!(!id.is_nil(), "seeded item must have non-nil uuid");
+        }
+        tracing::info!("Knowledge store seeded with {count} default items");
     }
 }
 
@@ -596,4 +684,3 @@ impl Default for KnowledgeStore {
         Self::new(10000)
     }
 }
-

@@ -1,10 +1,10 @@
 // src/bridge/tools/handlers/skills_handler.rs
 // Skills tools handler - handles skill registry operations
 
-use std::sync::Arc;
 use crate::bridge::mcp::McpContext;
-use crate::bridge::tools::skills;
 use crate::bridge::mcp::handlers::{HandlerError, HandlerInitResult, ToolHandler};
+use crate::bridge::tools::skills;
+use std::sync::Arc;
 
 /// Handler for skills-related tools
 #[derive(Clone)]
@@ -14,9 +14,7 @@ pub struct SkillsToolsHandler {
 
 impl SkillsToolsHandler {
     /// Create a new skills tools handler
-    pub fn new(
-        context: Arc<McpContext>,
-    ) -> HandlerInitResult<Self> {
+    pub fn new(context: Arc<McpContext>) -> HandlerInitResult<Self> {
         Ok(Self { context })
     }
 
@@ -24,7 +22,7 @@ impl SkillsToolsHandler {
     pub async fn execute_register_skill(
         &self,
         input: skills::RegisterSkillInput,
-    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    ) -> crate::bridge::tools::ToolOutput {
         skills::execute_register_skill(input, &self.context).await
     }
 
@@ -40,7 +38,7 @@ impl SkillsToolsHandler {
     pub async fn execute_get_skill(
         &self,
         input: skills::GetSkillInput,
-    ) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+    ) -> crate::bridge::tools::ToolOutput {
         skills::execute_get_skill(input, &self.context).await
     }
 
@@ -357,103 +355,118 @@ impl ToolHandler for SkillsToolsHandler {
         ]
     }
 
-    async fn execute_tool(&self, name: &str, args: serde_json::Value) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
-            match name {
-                "register_skill" => {
-                    let input: skills::RegisterSkillInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_register_skill(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "discover_skill" => {
-                    let input: skills::DiscoverSkillInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_discover_skill(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "get_skill" => {
-                    let input: skills::GetSkillInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_get_skill(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "list_skills" => {
-                    let input: skills::ListSkillsInput = serde_json::from_value(args)
-                        .unwrap_or_default();
-                    self.execute_list_skills(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "update_skill_mastery" => {
-                    let input: skills::UpdateSkillMasteryInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_update_skill_mastery(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "get_skill_recommendations" => {
-                    let input: skills::GetSkillRecommendationsInput = serde_json::from_value(args)
-                        .unwrap_or_default();
-                    self.execute_get_skill_recommendations(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "execute_skill" => {
-                    let input: skills::ExecuteSkillInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_execute_skill(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "get_skill_stats" => {
-                    let input: skills::GetSkillStatsInput = serde_json::from_value(args)
-                        .unwrap_or_default();
-                    self.execute_get_skill_stats(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "apply_skill_decay" => {
-                    let input: skills::ApplySkillDecayInput = serde_json::from_value(args)
-                        .unwrap_or_default();
-                    self.execute_apply_skill_decay(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "enable_disable_skill" => {
-                    let input: skills::EnableDisableSkillInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_enable_disable_skill(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "search_skills" => {
-                    let input: skills::SearchSkillsInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_search_skills(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "get_skill_metrics" => {
-                    let input: skills::GetSkillMetricsInput = serde_json::from_value(args)
-                        .unwrap_or_default();
-                    self.execute_get_skill_metrics(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "get_unreliable_skills" => {
-                    self.execute_get_unreliable_skills().await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "clear_skill_metrics" => {
-                    let input: skills::ClearSkillMetricsInput = serde_json::from_value(args)
-                        .unwrap_or_default();
-                    self.execute_clear_skill_metrics(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "search_skills_by_tag" => {
-                    let input: skills::SearchSkillsByTagInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_search_skills_by_tag(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                "unregister_skill" => {
-                    let input: skills::UnregisterSkillInput = serde_json::from_value(args)
-                        .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                    self.execute_unregister_skill(input).await
-                        .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
-                }
-                _ => Err(HandlerError::ToolNotFound(name.to_string()))
+    async fn execute_tool(
+        &self,
+        name: &str,
+        args: serde_json::Value,
+    ) -> Result<crate::bridge::tools::ToolOutput, HandlerError> {
+        match name {
+            "register_skill" => {
+                let input: skills::RegisterSkillInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                Ok(self.execute_register_skill(input).await)
             }
+            "discover_skill" => {
+                let input: skills::DiscoverSkillInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_discover_skill(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "get_skill" => {
+                let input: skills::GetSkillInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                Ok(self.execute_get_skill(input).await)
+            }
+            "list_skills" => {
+                let input: skills::ListSkillsInput =
+                    serde_json::from_value(args).unwrap_or_default();
+                self.execute_list_skills(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "update_skill_mastery" => {
+                let input: skills::UpdateSkillMasteryInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_update_skill_mastery(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "get_skill_recommendations" => {
+                let input: skills::GetSkillRecommendationsInput =
+                    serde_json::from_value(args).unwrap_or_default();
+                self.execute_get_skill_recommendations(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "execute_skill" => {
+                let input: skills::ExecuteSkillInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_execute_skill(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "get_skill_stats" => {
+                let input: skills::GetSkillStatsInput =
+                    serde_json::from_value(args).unwrap_or_default();
+                self.execute_get_skill_stats(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "apply_skill_decay" => {
+                let input: skills::ApplySkillDecayInput =
+                    serde_json::from_value(args).unwrap_or_default();
+                self.execute_apply_skill_decay(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "enable_disable_skill" => {
+                let input: skills::EnableDisableSkillInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_enable_disable_skill(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "search_skills" => {
+                let input: skills::SearchSkillsInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_search_skills(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "get_skill_metrics" => {
+                let input: skills::GetSkillMetricsInput =
+                    serde_json::from_value(args).unwrap_or_default();
+                self.execute_get_skill_metrics(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "get_unreliable_skills" => self
+                .execute_get_unreliable_skills()
+                .await
+                .map_err(|e| HandlerError::ExecutionFailed(e.to_string())),
+            "clear_skill_metrics" => {
+                let input: skills::ClearSkillMetricsInput =
+                    serde_json::from_value(args).unwrap_or_default();
+                self.execute_clear_skill_metrics(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "search_skills_by_tag" => {
+                let input: skills::SearchSkillsByTagInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_search_skills_by_tag(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            "unregister_skill" => {
+                let input: skills::UnregisterSkillInput = serde_json::from_value(args)
+                    .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                self.execute_unregister_skill(input)
+                    .await
+                    .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
+            }
+            _ => Err(HandlerError::ToolNotFound(name.to_string())),
+        }
     }
 }

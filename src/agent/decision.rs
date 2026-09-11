@@ -10,10 +10,12 @@ use crate::experience::types::{Experience, ExperienceScore};
 use crate::knowledge::KnowledgeItem;
 use crate::memory::retrieval::RetrievalResult;
 use crate::planner::engine::types::PlanStep;
+use crate::research::ResearchResult;
 
-/// Confidence in a proposed action (0.0–1.0), with the goal's threshold for the
-/// safety gate to compare against.
-#[derive(Debug, Clone)]
+/// Confidence threshold for triggering the research engine.
+/// Research is only used when all internal sources fail to reach this confidence.
+pub const RESEARCH_THRESHOLD: f32 = 0.7;
+#[derive(Clone)]
 pub struct ActionConfidence {
     pub value: f32,
     pub threshold: f32,
@@ -21,13 +23,34 @@ pub struct ActionConfidence {
     pub components: ConfidenceComponents,
 }
 
+impl std::fmt::Debug for ActionConfidence {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ActionConfidence")
+            .field("value", &self.value)
+            .field("threshold", &self.threshold)
+            .field("components", &self.components)
+            .finish()
+    }
+}
+
 /// The per-channel contributions that produced `ActionConfidence::value`.
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct ConfidenceComponents {
     pub memory_support: f32,
     pub knowledge_support: f32,
     pub experience_support: f32,
     pub plan_step_confidence: f32,
+}
+
+impl std::fmt::Debug for ConfidenceComponents {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("ConfidenceComponents")
+            .field("memory_support", &self.memory_support)
+            .field("knowledge_support", &self.knowledge_support)
+            .field("experience_support", &self.experience_support)
+            .field("plan_step_confidence", &self.plan_step_confidence)
+            .finish()
+    }
 }
 
 impl ActionConfidence {
@@ -60,7 +83,7 @@ impl ActionConfidence {
 }
 
 /// An action the agent has selected to execute, with the evidence that backed it.
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SelectedAction {
     /// The plan step whose `action` field names the tool to invoke.
     pub step: PlanStep,
@@ -72,6 +95,18 @@ pub struct SelectedAction {
     pub supporting_knowledge: Vec<KnowledgeItem>,
     /// Past experiences that informed the action.
     pub supporting_experiences: Vec<Experience>,
+}
+
+impl std::fmt::Debug for SelectedAction {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SelectedAction")
+            .field("step", &self.step)
+            .field("confidence", &self.confidence)
+            .field("supporting_memory", &self.supporting_memory)
+            .field("supporting_knowledge", &self.supporting_knowledge)
+            .field("supporting_experiences", &self.supporting_experiences)
+            .finish()
+    }
 }
 
 impl SelectedAction {
@@ -192,5 +227,72 @@ impl ActionSelector {
             Some(s) => (s.confidence * 0.5 + s.reliability * 0.5).clamp(0.0, 1.0),
             None => 0.2,
         }
+    }
+}
+
+pub enum TierResult {
+    MemoryPassed,
+    KnowledgePassed,
+    ExperiencePassed,
+    AllFailed,
+}
+
+/// Check internal sources (memory, knowledge, experience) in cascade order.
+/// Returns the first tier that passes (confidence >= RESEARCH_THRESHOLD),
+/// or AllFailed if none pass.
+pub fn check_internal_sources(
+    memory: &[crate::memory::retrieval::RetrievalResult],
+    knowledge: &[crate::knowledge::KnowledgeItem],
+    experiences: &[crate::experience::types::Experience],
+) -> TierResult {
+    // Tier 1: Memory - check for high-confidence memory items
+    for item in memory {
+        if item.item.confidence >= RESEARCH_THRESHOLD {
+            return TierResult::MemoryPassed;
+        }
+    }
+    // Tier 2: Knowledge - check for high-confidence knowledge items
+    for item in knowledge {
+        if item.confidence.overall() >= RESEARCH_THRESHOLD {
+            return TierResult::KnowledgePassed;
+        }
+    }
+    // Tier 3: Experience - check for high-confidence past experiences
+    for exp in experiences {
+        if let Some(score) = &exp.score {
+            let overall = (score.confidence * 0.5 + score.reliability * 0.5).clamp(0.0, 1.0);
+            if overall >= RESEARCH_THRESHOLD {
+                return TierResult::ExperiencePassed;
+            }
+        }
+    }
+    TierResult::AllFailed
+}
+
+pub enum Decision {
+    Act,
+    NeedResearch,
+    Abstain,
+}
+
+/// Trigger the research pipeline when all internal sources failed.
+/// This is called after check_internal_sources returns AllFailed.
+pub async fn trigger_research_on_failure(query: &str) -> Option<ResearchResult> {
+    #[cfg(feature = "http")]
+    {
+        use crate::research::pipeline::{Mode, ResearchPipeline};
+        let pipeline = ResearchPipeline::new(Vec::new());
+        match pipeline.run_pipeline(query, Mode::Auto).await {
+            Ok(result) => Some(result),
+            Err(e) => {
+                tracing::error!("Research pipeline failed: {e}");
+                None
+            }
+        }
+    }
+    #[cfg(not(feature = "http"))]
+    {
+        tracing::debug!(query, "Research not available (http feature disabled)");
+        None
     }
 }

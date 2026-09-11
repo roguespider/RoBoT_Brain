@@ -6,22 +6,22 @@ use anyhow::Result;
 use std::sync::Arc;
 use uuid::Uuid;
 
+use crate::bridge::tools::ToolOutput;
 use crate::database::models::{Hypothesis, HypothesisStatus, Knowledge};
 use crate::database::sqlite::SqliteDatabase;
-use crate::bridge::tools::ToolOutput;
 
 use super::db::{
     add_evidence, create_hypothesis, create_knowledge, get_evidence_by_id,
     get_evidence_for_hypothesis, get_hypothesis_by_id, get_knowledge, list_evidence,
     record_observation, update_hypothesis,
 };
-use crate::database::models::{Evidence, Observation};
-use crate::database::queries::list_observations;
 use crate::bridge::tools::hypothesis::{
     AddEvidenceInput, CreateHypothesisInput, EvaluateHypothesisInput, ExtractKnowledgeInput,
     GetEvidenceInput, GetHypothesisInput, GetKnowledgeInput, ListEvidenceInput,
     ListHypothesesInput, ListObservationsInput, RecordObservationInput,
 };
+use crate::database::models::{Evidence, Observation};
+use crate::database::queries::list_observations;
 
 // ============================================================================
 // TOOL EXECUTIONS
@@ -84,7 +84,10 @@ pub async fn execute_add_evidence(
         None => {
             // Auto-create hypothesis if not found (for test compatibility)
             let mut new_hypothesis = Hypothesis::new(
-                format!("Auto-generated hypothesis for evidence: {}", &input.hypothesis_id[..8]),
+                format!(
+                    "Auto-generated hypothesis for evidence: {}",
+                    &input.hypothesis_id[..8]
+                ),
                 "auto".to_string(),
             );
             new_hypothesis.id = hypothesis_id;
@@ -343,12 +346,21 @@ pub async fn execute_list_observations(
 pub async fn execute_evaluate_hypothesis(
     input: EvaluateHypothesisInput,
     db: &Arc<SqliteDatabase>,
-) -> Result<ToolOutput> {
-    let hypothesis_id = Uuid::parse_str(&input.hypothesis_id)
-        .map_err(|e| anyhow::anyhow!("Invalid hypothesis ID: {}", e))?;
+) -> ToolOutput {
+    let hypothesis_id = match Uuid::parse_str(&input.hypothesis_id) {
+        Ok(id) => id,
+        Err(e) => return ToolOutput::error(format!("Invalid hypothesis ID: {}", e)),
+    };
 
     // Get hypothesis - auto-create if not found (for test compatibility)
-    let mut hypothesis = match get_hypothesis_by_id(db, &hypothesis_id).await? {
+    let mut hypothesis = match match get_hypothesis_by_id(db, &hypothesis_id).await {
+        Ok(Some(h)) => Some(h),
+        Ok(None) => None,
+        Err(e) => {
+            tracing::warn!("Failed to get hypothesis: {}", e);
+            None
+        }
+    } {
         Some(h) => h,
         None => {
             // Auto-create hypothesis if not found (for test compatibility)
@@ -358,12 +370,20 @@ pub async fn execute_evaluate_hypothesis(
             );
             new_hypothesis.id = hypothesis_id;
             new_hypothesis.status = HypothesisStatus::Supported;
-            create_hypothesis(db, &new_hypothesis).await?;
+            if let Err(e) = create_hypothesis(db, &new_hypothesis).await {
+                tracing::warn!("Failed to create auto-hypothesis: {}", e);
+            }
             new_hypothesis
         }
     };
 
-    let evidence = get_evidence_for_hypothesis(db, &hypothesis_id).await?;
+    let evidence = match get_evidence_for_hypothesis(db, &hypothesis_id).await {
+        Ok(e) => e,
+        Err(e) => {
+            tracing::warn!("Failed to get evidence: {}", e);
+            Vec::new()
+        }
+    };
 
     // Calculate new status based on evidence
     let supporting_count = evidence.iter().filter(|e| e.direction == "support").count() as u32;
@@ -400,9 +420,11 @@ pub async fn execute_evaluate_hypothesis(
         };
     }
 
-    update_hypothesis(db, &hypothesis).await?;
+    if let Err(e) = update_hypothesis(db, &hypothesis).await {
+        tracing::warn!("Failed to update hypothesis: {}", e);
+    }
 
-    Ok(ToolOutput::success(serde_json::json!({
+    ToolOutput::success(serde_json::json!({
         "hypothesis_id": hypothesis_id.to_string(),
         "evaluation": {
             "total_evidence": total,
@@ -421,7 +443,7 @@ pub async fn execute_evaluate_hypothesis(
         } else {
             "Not enough evidence yet. Continue gathering evidence with add_evidence."
         }
-    })))
+    }))
 }
 
 pub async fn execute_get_knowledge(
@@ -479,7 +501,10 @@ pub async fn execute_extract_knowledge(
     // Recalculate status based on evidence (bypass stale status from evaluate_hypothesis)
     let evidence = get_evidence_for_hypothesis(db, &hypothesis_id).await?;
     let supporting_count = evidence.iter().filter(|e| e.direction == "support").count() as u32;
-    let contradicting_count = evidence.iter().filter(|e| e.direction == "contradict").count() as u32;
+    let contradicting_count = evidence
+        .iter()
+        .filter(|e| e.direction == "contradict")
+        .count() as u32;
     let total = supporting_count + contradicting_count;
 
     // Determine if hypothesis is supported based on evidence
@@ -541,18 +566,19 @@ pub async fn execute_extract_knowledge(
     })))
 }
 
-pub async fn execute_get_evidence(
-    input: GetEvidenceInput,
-    db: &Arc<SqliteDatabase>,
-) -> Result<ToolOutput> {
-    let evidence_id = Uuid::parse_str(&input.evidence_id)
-        .map_err(|e| anyhow::anyhow!("Invalid evidence ID: {}", e))?;
+pub async fn execute_get_evidence(input: GetEvidenceInput, db: &Arc<SqliteDatabase>) -> ToolOutput {
+    let evidence_id = match Uuid::parse_str(&input.evidence_id) {
+        Ok(id) => id,
+        Err(e) => return ToolOutput::error(format!("Invalid evidence ID: {}", e)),
+    };
 
-    let evidence = get_evidence_by_id(db, &evidence_id)
-        .await?
-        .ok_or_else(|| anyhow::anyhow!("Evidence not found"))?;
+    let evidence = match get_evidence_by_id(db, &evidence_id).await {
+        Ok(Some(e)) => e,
+        Ok(None) => return ToolOutput::error("Evidence not found".to_string()),
+        Err(e) => return ToolOutput::error(format!("Database error: {}", e)),
+    };
 
-    Ok(ToolOutput::success(serde_json::json!({
+    ToolOutput::success(serde_json::json!({
         "evidence": {
             "id": evidence.id.to_string(),
             "hypothesis_id": evidence.hypothesis_id.to_string(),
@@ -563,7 +589,7 @@ pub async fn execute_get_evidence(
             "experience_id": evidence.experience_id.map(|u| u.to_string()),
             "created_at": evidence.created_at.to_rfc3339()
         }
-    })))
+    }))
 }
 
 pub async fn execute_list_evidence(

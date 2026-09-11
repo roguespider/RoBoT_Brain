@@ -15,7 +15,7 @@ use crate::workflows::engine::WorkflowEngine;
 /// Wires personality creativity and policy engine into the planner,
 /// creates the workflow engine, then creates and configures the ACP
 /// router/registry with handlers and system agents.
-pub fn setup_planner_workflow_acp(
+pub async fn setup_planner_workflow_acp(
     metrics: &Arc<MetricsCollector>,
     database: &Arc<crate::database::sqlite::SqliteDatabase>,
     coordinator: &Arc<ExperienceCoordinator>,
@@ -45,6 +45,12 @@ pub fn setup_planner_workflow_acp(
 
     // Wire policy engine into planner for policy-based action gating
     planner.set_policy_engine(policy_engine.clone());
+
+    // Seed with default maintenance plan so the plans engine is not empty
+    if let Err(e) = planner.seed().await {
+        tracing::warn!("Planner seed failed: {e}");
+    }
+
     let planner = Arc::new(planner);
 
     // Create workflow engine with database access, coordinator for event integration,
@@ -78,8 +84,12 @@ pub fn setup_planner_workflow_acp(
     // Register system agents
     let system_agent = crate::bridge::acp::system_agent::create_system_agent();
     let worker_agent = crate::bridge::acp::system_agent::create_worker_agent();
-    let _ = acp_registry.register(system_agent);
-    let _ = acp_registry.register(worker_agent);
+    if let Err(e) = acp_registry.register(system_agent) {
+        tracing::debug!("Failed to register system agent: {e}");
+    }
+    if let Err(e) = acp_registry.register(worker_agent) {
+        tracing::debug!("Failed to register worker agent: {e}");
+    }
     tracing::info!("ACP system agents registered (system:main, worker:1)");
 
     (planner, workflow_engine, acp_router, acp_registry)

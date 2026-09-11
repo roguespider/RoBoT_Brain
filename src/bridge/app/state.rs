@@ -4,6 +4,7 @@
 use std::sync::Arc;
 use std::sync::Mutex;
 
+use crate::agent::AgentLoop;
 use crate::bridge::acp::AcpRouter;
 use crate::bridge::mcp::McpContext;
 use crate::experience::encounter_recorder::ExperienceRecorder;
@@ -11,7 +12,6 @@ use crate::experience::hypothesis::HypothesisEngine;
 use crate::experience::integration::reflection_pipeline::ReflectionPipeline;
 use crate::memory::pipeline::MemoryPipeline;
 use crate::personality::Personality;
-use crate::agent::AgentLoop;
 use crate::world_model::WorldModel;
 
 /// Root application container.

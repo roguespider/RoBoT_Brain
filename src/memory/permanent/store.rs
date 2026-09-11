@@ -38,6 +38,18 @@ impl PermanentMemory {
         }
     }
 
+    /// Create PermanentMemory with a database connection for relationship persistence.
+    pub fn new_with_db(max_cache_size: usize, database: Arc<SqliteDatabase>) -> Self {
+        Self {
+            cache: Arc::new(RwLock::new(HashMap::new())),
+            type_index: Arc::new(RwLock::new(HashMap::new())),
+            tag_index: Arc::new(RwLock::new(HashMap::new())),
+            graph_index: Arc::new(RwLock::new(HashMap::new())),
+            max_cache_size,
+            database: Some(database),
+        }
+    }
+
     pub async fn store(&self, item: MemoryItem) -> Uuid {
         let id = item.id;
         let mut item = item;
@@ -234,23 +246,22 @@ impl PermanentMemory {
         }
 
         // Persist to database
-        if in_cache
-            && let Some(ref db) = self.database {
-                let conn = match db.connection() {
-                    Ok(c) => c,
-                    Err(e) => {
-                        tracing::warn!("Failed to get database connection for delete: {}", e);
-                        return false;
-                    }
-                };
-                match queries::delete_memory_by_id(&conn, *id) {
-                    Ok(_) => tracing::info!("Deleted memory {} from database", id),
-                    Err(e) => {
-                        tracing::warn!("Failed to delete memory {} from database: {}", id, e);
-                        return false;
-                    }
+        if in_cache && let Some(ref db) = self.database {
+            let conn = match db.connection() {
+                Ok(c) => c,
+                Err(e) => {
+                    tracing::warn!("Failed to get database connection for delete: {}", e);
+                    return false;
+                }
+            };
+            match queries::delete_memory_by_id(&conn, *id) {
+                Ok(_) => tracing::info!("Deleted memory {} from database", id),
+                Err(e) => {
+                    tracing::warn!("Failed to delete memory {} from database: {}", id, e);
+                    return false;
                 }
             }
+        }
 
         true
     }

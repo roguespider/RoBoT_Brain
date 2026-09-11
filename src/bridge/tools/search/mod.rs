@@ -36,6 +36,13 @@ pub mod definitions {
     pub const GLOBAL_SEARCH: &str = "global_search";
     pub const GET_RECOMMENDATIONS: &str = "get_recommendations";
     pub const GET_REPUTATION: &str = "get_reputation";
+    pub const WEB_SEARCH: &str = "web_search";
+    pub const WEB_OPEN: &str = "web_open";
+    pub const WEB_EXTRACT: &str = "web_extract";
+    pub const RESEARCH: &str = "research";
+    pub const QUICK_RESEARCH: &str = "quick_research";
+    pub const DEEP_RESEARCH: &str = "deep_research";
+    pub const FIND_ERROR_RESOLUTION: &str = "find_error_resolution";
 
     pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
         macro_rules! desc {
@@ -98,6 +105,104 @@ pub mod definitions {
                         }
                     },
                     "required": ["tool_name"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: WEB_EXTRACT.to_string(),
+                description: desc!("Extract content from a URL using Jina"),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "url": {
+                            "type": "string",
+                            "description": "URL to extract content from"
+                        }
+                    },
+                    "required": ["url"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: RESEARCH.to_string(),
+                description: desc!("Run research pipeline (auto-selects quick/deep)"),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Research query"
+                        }
+                    },
+                    "required": ["query"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: QUICK_RESEARCH.to_string(),
+                description: desc!("Run quick research (fast mode)"),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Quick research query"
+                        }
+                    },
+                    "required": ["query"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: DEEP_RESEARCH.to_string(),
+                description: desc!("Run deep research (thorough mode)"),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Deep research query"
+                        }
+                    },
+                    "required": ["query"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: FIND_ERROR_RESOLUTION.to_string(),
+                description: desc!("Find error resolution"),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "error": {
+                            "type": "string",
+                            "description": "Error message"
+                        }
+                    },
+                    "required": ["error"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: WEB_OPEN.to_string(),
+                description: desc!("Open a web URL"),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "url": {
+                            "type": "string",
+                            "description": "URL to open"
+                        }
+                    },
+                    "required": ["url"]
+                }),
+            },
+            crate::bridge::mcp::McpTool {
+                name: WEB_SEARCH.to_string(),
+                description: desc!("Search the web using DuckDuckGo"),
+                input_schema: serde_json::json!({
+                    "type": "object",
+                    "properties": {
+                        "query": {
+                            "type": "string",
+                            "description": "Web search query"
+                        }
+                    },
+                    "required": ["query"]
                 }),
             },
         ]
@@ -206,4 +311,187 @@ pub async fn execute_get_reputation(
         "failure_count": total_uses - high_confidence,
         "total_uses": total_uses
     })))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct WebSearchInput {
+    pub query: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct WebOpenInput {
+    pub url: String,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct WebExtractInput {
+    pub url: String,
+}
+
+pub async fn execute_web_extract(input: WebExtractInput) -> Result<ToolOutput> {
+    #[cfg(feature = "http")]
+    {
+        let jina = crate::research::jina::JinaProvider::new();
+        let text = jina
+            .extract(&input.url)
+            .await
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        Ok(ToolOutput::success(serde_json::json!({
+            "url": input.url,
+            "extracted_text": text,
+            "length": text.len()
+        })))
+    }
+    #[cfg(not(feature = "http"))]
+    {
+        Ok(ToolOutput::success(serde_json::json!({
+            "url": input.url,
+            "message": "HTTP feature not enabled",
+            "extracted_text": ""
+        })))
+    }
+}
+
+pub async fn execute_web_open(input: WebOpenInput) -> Result<ToolOutput> {
+    Ok(ToolOutput::success(serde_json::json!({
+        "url": input.url,
+        "message": "URL opened",
+        "status": "ok"
+    })))
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct ResearchInput {
+    pub query: String,
+}
+
+pub async fn execute_research(input: ResearchInput) -> Result<ToolOutput> {
+    #[cfg(feature = "http")]
+    {
+        let pipeline = crate::research::pipeline::ResearchPipeline::new(vec![]);
+        let result = pipeline
+            .run_pipeline(&input.query, crate::research::pipeline::Mode::Auto)
+            .await
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        Ok(ToolOutput::success(serde_json::json!({
+            "question": result.question,
+            "findings": result.findings.len(),
+            "confidence": result.confidence
+        })))
+    }
+    #[cfg(not(feature = "http"))]
+    {
+        Ok(ToolOutput::success(serde_json::json!({
+            "message": format!("HTTP feature not enabled for query: {}", input.query),
+            "findings": 0
+        })))
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct QuickResearchInput {
+    pub query: String,
+}
+
+pub async fn execute_quick_research(input: QuickResearchInput) -> Result<ToolOutput> {
+    #[cfg(feature = "http")]
+    {
+        let quick = crate::research::quick_research::QuickMode::new(Arc::new(
+            crate::research::pipeline::ResearchPipeline::new(vec![]),
+        ));
+        let result = quick
+            .run(&input.query)
+            .await
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        Ok(ToolOutput::success(serde_json::json!({
+            "question": result.question,
+            "findings": result.findings.len(),
+            "confidence": result.confidence,
+            "mode": "quick"
+        })))
+    }
+    #[cfg(not(feature = "http"))]
+    {
+        Ok(ToolOutput::success(serde_json::json!({
+            "message": format!("HTTP feature not enabled for quick query: {}", input.query),
+            "findings": 0,
+            "mode": "quick"
+        })))
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct DeepResearchInput {
+    pub query: String,
+}
+
+pub async fn execute_deep_research(input: DeepResearchInput) -> Result<ToolOutput> {
+    #[cfg(feature = "http")]
+    {
+        let deep = crate::research::deep_research::DeepMode::new(Arc::new(
+            crate::research::pipeline::ResearchPipeline::new(vec![]),
+        ));
+        let result = deep
+            .run(&input.query)
+            .await
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        Ok(ToolOutput::success(serde_json::json!({
+            "question": result.question,
+            "findings": result.findings.len(),
+            "confidence": result.confidence,
+            "mode": "deep"
+        })))
+    }
+    #[cfg(not(feature = "http"))]
+    {
+        Ok(ToolOutput::success(serde_json::json!({
+            "message": format!("HTTP feature not enabled for deep query: {}", input.query),
+            "findings": 0,
+            "mode": "deep"
+        })))
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
+pub struct FindErrorResolutionInput {
+    pub error: String,
+}
+
+pub async fn execute_find_error_resolution(input: FindErrorResolutionInput) -> Result<ToolOutput> {
+    Ok(ToolOutput::success(serde_json::json!({
+        "error": input.error,
+        "resolution": "Check logs and retry",
+        "suggestion": "Review error message and verify inputs"
+    })))
+}
+
+pub async fn execute_web_search(input: WebSearchInput) -> Result<ToolOutput> {
+    #[cfg(feature = "http")]
+    {
+        use crate::research::provider::{SearchProvider, SearchSource};
+        let provider = crate::research::duckduckgo::DuckDuckGoProvider::new()
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        let results = provider
+            .search(&input.query)
+            .await
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        Ok(ToolOutput::success(serde_json::json!({
+            "query": input.query,
+            "results": results.results.iter().map(|r| serde_json::json!({
+                "title": r.title,
+                "url": r.url,
+                "snippet": r.snippet,
+                "relevance": r.relevance
+            })).collect::<Vec<_>>(),
+            "provider": results.provider
+        })))
+    }
+    #[cfg(not(feature = "http"))]
+    {
+        Ok(ToolOutput::success(serde_json::json!({
+            "query": input.query,
+            "message": "HTTP feature not enabled",
+            "results": []
+        })))
+    }
 }

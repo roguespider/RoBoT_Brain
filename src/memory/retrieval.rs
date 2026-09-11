@@ -2,16 +2,20 @@
 
 //! Memory Retrieval - Per Architecture §6.3
 //!
-//! Provides retrieval capabilities for memory items across both
-//! working and permanent memory layers.
+//! Provides hybrid retrieval capabilities for memory items:
+//! - Symbolic search (keyword matching) across working + permanent memory
+//! - Vector search (cosine similarity on embeddings)
+//! - Merged by relevance score
 
 use std::sync::Arc;
 
 use anyhow::Result;
 use chrono::Utc;
+use uuid;
 
 use crate::database::sqlite::SqliteDatabase;
 
+use super::embedding::generate_embedding;
 use super::permanent::PermanentMemory;
 use super::types::{MemoryItem, MemoryLayer};
 use super::working::WorkingMemory;
@@ -25,16 +29,25 @@ pub struct RetrievalResult {
 
 /// Memory retrieval service - Per Architecture §6.3
 ///
-/// Provides unified retrieval across working and permanent memory.
+/// Provides unified hybrid retrieval: symbolic search (keyword) + vector search (cosine similarity).
 pub struct MemoryRetrieval {
     working: Arc<WorkingMemory>,
     permanent: Arc<PermanentMemory>,
+    database: std::sync::Arc<SqliteDatabase>,
 }
 
 impl MemoryRetrieval {
     /// Create a new memory retrieval service
-    pub fn new(working: Arc<WorkingMemory>, permanent: Arc<PermanentMemory>) -> Self {
-        Self { working, permanent }
+    pub fn new(
+        working: Arc<WorkingMemory>,
+        permanent: Arc<PermanentMemory>,
+        database: std::sync::Arc<SqliteDatabase>,
+    ) -> Self {
+        Self {
+            working,
+            permanent,
+            database,
+        }
     }
 
     /// Retrieve from working memory only
@@ -68,6 +81,7 @@ impl MemoryRetrieval {
     }
 
     /// Unified retrieval with explicit result limit.
+    /// Per Architecture §6.3: Hybrid retrieval — keyword (0.6 weight) + vector (0.4 weight).
     pub async fn retrieve_with_limit(&self, query: &str, limit: usize) -> Vec<RetrievalResult> {
         let mut results = Vec::new();
 
@@ -78,6 +92,16 @@ impl MemoryRetrieval {
         // Search permanent memory
         let permanent_results = self.get_from_permanent(query).await;
         results.extend(permanent_results);
+
+        // Hybrid: also search via embeddings (vector search)
+        let vector_results = self.search_by_vector(query, limit).await;
+        for vr in vector_results {
+            // Only add if not already in results (dedup by memory ID)
+            let already_present = results.iter().any(|r| r.item.id == vr.item.id);
+            if !already_present {
+                results.push(vr);
+            }
+        }
 
         // Sort by relevance
         results.sort_by(|a, b| {
@@ -90,6 +114,81 @@ impl MemoryRetrieval {
         results.truncate(limit);
 
         results
+    }
+
+    /// Search memories by vector similarity (hybrid retrieval component).
+    /// Generates a query embedding, retrieves all stored embeddings, computes cosine similarity,
+    /// then returns matching MemoryItems with relevance scores.
+    async fn search_by_vector(&self, query: &str, limit: usize) -> Vec<RetrievalResult> {
+        use crate::database::queries;
+
+        // Generate query embedding
+        let query_embedding = match generate_embedding(query, 0.5, 0.5) {
+            Some(e) => e,
+            None => return Vec::new(),
+        };
+
+        // Fetch all stored embeddings from database
+        let conn = match self.database.connection() {
+            Ok(c) => c,
+            Err(e) => {
+                tracing::warn!("Failed to get DB connection for vector search: {e}");
+                return Vec::new();
+            }
+        };
+
+        let stored_embeddings = match queries::list_embeddings(&conn, limit * 10) {
+            Ok(emb) => emb,
+            Err(e) => {
+                tracing::warn!("Failed to list embeddings for vector search: {e}");
+                return Vec::new();
+            }
+        };
+
+        if stored_embeddings.is_empty() {
+            return Vec::new();
+        }
+
+        // Build a lookup map: memory_id -> embedding
+        let mut emb_map: std::collections::HashMap<
+            uuid::Uuid,
+            crate::database::models::MemoryEmbedding,
+        > = std::collections::HashMap::new();
+        for emb in stored_embeddings {
+            emb_map.insert(emb.memory_id, emb);
+        }
+
+        // Compute cosine similarity for each stored embedding
+        let query_emb_for_calc = crate::database::models::MemoryEmbedding::new(
+            uuid::Uuid::new_v4(),
+            query_embedding.clone(),
+            "query".to_string(),
+        );
+
+        let mut similarities: Vec<(uuid::Uuid, f32)> = Vec::new();
+        for (mem_id, stored_emb) in &emb_map {
+            let similarity = query_emb_for_calc.cosine_similarity(stored_emb);
+            if similarity >= 0.5 {
+                similarities.push((*mem_id, similarity));
+            }
+        }
+
+        similarities.sort_by(|a, b| b.1.partial_cmp(&a.1).unwrap_or(std::cmp::Ordering::Equal));
+        similarities.truncate(limit);
+
+        // Convert memory IDs to MemoryItems with vector-based scores
+        let mut vector_results = Vec::new();
+        for (mem_id, similarity) in similarities {
+            // Fetch the memory item from permanent memory
+            if let Some(item) = self.permanent.retrieve(&mem_id).await {
+                vector_results.push(RetrievalResult {
+                    item,
+                    relevance_score: similarity * 0.4, // Vector weight: 40%
+                });
+            }
+        }
+
+        vector_results
     }
 
     /// Get context from memory (recent working items)

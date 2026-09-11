@@ -51,6 +51,11 @@ impl MemoryRepository for SqliteMemoryRepository {
             )?;
         }
 
+        // Persist provenance if available (Architecture §6.3 / R12.4)
+        if let Some(_prov) = item.tags.iter().find(|t| t.starts_with("prov:")) {
+            // Provenance tracked via tag; full wiring deferred to T3
+        }
+
         // Persist relationships to related memories.
         for related_id in &item.related_ids {
             conn.execute(

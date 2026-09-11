@@ -440,9 +440,9 @@ marker. Satisfies DoD #12.
 - Add to `all()` function
 - Wire into `register_tools()` chain
 
-**R11b** — Register the new tools in the test_suite coverage gate: add one `TestRequirement` per research tool to
-`test_suite/src/function_registry/search_tools.rs` and the matching id case in
-`test_suite/src/comprehensive_test/argument_builder.rs`. Keep `tool_names()`, `get_tools()`, and `execute_tool()` in
+**R11b** — Register the new tools in the test_suite2 coverage gate: add one `TestRequirement` per research tool to
+`.agents/scripts/test_suite2/src/function_registry/search_tools.rs` and the matching id case in
+`.agents/scripts/test_suite2/src/comprehensive_test/argument_builder.rs`. Keep `tool_names()`, `get_tools()`, and `execute_tool()` in
 sync (a missing `get_tools()` entry creates a phantom tool — the T1-19 root cause). This keeps the "0 untested tools"
 gate metric green.
 

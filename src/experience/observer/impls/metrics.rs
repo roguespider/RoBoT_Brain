@@ -5,8 +5,8 @@ use anyhow::Result;
 use chrono::Utc;
 use std::sync::Arc;
 
-use crate::experience::events::payload::EventPayload;
 use crate::experience::events::ExperienceEvent;
+use crate::experience::events::payload::EventPayload;
 use crate::experience::metrics::MetricsCollector;
 use crate::experience::observer::ExperienceObserver;
 
@@ -51,6 +51,9 @@ impl MetricsObserver {
                     crate::experience::types::OutcomeKind::Partial => {
                         collector.increment_sync("experiences.partial");
                     }
+                    crate::experience::types::OutcomeKind::Unknown => {
+                        collector.increment_sync("experiences.unknown");
+                    }
                 }
 
                 // Record experience type
@@ -74,10 +77,7 @@ impl MetricsObserver {
                 );
             }
 
-            EventPayload::HypothesisValidation {
-                result,
-                ..
-            } => {
+            EventPayload::HypothesisValidation { result, .. } => {
                 collector.increment_sync("hypotheses.validated");
                 // Track validation result
                 match result.as_str() {

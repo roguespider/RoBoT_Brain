@@ -7,6 +7,7 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use uuid::Uuid;
 
+use super::OutcomeKind;
 use super::context::ExperienceContext;
 use super::maturity::KnowledgeMaturity;
 use super::outcome::ExperienceOutcome;
@@ -75,8 +76,48 @@ pub struct Experience {
     /// Overall confidence (updated through evidence, never manually)
     pub confidence: f32,
 
-    /// Lessons learned.
-    pub lessons: Vec<String>,
+    /// Lessons learned (§15 / T10.15).
+    #[serde(alias = "lessons")]
+    pub lessons_learned: Vec<String>,
+
+    /// Objective pursued in this experience (§15 / T10.1).
+    pub objective: String,
+
+    /// Initial assumptions before action (§15 / T10.2).
+    pub initial_assumptions: Vec<String>,
+
+    /// Plan that was executed (§15 / T10.3).
+    pub plan: String,
+
+    /// Actions taken (§15 / T10.4).
+    pub actions: Vec<String>,
+
+    /// Tools used (§15 / T10.5).
+    pub tools_used: Vec<String>,
+
+    /// Results obtained (§15 / T10.6).
+    pub results: Vec<String>,
+
+    /// Failures encountered (§15 / T10.7).
+    pub failures: Vec<String>,
+
+    /// Corrections applied (§15 / T10.8).
+    pub corrections: Vec<String>,
+
+    /// Strategies that worked (§15 / T10.9).
+    pub successful_strategies: Vec<String>,
+
+    /// Strategies that failed (§15 / T10.10).
+    pub unsuccessful_strategies: Vec<String>,
+
+    /// Constraints discovered (§15 / T10.11).
+    pub discovered_constraints: Vec<String>,
+
+    /// Capabilities discovered (§15 / T10.12).
+    pub discovered_capabilities: Vec<String>,
+
+    /// Final outcome summary (§15 / T10.13).
+    pub final_outcome: String,
 
     /// Supporting evidence count.
     pub evidence_count: usize,
@@ -121,7 +162,20 @@ impl Experience {
             encounter_ids: Vec::new(),
             maturity: KnowledgeMaturity::Emerging,
             confidence: 0.5,
-            lessons: Vec::new(),
+            lessons_learned: Vec::new(),
+            objective: String::new(),
+            initial_assumptions: Vec::new(),
+            plan: String::new(),
+            actions: Vec::new(),
+            tools_used: Vec::new(),
+            results: Vec::new(),
+            failures: Vec::new(),
+            corrections: Vec::new(),
+            successful_strategies: Vec::new(),
+            unsuccessful_strategies: Vec::new(),
+            discovered_constraints: Vec::new(),
+            discovered_capabilities: Vec::new(),
+            final_outcome: String::new(),
             evidence_count: 0,
             evidence_ids: Vec::new(),
             tags: Vec::new(),
@@ -159,5 +213,27 @@ impl Experience {
         // Track which evidence IDs contributed to this experience's confidence
         self.evidence_ids.push(evidence_id);
         self.evidence_count += 1;
+    }
+
+    /// Returns a PostTaskEvaluation by analyzing this experience's outcome and metadata.
+    pub fn evaluate_post_task(&self) -> crate::cooboploop::post_task::PostTaskEvaluation {
+        use crate::cooboploop::post_task::PostTaskEvaluation;
+        let mut eval = PostTaskEvaluation::new();
+        eval.set_did_succeed(self.outcome.kind == OutcomeKind::Success);
+        eval.set_verification_confirmed(self.outcome.kind == OutcomeKind::Success);
+        if let Some(ref msg) = self.outcome.message {
+            eval.add_unexpected_problem(msg.clone());
+        }
+        for lesson in &self.lessons_learned {
+            eval.add_knowledge_gap(lesson.clone());
+        }
+        eval.set_efficiency_score(self.score.as_ref().map(|s| s.importance).unwrap_or(0.5));
+        eval
+    }
+
+    /// Wire evaluate_post_task by calling it in a summary method.
+    pub fn post_task_summary(&self) -> String {
+        let eval = self.evaluate_post_task();
+        eval.summarize()
     }
 }

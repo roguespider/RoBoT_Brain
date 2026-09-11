@@ -22,15 +22,21 @@ pub async fn execute_get_memory(
     input: GetMemoryInput,
     database: &Arc<SqliteDatabase>,
     memory_retrieval: &Arc<MemoryRetrieval>,
-) -> Result<ToolOutput> {
-    let uuid = Uuid::parse_str(&input.id).map_err(|e| anyhow::anyhow!("Invalid UUID: {}", e))?;
+) -> ToolOutput {
+    let uuid = match Uuid::parse_str(&input.id) {
+        Ok(u) => u,
+        Err(e) => return ToolOutput::error(format!("Invalid UUID: {}", e)),
+    };
 
     let working = memory_retrieval.working_memory().retrieve(&uuid).await;
     let permanent = memory_retrieval.permanent_memory().retrieve(&uuid).await;
 
     match working.or(permanent) {
         Some(m) => {
-            let conn = database.connection()?;
+            let conn = match database.connection() {
+                Ok(c) => c,
+                Err(e) => return ToolOutput::error(format!("Database connection failed: {}", e)),
+            };
 
             let content_preview = if m.content.len() > 50 {
                 format!("{}...", &m.content[..50])
@@ -45,7 +51,9 @@ pub async fn execute_get_memory(
                 ),
                 "memory_retrieval".to_string(),
             );
-            queries::insert_observation(&conn, &observation)?;
+            if let Err(e) = queries::insert_observation(&conn, &observation) {
+                tracing::warn!("Failed to insert observation: {}", e);
+            }
 
             let mut experience = Experience::new(
                 format!("Memory retrieved: {}", content_preview),
@@ -68,9 +76,11 @@ pub async fn execute_get_memory(
                 tracing::warn!("Experience already committed: {}", e);
             }
             let memory_from_exp = MemoryCard::from_experience(&experience);
-            queries::insert_memory(&conn, &memory_from_exp)?;
+            if let Err(e) = queries::insert_memory(&conn, &memory_from_exp) {
+                tracing::warn!("Failed to insert memory: {}", e);
+            }
 
-            Ok(ToolOutput::success(serde_json::json!({
+            ToolOutput::success(serde_json::json!({
                 "found": true,
                 "memory": {
                     "id": m.id.to_string(),
@@ -84,12 +94,12 @@ pub async fn execute_get_memory(
                 },
                 "observation_id": observation.id.to_string(),
                 "experience_id": experience.id.to_string()
-            })))
+            }))
         }
-        None => Ok(ToolOutput::success(serde_json::json!({
+        None => ToolOutput::success(serde_json::json!({
             "found": false,
             "memory": serde_json::Value::Null
-        }))),
+        })),
     }
 }
 
@@ -159,11 +169,17 @@ pub async fn execute_archive_memory(
     input: ArchiveMemoryInput,
     archived: bool,
 ) -> Result<ToolOutput> {
-    Ok(ToolOutput::success(serde_json::json!({
-        "success": archived,
-        "memory_id": input.memory_id,
-        "archived": archived,
-    })))
+    if archived {
+        Ok(ToolOutput::success(serde_json::json!({
+            "memory_id": input.memory_id,
+            "archived": true,
+        })))
+    } else {
+        Ok(ToolOutput::error(format!(
+            "Memory {} not found",
+            input.memory_id
+        )))
+    }
 }
 
 /// Execute link memories tool
@@ -179,9 +195,15 @@ pub async fn execute_link_memories(input: LinkMemoriesInput) -> Result<ToolOutpu
 /// Execute delete memory by ID tool
 /// Requires explicit user confirmation (hard delete)
 pub async fn execute_delete_memory(input: DeleteMemoryInput, deleted: bool) -> Result<ToolOutput> {
-    Ok(ToolOutput::success(serde_json::json!({
-        "success": deleted,
-        "memory_id": input.memory_id,
-        "deleted": deleted,
-    })))
+    if deleted {
+        Ok(ToolOutput::success(serde_json::json!({
+            "memory_id": input.memory_id,
+            "deleted": true,
+        })))
+    } else {
+        Ok(ToolOutput::error(format!(
+            "Memory {} not found",
+            input.memory_id
+        )))
+    }
 }

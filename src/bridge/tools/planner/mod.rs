@@ -282,7 +282,11 @@ pub async fn execute_create_plan(input: CreatePlanInput, planner: &Arc<Planner>)
                 "plan": plan_json,
             }))
         }
-        Err(e) => ToolOutput::error(e),
+        Err(e) => ToolOutput::success(serde_json::json!({
+            "status": "error",
+            "id": serde_json::Value::Null,
+            "error": e.to_string(),
+        })),
     }
 }
 

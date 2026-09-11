@@ -63,6 +63,11 @@ pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
                         "type": "array",
                         "items": { "type": "string" },
                         "description": "Optional tags for categorization"
+                    },
+                    "embedding": {
+                        "type": "array",
+                        "items": { "type": "number" },
+                        "description": "Optional embedding vector for semantic memory search. If omitted, server generates a hash-based fallback."
                     }
                 },
                 "required": ["content", "memory_type"]

@@ -56,6 +56,7 @@ impl McpServerHandler {
         for cat in [
             "acp",
             "agent",
+            "cooboploop",
             "experience",
             "exploration",
             "hypothesis",
@@ -198,6 +199,7 @@ impl McpServerHandler {
     pub fn is_handler_available(&self, category: &str) -> bool {
         match category {
             "agent" => self.handlers.agent.is_some(),
+            "cooboploop" => self.handlers.cooboploop.is_some(),
             "experience" => self.handlers.experience.is_some(),
             "exploration" => self.handlers.exploration.is_some(),
             "hypothesis" => self.handlers.hypothesis.is_some(),
