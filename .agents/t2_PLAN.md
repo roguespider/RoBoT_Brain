@@ -35,12 +35,7 @@ Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architec
 
 
 
-- [ ] **T2-06** — Write the shared invariants for provenance, evidence, uncertainty, failure visibility, and versioned evolution — Chapter 5 (Data Contracts) + Chapter 19 (Confidence System).
-  - **▸** Append to `.agents/notes/invariants.md`. Section 3: provenance (`source`, `source_kind`, `created_by`) on every record.
-  - **▸** Section 4: evidence (every claim links to at least one `Evidence` record or marks itself "ungrounded").
-  - **▸** Section 5: uncertainty (every numeric score has a `confidence` field 0.0-1.0) citing Chapter 19.1.
-  - **▸** Section 6: failure visibility (no silent fallbacks; every error path emits an `Error` event) citing Chapter 16.2.
-  - **▸** Section 7: versioned evolution (every contract has a `version: SemVer` field) citing Chapter 5.1. Commit.
+
 
 
 ---
