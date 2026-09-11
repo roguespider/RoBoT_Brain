@@ -33,11 +33,7 @@ Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architec
 
 
 
-- [ ] **T2-04** — Write the canonical data-flow path for inputs, internal pipelines, and outputs — Chapter 4 (Data Flow Architecture).
-  - **▸** Create `.agents/notes/data_flow.md`. Section 1: input processing (request → validation → intent parsing) citing Chapter 4.2.
-  - **▸** Section 2: internal pipelines (Memory → Knowledge → Planning → Execution → Experience → Learning) citing Chapter 4.3 and the cognitive pipeline in Chapter 3.3.
-  - **▸** Section 3: output generation (response assembly, side effects) citing Chapter 4.4.
-  - **▸** Section 4: system boundaries (which modules are at the trust boundary) citing Chapter 4.5. Commit.
+
 - [ ] **T2-05** — Write the shared invariants for identity and correlation — Chapter 5 (Data Contracts, "API boundaries") + Chapter 16 (Cognitive Coordination Layer).
   - **▸** Create `.agents/notes/invariants.md`. Section 1: identity (UUID v4 for entities, never reuse, no PII in IDs) citing Chapter 5.
   - **▸** Section 2: correlation (every event carries `correlation_id`, every response carries `reply_to`) citing Chapter 16.1.
