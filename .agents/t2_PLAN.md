@@ -31,13 +31,6 @@ Upgrade the existing subsystems to the v0.0.2 architecture in a dependency-first
 ## 0. Architecture foundations and invariants
 Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Part I, Chapters 1-4.
 
-
-
-
-
-
-
-
 ---
 
 ## 1. Data Contracts first
@@ -426,9 +419,6 @@ Finish the cross-cutting v0.0.2 concepts that keep systems replaceable and coord
   - **▸** Add `pub enum Capability { Chat, Embedding, Tool, Vision, LongContext }`. Verify `cargo check --release`. Commit.
   - **▸** Add `pub fn select_provider(registry: &ProviderRegistry, cap: Capability) -> Option<Box<dyn InferenceProvider>>` (placeholder: round-robin). Verify `cargo check --release`. Commit.
   - **▸** Move test to `test_suite/src/tests/models_routing.rs`. Wire + verify. Commit.
-- [ ] **T2-108** — Add context-handling rules for inference — Chapter 14.4 "Context handling".
-  - **▸** Add `pub struct InferenceContext { pub system: String, pub messages: Vec<ChatMessage>, pub max_tokens: u32 }`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn truncate_context(ctx: &InferenceContext, budget: u32) -> InferenceContext`. Verify `cargo check --release`. Commit.
 - [ ] **T2-109** — Add inference-management rules for scheduling — Chapter 14.5 "Inference management".
   - **▸** Add `pub struct InferenceQueue { /* ... */ }` with `pub fn enqueue(&mut self, req: InferenceRequest) -> RequestId` and `pub fn dequeue(&mut self) -> Option<InferenceRequest>`. Verify `cargo check --release`. Commit.
 - [ ] **T2-110** — Add inference-management rules for validation — Chapter 14.5.

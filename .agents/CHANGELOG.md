@@ -32,6 +32,11 @@
 - **Change:** Provenance (Ch 5.2+19: source, source_kind, created_by), Evidence (link to Evidence or mark ungrounded), Uncertainty (Ch 19.1: confidence 0.0-1.0, >= 0.7 for promotion), Failure Visibility (Ch 16.2: no silent fallbacks, emit Error events), Versioned Evolution (Ch 5.1: SemVer, backward-compatible increments)
 - **Verification:** File exists, sections 3-6 present with checklist
 
+### T2-08 — Context-handling rules for inference (Chapter 14.4)
+- **Files:** `src/models/mod.rs`, `src/lib.rs`
+- **Change:** Created `src/models/mod.rs` with `ChatMessage`, `InferenceContext`, and `truncate_context`. Added `pub mod models;` to `src/lib.rs`.
+- **Verification:** `cargo build --release` passes with 0 errors; no new warnings from `models` module.
+
 ### T2-07 — Communication Model
 - **Files:** `.agents/notes/communication_model.md`
 - **Change:** 4 sections: Event-Only Coordination (Ch 16.1), Event Schema (Ch 5.2), Event Storage (Ch 21), Entry Points (Ch 15.1-15.3). Includes canonical event schema and entry point rules.
