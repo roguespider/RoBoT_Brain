@@ -36,10 +36,7 @@ Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architec
 ## 1. Data Contracts first
 These types become the shared shape for the rest of Tier 2. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Chapter 5 (Data Contracts).
 
-- [ ] **T2-08** — Create `src/data_contracts/` module skeleton with `mod.rs` — Chapter 5.1 "Shared data structures".
-  - **▸** Create `src/data_contracts/mod.rs` containing only `pub mod observation; pub mod context_packet; pub mod memory_record; pub mod experience_record; pub mod plan_contract; pub mod decision; pub mod execution_result; pub mod reflection; pub mod learning_update;` (forward decls, no logic).
-  - **▸** Create empty `pub fn placeholder()` in each of the 9 submodules listed above (one per commit).
-  - **▸** Verify: `cargo check --release` succeeds. Commit.
+
 - [ ] **T2-09** — Add the shared contract version field and shared traits — Chapter 5.1 "Serialization formats".
   - **▸** Create `src/data_contracts/version.rs` with `pub const CONTRACT_VERSION: &str = "0.0.2";` and a `trait Versioned { fn version() -> &'static str { CONTRACT_VERSION } }`.
   - **▸** Re-export from `src/data_contracts/mod.rs`. Verify `cargo check --release`. Commit.
@@ -49,9 +46,6 @@ These types become the shared shape for the rest of Tier 2. Source: `robot_archi
 - [ ] **T2-11** — Add common metadata fields for correlation, confidence, and provenance — Chapter 5.1 + Chapter 19.1.
   - **▸** Add fields to `Metadata`: `pub correlation_id: String`, `pub confidence: f32` (default 0.5), `pub provenance: Vec<String>` (list of source IDs).
   - **▸** Update `Default` impl. Verify `cargo check --release`. Commit.
-- [ ] **T2-12** — Add the `Observation` struct — Chapter 5.1 + Chapter 4.2 "Input processing".
-  - **▸** In `src/data_contracts/observation.rs`, define `pub struct Observation { pub metadata: Metadata, pub source_kind: String, pub content: String, pub tags: Vec<String> }`.
-  - **▸** Derive `Clone, Serialize, Deserialize`. Re-export from `mod.rs`. Verify `cargo check --release`. Commit.
 - [ ] **T2-13** — Add a serde round-trip test for `Observation` — Chapter 5.1 "Serialization formats".
   - **▸** Add a `#[cfg(test)] mod tests` block in `observation.rs` with `test_observation_serde_roundtrip` that builds an `Observation`, calls `serde_json::to_string` then `serde_json::from_str`, asserts equality.
   - **▸** NOTE: tests in `src/` are forbidden by AGENTS.md. Move this test to `test_suite/src/tests/data_contracts_observation.rs`. Wire into `tests/mod.rs` and `main.rs`. Verify `cargo build --release` from `test_suite/`. Commit.

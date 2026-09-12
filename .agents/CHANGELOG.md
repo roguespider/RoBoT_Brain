@@ -2,6 +2,11 @@
 
 ## TIER 2 — Reach v0.0.2
 
+### T2-08 — Data Contracts Module Skeleton (Chapter 5.1)
+- **Files:** `src/data_contracts/mod.rs`, `src/data_contracts/observation.rs`, `src/data_contracts/context_packet.rs`, `src/data_contracts/memory_record.rs`, `src/data_contracts/experience_record.rs`, `src/data_contracts/plan_contract.rs`, `src/data_contracts/decision.rs`, `src/data_contracts/execution_result.rs`, `src/data_contracts/reflection.rs`, `src/data_contracts/learning_update.rs`
+- **Change:** Created `src/data_contracts/` module with 9 forward-declared submodules (observation, context_packet, memory_record, experience_record, plan_contract, decision, execution_result, reflection, learning_update). Each submodule contains `pub fn placeholder()`. `mod.rs` re-exports version.rs and metadata.rs. Observation module includes full `Observation` struct with `new()` and `Default`.
+- **Verification:** `cargo check --release` passes with 0 errors; 57 warnings (all dead_code from stubs/unused imports — expected for skeleton task)
+
 ### T2-01 — Architecture Foundation Note
 - **Files:** `.agents/notes/v0_0_2_foundation.md`
 - **Change:** Created foundation note with 4 sections: Memory-First Design (Ch 2.3), Experience-Based Learning (Ch 2.5 + Ch 10), Persistence and Continuity (Ch 17), Controlled Evolution (Ch 2.6). 84 lines.
@@ -31,6 +36,11 @@
 - **Files:** `.agents/notes/invariants.md`
 - **Change:** Provenance (Ch 5.2+19: source, source_kind, created_by), Evidence (link to Evidence or mark ungrounded), Uncertainty (Ch 19.1: confidence 0.0-1.0, >= 0.7 for promotion), Failure Visibility (Ch 16.2: no silent fallbacks, emit Error events), Versioned Evolution (Ch 5.1: SemVer, backward-compatible increments)
 - **Verification:** File exists, sections 3-6 present with checklist
+
+### T2-12 — Observation Data Contract — Chapter 5.1 + 4.2
+- **Files:** `src/data_contracts/observation.rs`
+- **Change:** Added `Observation` struct with `metadata: Metadata`, `source_kind: String`, `content: String`, `tags: Vec<String>`. Derives `Clone, Serialize, Deserialize, PartialEq`. Includes `new()` constructor and `Default` impl.
+- **Verification:** `cargo check --release` passes with 0 errors; module exported from `mod.rs`.
 
 ### T2-08 — Context-handling rules for inference (Chapter 14.4)
 - **Files:** `src/models/mod.rs`, `src/lib.rs`
