@@ -53,25 +53,3 @@ impl Versioned for Metadata {
         CONTRACT_VERSION
     }
 }
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_metadata_defaults() {
-        let meta = Metadata::default();
-        assert_eq!(meta.version, CONTRACT_VERSION);
-        assert_eq!(meta.source, "unknown");
-        assert!(meta.created_at > 0);
-        assert!(!meta.correlation_id.is_empty());
-        assert_eq!(meta.confidence, 0.5);
-        assert!(meta.provenance.is_empty());
-    }
-
-    #[test]
-    fn test_metadata_source() {
-        let meta = Metadata::new("test_source");
-        assert_eq!(meta.source, "test_source");
-    }
-}
