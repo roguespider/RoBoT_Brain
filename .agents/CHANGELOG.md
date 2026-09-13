@@ -147,6 +147,11 @@
 - **Change:** Created `src/models/mod.rs` with `ChatMessage`, `InferenceContext`, and `truncate_context`. Added `pub mod models;` to `src/lib.rs`.
 - **Verification:** `cargo build --release` passes with 0 errors; no new warnings from `models` module.
 
+### T2-41 — Add retrieval ranking rules — Chapter 8.5 + 19
+- **Files:** `src/memory/ranking.rs`, `src/memory/mod.rs`
+- **Change:** All ranking functions already exist: `rank_by_confidence`, `rank_by_recency`, `rank_by_relevance`, `rank_score`, `ranked_search`. Added wiring in `reference_memory_contracts` to bind function pointers.
+- **Verification:** All functions present and wired.
+
 ### T2-40 — Add memory relationship-graph support — Chapter 20.1
 - **Files:** `src/memory/graph.rs`, `src/memory/mod.rs`
 - **Change:** All types/functions already exist: `MemoryNode`, `MemoryEdge`, `insert_node`, `insert_edge`, `get_connections`, `find_path`. Added wiring in `reference_memory_contracts` to bind function pointers and struct references. Migration 009 creates memory_relationships table.

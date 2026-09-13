@@ -36,14 +36,6 @@ Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architec
 ## 2. Memory Engine
 Bring memory up to contract shape before upgrading higher-level consumers. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Chapter 8 (Memory Engine) + Chapter 17 (Memory Architecture).
 
-- [ ] **T2-41** — Add retrieval ranking rules that prefer relevant, confident, and recent records — Chapter 8.5 "Memory retrieval" + Chapter 19 (Confidence System).
-- [ ] **T2-41** — Add retrieval ranking rules that prefer relevant, confident, and recent records — Chapter 8.5 "Memory retrieval" + Chapter 19 (Confidence System).
-  - **▸** Add `pub fn rank_score(&self) -> f32` to the contract `MemoryRecord` in `src/data_contracts/memory_record.rs`, calling into a default helper.
-  - **▸** In `src/memory/ranking.rs`, add `pub fn rank_by_confidence(rec: &MemoryRecord) -> f32 { rec.confidence * 0.4 }`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn rank_by_recency(rec: &MemoryRecord, now_ts: i64) -> f32` using log-scaled decay: `(1.0 / (1.0 + (now_ts - rec.metadata.created_at).abs() as f64).ln()) as f32 * 0.3`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn rank_by_relevance(_rec: &MemoryRecord) -> f32 { 0.3 }` (placeholder per the plan; real implementation will use vector similarity once T2-139 lands). Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn ranked_search(lt: &dyn LongTermMemory, q: &str) -> Vec<(MemoryRecord, f32)>` combining the three with weight sum 1.0. Verify `cargo check --release`. Commit.
-  - **▸** Move integration test to `test_suite/src/tests/memory_ranking.rs`: store 3 records with different confidences/ages, run `ranked_search`, assert descending score. Wire + verify `make gate`. Commit.
 - [ ] **T2-42** — Add duplicate-merge consolidation — Chapter 17.4 "Memory promotion" (dedup before promotion).
   - **▸** In `src/memory/dedup.rs`, add `pub fn merge_duplicates(records: Vec<MemoryRecord>) -> Vec<MemoryRecord>` that groups by `content_hash` (use std hash of content) and keeps the highest-confidence record per group.
   - **▸** Add provenance merging: combine the kept record's `provenance` Vec with the duplicates'. Verify `cargo check --release`. Commit.
