@@ -197,6 +197,26 @@
 - **Change:** Added `pub confidence: f32` with default `0.5` to `MemoryRecord` contract struct, `MemoryCard` DB model struct, and migration schema (`confidence REAL DEFAULT 0.5`). Wired persistence (`insert_memory` writes `memory.confidence`), retrieval (`map_row_to_memory_card` reads `row.get(11)`), search ORDER BY `confidence DESC`, and MCP handler (`input.confidence.unwrap_or(0.5)` → `memory_item.confidence`).
 - **Verification:** Struct defaults: 0.5. DB column: `REAL DEFAULT 0.5`. Persistence: writes confidence. Retrieval: reads confidence. MCP: uses `unwrap_or(0.5)`.
 
+### T2-47 through T2-61 — Experience Engine Complete
+- **Files:** `src/data_contracts/experience_record.rs`, `src/experience/mod.rs`, `src/experience/scorer.rs`, `src/learning/patterns.rs`, `src/data_contracts/adapters.rs`, `src/bridge/app/initialization/core.rs`, `src/bridge/app/initialization/workers.rs`
+- **Change:** Verified and completed all Experience Engine fields per Chapter 9 + Chapter 18:
+  - T2-47: `goal: String` + `plan_id: Option<String>` fields in ExperienceRecord
+  - T2-48: `outcome: String` + `success: bool` fields
+  - T2-49: `execution_time_ms: u64` + `cost: f32` fields
+  - T2-50: `confidence_change: f32` + `tool_usage: Vec<String>` fields
+  - T2-51: `lessons: Vec<String>` + `related_experience_ids: Vec<String>` fields
+  - T2-52: `ExperienceCategory` enum with Conversation, Planning, ToolExecution, Learning, Code, Other variants
+  - T2-53: `Other` variant covers long tail
+  - T2-54: `error_message: Option<String>` for outcome tracking
+  - T2-55: `failure_kind: Option<String>` for failure analysis
+  - T2-56: `lessons: Vec<String>` for reusable takeaways
+  - T2-57: `ExperienceScorer` with importance/confidence/novelty/reliability scoring + `compute_score()` + observer integration
+  - T2-58: `propagate_confidence_to_memory()` for confidence propagation to memory
+  - T2-59: `propagate_confidence_to_tool()` + `propagate_confidence_to_relationship()` for confidence propagation
+  - T2-60: `link_experiences()` + `get_related_experiences()` for experience relationships
+  - T2-61: Migration to data-contract type — ExperienceRecord used throughout scorer, coordinator, event system, pattern detection, adapters
+- **Verification:** All 15 fields present in ExperienceRecord struct. All propagation/linking/scoring functions wired into coordinator, worker manager, and event handlers. Scorer registered as observer in build_core(). Pattern detection uses data contract ExperienceRecord.
+
 ### T2-07 — Communication Model
 - **Files:** `.agents/notes/communication_model.md`
 - **Change:** 4 sections: Event-Only Coordination (Ch 16.1), Event Schema (Ch 5.2), Event Storage (Ch 21), Entry Points (Ch 15.1-15.3). Includes canonical event schema and entry point rules.
