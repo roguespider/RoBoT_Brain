@@ -36,9 +36,6 @@ Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architec
 ## 2. Memory Engine
 Bring memory up to contract shape before upgrading higher-level consumers. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Chapter 8 (Memory Engine) + Chapter 17 (Memory Architecture).
 
-- [ ] **T2-38** — Make retrieval preserve the stored confidence value — Chapter 8.5 "Memory retrieval".
-  - **▸** Audit the `search` and `get` paths in `src/memory/store.rs` (or equivalent). Confirm the returned `MemoryRecord.confidence` is read from the stored row, not overwritten by a default. Patch any code that drops the field.
-  - **▸** Add `test_suite/src/tests/memory_confidence_preserved.rs`: store a record with confidence 0.83, retrieve, assert == 0.83. Wire + verify `make gate`. Commit.
 - [ ] **T2-39** — Add memory provenance/source fields — Chapter 5.1 "Shared data structures" + Chapter 8.1.
   - **▸** Confirm `MemoryRecord` (legacy + contract) carries `source: String` and `source_kind: String`. If missing, add with `#[serde(default)]`. Verify `cargo check --release`. Commit.
   - **▸** Add `test_suite/src/tests/memory_provenance.rs`: store with `source="user_input"`, retrieve, assert preserved. Wire + verify. Commit.
