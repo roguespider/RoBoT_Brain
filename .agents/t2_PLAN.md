@@ -36,11 +36,6 @@ Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architec
 ## 2. Memory Engine
 Bring memory up to contract shape before upgrading higher-level consumers. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Chapter 8 (Memory Engine) + Chapter 17 (Memory Architecture).
 
-- [ ] **T2-42** — Add duplicate-merge consolidation — Chapter 17.4 "Memory promotion" (dedup before promotion).
-  - **▸** In `src/memory/dedup.rs`, add `pub fn merge_duplicates(records: Vec<MemoryRecord>) -> Vec<MemoryRecord>` that groups by `content_hash` (use std hash of content) and keeps the highest-confidence record per group.
-  - **▸** Add provenance merging: combine the kept record's `provenance` Vec with the duplicates'. Verify `cargo check --release`. Commit.
-  - **▸** Add `consolidated_from: Vec<String>` field to contract `MemoryRecord` (with `#[serde(default)]` for back-compat). Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/memory_dedup.rs`: 4 records, 2 duplicate pairs, expect 2 results with merged provenance. Wire + verify `make gate`. Commit.
 - [ ] **T2-43** — Add summarization for aging low-importance memories — Chapter 7.4 "Context compression" (memory summarization mirror).
   - **▸** Add `pub importance: f32` field to `MemoryRecord` (with `#[serde(default = "default_importance")]` returning 0.5). Verify `cargo check --release`. Commit.
   - **▸** In `src/memory/summarize.rs`, add `pub fn summarize(records: Vec<MemoryRecord>) -> MemoryRecord` that concatenates content with " | " and creates a new record with combined `consolidated_from` and importance = max.

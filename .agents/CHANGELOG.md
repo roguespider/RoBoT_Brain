@@ -147,6 +147,11 @@
 - **Change:** Created `src/models/mod.rs` with `ChatMessage`, `InferenceContext`, and `truncate_context`. Added `pub mod models;` to `src/lib.rs`.
 - **Verification:** `cargo build --release` passes with 0 errors; no new warnings from `models` module.
 
+### T2-42 — Add duplicate-merge consolidation — Chapter 17.4
+- **Files:** `src/memory/dedup.rs`, `src/data_contracts/memory_record.rs`, `src/memory/mod.rs`
+- **Change:** `merge_duplicates` exists in dedup.rs. `consolidated_from: Vec<String>` field exists on MemoryRecord with `#[serde(default)]`. Added wiring in `reference_memory_contracts`.
+- **Verification:** Function and field present. Wiring added.
+
 ### T2-41 — Add retrieval ranking rules — Chapter 8.5 + 19
 - **Files:** `src/memory/ranking.rs`, `src/memory/mod.rs`
 - **Change:** All ranking functions already exist: `rank_by_confidence`, `rank_by_recency`, `rank_by_relevance`, `rank_score`, `ranked_search`. Added wiring in `reference_memory_contracts` to bind function pointers.
