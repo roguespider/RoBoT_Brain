@@ -147,6 +147,11 @@
 - **Change:** Created `src/models/mod.rs` with `ChatMessage`, `InferenceContext`, and `truncate_context`. Added `pub mod models;` to `src/lib.rs`.
 - **Verification:** `cargo build --release` passes with 0 errors; no new warnings from `models` module.
 
+### T2-39 — Add memory provenance/source fields — Chapter 5.1 + 8.1
+- **Files:** `src/data_contracts/memory_record.rs`, `.agents/scripts/test_suite2/test_memory.py`
+- **Change:** `MemoryRecord` already has `source: String` (default "unknown") and `source_kind: String` (default "unknown") with `#[serde(default)]`. Updated test `TestMemoryProvenance::test_source_preserved` to pass `source="user_input"` and assert it's preserved on retrieval.
+- **Verification:** MemoryRecord struct has source/source_kind fields. Test verifies source="user_input" is preserved.
+
 ### T2-38 — Make retrieval preserve the stored confidence value — Chapter 8.5
 - **Files:** `src/database/queries/memory.rs`, `src/database/queries/helpers.rs`, `.agents/scripts/test_suite2/test_memory.py`
 - **Change:** Verified retrieval paths read confidence from stored row (`queries/memory.rs` line 74, `helpers.rs` line 90: `row.get(11)`). Test added in test_memory.py `TestMemoryConfidencePreserved::test_confidence_preserved` (lines 319-344): stores with confidence 0.83, retrieves, asserts preserved.

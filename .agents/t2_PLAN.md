@@ -36,9 +36,6 @@ Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architec
 ## 2. Memory Engine
 Bring memory up to contract shape before upgrading higher-level consumers. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Chapter 8 (Memory Engine) + Chapter 17 (Memory Architecture).
 
-- [ ] **T2-39** — Add memory provenance/source fields — Chapter 5.1 "Shared data structures" + Chapter 8.1.
-  - **▸** Confirm `MemoryRecord` (legacy + contract) carries `source: String` and `source_kind: String`. If missing, add with `#[serde(default)]`. Verify `cargo check --release`. Commit.
-  - **▸** Add `test_suite/src/tests/memory_provenance.rs`: store with `source="user_input"`, retrieve, assert preserved. Wire + verify. Commit.
 - [ ] **T2-40** — Add memory relationship-graph support — Chapter 20.1 "Concept relationships" (memory graph mirrors).
   - **▸** Define `pub struct MemoryNode { pub id: String, pub content: String, pub node_type: String, pub confidence: f32 }` in `src/memory/graph.rs`. Derive `Clone, Serialize, Deserialize`.
   - **▸** Define `pub struct MemoryEdge { pub source_id: String, pub target_id: String, pub relationship_type: String, pub confidence: f32 }`. Verify `cargo check --release`. Commit.
