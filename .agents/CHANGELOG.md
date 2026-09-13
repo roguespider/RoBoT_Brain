@@ -147,6 +147,11 @@
 - **Change:** Created `src/models/mod.rs` with `ChatMessage`, `InferenceContext`, and `truncate_context`. Added `pub mod models;` to `src/lib.rs`.
 - **Verification:** `cargo build --release` passes with 0 errors; no new warnings from `models` module.
 
+### T2-40 — Add memory relationship-graph support — Chapter 20.1
+- **Files:** `src/memory/graph.rs`, `src/memory/mod.rs`
+- **Change:** All types/functions already exist: `MemoryNode`, `MemoryEdge`, `insert_node`, `insert_edge`, `get_connections`, `find_path`. Added wiring in `reference_memory_contracts` to bind function pointers and struct references. Migration 009 creates memory_relationships table.
+- **Verification:** Structs, functions, migration all present. Wiring added to reference_memory_contracts.
+
 ### T2-39 — Add memory provenance/source fields — Chapter 5.1 + 8.1
 - **Files:** `src/data_contracts/memory_record.rs`, `.agents/scripts/test_suite2/test_memory.py`
 - **Change:** `MemoryRecord` already has `source: String` (default "unknown") and `source_kind: String` (default "unknown") with `#[serde(default)]`. Updated test `TestMemoryProvenance::test_source_preserved` to pass `source="user_input"` and assert it's preserved on retrieval.

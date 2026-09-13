@@ -36,14 +36,7 @@ Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architec
 ## 2. Memory Engine
 Bring memory up to contract shape before upgrading higher-level consumers. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Chapter 8 (Memory Engine) + Chapter 17 (Memory Architecture).
 
-- [ ] **T2-40** — Add memory relationship-graph support — Chapter 20.1 "Concept relationships" (memory graph mirrors).
-  - **▸** Define `pub struct MemoryNode { pub id: String, pub content: String, pub node_type: String, pub confidence: f32 }` in `src/memory/graph.rs`. Derive `Clone, Serialize, Deserialize`.
-  - **▸** Define `pub struct MemoryEdge { pub source_id: String, pub target_id: String, pub relationship_type: String, pub confidence: f32 }`. Verify `cargo check --release`. Commit.
-  - **▸** Add `memory_edges` table with migration: `CREATE TABLE memory_edges (id TEXT PRIMARY KEY, source_id TEXT NOT NULL, target_id TEXT NOT NULL, relationship_type TEXT NOT NULL, confidence REAL NOT NULL DEFAULT 0.5); CREATE INDEX idx_memory_edges_source ON memory_edges(source_id);`. Verify `cargo check --release`. Commit.
-  - **▸** Implement `pub fn insert_node(conn: &Connection, n: &MemoryNode) -> Result<(), rusqlite::Error>` and `pub fn insert_edge(conn: &Connection, e: &MemoryEdge) -> Result<(), rusqlite::Error>`. Verify `cargo check --release`. Commit.
-  - **▸** Implement `pub fn get_connections(conn: &Connection, node_id: &str) -> Result<Vec<MemoryEdge>, rusqlite::Error>`. Verify `cargo check --release`. Commit.
-  - **▸** Implement `pub fn find_path(conn: &Connection, from: &str, to: &str, max_depth: usize) -> Result<Option<Vec<String>>, rusqlite::Error>` using BFS. Verify `cargo check --release`. Commit.
-  - **▸** Move integration test to `test_suite/src/tests/memory_graph.rs`: insert 3 nodes + 2 edges, run `get_connections` and `find_path`. Wire + verify `make gate`. Commit.
+- [ ] **T2-41** — Add retrieval ranking rules that prefer relevant, confident, and recent records — Chapter 8.5 "Memory retrieval" + Chapter 19 (Confidence System).
 - [ ] **T2-41** — Add retrieval ranking rules that prefer relevant, confident, and recent records — Chapter 8.5 "Memory retrieval" + Chapter 19 (Confidence System).
   - **▸** Add `pub fn rank_score(&self) -> f32` to the contract `MemoryRecord` in `src/data_contracts/memory_record.rs`, calling into a default helper.
   - **▸** In `src/memory/ranking.rs`, add `pub fn rank_by_confidence(rec: &MemoryRecord) -> f32 { rec.confidence * 0.4 }`. Verify `cargo check --release`. Commit.
