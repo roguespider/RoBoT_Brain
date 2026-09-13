@@ -147,6 +147,26 @@
 - **Change:** Created `src/models/mod.rs` with `ChatMessage`, `InferenceContext`, and `truncate_context`. Added `pub mod models;` to `src/lib.rs`.
 - **Verification:** `cargo build --release` passes with 0 errors; no new warnings from `models` module.
 
+### T2-46 — Migrate MemoryRecord to data-contract type — Chapter 5.1
+- **Files:** `src/data_contracts/memory_record.rs`, `src/memory/*.rs`
+- **Change:** All code already uses `use crate::data_contracts::memory_record::MemoryRecord`. Contract type is canonical.
+- **Verification:** All imports point to data_contracts::memory_record::MemoryRecord.
+
+### T2-45 — Add pruning policy — Chapter 17.5
+- **Files:** `src/memory/prune.rs`
+- **Change:** `prune_below_importance`, `prune_older_than` exist in prune.rs.
+- **Verification:** Functions present.
+
+### T2-44 — Keep anchor memories standalone — Chapter 17.3
+- **Files:** `src/data_contracts/memory_record.rs`, `src/memory/dedup.rs`
+- **Change:** `is_anchor: bool` field exists on MemoryRecord. `merge_duplicates` skips anchors.
+- **Verification:** Field and logic present.
+
+### T2-43 — Add summarization for aging memories — Chapter 7.4
+- **Files:** `src/data_contracts/memory_record.rs`, `src/memory/summarize.rs`
+- **Change:** `importance: f32`, `summarize()` function, `consolidated_from` field, `summarized_into` field all exist.
+- **Verification:** All fields and functions present.
+
 ### T2-42 — Add duplicate-merge consolidation — Chapter 17.4
 - **Files:** `src/memory/dedup.rs`, `src/data_contracts/memory_record.rs`, `src/memory/mod.rs`
 - **Change:** `merge_duplicates` exists in dedup.rs. `consolidated_from: Vec<String>` field exists on MemoryRecord with `#[serde(default)]`. Added wiring in `reference_memory_contracts`.

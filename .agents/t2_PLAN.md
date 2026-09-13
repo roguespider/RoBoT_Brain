@@ -36,25 +36,6 @@ Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architec
 ## 2. Memory Engine
 Bring memory up to contract shape before upgrading higher-level consumers. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Chapter 8 (Memory Engine) + Chapter 17 (Memory Architecture).
 
-- [ ] **T2-43** — Add summarization for aging low-importance memories — Chapter 7.4 "Context compression" (memory summarization mirror).
-  - **▸** Add `pub importance: f32` field to `MemoryRecord` (with `#[serde(default = "default_importance")]` returning 0.5). Verify `cargo check --release`. Commit.
-  - **▸** In `src/memory/summarize.rs`, add `pub fn summarize(records: Vec<MemoryRecord>) -> MemoryRecord` that concatenates content with " | " and creates a new record with combined `consolidated_from` and importance = max.
-  - **▸** Add `summarized_into: Option<String>` field to `MemoryRecord`. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/memory_summarize.rs`: summarize 3 records, assert one result with all sources in `consolidated_from`. Wire + verify. Commit.
-- [ ] **T2-44** — Keep anchor memories standalone during consolidation — Chapter 17.3 "Permanent memory" (anchors are permanent by definition).
-  - **▸** Add `pub is_anchor: bool` field to `MemoryRecord` (default false). Verify `cargo check --release`. Commit.
-  - **▸** Update `merge_duplicates` in `src/memory/dedup.rs` to skip any record where `is_anchor` is true (drop it from the input group). Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/memory_anchor.rs`: 2 duplicates, one with is_anchor=true, assert the anchor is preserved unchanged and the other is dropped. Wire + verify `make gate`. Commit.
-- [ ] **T2-45** — Add pruning policy for low-value or aged memories — Chapter 17.5 "Memory lifecycle" (archived = pruned from active set).
-  - **▸** In `src/memory/store.rs`, add `pub fn prune_below_importance(conn: &Connection, threshold: f32) -> Result<usize, rusqlite::Error>` returning deleted count. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn prune_older_than(conn: &Connection, max_age_secs: u64, now_ts: i64) -> Result<usize, rusqlite::Error>`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn prune(conn: &Connection, importance_threshold: f32, max_age_secs: u64, now_ts: i64) -> Result<usize, rusqlite::Error>` that calls both and returns the total deleted. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/memory_prune.rs`: insert 5 records (varying importance/age), run prune, assert correct count. Wire + verify `make gate`. Commit.
-- [ ] **T2-46** — Migrate `MemoryRecord` to the data-contract type — Chapter 5.1 "API boundaries" + Chapter 8.1.
-  - **▸** Replace `use crate::memory::MemoryRecord` with `use crate::data_contracts::memory_record::MemoryRecord` across `src/` via `sed -i` (or manual edit_file). The contract type IS the canonical type from T2-16.
-  - **▸** Run `cargo check --release`. Fix any field that doesn't exist on the contract type by adding it to the contract type (preferred) or by adapting the caller (only if semantically different).
-  - **▸** Run `make gate`. Fix until green. Commit. (If the legacy `src/memory/mod.rs` still re-exports an alias for back-compat, document it in a comment but do NOT keep two definitions.)
-
 ---
 
 ## 3. Experience Engine
