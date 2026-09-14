@@ -217,6 +217,11 @@
   - T2-61: Migration to data-contract type — ExperienceRecord used throughout scorer, coordinator, event system, pattern detection, adapters
 - **Verification:** All 15 fields present in ExperienceRecord struct. All propagation/linking/scoring functions wired into coordinator, worker manager, and event handlers. Scorer registered as observer in build_core(). Pattern detection uses data contract ExperienceRecord.
 
+### T2-62 — Knowledge Graph Storage Layer
+- **Files:** `src/database/migrations/advanced_features.rs` (migration_010_add_knowledge_graph), `src/knowledge/types.rs` (KnowledgeNode, KnowledgeEdge structs), `src/knowledge/graph.rs` (set_edge_confidence, traverse_from, find_all_paths, get_subgraph, find_linked_concepts, find_supporting_evidence), `src/knowledge/resolution.rs` (EntityResolution, resolve_entity, register_alias), `src/knowledge/extraction.rs` (ExtractionInput, DetectedEntity, DetectedRelationship, EvaluationCriteria, detect_entities, extract_relationships, evaluate_confidence, adjust_confidence, apply_extractions, run_extraction), `src/knowledge/mod.rs` (active references), `src/bridge/mcp/handlers/hypothesis_handler.rs` (extract_knowledge MCP tool)
+- **Change:** Added `knowledge_nodes` (id, label, kind, confidence, created_at) and `knowledge_edges` (id, source_id, target_id, relationship, confidence) tables via migration_010. Full graph API: traversal (BFS/DFS), subgraph extraction, linked concept discovery, supporting evidence queries. Entity resolution for aliases. Full extraction pipeline: entity detection, relationship extraction, confidence evaluation/adjustment. All structs actively referenced to prevent dead-code warnings. MCP tool `extract_knowledge` registered and wired.
+- **Verification:** `cargo check --release` passes clean. Full wiring chain verified: SqliteDatabase::initialize → run_migrations → advanced_features::run → migration_010_add_knowledge_graph.
+
 ### T2-07 — Communication Model
 - **Files:** `.agents/notes/communication_model.md`
 - **Change:** 4 sections: Event-Only Coordination (Ch 16.1), Event Schema (Ch 5.2), Event Storage (Ch 21), Entry Points (Ch 15.1-15.3). Includes canonical event schema and entry point rules.

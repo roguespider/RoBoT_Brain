@@ -36,8 +36,6 @@ Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architec
 ## 4. Knowledge Graph
 Build the storage layer before traversal and extraction. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Chapter 20 (Knowledge Graph).
 
-- [ ] **T2-62** — Add the `knowledge_nodes` table and migration — Chapter 20.2 "Graph storage".
-  - **▸** Create migration adding `knowledge_nodes (id TEXT PRIMARY KEY, label TEXT NOT NULL, kind TEXT NOT NULL, confidence REAL NOT NULL DEFAULT 0.5, created_at INTEGER NOT NULL)`. Wire into the migration runner. Verify `cargo check --release`. Commit.
 - [ ] **T2-63** — Add the `knowledge_edges` table and migration — Chapter 20.2.
   - **▸** Add migration: `knowledge_edges (id TEXT PRIMARY KEY, source_id TEXT NOT NULL, target_id TEXT NOT NULL, relationship TEXT NOT NULL, confidence REAL NOT NULL DEFAULT 0.5)`. Add index on `source_id`. Verify `cargo check --release`. Commit.
 - [ ] **T2-64** — Add relationship confidence on knowledge edges — Chapter 19.4 "Relationship confidence" + Chapter 20.3.
