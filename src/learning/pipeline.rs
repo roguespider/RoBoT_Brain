@@ -219,6 +219,15 @@ pub fn reflection_to_candidate(
     }
 }
 
+/// Apply promotion with confidence update.
+pub fn evaluation_to_promotion(candidate: &str, score: f32) -> Option<String> {
+    if score >= 0.7 {
+        Some(format!("promoted_{}", candidate))
+    } else {
+        None
+    }
+}
+
 /// Synthesize evaluation criteria from a learning candidate.
 pub fn candidate_to_evaluation(candidate: &str) -> f32 {
     // Placeholder: return a fixed evaluation score
