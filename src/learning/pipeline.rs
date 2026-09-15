@@ -219,6 +219,12 @@ pub fn reflection_to_candidate(
     }
 }
 
+/// Synthesize evaluation criteria from a learning candidate.
+pub fn candidate_to_evaluation(candidate: &str) -> f32 {
+    // Placeholder: return a fixed evaluation score
+    0.75
+}
+
 /// Pipeline statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PipelineStats {
