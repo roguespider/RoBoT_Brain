@@ -7,6 +7,22 @@
 //! This module provides the single pipeline function that connects
 //! all stages, addressing the gap identified in t2_PLAN.md.
 
+/// Map a lifecycle step to its canonical data contract name.
+pub fn contract_for_step(step: LifecycleStep) -> &'static str {
+    match step {
+        LifecycleStep::Observation => "Observation",
+        LifecycleStep::ContextConstruction => "ContextPacket",
+        LifecycleStep::MemoryRetrieval => "MemoryRecord",
+        LifecycleStep::ExperienceRetrieval => "ExperienceRecord",
+        LifecycleStep::Planning => "Plan",
+        LifecycleStep::Reasoning => "Decision",
+        LifecycleStep::SkillSelection => "PlanStep",
+        LifecycleStep::Execution => "ExecutionResult",
+        LifecycleStep::Reflection => "Reflection",
+        LifecycleStep::Learning => "LearningUpdate",
+    }
+}
+
 /// The 10 steps of the cognitive lifecycle (Chapter 3.4 Request Lifecycle).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum LifecycleStep {
