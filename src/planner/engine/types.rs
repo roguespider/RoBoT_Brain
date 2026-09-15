@@ -247,6 +247,23 @@ pub fn get_ready_steps(steps: &[PlanStep], completed: &[String]) -> Vec<PlanStep
         .collect()
 }
 
+/// Replan trigger types.
+#[derive(Debug, Clone, PartialEq)]
+pub enum ReplanTrigger {
+    StepFailed(String),
+    ConfidenceBelow(f32),
+    ExternalChange(String),
+}
+
+/// Check if replanning should occur.
+pub fn should_replan(trigger: &ReplanTrigger, _ctx: &str) -> bool {
+    match trigger {
+        ReplanTrigger::StepFailed(_) => true,
+        ReplanTrigger::ConfidenceBelow(_) => true,
+        ReplanTrigger::ExternalChange(_) => true,
+    }
+}
+
 /// Planning strategy selection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlanningStrategy {
