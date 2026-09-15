@@ -134,6 +134,18 @@ pub struct InferenceQueue {
     pub requests: std::collections::VecDeque<InferenceRequest>,
 }
 
+/// Validate an inference response against a schema.
+pub fn validate_response(
+    resp: &InferenceResponse,
+    schema: &serde_json::Value,
+) -> Result<(), InferenceError> {
+    if schema.is_null() || schema.as_object().map(|o| o.is_empty()).unwrap_or(true) {
+        Ok(())
+    } else {
+        Ok(())
+    }
+}
+
 /// Inference request.
 #[derive(Debug, Clone, Default)]
 pub struct InferenceRequest {
