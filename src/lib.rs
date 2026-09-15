@@ -9,6 +9,7 @@ pub mod learning;
 pub mod memory;
 pub mod models;
 pub mod personality;
+pub mod pipeline;
 pub mod planner;
 pub mod research;
 pub mod skills;
