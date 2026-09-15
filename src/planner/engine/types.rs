@@ -154,6 +154,90 @@ pub enum RiskLevel {
     Critical,
 }
 
+/// Validate that a set of plan steps has no dependency cycles.
+pub fn validate_no_cycles(steps: &[PlanStep]) -> bool {
+    let mut visited = std::collections::HashSet::new();
+    let mut rec_stack = std::collections::HashSet::new();
+
+    fn dfs(
+        step_id: &str,
+        steps: &[PlanStep],
+        visited: &mut std::collections::HashSet<String>,
+        rec_stack: &mut std::collections::HashSet<String>,
+    ) -> bool {
+        visited.insert(step_id.to_string());
+        rec_stack.insert(step_id.to_string());
+
+        if let Some(step) = steps.iter().find(|s| s.id == step_id) {
+            for dep in &step.dependencies {
+                if !visited.contains(dep) {
+                    if !dfs(dep, steps, visited, rec_stack) {
+                        return false;
+                    }
+                } else if rec_stack.contains(dep) {
+                    return false;
+                }
+            }
+        }
+
+        rec_stack.remove(step_id);
+        true
+    }
+
+    for step in steps {
+        if !visited.contains(&step.id) {
+            if !dfs(&step.id, steps, &mut visited, &mut rec_stack) {
+                return false;
+            }
+        }
+    }
+    true
+}
+
+/// Topological sort of plan steps by dependencies.
+pub fn topological_sort(steps: &[PlanStep]) -> Option<Vec<String>> {
+    let mut result = Vec::new();
+    let mut visited = std::collections::HashSet::new();
+    let mut temp_mark = std::collections::HashSet::new();
+
+    fn visit(
+        step_id: &str,
+        steps: &[PlanStep],
+        visited: &mut std::collections::HashSet<String>,
+        temp_mark: &mut std::collections::HashSet<String>,
+        result: &mut Vec<String>,
+    ) -> bool {
+        if temp_mark.contains(step_id) {
+            return false;
+        }
+        if visited.contains(step_id) {
+            return true;
+        }
+
+        temp_mark.insert(step_id.to_string());
+        if let Some(step) = steps.iter().find(|s| s.id == step_id) {
+            for dep in &step.dependencies {
+                if !visit(dep, steps, visited, temp_mark, result) {
+                    return false;
+                }
+            }
+        }
+        temp_mark.remove(step_id);
+        visited.insert(step_id.to_string());
+        result.push(step_id.to_string());
+        true
+    }
+
+    for step in steps {
+        if !visited.contains(&step.id) {
+            if !visit(&step.id, steps, &mut visited, &mut temp_mark, &mut result) {
+                return None;
+            }
+        }
+    }
+    Some(result)
+}
+
 /// Planner statistics
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PlannerStatistics {
@@ -164,4 +248,3 @@ pub struct PlannerStatistics {
     /// Average action score across evaluated candidates.
     pub avg_score: f32,
 }
-
