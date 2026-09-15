@@ -141,3 +141,13 @@ impl ContextEngine {
         self.assemblies.remove(correlation_id);
     }
 }
+
+/// Run the context assembly pipeline through stages.
+pub fn run_assembly(stages: &[AssemblyStage], correlation_id: &str) -> ContextAssembly {
+    let mut assembly = ContextAssembly::new();
+    assembly.add_reference(correlation_id);
+    for _stage in stages {
+        assembly.add_layer(ContextLayer::Working);
+    }
+    assembly
+}
