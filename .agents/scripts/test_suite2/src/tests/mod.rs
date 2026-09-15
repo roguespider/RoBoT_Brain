@@ -51,6 +51,7 @@ pub mod memory_types;
 pub mod observations;
 pub mod personality;
 pub mod planner;
+pub mod execution_recovery;
 pub mod experience_reputation;
 pub mod planner_dag;
 pub mod memory_promotion;
