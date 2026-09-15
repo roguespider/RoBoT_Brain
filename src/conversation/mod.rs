@@ -196,6 +196,11 @@ impl ConversationEngine {
         Some(session.state.clone())
     }
 
+    /// Track topic change for a session.
+    pub fn track_topic(session: &ConversationSession, topic: &str) -> bool {
+        !session.active_goals.contains(&topic.to_string())
+    }
+
     /// Resume a suspended session.
     pub fn resume_session(&mut self, conversation_id: &str) {
         if let Some(session) = self.get_session_mut(conversation_id) {
