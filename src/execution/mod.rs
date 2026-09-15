@@ -164,6 +164,14 @@ pub enum RecoveryStrategy {
     Abort,
 }
 
+/// Isolation context for sandboxed execution.
+#[derive(Debug, Clone, Default)]
+pub struct IsolationContext {
+    pub working_dir: Option<std::path::PathBuf>,
+    pub env_overrides: std::collections::HashMap<String, String>,
+    pub timeout_ms: u64,
+}
+
 /// Execute with retry using a retry policy.
 pub fn execute_with_retry<
     F: FnMut() -> Result<
