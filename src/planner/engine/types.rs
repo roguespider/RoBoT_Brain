@@ -247,6 +247,27 @@ pub fn get_ready_steps(steps: &[PlanStep], completed: &[String]) -> Vec<PlanStep
         .collect()
 }
 
+/// Planning strategy selection.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlanningStrategy {
+    Sequential,
+    Parallel,
+    Greedy,
+}
+
+/// Select a planning strategy based on goal characteristics.
+pub fn select_strategy(goal: &Plan) -> PlanningStrategy {
+    if goal.confidence >= 0.8 {
+        PlanningStrategy::Greedy
+    } else if goal.goal.to_lowercase().contains("parallel")
+        || goal.goal.to_lowercase().contains("simultaneous")
+    {
+        PlanningStrategy::Parallel
+    } else {
+        PlanningStrategy::Sequential
+    }
+}
+
 /// Planner statistics
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PlannerStatistics {
