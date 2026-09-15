@@ -19,7 +19,7 @@ __pycache__/
 Cargo.lock
 
 # these are for user and local agent only
-.agents/*
-.agents/
+# .agents/*
+# .agents/
 AGENTS.md
 .github/
