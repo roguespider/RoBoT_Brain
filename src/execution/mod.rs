@@ -102,6 +102,16 @@ impl ExecutionRequest {
     }
 }
 
+/// Expected output kind for execution results.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
+pub enum OutputKind {
+    #[default]
+    None,
+    Text,
+    Json,
+    Binary,
+}
+
 /// Target kind for execution.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub enum TargetKind {
