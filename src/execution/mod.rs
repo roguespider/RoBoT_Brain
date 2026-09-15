@@ -195,6 +195,16 @@ pub fn execute_with_retry<
     Err(ExecutionError::MaxRetriesExceeded)
 }
 
+/// Log a recovery event.
+pub fn log_recovery_event(step_id: &str, strategy: &RecoveryStrategy, outcome: &str) {
+    tracing::info!(
+        "Recovery event: step={}, strategy={:?}, outcome={}",
+        step_id,
+        strategy,
+        outcome
+    );
+}
+
 /// Execute with recovery using a recovery strategy.
 pub fn execute_with_recovery(
     step: &ExecutionStep,
