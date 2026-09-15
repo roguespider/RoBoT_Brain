@@ -128,6 +128,33 @@ impl InferenceContext {
     }
 }
 
+/// Inference request queue.
+#[derive(Debug, Clone, Default)]
+pub struct InferenceQueue {
+    pub requests: std::collections::VecDeque<InferenceRequest>,
+}
+
+/// Inference request.
+#[derive(Debug, Clone, Default)]
+pub struct InferenceRequest {
+    pub id: String,
+    pub prompt: String,
+    pub options: InferenceOptions,
+}
+
+impl InferenceQueue {
+    pub fn enqueue(&mut self, req: InferenceRequest) -> String {
+        self.requests.push_back(req);
+        self.requests
+            .back()
+            .map(|r| r.id.clone())
+            .unwrap_or_default()
+    }
+    pub fn dequeue(&mut self) -> Option<InferenceRequest> {
+        self.requests.pop_front()
+    }
+}
+
 /// Provider registry for model selection.
 #[derive(Debug, Default)]
 pub struct ProviderRegistry {
