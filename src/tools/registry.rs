@@ -33,6 +33,19 @@ pub fn register_tool(contract: ToolContract) -> Result<ToolId, ToolError> {
     Ok("tool-id".to_string())
 }
 
+/// Run an execution function in isolation.
+pub fn run_isolated<
+    F: FnOnce() -> Result<
+        crate::skills::registry::result::ExecutionResult,
+        crate::execution::ExecutionError,
+    >,
+>(
+    _ctx: &crate::execution::IsolationContext,
+    f: F,
+) -> Result<crate::skills::registry::result::ExecutionResult, crate::execution::ExecutionError> {
+    f()
+}
+
 /// Invoke a tool with authorization check.
 pub fn invoke_tool_with_auth(
     tool: &str,
