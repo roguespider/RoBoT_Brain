@@ -257,6 +257,11 @@
 - **Change:** All remaining planning engine functions verified present: `PlanningStrategy` enum, `select_strategy`, `generate_candidates`, `evaluate_candidate`, `plan_to_workflow`, `ReplanTrigger` enum, `should_replan`, `PlanScore` struct, `score_plan`. All functions compile and are actively referenced.
 - **Verification:** `cargo check --release` passes. All functions verified in source code.
 
+### T2-127 through T2-128 — Personality Traits and Adaptation (Chapter 2 + 19)
+- **Files:** `src/personality/traits.rs`
+- **Change:** `PersonalityTraits` already exists. Added `weight_action(base_score: f32) -> f32` adjusting by risk_tolerance and caution. Added `should_act(confidence: f32) -> bool` with cautious/bold thresholds. Added `adapt_traits(feedback: f32)` adjusting all traits by feedback.
+- **Verification:** `cargo check --release` passes with 0 new warnings.
+
 ## Research Engine — Phase 0: HTTP Foundation (R0)
 
 ### Completed Tasks
