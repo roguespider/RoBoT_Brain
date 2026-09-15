@@ -102,6 +102,16 @@ impl ExecutionRequest {
     }
 }
 
+/// Normalize a raw execution result based on its expected kind.
+pub fn normalize_result(raw: &serde_json::Value, kind: OutputKind) -> serde_json::Value {
+    match kind {
+        OutputKind::Text => serde_json::json!({"text": raw.as_str().unwrap_or("")}),
+        OutputKind::Json => raw.clone(),
+        OutputKind::Binary => serde_json::json!({"binary": raw.as_str().unwrap_or("")}),
+        OutputKind::None => serde_json::Value::Null,
+    }
+}
+
 /// Expected output kind for execution results.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize, Default)]
 pub enum OutputKind {
