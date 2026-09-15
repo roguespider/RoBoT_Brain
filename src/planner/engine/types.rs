@@ -268,6 +268,11 @@ pub fn select_strategy(goal: &Plan) -> PlanningStrategy {
     }
 }
 
+/// Evaluate a candidate plan and return a score.
+pub fn evaluate_candidate(plan: &Plan) -> f32 {
+    1.0 / (1.0 + plan.steps.len() as f32)
+}
+
 /// Generate candidate plans for a goal.
 pub fn generate_candidates(goal: &Plan, n: usize) -> Vec<Plan> {
     let mut candidates = Vec::new();
