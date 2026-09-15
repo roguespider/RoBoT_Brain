@@ -140,6 +140,13 @@ pub struct ExecutionStep {
     pub timeout_ms: u64,
 }
 
+/// Retry policy for execution retries.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RetryPolicy {
+    pub max_retries: u32,
+    pub backoff_ms: u64,
+}
+
 /// Recovery strategy for failed executions.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecoveryStrategy {
