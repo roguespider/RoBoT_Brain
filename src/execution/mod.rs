@@ -102,6 +102,15 @@ impl ExecutionRequest {
     }
 }
 
+/// Target kind for execution.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+pub enum TargetKind {
+    Local,
+    Network,
+    Filesystem,
+    Tool,
+}
+
 /// Execution step for actions.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ExecutionStep {
