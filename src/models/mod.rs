@@ -6,6 +6,16 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Capability categories for model routing.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+pub enum Capability {
+    Chat,
+    Embedding,
+    Tool,
+    Vision,
+    LongContext,
+}
+
 /// A single message in a conversation context.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ChatMessage {

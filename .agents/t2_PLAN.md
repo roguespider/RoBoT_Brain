@@ -349,7 +349,7 @@ Each `▸` is one 5-minute increment: one file/function/test → `cargo check --
   - **▸** Add `pub enum PlanningStrategy { Sequential, Parallel, Greedy }` and `pub fn select_strategy(goal: &Goal) -> PlanningStrategy`. Verify `cargo check --release`. Commit.
   - **▸** Move test to `test_suite/src/tests/planner_dag.rs`. Wire + verify. Commit.
 
-- [ ] **T2-139** — Complete Execution Engine recovery/isolation — Chapter 12.
+- [x] **T2-139** — Complete Execution Engine recovery/isolation — Chapter 12.
   - **▸** In `src/execution/mod.rs`, add `pub enum RecoveryStrategy { Retry, Fallback(String), Abort }`. Verify `cargo check --release`. Commit.
   - **▸** Add `pub struct IsolationContext { pub working_dir: Option<PathBuf>, pub env_overrides: HashMap<String, String>, pub timeout_ms: u64 }`. Verify `cargo check --release`. Commit.
   - **▸** Add `pub fn execute_with_recovery(step: &ExecutionStep, strategy: &RecoveryStrategy) -> Result<ExecutionResult, ExecutionError>`. Verify `cargo check --release`. Commit.
@@ -359,7 +359,7 @@ Each `▸` is one 5-minute increment: one file/function/test → `cargo check --
 
 ## Part III — Intelligence Infrastructure (Ch 13-16)
 
-- [ ] **T2-140** — Complete Tool Engine contracts/permissions/isolation — Chapter 13.
+- [x] **T2-140** — Complete Tool Engine contracts/permissions/isolation — Chapter 13.
   - **▸** In `src/tools/registry.rs`, add `pub struct ToolContract { pub name: String, pub description: String, pub input_schema: serde_json::Value, pub output_schema: serde_json::Value, pub version: String }`. Verify `cargo check --release`. Commit.
   - **▸** In `src/tools/permissions.rs`, add `pub struct ToolPermission { pub tool_name: String, pub allowed_callers: Vec<String>, pub max_invocations_per_minute: u32 }`. Verify `cargo check --release`. Commit.
   - **▸** In `src/execution/isolation.rs`, add `pub fn run_isolated<F: FnOnce() -> Result<ExecutionResult, ExecutionError>>(ctx: &IsolationContext, f: F) -> Result<ExecutionResult, ExecutionError>`. Verify `cargo check --release`. Commit.
