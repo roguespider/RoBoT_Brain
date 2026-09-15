@@ -281,6 +281,11 @@ pub fn score_plan(plan: &Plan, eval: f32) -> PlanScore {
     }
 }
 
+/// Reference the data-contract Plan type.
+pub fn reference_plan_contract() {
+    let _plan_ref = crate::data_contracts::plan_contract::placeholder;
+}
+
 /// Planning strategy selection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlanningStrategy {
