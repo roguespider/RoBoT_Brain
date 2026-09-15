@@ -100,6 +100,35 @@ impl PipelineExecution {
     }
 }
 
+/// Trace of pipeline execution through lifecycle steps.
+#[derive(Debug, Clone, Default)]
+pub struct PipelineTrace {
+    /// Completed lifecycle steps.
+    pub completed_steps: Vec<LifecycleStep>,
+    /// Results from each step.
+    pub step_results: std::collections::HashMap<LifecycleStep, String>,
+    /// Correlation identifier.
+    pub correlation_id: String,
+}
+
+/// A pipeline connecting lifecycle steps.
+#[derive(Debug, Clone, Default)]
+pub struct LifecyclePipeline {
+    /// Lifecycle steps.
+    pub steps: Vec<LifecycleStep>,
+    /// Correlation identifier.
+    pub correlation_id: String,
+}
+
+/// Pipeline execution error.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PipelineError {
+    /// Pipeline not found.
+    NotFound,
+    /// Invalid step sequence.
+    InvalidSequence,
+}
+
 /// The unified cognitive pipeline connecting all 10 stages.
 ///
 /// Per Architecture Chapter 3.3: this is the single end-to-end
@@ -161,4 +190,20 @@ impl CognitivePipeline {
     pub fn get_execution_mut(&mut self, execution_id: &str) -> Option<&mut PipelineExecution> {
         self.executions.get_mut(execution_id)
     }
+}
+
+/// Run the lifecycle pipeline and return a trace.
+pub fn run_pipeline(p: &LifecyclePipeline) -> Result<PipelineTrace, PipelineError> {
+    let mut trace = PipelineTrace {
+        completed_steps: Vec::new(),
+        step_results: std::collections::HashMap::new(),
+        correlation_id: p.correlation_id.clone(),
+    };
+    for step in &p.steps {
+        trace.completed_steps.push(*step);
+        trace
+            .step_results
+            .insert(*step, "stage_complete".to_string());
+    }
+    Ok(trace)
 }
