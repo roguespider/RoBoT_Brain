@@ -128,6 +128,25 @@ impl InferenceContext {
     }
 }
 
+/// Model selector for task-based selection.
+#[derive(Debug, Clone, Default)]
+pub struct ModelSelector {
+    pub preferred_chat: String,
+    pub preferred_long_context: String,
+}
+
+impl ModelSelector {
+    pub fn select_for_task(&self, task: &str) -> Option<String> {
+        if task.contains("chat") || task.contains("conversation") {
+            Some(self.preferred_chat.clone())
+        } else if task.len() > 100 {
+            Some(self.preferred_long_context.clone())
+        } else {
+            Some(self.preferred_chat.clone())
+        }
+    }
+}
+
 /// Inference request queue.
 #[derive(Debug, Clone, Default)]
 pub struct InferenceQueue {
