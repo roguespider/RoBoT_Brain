@@ -140,6 +140,14 @@ pub struct ExecutionStep {
     pub timeout_ms: u64,
 }
 
+/// Recovery strategy for failed executions.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RecoveryStrategy {
+    Retry,
+    Fallback(String),
+    Abort,
+}
+
 /// Create an execution request from a planner plan.
 /// Wiring: `planner/` -> `execution/`
 pub fn execution_request_from_plan(
