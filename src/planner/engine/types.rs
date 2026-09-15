@@ -264,6 +264,23 @@ pub fn should_replan(trigger: &ReplanTrigger, _ctx: &str) -> bool {
     }
 }
 
+/// Plan scoring structure.
+#[derive(Debug, Clone, Default)]
+pub struct PlanScore {
+    pub feasibility: f32,
+    pub confidence: f32,
+    pub cost_estimate: f32,
+}
+
+/// Score a plan based on evaluation.
+pub fn score_plan(plan: &Plan, eval: f32) -> PlanScore {
+    PlanScore {
+        feasibility: eval,
+        confidence: plan.confidence,
+        cost_estimate: plan.steps.len() as f32 * 0.1,
+    }
+}
+
 /// Planning strategy selection.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum PlanningStrategy {
