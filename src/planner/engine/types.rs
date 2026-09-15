@@ -268,6 +268,17 @@ pub fn select_strategy(goal: &Plan) -> PlanningStrategy {
     }
 }
 
+/// Generate candidate plans for a goal.
+pub fn generate_candidates(goal: &Plan, n: usize) -> Vec<Plan> {
+    let mut candidates = Vec::new();
+    for i in 0..n {
+        let mut candidate = goal.clone();
+        candidate.id = format!("{}-candidate-{}", goal.id, i);
+        candidates.push(candidate);
+    }
+    candidates
+}
+
 /// Planner statistics
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PlannerStatistics {
