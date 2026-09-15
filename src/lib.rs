@@ -1,6 +1,7 @@
 pub mod agent;
 pub mod bridge;
 pub mod cli;
+pub mod data_contracts;
 pub mod database;
 pub mod experience;
 pub mod knowledge;
