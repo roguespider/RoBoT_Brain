@@ -147,12 +147,44 @@ pub struct RetryPolicy {
     pub backoff_ms: u64,
 }
 
+/// Execution error types.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ExecutionError {
+    MaxRetriesExceeded,
+    Timeout,
+    PermissionDenied,
+    IsolationFailed,
+}
+
 /// Recovery strategy for failed executions.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum RecoveryStrategy {
     Retry,
     Fallback(String),
     Abort,
+}
+
+/// Execute with retry using a retry policy.
+pub fn execute_with_retry<
+    F: FnMut() -> Result<
+        crate::skills::registry::result::ExecutionResult,
+        crate::execution::ExecutionError,
+    >,
+>(
+    step: &ExecutionStep,
+    policy: &RetryPolicy,
+    mut f: F,
+) -> Result<crate::skills::registry::result::ExecutionResult, crate::execution::ExecutionError> {
+    for attempt in 0..=policy.max_retries {
+        match f() {
+            Ok(result) => return Ok(result),
+            Err(_) if attempt < policy.max_retries => {
+                std::thread::sleep(std::time::Duration::from_millis(policy.backoff_ms));
+            }
+            Err(e) => return Err(e),
+        }
+    }
+    Err(ExecutionError::MaxRetriesExceeded)
 }
 
 /// Create an execution request from a planner plan.

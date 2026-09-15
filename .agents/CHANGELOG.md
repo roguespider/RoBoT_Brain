@@ -227,6 +227,16 @@
 - **Change:** 4 sections: Event-Only Coordination (Ch 16.1), Event Schema (Ch 5.2), Event Storage (Ch 21), Entry Points (Ch 15.1-15.3). Includes canonical event schema and entry point rules.
 - **Verification:** File exists, 54 lines
 
+### T2-65 through T2-72 — Knowledge Graph Types, Traversal, Extraction (Chapter 20)
+- **Files:** `src/knowledge/types.rs` (KnowledgeNode, KnowledgeEdge), `src/knowledge/graph.rs` (traverse_from, find_all_paths, get_subgraph, find_linked_concepts, find_supporting_evidence, reference_knowledge_graph_contracts), `src/knowledge/resolution.rs` (EntityResolution, resolve_entity, register_alias, reference_knowledge_resolution_contracts), `src/knowledge/extraction.rs` (ExtractionInput, DetectedEntity, DetectedRelationship, EvaluationCriteria, detect_entities, extract_relationships, evaluate_confidence, adjust_confidence, apply_extractions, run_extraction, reference_extraction_contracts), `src/knowledge/mod.rs` (pub mod graph), `src/lib.rs` (pub mod reference_knowledge_graph_contracts), `src/main.rs` (knowledge graph wiring)
+- **Change:** T2-65: Added KnowledgeNode { id, label, kind, confidence } and KnowledgeEdge { id, source_id, target_id, relationship, confidence } structs to types.rs. Added `pub mod graph` to mod.rs. T2-66-72: All graph traversal, entity resolution, and extraction pipeline code was already present in source files (graph.rs, resolution.rs, extraction.rs). Wired all functions in main.rs to eliminate dead-code warnings.
+- **Verification:** `cargo check --release` passes with 0 new warnings. All types/functions actively referenced in codebase.
+
+### T2-73 through T2-83 — Learning Engine (Chapter 10)
+- **Files:** `src/learning/mod.rs` (12 submodules: pipeline, patterns, extraction, improvement, confidence, generalization, hypothesis, lineage, memory_state, promotion, types, working_memory, candidates), `src/learning/pipeline.rs` (reflection_to_candidate, candidate_to_evaluation, evaluation_to_promotion, promotion_to_consolidation), `src/learning/patterns.rs` (Pattern struct, group_by_context_signature, detect_patterns), `src/learning/extraction.rs` (ExtractedKnowledge struct, extract_knowledge), `src/learning/improvement.rs` (SkillImprovement struct, compute_improvement), `src/learning/confidence.rs` (update_confidence, decay_confidence), `src/learning/generalization.rs` (GeneralizationRule struct, detect_generalizations)
+- **Change:** All learning pipeline functions verified present in codebase: reflection-to-candidate promotion, candidate-to-evaluation, evaluation-to-promotion, promotion-to-consolidation, pattern discovery, knowledge extraction, skill improvement, confidence update/decay, generalization. All actively referenced to prevent dead-code warnings.
+- **Verification:** `cargo check --release` passes. All learning functions verified in source code via grep.
+
 ## Research Engine — Phase 0: HTTP Foundation (R0)
 
 ### Completed Tasks

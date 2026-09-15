@@ -33,56 +33,6 @@ Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architec
 
 ---
 
-## 5. Learning Engine
-Make learning explicit after experience and knowledge are contract-shaped. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Chapter 10 (Learning Engine) + Chapter 18.2 (Learning signals).
-
-- [ ] **T2-73** — Formalize the learning pipeline entry in `src/learning/` — Chapter 10.1 "Learning pipeline".
-  - **▸** Create `src/learning/mod.rs` with `pub mod pipeline; pub mod patterns; pub mod extraction; pub mod improvement; pub mod confidence; pub mod generalization;`.
-  - **▸** Create each submodule file with one `pub fn placeholder()` returning `Ok(())`. Verify `cargo check --release`. Commit.
-- [ ] **T2-74** — Add reflection-to-candidate promotion logic — Chapter 10.5 "Confidence updates" (promotion gate analogy).
-  - **▸** In `src/learning/pipeline.rs`, add `pub fn reflection_to_candidate(r: &Reflection) -> Option<LearningUpdate>` returning a `LearningUpdate` with target_kind=Knowledge if `r.confidence >= 0.6` and `r.insights` is non-empty. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/learning_reflection_promote.rs`. Wire + verify. Commit.
-- [ ] **T2-75** — Add candidate-to-evaluation logic — Chapter 10.1.
-  - **▸** Add `pub fn candidate_to_evaluation(c: &LearningUpdate) -> EvaluationCriteria` synthesizing criteria from the source. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/learning_candidate_eval.rs`. Wire + verify. Commit.
-- [ ] **T2-76** — Add evaluation-to-promotion logic — Chapter 10.5.
-  - **▸** Add `pub fn evaluation_to_promotion(c: &LearningUpdate, score: f32) -> Option<LearningUpdate>` returning a new update with `new_confidence = old_confidence + score * 0.1` if score >= 0.7, else None. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/learning_eval_promote.rs`. Wire + verify. Commit.
-- [ ] **T2-77** — Add promotion-to-consolidation logic — Chapter 10.1 (consolidation writes back to memory).
-  - **▸** Add `pub fn promotion_to_consolidation(update: &LearningUpdate) -> Result<(), LearningError>` that applies the update to the memory/knowledge store. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/learning_consolidation.rs`. Wire + verify `make gate`. Commit.
-- [ ] **T2-78** — Add pattern discovery from repeated successful experiences — Chapter 10.2 "Pattern discovery".
-  - **▸** In `src/learning/patterns.rs`, define `pub struct Pattern { pub id: String, pub frequency: u32, pub success_rate: f32, pub context_signature: String, pub actions: Vec<String> }`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn group_by_context_signature(experiences: &[ExperienceRecord]) -> HashMap<String, Vec<String>>`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn detect_patterns(experiences: &[ExperienceRecord], min_frequency: u32) -> Vec<Pattern>` iterating the groups. Verify `cargo check --release`. Commit.
-  - **▸** Add migration: `learning_patterns (id TEXT PRIMARY KEY, signature TEXT NOT NULL, frequency INTEGER NOT NULL, success_rate REAL NOT NULL)`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn insert_pattern(conn: &Connection, p: &Pattern) -> Result<(), rusqlite::Error>` and `pub fn get_patterns(conn: &Connection, min_success_rate: f32) -> Result<Vec<Pattern>, rusqlite::Error>`. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/learning_patterns.rs`. Wire + verify `make gate`. Commit.
-- [ ] **T2-79** — Add knowledge extraction from observed patterns — Chapter 10.3 "Knowledge extraction".
-  - **▸** In `src/learning/extraction.rs`, define `pub struct ExtractedKnowledge { pub pattern_id: String, pub rule: String, pub confidence: f32, pub applicable_context: String }`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn extract_knowledge(patterns: &[Pattern]) -> Vec<ExtractedKnowledge>` generating a rule string `"when context_signature=X with frequency>=N, expect success_rate>=Y"`. Verify `cargo check --release`. Commit.
-  - **▸** Add migration: `extracted_knowledge (id TEXT PRIMARY KEY, pattern_id TEXT NOT NULL, rule TEXT NOT NULL, confidence REAL NOT NULL, applicable_context TEXT NOT NULL)`. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/learning_extraction.rs`. Wire + verify `make gate`. Commit.
-- [ ] **T2-80** — Add skill-improvement outputs — Chapter 10.4 "Skill improvement".
-  - **▸** In `src/learning/improvement.rs`, define `pub struct SkillImprovement { pub skill_id: String, pub metric: String, pub old_value: f32, pub new_value: f32, pub delta: f32 }`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn compute_improvement(skill_id: &str, metric: &str, old: f32, new: f32) -> SkillImprovement`. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/learning_skill_improvement.rs`. Wire + verify. Commit.
-- [ ] **T2-81** — Add confidence-update handling for learned items — Chapter 10.5 "Confidence updates" + Chapter 19.5.
-  - **▸** In `src/learning/confidence.rs`, add `pub fn update_confidence(item_id: &str, new_confidence: f32) -> Result<(), LearningError>` clamping to [0,1] and recording in history. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub confidence_history: Vec<(i64, f32)>` field to `ExtractedKnowledge`. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/learning_confidence_update.rs`. Wire + verify. Commit.
-- [ ] **T2-82** — Add confidence decay handling for stale or weak learning signals — Chapter 10.5.
-  - **▸** Add `pub fn decay_confidence(item_id: &str, hours_since_update: f64, decay_rate: f32) -> f32` returning `current * (0.5_f32).powf((hours_since_update as f32) * decay_rate)`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn get_stale_items(conn: &Connection, min_confidence: f32, max_age_hours: u64) -> Result<Vec<String>, rusqlite::Error>`. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/learning_decay.rs`. Wire + verify. Commit.
-- [ ] **T2-83** — Add generalization rules over memorization — Chapter 10.2 "Pattern discovery" (generalization).
-  - **▸** In `src/learning/generalization.rs`, define `pub struct GeneralizationRule { pub specific_pattern: String, pub general_pattern: String, pub confidence: f32, pub supporting_experiences: Vec<String> }`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn detect_generalizations(patterns: &[Pattern], min_support: u32) -> Vec<GeneralizationRule>` (placeholder: cluster by first token of context_signature, emit a rule if cluster size >= min_support). Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn apply_generalization(rule: &GeneralizationRule, context: &str) -> bool` returning true if `context` matches `general_pattern` (substring for now). Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/learning_generalization.rs`. Wire + verify `make gate`. Commit.
-
----
-
 ## 6. Planning Engine
 Use the data contracts to make planning more structured. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Chapter 11 (Planning Engine).
 
@@ -393,7 +343,7 @@ Each `▸` is one 5-minute increment: one file/function/test → `cargo check --
   - **▸** Add `pub fn skill_improvement(skill_id: &str, delta: f32) -> SkillImprovement`. Verify `cargo check --release`. Commit.
   - **▸** Move test to `test_suite/src/tests/learning_pipeline.rs`. Wire + verify `make gate`. Commit.
 
-- [x] **T2-135** — Complete Planning Engine dependency/strategy — Chapter 11.
+- [x] **T2-138** — Complete Planning Engine dependency/strategy — Chapter 11.
   - **▸** In `src/planner/mod.rs`, add `pub fn validate_no_cycles(steps: &[PlanStep]) -> bool` (DFS). Verify `cargo check --release`. Commit.
   - **▸** Add `pub fn topological_sort(steps: &[PlanStep]) -> Option<Vec<String>>`. Verify `cargo check --release`. Commit.
   - **▸** Add `pub enum PlanningStrategy { Sequential, Parallel, Greedy }` and `pub fn select_strategy(goal: &Goal) -> PlanningStrategy`. Verify `cargo check --release`. Commit.
