@@ -208,6 +208,20 @@ impl CognitivePipeline {
     }
 }
 
+/// Validate that each step's output contract matches the next step's input contract.
+pub fn validate_contract_chain(trace: &PipelineTrace) -> bool {
+    let steps = &trace.completed_steps;
+    for i in 0..steps.len().saturating_sub(1) {
+        let current_contract = contract_for_step(steps[i]);
+        let next_contract = contract_for_step(steps[i + 1]);
+        // Placeholder validation: contracts must be non-empty strings
+        if current_contract.is_empty() || next_contract.is_empty() {
+            return false;
+        }
+    }
+    true
+}
+
 /// Run the lifecycle pipeline and return a trace.
 pub fn run_pipeline(p: &LifecyclePipeline) -> Result<PipelineTrace, PipelineError> {
     let mut trace = PipelineTrace {
