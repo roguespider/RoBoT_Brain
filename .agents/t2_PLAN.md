@@ -365,7 +365,7 @@ Each `▸` is one 5-minute increment: one file/function/test → `cargo check --
   - **▸** In `src/execution/isolation.rs`, add `pub fn run_isolated<F: FnOnce() -> Result<ExecutionResult, ExecutionError>>(ctx: &IsolationContext, f: F) -> Result<ExecutionResult, ExecutionError>`. Verify `cargo check --release`. Commit.
   - **▸** Move test to `test_suite/src/tests/tool_contract.rs`. Wire + verify. Commit.
 
-- [ ] **T2-141** — Complete Model Integration routing/queue — Chapter 14.
+- [x] **T2-141** — Complete Model Integration routing/queue — Chapter 14.
   - **▸** In `src/models/mod.rs`, add `pub enum Capability { Chat, Embedding, Tool, Vision, LongContext }`. Verify `cargo check --release`. Commit.
   - **▸** Add `pub fn select_provider(registry: &ProviderRegistry, cap: Capability) -> Option<Box<dyn InferenceProvider>>`. Verify `cargo check --release`. Commit.
   - **▸** Add `pub struct InferenceQueue { /* ... */ }` with enqueue/dequeue. Verify `cargo check --release`. Commit.

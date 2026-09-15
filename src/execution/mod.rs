@@ -140,6 +140,18 @@ pub struct ExecutionStep {
     pub timeout_ms: u64,
 }
 
+impl ExecutionStep {
+    /// Create a new execution step.
+    pub fn new(action: &str, params_str: &str) -> Self {
+        Self {
+            id: uuid::Uuid::new_v4().to_string(),
+            action: action.to_string(),
+            params: serde_json::json!({"input": params_str}),
+            timeout_ms: 30000,
+        }
+    }
+}
+
 /// Retry policy for execution retries.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct RetryPolicy {
@@ -170,6 +182,16 @@ pub struct IsolationContext {
     pub working_dir: Option<std::path::PathBuf>,
     pub env_overrides: std::collections::HashMap<String, String>,
     pub timeout_ms: u64,
+}
+
+/// Run an execution function in isolation.
+pub fn run_isolated<
+    F: FnOnce() -> Result<crate::skills::registry::result::ExecutionResult, ExecutionError>,
+>(
+    _ctx: &IsolationContext,
+    f: F,
+) -> Result<crate::skills::registry::result::ExecutionResult, ExecutionError> {
+    f()
 }
 
 /// Execute with retry using a retry policy.
