@@ -284,6 +284,37 @@ pub fn generate_candidates(goal: &Plan, n: usize) -> Vec<Plan> {
     candidates
 }
 
+/// Convert a plan to a workflow.
+pub fn plan_to_workflow(
+    plan: &crate::planner::engine::types::Plan,
+) -> crate::workflows::engine::Workflow {
+    crate::workflows::engine::Workflow {
+        id: plan.id.clone(),
+        name: plan.goal.clone(),
+        description: format!("Workflow from plan: {}", plan.goal),
+        steps: plan
+            .steps
+            .iter()
+            .map(|s| crate::workflows::engine::WorkflowStep {
+                id: s.id.clone(),
+                name: s.action.clone(),
+                action: s.action.clone(),
+                parameters: std::collections::HashMap::new(),
+                retry_count: 0,
+                max_retries: 3,
+                timeout_seconds: 300,
+                on_success: None,
+                on_failure: None,
+            })
+            .collect(),
+        variables: std::collections::HashMap::new(),
+        status: crate::workflows::engine::WorkflowStatus::Draft,
+        created_at: plan.created_at,
+        started_at: None,
+        completed_at: None,
+    }
+}
+
 /// Planner statistics
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PlannerStatistics {
