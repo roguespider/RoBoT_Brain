@@ -238,6 +238,15 @@ pub fn topological_sort(steps: &[PlanStep]) -> Option<Vec<String>> {
     Some(result)
 }
 
+/// Get steps that are ready to execute (all dependencies completed).
+pub fn get_ready_steps(steps: &[PlanStep], completed: &[String]) -> Vec<PlanStep> {
+    steps
+        .iter()
+        .filter(|step| step.dependencies.iter().all(|dep| completed.contains(dep)))
+        .cloned()
+        .collect()
+}
+
 /// Planner statistics
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct PlannerStatistics {
