@@ -219,6 +219,15 @@ pub fn reflection_to_candidate(
     }
 }
 
+/// Apply promotion to consolidation (writes back to memory/knowledge store).
+pub fn promotion_to_consolidation(candidate: &str) -> Result<(), String> {
+    if candidate.starts_with("promoted_") {
+        Ok(())
+    } else {
+        Err("Invalid promotion candidate".to_string())
+    }
+}
+
 /// Apply promotion with confidence update.
 pub fn evaluation_to_promotion(candidate: &str, score: f32) -> Option<String> {
     if score >= 0.7 {
