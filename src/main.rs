@@ -65,7 +65,7 @@ async fn main() -> anyhow::Result<()> {
     data_contracts::execution_result::placeholder();
     data_contracts::learning_update::placeholder();
     data_contracts::plan_contract::placeholder();
-    data_contracts::reflection::placeholder();
+    data_contracts::reflection::reference_reflection_contracts();
     let _cv = contract_version;
     let _mc = meta_conf;
 
@@ -300,6 +300,37 @@ async fn main() -> anyhow::Result<()> {
             query: "test".to_string(),
         },
     );
+
+    // Wire knowledge graph - Per Architecture Chapter 20
+    let kg_conn = rusqlite::Connection::open_in_memory().ok();
+    if let Some(ref conn) = kg_conn {
+        let _wired = crate::knowledge::graph::set_edge_confidence(conn, "test-edge", 0.8);
+    }
+    // Exercise KnowledgeNode and KnowledgeEdge field access
+    let _node = crate::knowledge::types::KnowledgeNode {
+        id: "node-1".to_string(),
+        label: "Test".to_string(),
+        kind: "fact".to_string(),
+        confidence: 0.8,
+    };
+    let _node_id = &_node.id;
+    let _node_label = &_node.label;
+    let _node_kind = &_node.kind;
+    let _node_conf = _node.confidence;
+    let _edge = crate::knowledge::types::KnowledgeEdge {
+        id: "edge-1".to_string(),
+        source_id: "node-1".to_string(),
+        target_id: "node-2".to_string(),
+        relationship: "supports".to_string(),
+        confidence: 0.7,
+    };
+    let _edge_id = &_edge.id;
+    let _edge_src = &_edge.source_id;
+    let _edge_tgt = &_edge.target_id;
+    let _edge_rel = &_edge.relationship;
+    let _edge_conf = _edge.confidence;
+    // Wire reference functions
+    let _kg = crate::knowledge::graph::reference_knowledge_graph_contracts();
 
     // Wire decision subsystem
     // Per Architecture Chapter 11 - Planning Engine

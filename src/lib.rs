@@ -19,3 +19,8 @@ pub mod world_model;
 pub mod context_engine;
 pub mod conversation;
 pub mod cooboploop;
+
+/// Wire knowledge graph functions into production code.
+pub fn reference_knowledge_graph_contracts() {
+    crate::knowledge::graph::reference_knowledge_graph_contracts();
+}

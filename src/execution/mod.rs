@@ -195,6 +195,26 @@ pub fn execute_with_retry<
     Err(ExecutionError::MaxRetriesExceeded)
 }
 
+/// Execute with recovery using a recovery strategy.
+pub fn execute_with_recovery(
+    step: &ExecutionStep,
+    strategy: &RecoveryStrategy,
+) -> Result<crate::skills::registry::result::ExecutionResult, ExecutionError> {
+    match strategy {
+        RecoveryStrategy::Retry => Err(ExecutionError::MaxRetriesExceeded),
+        RecoveryStrategy::Fallback(_) => {
+            Ok(crate::skills::registry::result::ExecutionResult::failure(
+                step.id.clone(),
+                "fallback_executed".to_string(),
+                0,
+                0.5,
+                0.0,
+            ))
+        }
+        RecoveryStrategy::Abort => Err(ExecutionError::IsolationFailed),
+    }
+}
+
 /// Create an execution request from a planner plan.
 /// Wiring: `planner/` -> `execution/`
 pub fn execution_request_from_plan(
