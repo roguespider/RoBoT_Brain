@@ -33,50 +33,6 @@ Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architec
 
 ---
 
-## 4. Knowledge Graph
-Build the storage layer before traversal and extraction. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Chapter 20 (Knowledge Graph).
-
-- [ ] **T2-63** — Add the `knowledge_edges` table and migration — Chapter 20.2.
-  - **▸** Add migration: `knowledge_edges (id TEXT PRIMARY KEY, source_id TEXT NOT NULL, target_id TEXT NOT NULL, relationship TEXT NOT NULL, confidence REAL NOT NULL DEFAULT 0.5)`. Add index on `source_id`. Verify `cargo check --release`. Commit.
-- [ ] **T2-64** — Add relationship confidence on knowledge edges — Chapter 19.4 "Relationship confidence" + Chapter 20.3.
-  - **▸** Confirm the `confidence` column exists on `knowledge_edges` (from T2-63). Add a `pub fn set_edge_confidence(conn: &Connection, id: &str, c: f32) -> Result<(), rusqlite::Error>` helper. Verify `cargo check --release`. Commit.
-- [ ] **T2-65** — Add concept-relationship fields for structured understanding — Chapter 20.1 "Concept relationships".
-  - **▸** In `src/knowledge/graph.rs`, define `pub struct KnowledgeNode { pub id: String, pub label: String, pub kind: String, pub confidence: f32 }` and `pub struct KnowledgeEdge { pub id: String, pub source_id: String, pub target_id: String, pub relationship: String, pub confidence: f32 }`. Verify `cargo check --release`. Commit.
-- [ ] **T2-66** — Add entity resolution for aliases like "rustc" and "Rust Compiler" — Chapter 20.4 "Knowledge discovery".
-  - **▸** Add `pub struct EntityResolution { pub canonical_id: String, pub aliases: Vec<String> }` to `src/knowledge/resolution.rs`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn resolve_entity(name: &str, table: &HashMap<String, String>) -> Option<String>` returning the canonical id for a given alias. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn register_alias(table: &mut HashMap<String, String>, canonical_id: &str, alias: &str)`. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/knowledge_entity_resolution.rs`: register "rustc" → "rust_compiler", resolve both, assert same canonical id. Wire + verify `make gate`. Commit.
-- [ ] **T2-67** — Add graph traversal queries for relationship chains — Chapter 20.4.
-  - **▸** In `src/knowledge/graph.rs`, add `pub fn traverse_from(conn: &Connection, start_id: &str, max_depth: usize) -> Result<Vec<KnowledgeEdge>, rusqlite::Error>` using BFS. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn find_all_paths(conn: &Connection, start: &str, end: &str, max_paths: usize) -> Result<Vec<Vec<String>>, rusqlite::Error>` (DFS with path cap). Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn get_subgraph(conn: &Connection, node_id: &str, radius: usize) -> Result<(Vec<KnowledgeNode>, Vec<KnowledgeEdge>), rusqlite::Error>`. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/knowledge_traversal.rs`: build a 4-node graph, assert BFS/DFS/subgraph correctness. Wire + verify `make gate`. Commit.
-- [ ] **T2-68** — Add discovery queries for linked concepts and supporting evidence — Chapter 20.4.
-  - **▸** Add `pub fn find_linked_concepts(conn: &Connection, node_id: &str, relationship: &str) -> Result<Vec<KnowledgeNode>, rusqlite::Error>`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn find_supporting_evidence(conn: &Connection, node_id: &str) -> Result<Vec<KnowledgeEdge>, rusqlite::Error>` returning edges pointing TO the node. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/knowledge_discovery.rs`. Wire + verify. Commit.
-- [ ] **T2-69** — Add entity-detection logic for the graph-extraction pipeline — Chapter 20.4.
-  - **▸** In `src/knowledge/extraction.rs`, define `pub struct ExtractionInput { pub text: String, pub source: String }` deriving Clone. Verify `cargo check --release`. Commit.
-  - **▸** Define `pub struct DetectedEntity { pub text: String, pub entity_type: String, pub confidence: f32, pub position: usize }`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn detect_entities(input: &ExtractionInput) -> Vec<DetectedEntity>` using simple capitalized-noun matching (regex `r"\b[A-Z][a-zA-Z]+\b"`). Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/knowledge_entity_detection.rs`: input "Rust was designed by Graydon", expect at least "Rust" and "Graydon". Wire + verify `make gate`. Commit.
-- [ ] **T2-70** — Add relationship-extraction logic for the graph-extraction pipeline — Chapter 20.4.
-  - **▸** Define `pub struct DetectedRelationship { pub source_id: String, pub target_id: String, pub type_: String, pub confidence: f32, pub trigger_text: String }`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn extract_relationships(entities: &[DetectedEntity], text: &str) -> Vec<DetectedRelationship>` using a simple "X is Y" or "X uses Y" pattern. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/knowledge_relationship_extraction.rs`: input "Rust uses Cargo", expect a relationship between "Rust" and "Cargo" with type "uses". Wire + verify `make gate`. Commit.
-- [ ] **T2-71** — Add confidence-evaluation logic for the graph-extraction pipeline — Chapter 20.3 + Chapter 19.1.
-  - **▸** Define `pub struct EvaluationCriteria { pub source_trustworthiness: f32, pub text_clarity: f32, pub entity_count: u32 }`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn evaluate_confidence(entities: &[DetectedEntity], relationships: &[DetectedRelationship], criteria: &EvaluationCriteria) -> f32` with weighted scoring (0.4/0.3/0.3). Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn adjust_confidence(entities: &mut Vec<DetectedEntity>, relationships: &mut Vec<DetectedRelationship>, threshold: f32)` filtering entries below the threshold. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/knowledge_confidence_eval.rs`. Wire + verify. Commit.
-- [ ] **T2-72** — Add graph-update and integration logic for the graph-extraction pipeline — Chapter 20.4.
-  - **▸** Add `pub fn apply_extractions(conn: &Connection, entities: &[DetectedEntity], relationships: &[DetectedRelationship]) -> Result<usize, rusqlite::Error>` that calls `insert_node` and `insert_edge`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn run_extraction(conn: &Connection, text: &str, source: &str) -> Result<(Vec<DetectedEntity>, Vec<DetectedRelationship>), KnowledgeError>` orchestrating detect → extract → evaluate → adjust. Verify `cargo check --release`. Commit.
-  - **▸** Register the MCP tool `extract_knowledge` calling `run_extraction` and returning the (entities, relationships) JSON. Verify `make gate`. Commit.
-
----
-
 ## 5. Learning Engine
 Make learning explicit after experience and knowledge are contract-shaped. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Chapter 10 (Learning Engine) + Chapter 18.2 (Learning signals).
 
@@ -134,10 +90,7 @@ Use the data contracts to make planning more structured. Source: `robot_architec
   - **▸** In `src/planner/mod.rs`, define `pub struct Goal { pub id: String, pub description: String, pub priority: u8, pub deadline: Option<i64> }`. Verify `cargo check --release`. Commit.
   - **▸** Add `pub fn validate_goal(g: &Goal) -> Result<(), PlanError>` enforcing: description non-empty, priority in 0..=10, deadline (if Some) in the future. Verify `cargo check --release`. Commit.
   - **▸** Move test to `test_suite/src/tests/planner_goal_validation.rs`. Wire + verify. Commit.
-- [ ] **T2-85** — Add richer `decompose_goal` action-verb handling — Chapter 11.2 "Task decomposition".
-  - **▸** Add `pub enum ActionVerb { Create, Read, Update, Delete, Execute, Analyze, Communicate, Wait, Other(String) }` to `src/planner/mod.rs`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn parse_action_verb(s: &str) -> ActionVerb` mapping known verbs to variants and unknown strings to `Other(s.to_string())`. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/planner_action_verb.rs`. Wire + verify. Commit.
+
 - [ ] **T2-86** — Add better step generation for `decompose_goal` — Chapter 11.2.
   - **▸** Add `pub fn generate_steps(goal: &Goal) -> Vec<PlanStep>` producing a skeleton (id, action from parsed verb, params={}). Verify `cargo check --release`. Commit.
   - **▸** Move test to `test_suite/src/tests/planner_step_generation.rs`. Wire + verify. Commit.
@@ -377,3 +330,217 @@ Function → Callers → Dependencies → Data Flow → Tests → Architecture P
 ```
 
 No function may be changed based only on its name. Every change must be verified against the architecture purpose.
+
+
+## gaps to be fixed
+
+---
+
+## Gaps — Actionable tasks (continuing from T2-129)
+
+Each `▸` is one 5-minute increment: one file/function/test → `cargo check --release` or `make gate` → commit.
+
+---
+
+## Part I — Vision and Foundation (Ch 01-05)
+
+- [x] **T2-130** — Wire the 10-step cognitive lifecycle pipeline — Chapter 3.4.
+  - **▸** In `src/pipeline/mod.rs`, define `pub enum LifecycleStep { Observation, ContextConstruction, MemoryRetrieval, ExperienceRetrieval, Planning, Reasoning, SkillSelection, Execution, Reflection, Learning }`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub struct CognitivePipeline { pub steps: Vec<LifecycleStep>, pub correlation_id: String }`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn run_pipeline(p: &CognitivePipeline) -> Result<PipelineTrace, PipelineError>` (placeholder: iterate steps, return a trace). Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/pipeline_lifecycle.rs`: create pipeline with all 10 steps, assert trace length == 10. Wire + verify `make gate`. Commit.
+
+- [x] **T2-131** — Wire the 9-stage context assembly pipeline — Chapter 7.6.
+  - **▸** In `src/context_engine/mod.rs`, define `pub enum AssemblyStage { ConversationAnalysis, PlannerRequirements, MemoryRetrieval, ExperienceRetrieval, KnowledgeRetrieval, ContextRanking, Deduplication, Compression, TokenBudgetAllocation }`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn run_assembly(stages: &[AssemblyStage], correlation_id: &str) -> ContextAssembly` calling each stage in order. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/context_assembly_pipeline.rs`: 9 stages → assert `ContextAssembly.layers.len() == 9`. Wire + verify. Commit.
+
+- [x] **T2-132** — Wire data contracts through the pipeline — Chapter 5.1 + 3.3.
+  - **▸** In `src/data_contracts/mod.rs`, add `pub fn contract_for_step(step: LifecycleStep) -> &'static str` mapping each step to its contract name (`Observation`, `ContextPacket`, etc.). Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn validate_contract_chain(trace: &PipelineTrace) -> bool` checking that each step's output contract matches the next step's input contract. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/data_contract_chain.rs`. Wire + verify `make gate`. Commit.
+
+---
+
+## Part II — Cognitive Architecture (Ch 06-12)
+
+- [x] **T2-133** — Complete Conversation Engine lifecycle — Chapter 6.
+  - **▸** In `src/conversation/mod.rs`, add `pub fn process_full_lifecycle(session: &mut ConversationSession, input_id: &str) -> ConversationState` advancing through `Analyzing → AssemblingContext → Processing → Responding → Completed`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn track_topic(session: &ConversationSession, topic: &str) -> bool` (placeholder: return true if topic changed). Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/conversation_lifecycle.rs`. Wire + verify. Commit.
+
+- [ ] **T2-134** — Complete Context Engine assembly pipeline — Chapter 7.
+  - **▸** In `src/context_engine/mod.rs`, add `pub fn conversation_analysis(input: &str) -> Vec<String>` (placeholder: split input into words). Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn planner_requirements(goal: &str) -> Vec<String>` (placeholder: return `vec!["knowledge".to_string()]`). Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn context_ranking(items: &[String]) -> Vec<(String, f32)>` (placeholder: score by length). Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn deduplicate(items: &[String]) -> Vec<String>` (placeholder: use `HashSet`). Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn compress_context(items: &[String], budget: usize) -> Vec<String>` (placeholder: truncate to budget). Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/context_engine_full.rs`: 9 stages → assert `ContextAssembly` has references/goals/layers/constraints. Wire + verify `make gate`. Commit.
+
+- [x] **T2-134** — Complete Memory Engine promotion/consolidation — Chapter 8 + 17.
+  - **▸** In `src/memory/permanent.rs`, add `pub fn promote_to_permanent(item: MemoryItem) -> Result<String, MemoryError>` (reuse existing `promote_research` logic). Verify `cargo check --release`. Commit.
+  - **▸** In `src/memory/retrieval.rs`, add `pub fn retrieve_for_context(query: &str, budget: usize) -> Vec<MemoryRecord>` (placeholder: return first `budget` items). Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/memory_promotion.rs`. Wire + verify. Commit.
+
+- [x] **T2-136** — Complete Experience Engine workflow/reputation — Chapter 9.
+  - **▸** In `src/experience/reputation.rs`, add `pub fn update_reputation(tool_name: &str, success: bool) -> f32` (placeholder: +0.03 for success, -0.05 for failure). Verify `cargo check --release`. Commit.
+  - **▸** In `src/experience/coordinator.rs`, add `pub fn evaluate_workflow(outcome: &str) -> f32` (placeholder: 1.0 for "success", 0.0 for "failure"). Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/experience_reputation.rs`. Wire + verify. Commit.
+
+- [ ] **T2-137** — Complete Learning Engine pipeline — Chapter 10.
+  - **▸** In `src/learning/mod.rs`, add `pub fn pattern_discovery(experiences: &[ExperienceRecord]) -> Vec<Pattern>` (placeholder: group by `experience_type`). Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn extract_knowledge(patterns: &[Pattern]) -> Vec<ExtractedKnowledge>` (placeholder: generate rule string). Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn skill_improvement(skill_id: &str, delta: f32) -> SkillImprovement`. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/learning_pipeline.rs`. Wire + verify `make gate`. Commit.
+
+- [x] **T2-135** — Complete Planning Engine dependency/strategy — Chapter 11.
+  - **▸** In `src/planner/mod.rs`, add `pub fn validate_no_cycles(steps: &[PlanStep]) -> bool` (DFS). Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn topological_sort(steps: &[PlanStep]) -> Option<Vec<String>>`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub enum PlanningStrategy { Sequential, Parallel, Greedy }` and `pub fn select_strategy(goal: &Goal) -> PlanningStrategy`. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/planner_dag.rs`. Wire + verify. Commit.
+
+- [ ] **T2-139** — Complete Execution Engine recovery/isolation — Chapter 12.
+  - **▸** In `src/execution/mod.rs`, add `pub enum RecoveryStrategy { Retry, Fallback(String), Abort }`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub struct IsolationContext { pub working_dir: Option<PathBuf>, pub env_overrides: HashMap<String, String>, pub timeout_ms: u64 }`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn execute_with_recovery(step: &ExecutionStep, strategy: &RecoveryStrategy) -> Result<ExecutionResult, ExecutionError>`. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/execution_recovery.rs`. Wire + verify `make gate`. Commit.
+
+---
+
+## Part III — Intelligence Infrastructure (Ch 13-16)
+
+- [ ] **T2-140** — Complete Tool Engine contracts/permissions/isolation — Chapter 13.
+  - **▸** In `src/tools/registry.rs`, add `pub struct ToolContract { pub name: String, pub description: String, pub input_schema: serde_json::Value, pub output_schema: serde_json::Value, pub version: String }`. Verify `cargo check --release`. Commit.
+  - **▸** In `src/tools/permissions.rs`, add `pub struct ToolPermission { pub tool_name: String, pub allowed_callers: Vec<String>, pub max_invocations_per_minute: u32 }`. Verify `cargo check --release`. Commit.
+  - **▸** In `src/execution/isolation.rs`, add `pub fn run_isolated<F: FnOnce() -> Result<ExecutionResult, ExecutionError>>(ctx: &IsolationContext, f: F) -> Result<ExecutionResult, ExecutionError>`. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/tool_contract.rs`. Wire + verify. Commit.
+
+- [ ] **T2-141** — Complete Model Integration routing/queue — Chapter 14.
+  - **▸** In `src/models/mod.rs`, add `pub enum Capability { Chat, Embedding, Tool, Vision, LongContext }`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn select_provider(registry: &ProviderRegistry, cap: Capability) -> Option<Box<dyn InferenceProvider>>`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub struct InferenceQueue { /* ... */ }` with enqueue/dequeue. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/model_routing.rs`. Wire + verify. Commit.
+
+- [ ] **T2-142** — Complete Agent Communication event bus — Chapter 15 + 16.
+  - **▸** In `src/communication/events.rs`, add `pub struct InternalEvent { pub kind: String, pub source: String, pub correlation_id: String, pub payload: serde_json::Value, pub created_at: i64 }`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn publish_event(bus: &EventBus, event: InternalEvent)` and `pub fn subscribe(...)`. Verify `cargo check --release`. Commit.
+  - **▸** In `src/coordination/mod.rs`, add `pub fn route_decision(orch: &Orchestrator, decision: &Decision) -> Result<ExecutionStep, CoordinationError>`. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/event_bus.rs`. Wire + verify `make gate`. Commit.
+
+---
+
+## Part IV — Memory and Knowledge (Ch 17-23)
+
+- [ ] **T2-143** — Complete Memory Architecture layers/promotion — Chapter 17.
+  - **▸** In `src/memory_hierarchy/mod.rs`, add `pub enum MemoryLayer { Working, ShortTerm, LongTerm, Semantic, Episodic, Procedural, Graph, Archive }`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub struct PromotionGate { pub min_age_hours: u64, pub min_confidence: f32, pub min_access_count: u32 }`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn should_promote(memory: &MemoryRecord, gate: &PromotionGate) -> bool`. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/memory_promotion_gate.rs`. Wire + verify. Commit.
+
+- [ ] **T2-144** — Complete Experience Architecture consolidation — Chapter 18.
+  - **▸** In `src/experience/types/experience.rs`, add `pub fn consolidate_experience(exp: &ExperienceRecord) -> Option<MemoryRecord>` (placeholder: return `Some` if `success == true`). Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn build_experience_graph(experiences: &[ExperienceRecord]) -> Vec<(String, String, String)>` (placeholder: link by `plan_id`). Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/experience_consolidation.rs`. Wire + verify. Commit.
+
+- [ ] **T2-145** — Complete Confidence System domains/decay — Chapter 19.
+  - **▸** In `src/data_contracts/confidence.rs` (or new file), add `pub enum ConfidenceDomain { Fact, Relationship, Experience, Skill, Workflow, Tool, Strategy }`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn decay_confidence(current: f32, hours_since_update: f64, decay_rate: f32) -> f32` using `current * 0.5_f32.powf(...)`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn detect_contradiction(a: f32, b: f32, threshold: f32) -> bool` (placeholder: `abs(a - b) > threshold`). Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/confidence_decay.rs`. Wire + verify `make gate`. Commit.
+
+- [ ] **T2-146** — Complete Knowledge Graph extraction/reasoning — Chapter 20.
+  - **▸** In `src/knowledge/graph.rs`, add `pub fn traverse_from(conn: &Connection, start_id: &str, max_depth: usize) -> Result<Vec<KnowledgeEdge>, rusqlite::Error>` (BFS). Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn find_all_paths(conn: &Connection, start: &str, end: &str, max_paths: usize) -> Result<Vec<Vec<String>>, rusqlite::Error>`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn get_subgraph(conn: &Connection, node_id: &str, radius: usize) -> Result<(Vec<KnowledgeNode>, Vec<KnowledgeEdge>), rusqlite::Error>`. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/knowledge_traversal.rs`. Wire + verify `make gate`. Commit.
+
+- [ ] **T2-147** — Complete Storage Architecture layers/backup — Chapter 21.
+  - **▸** In `src/database/mod.rs`, add `pub enum StorageLayer { Working, Session, Experience, Semantic, Skill, Graph, Archive, Operational }`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn backup_database(path: &str) -> Result<(), DatabaseError>` (placeholder: copy file). Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn restore_database(source: &str, target: &str) -> Result<(), DatabaseError>`. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/storage_backup.rs`. Wire + verify. Commit.
+
+- [ ] **T2-148** — Complete Database Design full schema — Chapter 22.
+  - **▸** In `src/database/migrations/`, add migration for `experience_schema` table (`id`, `goal`, `plan_id`, `result`, `success`, `execution_time`, `cost`, `confidence_change`, `tool_usage`, `lessons`, `timestamp`). Verify `cargo check --release`. Commit.
+  - **▸** Add migration for `workflow_schema` (`id`, `name`, `steps`, `dependencies`, `required_skills`, `estimated_cost`, `estimated_confidence`, `alternative_branches`). Verify `cargo check --release`. Commit.
+  - **▸** Add migration for `confidence_history` (`id`, `item_id`, `old_confidence`, `new_confidence`, `reason`, `timestamp`). Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/db_schema_full.rs`: assert all 3 tables exist. Wire + verify. Commit.
+
+- [ ] **T2-149** — Complete Background Workers scheduling/coordination — Chapter 23.
+  - **▸** In `src/cooboploop/`, add `pub struct TaskQueue { pub priority: u8, pub payload: String, pub memory_id: Option<String> }`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub enum WorkerType { Memory, Experience, Learning, KnowledgeGraph, Maintenance }`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn schedule_task(queue: &mut TaskQueue, worker: WorkerType, payload: String)`. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/worker_scheduling.rs`. Wire + verify `make gate`. Commit.
+
+---
+
+## Part V — Governance and Evolution (Ch 24-27)
+
+- [ ] **T2-150** — Implement AI Contributor Agreement checks — Chapter 24.
+  - **▸** In `src/developer_interface/`, add `pub fn architecture_alignment_check(name: &str) -> bool` (placeholder: check if name contains valid subsystem keywords). Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn trace_before_changing(function: &str) -> String` returning the trace string `"Function → Callers → Dependencies → Data Flow → Tests → Architecture Purpose"`. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/ai_contributor_check.rs`. Wire + verify. Commit.
+
+- [ ] **T2-151** — Implement Security and Trust audit/permission — Chapter 25.
+  - **▸** In `src/security/` (new dir or existing), add `pub struct AuditRecord { pub actor: String, pub action: String, pub target: String, pub confidence_change: f32, pub reason: String }`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn log_audit(record: AuditRecord) -> Result<(), SecurityError>`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn check_permission(actor: &str, action: &str, target: &str) -> bool`. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/security_audit.rs`. Wire + verify `make gate`. Commit.
+
+- [ ] **T2-152** — Implement Self-Improvement loop — Chapter 26.
+  - **▸** In `src/evolution/`, add `pub enum EvolutionStage { Experience, Candidate, Hypothesis, Experiment, SkillEvolution, WorkflowEvolution, MemoryEvolution, GraphEvolution, Consolidation }`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn run_evolution_loop(experiences: &[ExperienceRecord]) -> Vec<LearningUpdate>` (placeholder: return empty). Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/evolution_loop.rs`. Wire + verify. Commit.
+
+- [ ] **T2-153** — Implement Observability event architecture — Chapter 27.
+  - **▸** In `src/observability/`, add `pub enum CognitiveEventType { MemoryEvent, ExperienceEvent, PlanningEvent, ExecutionEvent, EvolutionEvent }`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn record_cognitive_event(event_type: CognitiveEventType, correlation_id: &str, payload: serde_json::Value) -> Result<(), ObservabilityError>`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn replay_events(correlation_id: &str) -> Vec<CognitiveEvent>`. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/observability_events.rs`. Wire + verify `make gate`. Commit.
+
+---
+
+## Part VI — Interfaces and Operations (Ch 28-32)
+
+- [ ] **T2-154** — Implement Developer Interface control plane — Chapter 28.
+  - **▸** In `src/developer_interface/`, add `pub struct ControlPlaneArchitecture { pub cli: CommandLineInterface, pub dashboard: DeveloperDashboard, pub api: APIInterface }`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn inspect_memory(entity_id: &str) -> Option<MemoryRecord>` (placeholder: return `None`). Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn replay_trace(correlation_id: &str) -> Vec<TraceEvent>`. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/developer_interface.rs`. Wire + verify. Commit.
+
+- [ ] **T2-155** — Implement Configuration runtime profiles — Chapter 29.
+  - **▸** In `src/config/` (or `Cargo.toml` config), add `pub enum RuntimeProfile { Development, Testing, Production }`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn load_config(profile: RuntimeProfile) -> Config`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn validate_config(config: &Config) -> Result<(), ConfigError>`. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/config_profiles.rs`. Wire + verify. Commit.
+
+- [ ] **T2-156** — Implement Testing architecture validation — Chapter 30.
+  - **▸** In `test_suite/src/`, add `pub fn architecture_validation() -> bool` (placeholder: return `true`). Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn cognitive_testing() -> bool`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn replay_testing(trace: &PipelineTrace) -> bool`. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/architecture_validation.rs`. Wire + verify `make gate`. Commit.
+
+- [ ] **T2-157** — Implement Deployment bootstrap/init order — Chapter 31.
+  - **▸** In `src/deployment/` (new dir), add `pub enum BootstrapStep { DatabaseInit, StorageInit, MemoryInit, ExperienceInit, LearningInit, PlanningInit, ExecutionInit, ToolInit, ModelInit, CommunicationInit, CoordinationInit }`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn run_bootstrap() -> Result<BootstrapResult, DeploymentError>` (placeholder: iterate steps). Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn graceful_shutdown() -> Result<(), DeploymentError>`. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/deployment_bootstrap.rs`. Wire + verify. Commit.
+
+- [ ] **T2-158** — Implement Future Expansion stable core — Chapter 32.
+  - **▸** In `src/architecture/` (new dir or `lib.rs`), add `pub const STABLE_CORE_PIPELINE: &[&str] = &["Observe", "Understand", "Retrieve", "Plan", "Reason", "Act", "Reflect", "Learn"];`. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn verify_stable_core() -> bool` (placeholder: return `true`). Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/future_expansion.rs`. Wire + verify. Commit.
+
+---
+
+## Appendix — Wiring Catalog (Ch 24.7, 3.3, 3.4, Subsystem Catalog)
+
+- [ ] **T2-159** — Enforce architecture alignment check in code — Chapter 24.
+  - **▸** In `src/developer_interface/`, add `pub fn enforce_alignment_check(name: &str) -> Result<(), AlignmentError>` that validates the function name maps to a known subsystem. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn enforce_trace_protocol(function: &str) -> String` returning the required trace format. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/alignment_check.rs`. Wire + verify `make gate`. Commit.
+
+- [ ] **T2-160** — Wire pipeline wiring rules — Chapter 3.3 + 3.4.
+  - **▸** In `src/pipeline/mod.rs`, add `pub fn verify_pipeline_order(trace: &PipelineTrace) -> bool` checking that steps follow the 10-step lifecycle order. Verify `cargo check --release`. Commit.
+  - **▸** Add `pub fn verify_context_assembly_order(assembly: &ContextAssembly) -> bool` checking 9-stage order. Verify `cargo check --release`. Commit.
+  - **▸** Move test to `test_suite/src/tests/pipeline_wiring.rs`. Wire + verify `make gate`. Commit.
