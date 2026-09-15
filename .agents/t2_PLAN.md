@@ -36,36 +36,6 @@ Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architec
 ## 6. Planning Engine
 Use the data contracts to make planning more structured. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Chapter 11 (Planning Engine).
 
-- [ ] **T2-87** — Add dependency-aware task graphs — Chapter 11.2 + Chapter 11.4.
-  - **▸** Add `pub dependencies: Vec<String>` field to `PlanStep` (with `#[serde(default)]`). Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn validate_no_cycles(steps: &[PlanStep]) -> bool` using DFS with a recursion stack. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn topological_sort(steps: &[PlanStep]) -> Option<Vec<String>>` returning None on cycles. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn get_ready_steps(steps: &[PlanStep], completed: &[String]) -> Vec<PlanStep>` returning steps whose dependencies are all in `completed`. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/planner_dag.rs`: 3 steps A→B→C, plus a cycle test, plus a ready-steps test. Wire + verify `make gate`. Commit.
-- [ ] **T2-88** — Add planning-strategy selection — Chapter 11.3 "Planning strategies".
-  - **▸** Define `pub enum PlanningStrategy { Sequential, Parallel, Greedy }` in `src/planner/mod.rs`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn select_strategy(goal: &Goal) -> PlanningStrategy` with heuristic: if priority >= 8 → Greedy; if `goal.description.contains("in parallel")` → Parallel; else Sequential. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/planner_strategy.rs`. Wire + verify. Commit.
-- [ ] **T2-89** — Add candidate-plan generation — Chapter 11.3.
-  - **▸** Add `pub fn generate_candidates(goal: &Goal, n: usize) -> Vec<Plan>` calling `generate_steps` with `n` different strategy choices. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/planner_candidates.rs`. Wire + verify. Commit.
-- [ ] **T2-90** — Add candidate-plan evaluation — Chapter 11.5 "Plan evaluation".
-  - **▸** Add `pub fn evaluate_candidate(plan: &Plan) -> f32` returning `1.0 / (1.0 + plan.steps.len() as f32)` (shorter plans score higher, placeholder). Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/planner_evaluation.rs`. Wire + verify. Commit.
-- [ ] **T2-91** — Add workflow generation from plans — Chapter 11.4 "Workflow generation".
-  - **▸** Add `pub fn plan_to_workflow(plan: &Plan) -> Workflow` mapping each step to a workflow step in order. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/planner_to_workflow.rs`. Wire + verify `make gate`. Commit.
-- [ ] **T2-92** — Add dynamic replanning triggers — Chapter 11.5.
-  - **▸** Add `pub enum ReplanTrigger { StepFailed(String), ConfidenceBelow(f32), ExternalChange(String) }`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn should_replan(trigger: &ReplanTrigger, ctx: &PlanContext) -> bool` returning true in all cases (placeholder). Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/planner_replan.rs`. Wire + verify. Commit.
-- [ ] **T2-93** — Add plan scoring — Chapter 11.5 + Chapter 19 (Confidence).
-  - **▸** Add `pub struct PlanScore { pub feasibility: f32, pub confidence: f32, pub cost_estimate: f32 }`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn score_plan(plan: &Plan, eval: f32) -> PlanScore`. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/planner_score.rs`. Wire + verify. Commit.
-- [ ] **T2-94** — Migrate `Plan` to the data-contract type — Chapter 5.1 "API boundaries".
-  - **▸** Replace legacy `Plan` references in `src/` with `use crate::data_contracts::plan_contract::Plan`. Run `cargo check --release`. Add missing fields to the contract type. Verify `make gate`. Commit.
-
 ---
 
 ## 7. Execution and Tooling surfaces

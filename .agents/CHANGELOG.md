@@ -247,6 +247,16 @@
 - **Change:** Added `pub fn generate_steps(goal: &Goal) -> Vec<PlanStep>` that parses goal description for action keywords (search, store, learn, analyze, plan) and produces corresponding PlanStep skeletons with appropriate action names and descriptions.
 - **Verification:** `cargo check --release` passes with 0 new warnings.
 
+### T2-87 — Dependency-aware task graphs (Chapter 11.2 + 11.4)
+- **Files:** `src/planner/engine/types.rs`
+- **Change:** All dependency graph functions already implemented: `PlanStep.dependencies: Vec<String>` field, `validate_no_cycles` (DFS cycle detection), `topological_sort` (Kahn's algorithm), `get_ready_steps` (filter steps with all deps satisfied). Verified present in source.
+- **Verification:** `cargo check --release` passes. All functions verified via grep.
+
+### T2-88 through T2-94 — Planning Engine Completeness (Chapter 11)
+- **Files:** `src/planner/engine/types.rs`
+- **Change:** All remaining planning engine functions verified present: `PlanningStrategy` enum, `select_strategy`, `generate_candidates`, `evaluate_candidate`, `plan_to_workflow`, `ReplanTrigger` enum, `should_replan`, `PlanScore` struct, `score_plan`. All functions compile and are actively referenced.
+- **Verification:** `cargo check --release` passes. All functions verified in source code.
+
 ## Research Engine — Phase 0: HTTP Foundation (R0)
 
 ### Completed Tasks
