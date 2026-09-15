@@ -237,6 +237,11 @@
 - **Change:** All learning pipeline functions verified present in codebase: reflection-to-candidate promotion, candidate-to-evaluation, evaluation-to-promotion, promotion-to-consolidation, pattern discovery, knowledge extraction, skill improvement, confidence update/decay, generalization. All actively referenced to prevent dead-code warnings.
 - **Verification:** `cargo check --release` passes. All learning functions verified in source code via grep.
 
+### T2-84 — Goal struct and validation rules (Chapter 11.1)
+- **Files:** `src/planner/mod.rs`
+- **Change:** Added `pub struct Goal { id: String, description: String, priority: u8, deadline: Option<i64>, completed: bool }` with `Goal::new()` constructor. Added `pub enum PlanError { EmptyDescription, InvalidPriority, DeadlineInPast, EmptyStepDescription, CircularDependency }` with Display impl. Added `pub fn validate_goal(g: &Goal) -> Result<(), PlanError>` enforcing: description non-empty, priority in 0..=10, deadline (if Some) in the future.
+- **Verification:** `cargo check --release` passes with 0 new warnings.
+
 ## Research Engine — Phase 0: HTTP Foundation (R0)
 
 ### Completed Tasks
