@@ -83,6 +83,126 @@ pub fn validate_goal(g: &Goal) -> Result<(), PlanError> {
     Ok(())
 }
 
+/// Generate plan steps from a goal description.
+///
+/// Per Architecture Chapter 11.2: produces a skeleton plan with steps
+/// parsed from the goal's action verbs and keywords.
+pub fn generate_steps(goal: &Goal) -> Vec<crate::planner::engine::types::PlanStep> {
+    let lower = goal.description.to_lowercase();
+    let mut steps = Vec::new();
+
+    // Detect intent from keywords and generate matching steps.
+    let wants_search = lower.contains("find")
+        || lower.contains("search")
+        || lower.contains("lookup")
+        || lower.contains("retrieve")
+        || lower.contains("get");
+    let wants_store = lower.contains("store")
+        || lower.contains("save")
+        || lower.contains("record")
+        || lower.contains("remember");
+    let wants_knowledge = lower.contains("knowledge")
+        || lower.contains("learn")
+        || lower.contains("understand")
+        || lower.contains("know");
+    let wants_analyze = lower.contains("analyze")
+        || lower.contains("summarize")
+        || lower.contains("evaluate")
+        || lower.contains("assess");
+    let wants_plan = lower.contains("plan")
+        || lower.contains("create")
+        || lower.contains("design")
+        || lower.contains("build");
+
+    let mut step_num = 0u32;
+
+    if wants_search {
+        steps.push(crate::planner::engine::types::PlanStep {
+            id: format!("step-{}", step_num),
+            description: format!("Search for: {}", goal.description),
+            action: "search".to_string(),
+            dependencies: Vec::new(),
+            status: crate::planner::engine::types::StepStatus::Pending,
+            result: None,
+            supporting_knowledge: Vec::new(),
+            past_experiences: Vec::new(),
+        });
+        step_num += 1;
+    }
+
+    if wants_store {
+        steps.push(crate::planner::engine::types::PlanStep {
+            id: format!("step-{}", step_num),
+            description: format!("Store result: {}", goal.description),
+            action: "store".to_string(),
+            dependencies: Vec::new(),
+            status: crate::planner::engine::types::StepStatus::Pending,
+            result: None,
+            supporting_knowledge: Vec::new(),
+            past_experiences: Vec::new(),
+        });
+        step_num += 1;
+    }
+
+    if wants_knowledge {
+        steps.push(crate::planner::engine::types::PlanStep {
+            id: format!("step-{}", step_num),
+            description: format!("Extract knowledge: {}", goal.description),
+            action: "learn".to_string(),
+            dependencies: Vec::new(),
+            status: crate::planner::engine::types::StepStatus::Pending,
+            result: None,
+            supporting_knowledge: Vec::new(),
+            past_experiences: Vec::new(),
+        });
+        step_num += 1;
+    }
+
+    if wants_analyze {
+        steps.push(crate::planner::engine::types::PlanStep {
+            id: format!("step-{}", step_num),
+            description: format!("Analyze: {}", goal.description),
+            action: "analyze".to_string(),
+            dependencies: Vec::new(),
+            status: crate::planner::engine::types::StepStatus::Pending,
+            result: None,
+            supporting_knowledge: Vec::new(),
+            past_experiences: Vec::new(),
+        });
+        step_num += 1;
+    }
+
+    if wants_plan {
+        steps.push(crate::planner::engine::types::PlanStep {
+            id: format!("step-{}", step_num),
+            description: format!("Plan: {}", goal.description),
+            action: "plan".to_string(),
+            dependencies: Vec::new(),
+            status: crate::planner::engine::types::StepStatus::Pending,
+            result: None,
+            supporting_knowledge: Vec::new(),
+            past_experiences: Vec::new(),
+        });
+        step_num += 1;
+    }
+
+    // If no keywords matched, produce a default step.
+    if steps.is_empty() {
+        steps.push(crate::planner::engine::types::PlanStep {
+            id: format!("step-{}", step_num),
+            description: goal.description.clone(),
+            action: "execute".to_string(),
+            dependencies: Vec::new(),
+            status: crate::planner::engine::types::StepStatus::Pending,
+            result: None,
+            supporting_knowledge: Vec::new(),
+            past_experiences: Vec::new(),
+        });
+    }
+
+    steps
+}
+
 pub mod engine;
 pub mod policy;
 

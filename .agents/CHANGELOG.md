@@ -242,6 +242,11 @@
 - **Change:** Added `pub struct Goal { id: String, description: String, priority: u8, deadline: Option<i64>, completed: bool }` with `Goal::new()` constructor. Added `pub enum PlanError { EmptyDescription, InvalidPriority, DeadlineInPast, EmptyStepDescription, CircularDependency }` with Display impl. Added `pub fn validate_goal(g: &Goal) -> Result<(), PlanError>` enforcing: description non-empty, priority in 0..=10, deadline (if Some) in the future.
 - **Verification:** `cargo check --release` passes with 0 new warnings.
 
+### T2-86 — Step generation for decompose_goal (Chapter 11.2)
+- **Files:** `src/planner/mod.rs`
+- **Change:** Added `pub fn generate_steps(goal: &Goal) -> Vec<PlanStep>` that parses goal description for action keywords (search, store, learn, analyze, plan) and produces corresponding PlanStep skeletons with appropriate action names and descriptions.
+- **Verification:** `cargo check --release` passes with 0 new warnings.
+
 ## Research Engine — Phase 0: HTTP Foundation (R0)
 
 ### Completed Tasks

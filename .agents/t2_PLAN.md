@@ -36,9 +36,6 @@ Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architec
 ## 6. Planning Engine
 Use the data contracts to make planning more structured. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Chapter 11 (Planning Engine).
 
-- [ ] **T2-86** — Add better step generation for `decompose_goal` — Chapter 11.2.
-  - **▸** Add `pub fn generate_steps(goal: &Goal) -> Vec<PlanStep>` producing a skeleton (id, action from parsed verb, params={}). Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/planner_step_generation.rs`. Wire + verify. Commit.
 - [ ] **T2-87** — Add dependency-aware task graphs — Chapter 11.2 + Chapter 11.4.
   - **▸** Add `pub dependencies: Vec<String>` field to `PlanStep` (with `#[serde(default)]`). Verify `cargo check --release`. Commit.
   - **▸** Add `pub fn validate_no_cycles(steps: &[PlanStep]) -> bool` using DFS with a recursion stack. Verify `cargo check --release`. Commit.
