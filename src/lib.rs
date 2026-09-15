@@ -17,4 +17,5 @@ pub mod workflows;
 pub mod world_model;
 
 pub mod context_engine;
+pub mod conversation;
 pub mod cooboploop;
