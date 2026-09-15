@@ -50,6 +50,11 @@ impl PermanentMemory {
         }
     }
 
+    /// Promote a memory item to permanent storage.
+    pub async fn promote_to_permanent(&self, item: MemoryItem) -> Uuid {
+        self.store(item).await
+    }
+
     pub async fn store(&self, item: MemoryItem) -> Uuid {
         let id = item.id;
         let mut item = item;
