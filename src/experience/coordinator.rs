@@ -101,4 +101,15 @@ impl ExperienceCoordinator {
                 .await;
         });
     }
+
+    /// Evaluate a workflow outcome and return a score.
+    pub fn evaluate_workflow(&self, outcome: &str) -> f32 {
+        if outcome.to_lowercase().contains("success") || outcome.to_lowercase().contains("solved") {
+            1.0
+        } else if outcome.to_lowercase().contains("partial") || outcome.to_lowercase().contains("progress") {
+            0.5
+        } else {
+            0.0
+        }
+    }
 }
