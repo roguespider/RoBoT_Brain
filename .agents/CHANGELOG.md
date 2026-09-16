@@ -365,3 +365,8 @@
 - **Files:** `.agents/scripts/test_suite2/src/main.rs`, `.agents/scripts/test_suite2/src/tests/data_contract_chain.rs`
 - **Change:** Wired `data_contract_chain` test into main.rs. Removed unused `PipelineTrace` import from test.
 - **Verification:** `cargo test --release data_contract_chain` passes (1 passed, 0 failed)
+
+#### T2-133 — Complete Conversation Engine lifecycle (COMPLETED)
+- **Files:** `.agents/scripts/test_suite2/src/main.rs`, `.agents/scripts/test_suite2/src/tests/conversation_lifecycle.rs`
+- **Change:** Wired `conversation_lifecycle` test into main.rs. Removed unused `ConversationIdentity` import. Used `identity.conversation_id` assertion to eliminate unused variable warning.
+- **Verification:** `cargo test --release conversation_lifecycle` passes (1 passed, 0 failed)

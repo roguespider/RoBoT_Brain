@@ -140,10 +140,6 @@ Each `▸` is one 5-minute increment: one file/function/test → `cargo check --
 
 ## Part II — Cognitive Architecture (Ch 06-12)
 
-- [x] **T2-133** — Complete Conversation Engine lifecycle — Chapter 6.
-  - **▸** In `src/conversation/mod.rs`, add `pub fn process_full_lifecycle(session: &mut ConversationSession, input_id: &str) -> ConversationState` advancing through `Analyzing → AssemblingContext → Processing → Responding → Completed`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn track_topic(session: &ConversationSession, topic: &str) -> bool` (placeholder: return true if topic changed). Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/conversation_lifecycle.rs`. Wire + verify. Commit.
 
 - [x] **T2-134** — Complete Memory Engine promotion/consolidation — Chapter 8 + 17.
   - **▸** In `src/memory/permanent.rs`, add `pub fn promote_to_permanent(item: MemoryItem) -> Result<String, MemoryError>` (reuse existing `promote_research` logic). Verify `cargo check --release`. Commit.
