@@ -151,3 +151,75 @@ pub fn run_assembly(stages: &[AssemblyStage], correlation_id: &str) -> ContextAs
     }
     assembly
 }
+
+/// Stage 1: Analyze conversation input into topics/keywords.
+pub fn conversation_analysis(input: &str) -> Vec<String> {
+    input
+        .split_whitespace()
+        .filter(|w| !w.is_empty())
+        .map(|w| w.to_lowercase())
+        .collect()
+}
+
+/// Stage 2: Extract planner requirements from goal description.
+pub fn planner_requirements(goal: &str) -> Vec<String> {
+    let mut reqs = Vec::new();
+    let lower = goal.to_lowercase();
+    if lower.contains("search") || lower.contains("find") || lower.contains("lookup") {
+        reqs.push("knowledge".to_string());
+    }
+    if lower.contains("store") || lower.contains("save") {
+        reqs.push("memory".to_string());
+    }
+    if lower.contains("plan") || lower.contains("create") {
+        reqs.push("planning".to_string());
+    }
+    if reqs.is_empty() {
+        reqs.push("knowledge".to_string());
+    }
+    reqs
+}
+
+/// Stage 6: Rank context items by relevance (score by length for placeholder).
+pub fn context_ranking(items: &[String]) -> Vec<(String, f32)> {
+    items
+        .iter()
+        .map(|item| {
+            let score = item.len() as f32 / 10.0; // Simple placeholder scoring
+            (item.clone(), score.clamp(0.0, 1.0))
+        })
+        .collect()
+}
+
+/// Stage 7: Deduplicate items using HashSet.
+pub fn deduplicate(items: &[String]) -> Vec<String> {
+    let mut seen = std::collections::HashSet::new();
+    let mut result = Vec::new();
+    for item in items {
+        if seen.insert(item.to_lowercase()) {
+            result.push(item.clone());
+        }
+    }
+    result
+}
+
+/// Stage 8: Compress context to token budget.
+pub fn compress_context(items: &[String], budget: usize) -> Vec<String> {
+    if budget == 0 {
+        return Vec::new();
+    }
+    items[..budget.min(items.len())].to_vec()
+}
+
+/// Stage 3-5: Placeholder retrieval functions.
+pub fn memory_retrieval(_query: &str, _budget: usize) -> Vec<String> {
+    Vec::new()
+}
+
+pub fn experience_retrieval(_query: &str, _budget: usize) -> Vec<String> {
+    Vec::new()
+}
+
+pub fn knowledge_retrieval(_query: &str, _budget: usize) -> Vec<String> {
+    Vec::new()
+}

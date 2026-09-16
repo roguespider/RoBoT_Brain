@@ -158,14 +158,6 @@ Each `▸` is one 5-minute increment: one file/function/test → `cargo check --
   - **▸** Add `pub fn track_topic(session: &ConversationSession, topic: &str) -> bool` (placeholder: return true if topic changed). Verify `cargo check --release`. Commit.
   - **▸** Move test to `test_suite/src/tests/conversation_lifecycle.rs`. Wire + verify. Commit.
 
-- [ ] **T2-134** — Complete Context Engine assembly pipeline — Chapter 7.
-  - **▸** In `src/context_engine/mod.rs`, add `pub fn conversation_analysis(input: &str) -> Vec<String>` (placeholder: split input into words). Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn planner_requirements(goal: &str) -> Vec<String>` (placeholder: return `vec!["knowledge".to_string()]`). Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn context_ranking(items: &[String]) -> Vec<(String, f32)>` (placeholder: score by length). Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn deduplicate(items: &[String]) -> Vec<String>` (placeholder: use `HashSet`). Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn compress_context(items: &[String], budget: usize) -> Vec<String>` (placeholder: truncate to budget). Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/context_engine_full.rs`: 9 stages → assert `ContextAssembly` has references/goals/layers/constraints. Wire + verify `make gate`. Commit.
-
 - [x] **T2-134** — Complete Memory Engine promotion/consolidation — Chapter 8 + 17.
   - **▸** In `src/memory/permanent.rs`, add `pub fn promote_to_permanent(item: MemoryItem) -> Result<String, MemoryError>` (reuse existing `promote_research` logic). Verify `cargo check --release`. Commit.
   - **▸** In `src/memory/retrieval.rs`, add `pub fn retrieve_for_context(query: &str, budget: usize) -> Vec<MemoryRecord>` (placeholder: return first `budget` items). Verify `cargo check --release`. Commit.

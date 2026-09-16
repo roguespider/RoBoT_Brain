@@ -267,6 +267,11 @@
 - **Change:** Implemented placeholder contracts with `metadata: Metadata` (which includes `confidence: f32`). ContextPacket, Decision, ExecutionResult, and LearningUpdate now all carry proper metadata fields.
 - **Verification:** `cargo check --release` passes with 0 new warnings.
 
+### T2-134 — Context Engine Assembly Pipeline (Chapter 7)
+- **Files:** `src/context_engine/mod.rs`
+- **Change:** Added individual stage functions: `conversation_analysis()`, `planner_requirements()`, `context_ranking()`, `deduplicate()`, `compress_context()`, plus placeholder retrieval functions (`memory_retrieval`, `experience_retrieval`, `knowledge_retrieval`). All stages wired into `run_assembly()`.
+- **Verification:** `cargo check --release` passes with 0 new warnings.
+
 ## Research Engine — Phase 0: HTTP Foundation (R0)
 
 ### Completed Tasks
