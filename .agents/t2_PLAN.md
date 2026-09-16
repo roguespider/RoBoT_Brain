@@ -134,10 +134,6 @@ Each `▸` is one 5-minute increment: one file/function/test → `cargo check --
 ## Part I — Vision and Foundation (Ch 01-05)
 
 
-- [x] **T2-131** — Wire the 9-stage context assembly pipeline — Chapter 7.6.
-  - **▸** In `src/context_engine/mod.rs`, define `pub enum AssemblyStage { ConversationAnalysis, PlannerRequirements, MemoryRetrieval, ExperienceRetrieval, KnowledgeRetrieval, ContextRanking, Deduplication, Compression, TokenBudgetAllocation }`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn run_assembly(stages: &[AssemblyStage], correlation_id: &str) -> ContextAssembly` calling each stage in order. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/context_assembly_pipeline.rs`: 9 stages → assert `ContextAssembly.layers.len() == 9`. Wire + verify. Commit.
 
 - [x] **T2-132** — Wire data contracts through the pipeline — Chapter 5.1 + 3.3.
   - **▸** In `src/data_contracts/mod.rs`, add `pub fn contract_for_step(step: LifecycleStep) -> &'static str` mapping each step to its contract name (`Observation`, `ContextPacket`, etc.). Verify `cargo check --release`. Commit.

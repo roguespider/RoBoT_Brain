@@ -81,11 +81,9 @@ impl ContextAssembly {
         }
     }
 
-    /// Add a layer.
+    /// Add a layer. Each call represents a distinct pipeline stage.
     pub fn add_layer(&mut self, layer: ContextLayer) {
-        if !self.layers.contains(&layer) {
-            self.layers.push(layer);
-        }
+        self.layers.push(layer);
     }
 
     /// Add a constraint.

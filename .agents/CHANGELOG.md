@@ -355,3 +355,8 @@
 - **Files:** `.agents/scripts/test_suite2/src/main.rs`
 - **Change:** Added `#[cfg(test)] mod tests { mod pipeline_lifecycle; }` and placeholder `main()` to wire the pipeline_lifecycle test module into the test binary. Test creates a LifecyclePipeline with all 10 steps, runs it, and asserts trace length == 10 and correlation_id matches.
 - **Verification:** `cargo test --release pipeline_lifecycle` passes (1 passed, 0 failed)
+
+#### T2-131 — Wire the 9-stage context assembly pipeline (COMPLETED)
+- **Files:** `src/context_engine/mod.rs`, `.agents/scripts/test_suite2/src/main.rs`
+- **Change:** Fixed `add_layer` dedup bug — was skipping repeated `Working` layers, producing only 1 layer instead of 9. Wired `context_assembly_pipeline` test into main.rs.
+- **Verification:** `cargo test --release context_assembly` passes (1 passed, 0 failed)
