@@ -133,11 +133,6 @@ Each `▸` is one 5-minute increment: one file/function/test → `cargo check --
 
 ## Part I — Vision and Foundation (Ch 01-05)
 
-- [x] **T2-130** — Wire the 10-step cognitive lifecycle pipeline — Chapter 3.4.
-  - **▸** In `src/pipeline/mod.rs`, define `pub enum LifecycleStep { Observation, ContextConstruction, MemoryRetrieval, ExperienceRetrieval, Planning, Reasoning, SkillSelection, Execution, Reflection, Learning }`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub struct CognitivePipeline { pub steps: Vec<LifecycleStep>, pub correlation_id: String }`. Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn run_pipeline(p: &CognitivePipeline) -> Result<PipelineTrace, PipelineError>` (placeholder: iterate steps, return a trace). Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/pipeline_lifecycle.rs`: create pipeline with all 10 steps, assert trace length == 10. Wire + verify `make gate`. Commit.
 
 - [x] **T2-131** — Wire the 9-stage context assembly pipeline — Chapter 7.6.
   - **▸** In `src/context_engine/mod.rs`, define `pub enum AssemblyStage { ConversationAnalysis, PlannerRequirements, MemoryRetrieval, ExperienceRetrieval, KnowledgeRetrieval, ContextRanking, Deduplication, Compression, TokenBudgetAllocation }`. Verify `cargo check --release`. Commit.

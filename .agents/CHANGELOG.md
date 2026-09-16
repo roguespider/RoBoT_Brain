@@ -350,3 +350,8 @@
 - **Files:** `.agents/scripts/test_suite2/test_research.py`, `.agents/scripts/test_suite2/pytest.ini`
 - **Change:** Full 13-step research flow test covering workflow gate, research call, tier checks, provider selection, ranking, Jina extraction, evidence packet, LLM input, source references, experience recording, memory promotion, provider failure, cancellation
 - **Verification:** `cargo check --release` passes with 0 errors, 57 warnings (unchanged, test file is Python)
+
+#### T2-130 — Wire the 10-step cognitive lifecycle pipeline (COMPLETED)
+- **Files:** `.agents/scripts/test_suite2/src/main.rs`
+- **Change:** Added `#[cfg(test)] mod tests { mod pipeline_lifecycle; }` and placeholder `main()` to wire the pipeline_lifecycle test module into the test binary. Test creates a LifecyclePipeline with all 10 steps, runs it, and asserts trace length == 10 and correlation_id matches.
+- **Verification:** `cargo test --release pipeline_lifecycle` passes (1 passed, 0 failed)
