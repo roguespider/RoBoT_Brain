@@ -262,6 +262,11 @@
 - **Change:** `PersonalityTraits` already exists. Added `weight_action(base_score: f32) -> f32` adjusting by risk_tolerance and caution. Added `should_act(confidence: f32) -> bool` with cautious/bold thresholds. Added `adapt_traits(feedback: f32)` adjusting all traits by feedback.
 - **Verification:** `cargo check --release` passes with 0 new warnings.
 
+### T2-129 — Confidence Coverage for Data Contracts (Chapter 19)
+- **Files:** `src/data_contracts/context_packet.rs`, `src/data_contracts/decision.rs`, `src/data_contracts/execution_result.rs`, `src/data_contracts/learning_update.rs`
+- **Change:** Implemented placeholder contracts with `metadata: Metadata` (which includes `confidence: f32`). ContextPacket, Decision, ExecutionResult, and LearningUpdate now all carry proper metadata fields.
+- **Verification:** `cargo check --release` passes with 0 new warnings.
+
 ## Research Engine — Phase 0: HTTP Foundation (R0)
 
 ### Completed Tasks

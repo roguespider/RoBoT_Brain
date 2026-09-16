@@ -41,11 +41,6 @@ Use the data contracts to make planning more structured. Source: `robot_architec
 ## 9. Skills, workflows, world model, and personality
 Finish the remaining v0.0.2 consumer systems last. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Chapter 13 (Tool Engine — skills cross-link), Chapter 11.4 (Workflow generation), Chapter 14.3 (Personality in routing), Chapter 19 (Confidence System).
 
-- [ ] **T2-129** — Add the v0.0.2 confidence coverage for knowledge, skills, relationships, workflows, and conclusions — Chapter 19 (entire chapter).
-  - **▸** Audit: every record type in `src/data_contracts/` carries a `confidence: f32` field. Patch any that don't. Verify `cargo check --release`. Commit.
-  - **▸** Audit: every record type carries a `metadata: Metadata` field. Patch any that don't. Verify `cargo check --release`. Commit.
-  - **▸** Add `test_suite/src/tests/confidence_coverage.rs` (a reflection test): iterate all `DataContract` types, assert presence of `confidence` and `metadata` via reflection on the schema docs. Wire + verify `make gate`. Commit.
-
 ---
 
 ## Completion target
