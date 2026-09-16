@@ -360,3 +360,8 @@
 - **Files:** `src/context_engine/mod.rs`, `.agents/scripts/test_suite2/src/main.rs`
 - **Change:** Fixed `add_layer` dedup bug — was skipping repeated `Working` layers, producing only 1 layer instead of 9. Wired `context_assembly_pipeline` test into main.rs.
 - **Verification:** `cargo test --release context_assembly` passes (1 passed, 0 failed)
+
+#### T2-132 — Wire data contracts through the pipeline (COMPLETED)
+- **Files:** `.agents/scripts/test_suite2/src/main.rs`, `.agents/scripts/test_suite2/src/tests/data_contract_chain.rs`
+- **Change:** Wired `data_contract_chain` test into main.rs. Removed unused `PipelineTrace` import from test.
+- **Verification:** `cargo test --release data_contract_chain` passes (1 passed, 0 failed)

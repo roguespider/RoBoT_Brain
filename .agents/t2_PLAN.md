@@ -135,10 +135,6 @@ Each `▸` is one 5-minute increment: one file/function/test → `cargo check --
 
 
 
-- [x] **T2-132** — Wire data contracts through the pipeline — Chapter 5.1 + 3.3.
-  - **▸** In `src/data_contracts/mod.rs`, add `pub fn contract_for_step(step: LifecycleStep) -> &'static str` mapping each step to its contract name (`Observation`, `ContextPacket`, etc.). Verify `cargo check --release`. Commit.
-  - **▸** Add `pub fn validate_contract_chain(trace: &PipelineTrace) -> bool` checking that each step's output contract matches the next step's input contract. Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/data_contract_chain.rs`. Wire + verify `make gate`. Commit.
 
 ---
 
