@@ -4,6 +4,7 @@ mod tests {
     mod context_assembly_pipeline;
     mod conversation_lifecycle;
     mod data_contract_chain;
+    mod memory_promotion;
     mod pipeline_lifecycle;
 }
 

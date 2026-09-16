@@ -370,3 +370,8 @@
 - **Files:** `.agents/scripts/test_suite2/src/main.rs`, `.agents/scripts/test_suite2/src/tests/conversation_lifecycle.rs`
 - **Change:** Wired `conversation_lifecycle` test into main.rs. Removed unused `ConversationIdentity` import. Used `identity.conversation_id` assertion to eliminate unused variable warning.
 - **Verification:** `cargo test --release conversation_lifecycle` passes (1 passed, 0 failed)
+
+#### T2-134 — Complete Memory Engine promotion/consolidation (COMPLETED)
+- **Files:** `src/memory/permanent/store.rs`, `src/memory/mod.rs`, `.agents/scripts/test_suite2/src/main.rs`, `.agents/scripts/test_suite2/src/tests/memory_promotion.rs`
+- **Change:** Implemented `promote_to_permanent` on `PermanentMemory` (confidence gate >= 0.5, promotes to Permanent layer). Implemented `retrieve_for_context` standalone function (searches permanent memory, returns MemoryRecord slice). Wired test with 2 test functions.
+- **Verification:** `cargo test --release memory_promotion` passes (2 passed, 0 failed)

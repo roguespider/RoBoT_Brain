@@ -141,10 +141,6 @@ Each `▸` is one 5-minute increment: one file/function/test → `cargo check --
 ## Part II — Cognitive Architecture (Ch 06-12)
 
 
-- [x] **T2-134** — Complete Memory Engine promotion/consolidation — Chapter 8 + 17.
-  - **▸** In `src/memory/permanent.rs`, add `pub fn promote_to_permanent(item: MemoryItem) -> Result<String, MemoryError>` (reuse existing `promote_research` logic). Verify `cargo check --release`. Commit.
-  - **▸** In `src/memory/retrieval.rs`, add `pub fn retrieve_for_context(query: &str, budget: usize) -> Vec<MemoryRecord>` (placeholder: return first `budget` items). Verify `cargo check --release`. Commit.
-  - **▸** Move test to `test_suite/src/tests/memory_promotion.rs`. Wire + verify. Commit.
 
 - [x] **T2-136** — Complete Experience Engine workflow/reputation — Chapter 9.
   - **▸** In `src/experience/reputation.rs`, add `pub fn update_reputation(tool_name: &str, success: bool) -> f32` (placeholder: +0.03 for success, -0.05 for failure). Verify `cargo check --release`. Commit.
