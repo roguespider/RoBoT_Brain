@@ -59,11 +59,17 @@ async fn main() -> anyhow::Result<()> {
         "content".to_string(),
         data_contracts::memory_record::MemoryKind::Working,
     );
-    // Call placeholder functions to wire them
-    data_contracts::context_packet::placeholder();
-    data_contracts::decision::placeholder();
-    data_contracts::execution_result::placeholder();
-    data_contracts::learning_update::placeholder();
+    // Wire data contracts
+    let _ctx = data_contracts::context_packet::ContextPacket::new("sess-001", "initial context");
+    let _dec = data_contracts::decision::Decision::new("search", "searching for info", 0.8);
+    let _exec = data_contracts::execution_result::ExecutionResult::new("step-1", true, "ok");
+    let _learn = data_contracts::learning_update::LearningUpdate::new(
+        "knowledge",
+        "k-1",
+        0.5,
+        0.7,
+        "positive feedback",
+    );
     data_contracts::plan_contract::placeholder();
     data_contracts::reflection::reference_reflection_contracts();
     let _cv = contract_version;
