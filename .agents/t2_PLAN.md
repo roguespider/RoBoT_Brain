@@ -33,18 +33,8 @@ Set the rules that every v0.0.2 subsystem must preserve. Source: `robot_architec
 
 ---
 
-## 6. Planning Engine
-Use the data contracts to make planning more structured. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Chapter 11 (Planning Engine).
-
----
-
-## 9. Skills, workflows, world model, and personality
-Finish the remaining v0.0.2 consumer systems last. Source: `robot_architecture/RoBoT Architecture v0.0.2.md` Chapter 13 (Tool Engine — skills cross-link), Chapter 11.4 (Workflow generation), Chapter 14.3 (Personality in routing), Chapter 19 (Confidence System).
-
----
-
 ## Completion target
-End state: finished v0.0.2. All 129 tasks removed from this file. All entries migrated to `.agents/CHANGELOG.md`. Gate stays green throughout. No `#[allow(*)]` in `src/`. No `#[cfg(test)]` in `src/`. No `.unwrap()`/`.expect()` in non-test code. No `todo!()`/`unimplemented!()` anywhere.
+**FINISHED v0.0.2** — All 129 T2 tasks removed from this file. All entries migrated to `.agents/CHANGELOG.md`. Gate stayed green throughout. No `#[allow(*)]` in `src/`. No `#[cfg(test)]` in `src/`. No `.unwrap()`/`.expect()` in non-test code. No `todo!()`/`unimplemented!()` anywhere.
 
 ---
 
