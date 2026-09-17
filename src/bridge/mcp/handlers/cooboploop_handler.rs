@@ -301,7 +301,12 @@ impl ToolHandler for CooboploopToolsHandler {
                 let input: cooboploop_mod::CooboploopRunPostTaskEvaluationInput =
                     serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                Ok(cooboploop_mod::execute_cooboploop_run_post_task_evaluation(input).await)
+                let runner = self.loop_runner.clone();
+                let queue = self.queue.clone();
+                Ok(cooboploop_mod::execute_cooboploop_run_post_task_evaluation(
+                    input, &runner, &queue,
+                )
+                .await)
             }
             "cooboploop_get_idle_state" => {
                 serde_json::from_value::<cooboploop_mod::CooboploopGetIdleStateInput>(args)
