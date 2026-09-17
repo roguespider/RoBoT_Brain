@@ -163,7 +163,9 @@ pub async fn execute_cooboploop_run_single_cycle(
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    runner.run_cycle().ok();
+    if let Err(error) = runner.run_cycle() {
+        return ToolOutput::error(error);
+    }
     let cycles = runner.cycle_count();
     ToolOutput::success(serde_json::json!({
         "message": "Cycle completed",

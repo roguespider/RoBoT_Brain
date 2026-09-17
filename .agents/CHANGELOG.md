@@ -520,3 +520,8 @@
 - **Files:** `src/cooboploop/loop_runner.rs`
 - **Change:** Added `pub fn enqueue(&mut self, goal: &AgentGoal) -> Result<(), String>` method to LoopRunner. Delegates to the internal `objective_queue.enqueue(goal)`. Previously `LoopRunner` had no public method to add goals — `ObjectiveQueue::enqueue` existed but was only accessible via the separate `return_to_queue()` method which required an external queue reference.
 - **Verification:** `cargo check --release` clean (0 errors, 0 warnings).
+
+#### T-COO-32 — Fix run_single_cycle error swallow
+- **Files:** `src/bridge/tools/cooboploop/execute/loop_control.rs`
+- **Change:** `execute_cooboploop_run_single_cycle` was calling `runner.run_cycle().ok()` which silently discarded errors — caller always saw `status: "ok"` regardless of cycle success. Now uses `if let Err(error) = runner.run_cycle()` and returns `ToolOutput::error(error)` on failure, matching the pattern in `execute_cooboploop_step_loop`.
+- **Verification:** `cargo check --release` clean (0 errors, 0 warnings).
