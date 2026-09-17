@@ -3,7 +3,6 @@
 > Source: gap analysis comparing spec §1-23 against src/cooboploop/, bridge/mcp/handlers/cooboploop_handler.rs, bridge/tools/cooboploop/, database/migrations/cooboploop.rs. 38 MCP tools exist; wiring and loop-stage stubs are the main gaps.
 
 ## Critical: Loop state machine broken after WAIT
-- [ ] T-COO-34: Fix `step_loop()` logic — currently calls `tick_heartbeat()` when phase==Wait and returns early, then only calls `run_cycle()` when phase!=Wait. This means WAIT→Observe transition via heartbeat requires a second `step_loop()` call to actually advance. Should restart the cycle after heartbeat fires in the same call.
 
 ## Critical: Plan → Execute → Verify chain is disconnected
 - [ ] T-COO-35: Wire `plan()` to transition steps — `plan()` creates a draft plan but leaves all steps in `StepStatus::Pending`. `execute()` reads step status (all Pending) and reports them. `verify()` counts Completed steps (zero). Steps are never transitioned to Ready/InProgress/Completed.
@@ -307,7 +306,6 @@
 - [ ] G-T3-COO-18: Fix `execute_cooboploop_reprioritize_queue()` (use handler's policy registry). Per `.agents/PLAN.md` L51.
 - [ ] G-T3-COO-20: Fix `execute_cooboploop_create_research_objective()` (enqueue into `ObjectiveQueue`). Per `.agents/PLAN.md` L53.
 - [ ] G-T3-COO-21: Add missing `Reflect` stage wiring (`CognitiveCycleStage::Reflect` -> `LoopStage`). Per `.agents/PLAN.md` L54.
-- [ ] G-T3-COO-34: Fix `step_loop()` logic (heartbeat + `run_cycle()` in same call). Per `.agents/PLAN.md` L12.
 - [ ] G-T3-COO-35: Wire `plan()` to transition steps (`Pending` -> `Ready`/`InProgress`/`Completed`). Per `.agents/PLAN.md` L15.
 - [ ] G-T3-COO-36: Wire `execute()` to run actual plan steps (execute `step.action`, transition status, produce real results). Per `.agents/PLAN.md` L16.
 - [ ] G-T3-COO-37: Wire `verify()` to update goal status (`Active` -> `Verifying` -> `Completed`/`Failed`). Per `.agents/PLAN.md` L17.
