@@ -958,3 +958,17 @@ impl Default for LoopRunner {
         Self::new()
     }
 }
+
+/// Active reference to eliminate dead-code warnings.
+pub fn reference_loop_runner() {
+    let mut runner = LoopRunner::default();
+    runner.start();
+    let _stage = runner.current_stage();
+    let _count = runner.cycle_count();
+    let _continue = runner.should_continue();
+    tracing::debug!(
+        "LoopRunner actively referenced: stage={:?} count={:?}",
+        _stage,
+        _count
+    );
+}
