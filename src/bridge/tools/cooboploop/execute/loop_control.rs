@@ -184,8 +184,15 @@ pub async fn execute_cooboploop_step_loop(
     };
     if runner.phase == crate::cooboploop::loop_runner::CyclePhase::Wait {
         let resumed = runner.tick_heartbeat();
+        if resumed {
+            // Heartbeat fired and phase transitioned to Observe — run the cycle now
+            // instead of requiring a second step_loop() call.
+            if let Err(error) = runner.run_cycle() {
+                return ToolOutput::error(error);
+            }
+        }
         return ToolOutput::success(serde_json::json!({
-            "message": if resumed { "Heartbeat resumed observation" } else { "Heartbeat waiting" },
+            "message": if resumed { "Heartbeat resumed and cycle executed" } else { "Heartbeat waiting" },
             "status": if resumed { "resumed" } else { "waiting" },
             "heartbeat_seconds": runner.heartbeat_secs,
             "reevaluation_interval_secs": runner.reevaluation_interval_secs,

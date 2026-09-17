@@ -3,7 +3,6 @@
 > Source: gap analysis comparing spec §1-23 against src/cooboploop/, bridge/mcp/handlers/cooboploop_handler.rs, bridge/tools/cooboploop/, database/migrations/cooboploop.rs. 38 MCP tools exist; wiring and loop-stage stubs are the main gaps.
 
 ## Critical: Loop state machine broken after WAIT
-- [ ] T-COO-33: Add auto-restart after heartbeat — `tick_heartbeat()` transitions to `CyclePhase::Observe` but nothing calls `run_cycle()` again. After the loop enters WAIT and the heartbeat fires, the loop is stuck in Observe with no action. `step_loop()` should call `run_cycle()` when phase is Observe (it does, but only when phase != Wait).
 - [ ] T-COO-34: Fix `step_loop()` logic — currently calls `tick_heartbeat()` when phase==Wait and returns early, then only calls `run_cycle()` when phase!=Wait. This means WAIT→Observe transition via heartbeat requires a second `step_loop()` call to actually advance. Should restart the cycle after heartbeat fires in the same call.
 
 ## Critical: Plan → Execute → Verify chain is disconnected
@@ -308,7 +307,6 @@
 - [ ] G-T3-COO-18: Fix `execute_cooboploop_reprioritize_queue()` (use handler's policy registry). Per `.agents/PLAN.md` L51.
 - [ ] G-T3-COO-20: Fix `execute_cooboploop_create_research_objective()` (enqueue into `ObjectiveQueue`). Per `.agents/PLAN.md` L53.
 - [ ] G-T3-COO-21: Add missing `Reflect` stage wiring (`CognitiveCycleStage::Reflect` -> `LoopStage`). Per `.agents/PLAN.md` L54.
-- [ ] G-T3-COO-33: Add auto-restart after heartbeat (`tick_heartbeat()` -> `run_cycle()`). Per `.agents/PLAN.md` L11.
 - [ ] G-T3-COO-34: Fix `step_loop()` logic (heartbeat + `run_cycle()` in same call). Per `.agents/PLAN.md` L12.
 - [ ] G-T3-COO-35: Wire `plan()` to transition steps (`Pending` -> `Ready`/`InProgress`/`Completed`). Per `.agents/PLAN.md` L15.
 - [ ] G-T3-COO-36: Wire `execute()` to run actual plan steps (execute `step.action`, transition status, produce real results). Per `.agents/PLAN.md` L16.
