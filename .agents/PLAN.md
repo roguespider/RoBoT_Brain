@@ -3,7 +3,6 @@
 > Source: gap analysis comparing spec §1-23 against src/cooboploop/, bridge/mcp/handlers/cooboploop_handler.rs, bridge/tools/cooboploop/, database/migrations/cooboploop.rs. 38 MCP tools exist; wiring and loop-stage stubs are the main gaps.
 
 ## Critical: Dead-end stubs and missing enqueue paths
-- [ ] T-COO-31: Add `LoopRunner::enqueue()` method — `ObjectiveQueue::enqueue(&mut self, &AgentGoal)` exists but `LoopRunner` has no public method to add goals to its internal queue. `generate_new_objectives()` returns goals but `LoopRunner` can't push them into `self.objective_queue`.
 - [ ] T-COO-32: Fix `execute_cooboploop_run_single_cycle()` error swallow — calls `runner.run_cycle().ok()` which silently discards errors. Caller sees `status: ok` even when the cycle failed. Should propagate the error to ToolOutput.
 
 ## Critical: Loop state machine broken after WAIT
@@ -312,7 +311,6 @@
 - [ ] G-T3-COO-18: Fix `execute_cooboploop_reprioritize_queue()` (use handler's policy registry). Per `.agents/PLAN.md` L51.
 - [ ] G-T3-COO-20: Fix `execute_cooboploop_create_research_objective()` (enqueue into `ObjectiveQueue`). Per `.agents/PLAN.md` L53.
 - [ ] G-T3-COO-21: Add missing `Reflect` stage wiring (`CognitiveCycleStage::Reflect` -> `LoopStage`). Per `.agents/PLAN.md` L54.
-- [ ] G-T3-COO-31: Add `LoopRunner::enqueue()` method. Per `.agents/PLAN.md` L7.
 - [ ] G-T3-COO-32: Fix `execute_cooboploop_run_single_cycle()` error swallow (`.ok()` discards errors). Per `.agents/PLAN.md` L8.
 - [ ] G-T3-COO-33: Add auto-restart after heartbeat (`tick_heartbeat()` -> `run_cycle()`). Per `.agents/PLAN.md` L11.
 - [ ] G-T3-COO-34: Fix `step_loop()` logic (heartbeat + `run_cycle()` in same call). Per `.agents/PLAN.md` L12.

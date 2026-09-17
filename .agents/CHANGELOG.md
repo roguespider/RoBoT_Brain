@@ -515,3 +515,8 @@
 - **Files:** `src/bridge/tools/cooboploop/execute/loop_control.rs`, `src/bridge/mcp/handlers/cooboploop_handler.rs`, `src/cooboploop/loop_runner.rs`
 - **Change:** `execute_cooboploop_run_post_task_evaluation` was a dead-end stub returning default values (did_succeed=false, empty lists, efficiency=0). Now accepts `&Arc<Mutex<LoopRunner>>` and `&Arc<Mutex<ObjectiveQueue>>` parameters. Looks up the goal from the queue, computes real evaluation from loop runner state (selected_goal, current_plan step completion ratio), and returns meaningful results (goal_status, did_succeed, verification_confirmed, efficiency_score, plan_steps_completed/total, goal_found). Added public getters `selected_goal()`, `current_plan()`, and `post_task_evaluation()` to LoopRunner.
 - **Verification:** `cargo check --release` clean (0 errors, 0 warnings).
+
+#### T-COO-31 — Add LoopRunner::enqueue() method
+- **Files:** `src/cooboploop/loop_runner.rs`
+- **Change:** Added `pub fn enqueue(&mut self, goal: &AgentGoal) -> Result<(), String>` method to LoopRunner. Delegates to the internal `objective_queue.enqueue(goal)`. Previously `LoopRunner` had no public method to add goals — `ObjectiveQueue::enqueue` existed but was only accessible via the separate `return_to_queue()` method which required an external queue reference.
+- **Verification:** `cargo check --release` clean (0 errors, 0 warnings).

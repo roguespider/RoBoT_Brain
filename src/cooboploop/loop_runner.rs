@@ -490,6 +490,11 @@ impl LoopRunner {
         Ok(count)
     }
 
+    /// Add a single goal to the loop's internal objective queue.
+    pub fn enqueue(&mut self, goal: &crate::cooboploop::queue::AgentGoal) -> Result<(), String> {
+        self.objective_queue.enqueue(goal)
+    }
+
     pub fn evaluate_queue(&mut self) {
         self.current_stage = LoopStage::EvaluateQueue;
         // Per Architecture §5: Evaluate objective against current conditions
