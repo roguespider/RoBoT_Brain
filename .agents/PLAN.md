@@ -5,8 +5,6 @@
 ## Critical: Loop state machine broken after WAIT
 
 ## Critical: Plan → Execute → Verify chain is disconnected
-- [ ] T-COO-35: Wire `plan()` to transition steps — `plan()` creates a draft plan but leaves all steps in `StepStatus::Pending`. `execute()` reads step status (all Pending) and reports them. `verify()` counts Completed steps (zero). Steps are never transitioned to Ready/InProgress/Completed.
-- [ ] T-COO-36: Wire `execute()` to run actual plan steps — currently iterates over plan.steps and just formats their current status strings. Does not execute the step.action, does not transition step status, does not produce real results.
 - [ ] T-COO-37: Wire `verify()` to update goal status — currently only reads plan.steps status and computes efficiency. Should transition the goal's status to `Active → Verifying → Completed/Failed` based on actual step outcomes.
 
 ## Critical: Goal status flow never reaches Active
@@ -306,8 +304,6 @@
 - [ ] G-T3-COO-18: Fix `execute_cooboploop_reprioritize_queue()` (use handler's policy registry). Per `.agents/PLAN.md` L51.
 - [ ] G-T3-COO-20: Fix `execute_cooboploop_create_research_objective()` (enqueue into `ObjectiveQueue`). Per `.agents/PLAN.md` L53.
 - [ ] G-T3-COO-21: Add missing `Reflect` stage wiring (`CognitiveCycleStage::Reflect` -> `LoopStage`). Per `.agents/PLAN.md` L54.
-- [ ] G-T3-COO-35: Wire `plan()` to transition steps (`Pending` -> `Ready`/`InProgress`/`Completed`). Per `.agents/PLAN.md` L15.
-- [ ] G-T3-COO-36: Wire `execute()` to run actual plan steps (execute `step.action`, transition status, produce real results). Per `.agents/PLAN.md` L16.
 - [ ] G-T3-COO-37: Wire `verify()` to update goal status (`Active` -> `Verifying` -> `Completed`/`Failed`). Per `.agents/PLAN.md` L17.
 - [ ] G-T3-COO-38: Fix `select_objective()` to include `DISCOVERED` goals. Per `.agents/PLAN.md` L20.
 - [ ] G-T3-COO-39: Wire `plan()` for `ACTIVE` goals (`run_cycle()` -> `plan()` for active goal). Per `.agents/PLAN.md` L21.

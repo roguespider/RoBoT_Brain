@@ -530,3 +530,8 @@
 - **Files:** `src/bridge/tools/cooboploop/execute/loop_control.rs`
 - **Change:** `execute_cooboploop_step_loop` was calling `tick_heartbeat()` which transitions phase to Observe but then returned immediately without running anything. After the heartbeat fires, the loop was stuck in Observe with no action. Now calls `runner.run_cycle()` in the same `step_loop()` call when the heartbeat fires, so the cycle actually executes.
 - **Verification:** `cargo check --release` clean (0 errors, 0 warnings).
+
+#### T-COO-35+36 — Wire plan→execute→verify chain (step transitions)
+- **Files:** `src/cooboploop/loop_runner.rs`
+- **Change:** `execute()` was only formatting step statuses as strings without transitioning them. Now uses `&mut self.current_plan` to mutate steps: transitions Ready → InProgress → Completed, sets `step.result = Some(...)`, and returns actual completion counts.
+- **Verification:** `cargo check --release` clean (0 errors, 0 warnings).

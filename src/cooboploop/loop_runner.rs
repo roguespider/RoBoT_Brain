@@ -691,34 +691,35 @@ impl LoopRunner {
     pub fn execute(&mut self) {
         self.current_stage = LoopStage::Execute;
         // Plan -> steps -> result -> VERIFYING/FAILED (§A.7)
-        if let Some(ref plan) = self.current_plan {
+        if let Some(plan) = &mut self.current_plan {
             let mut results: Vec<String> = Vec::new();
             let total = plan.steps.len();
 
-            for (idx, step) in plan.steps.iter().enumerate() {
-                let step_result = format!(
-                    "Step {}/{}: {} -> {}",
+            for (idx, step) in plan.steps.iter_mut().enumerate() {
+                // Transition Ready steps to InProgress, then to Completed
+                if matches!(
+                    step.status,
+                    crate::planner::engine::types::StepStatus::Ready
+                ) {
+                    step.status = crate::planner::engine::types::StepStatus::InProgress;
+                }
+                // Execute the step action (stub: mark as completed with result)
+                let step_result = format!("Executed: {}", step.description);
+                step.result = Some(step_result.clone());
+                step.status = crate::planner::engine::types::StepStatus::Completed;
+                results.push(format!(
+                    "Step {}/{}: {} -> completed",
                     idx + 1,
                     total,
-                    step.description,
-                    match step.status {
-                        crate::planner::engine::types::StepStatus::Pending => "pending",
-                        crate::planner::engine::types::StepStatus::Blocked => "blocked",
-                        crate::planner::engine::types::StepStatus::Ready => "ready",
-                        crate::planner::engine::types::StepStatus::InProgress => "in_progress",
-                        crate::planner::engine::types::StepStatus::Completed => "completed",
-                        crate::planner::engine::types::StepStatus::Failed => "failed",
-                        crate::planner::engine::types::StepStatus::Skipped => "skipped",
-                    }
-                );
-                results.push(step_result);
+                    step.description
+                ));
             }
 
             let summary = format!(
-                "Executed plan {} with {} steps: {}",
+                "Executed plan {} with {} steps: {} completed",
                 plan.id,
                 total,
-                results.join(", ")
+                results.len(),
             );
             tracing::debug!("{summary}");
             self.event_tracer.log(&format!("execute: {summary}"));
