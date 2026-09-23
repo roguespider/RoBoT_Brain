@@ -228,7 +228,7 @@ impl PermanentMemory {
         // Remove from tag index
         {
             let mut tag_index = self.tag_index.write().await;
-            for (_, ids) in tag_index.iter_mut() {
+            for ids in tag_index.values_mut() {
                 ids.retain(|x| x != id);
             }
             tag_index.retain(|_, ids| !ids.is_empty());
@@ -239,7 +239,7 @@ impl PermanentMemory {
             let mut graph_index = self.graph_index.write().await;
             graph_index.remove(id);
             // Clean up reverse references
-            for (_, targets) in graph_index.iter_mut() {
+            for targets in graph_index.values_mut() {
                 targets.retain(|t| t != id);
             }
             graph_index.retain(|_, targets| !targets.is_empty());

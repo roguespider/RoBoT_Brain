@@ -249,12 +249,6 @@ impl MemoryRetrieval {
             + (recency_score * 0.15)
     }
 
-    /// Retrieve for context (with budget limit).
-    pub async fn retrieve_for_context(&self, query: &str, budget: usize) -> Vec<MemoryItem> {
-        let results = self.retrieve_with_limit(query, budget).await;
-        results.into_iter().map(|r| r.item).collect()
-    }
-
     /// Get reference to working memory
     pub fn working_memory(&self) -> &Arc<WorkingMemory> {
         &self.working

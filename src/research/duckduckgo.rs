@@ -21,7 +21,7 @@ impl DuckDuckGoProvider {
         Ok(Self { client })
     }
 
-    async fn fetch_html(&self, query: &str) -> Result<String, ResearchError> {
+    pub async fn fetch_html(&self, query: &str) -> Result<String, ResearchError> {
         let url = format!(
             "https://html.duckduckgo.com/html/?q={}",
             urlencoding::encode(query)
@@ -47,7 +47,6 @@ impl DuckDuckGoProvider {
 
     fn parse_results(html: &str) -> Vec<SearchResult> {
         let mut results = Vec::new();
-        let html_lower = html.to_lowercase();
         for line in html.lines() {
             if line.contains("<a") && line.contains("href=") {
                 let url_start = line.find("href=\"").map(|i| i + 6).unwrap_or(0);
@@ -91,14 +90,32 @@ impl SearchProvider for DuckDuckGoProvider {
     ) -> std::pin::Pin<
         Box<dyn std::future::Future<Output = Result<SearchResults, ResearchError>> + Send>,
     > {
-        let provider = self;
+        let client = self.client.clone();
         let query = query.to_string();
         Box::pin(async move {
-            let html = provider.fetch_html(&query).await?;
+            let url = format!(
+                "https://html.duckduckgo.com/html/?q={}",
+                urlencoding::encode(&query)
+            );
+            let resp = client
+                .get(&url)
+                .send()
+                .await
+                .map_err(|e| ResearchError::ProviderError {
+                    provider: "duckduckgo".into(),
+                    message: e.to_string(),
+                })?;
+            let html = resp
+                .text()
+                .await
+                .map_err(|e| ResearchError::ProviderError {
+                    provider: "duckduckgo".into(),
+                    message: e.to_string(),
+                })?;
             let results = Self::parse_results(&html);
             Ok(SearchResults {
                 results,
-                provider: provider.name().to_string(),
+                provider: "duckduckgo".to_string(),
                 query,
                 retrieved_at: chrono::Utc::now(),
             })

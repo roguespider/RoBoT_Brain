@@ -12,6 +12,9 @@ use super::context::ExperienceContext;
 use super::maturity::KnowledgeMaturity;
 use super::outcome::ExperienceOutcome;
 
+use crate::data_contracts::memory_record::{MemoryKind, MemoryRecord};
+use crate::data_contracts::metadata::Metadata;
+
 /// Categories of experiences.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ExperienceType {
@@ -236,4 +239,86 @@ impl Experience {
         let eval = self.evaluate_post_task();
         eval.summarize()
     }
+}
+
+/// Consolidate an experience into a memory record.
+///
+/// Per Architecture Chapter 18: consolidation promotes successful experiences
+/// into the memory layer for long-term retention.
+///
+/// Returns `Some(MemoryRecord)` if the experience was successful,
+/// `None` if the experience failed or was interrupted.
+pub fn consolidate_experience(exp: &Experience) -> Option<MemoryRecord> {
+    if exp.outcome.kind == OutcomeKind::Success {
+        let content = format!("Experience '{}' - {}", exp.title, exp.final_outcome);
+        let mut meta = Metadata::new("experience");
+        meta.confidence = exp.confidence;
+        meta.provenance = exp
+            .observation_ids
+            .iter()
+            .map(|id| id.to_string())
+            .collect();
+        // Store the count of additional metadata entries in provenance for traceability
+        let extra_meta_count = exp.metadata.len();
+        meta.source = format!("experience:{}", extra_meta_count);
+        Some(MemoryRecord {
+            id: exp.id,
+            memory_type: "experience_consolidation".to_string(),
+            kind: MemoryKind::Permanent,
+            title: exp.title.clone(),
+            content,
+            summary: exp.final_outcome.clone(),
+            embedding: None,
+            confidence: exp.confidence,
+            created_at: exp.timestamp.timestamp(),
+            updated_at: exp.timestamp.timestamp(),
+            relationships: Vec::new(),
+            tags: vec!["experience".to_string(), "consolidated".to_string()],
+            source: "experience_engine".to_string(),
+            version: "1.0.0".to_string(),
+            importance: exp.confidence.max(0.5),
+            access_count: 0,
+            metadata: meta,
+        })
+    } else {
+        None
+    }
+}
+
+/// Build an experience graph linking experiences by plan_id.
+///
+/// Per Architecture Chapter 18: experiences that share a plan_id
+/// are connected as edges in the experience graph.
+///
+/// Returns a list of (source_id, target_id, label) tuples
+/// representing directed edges between co-plan experiences.
+pub fn build_experience_graph(experiences: &[Experience]) -> Vec<(String, String, String)> {
+    let mut edges: Vec<(String, String, String)> = Vec::new();
+    let mut plan_map: std::collections::HashMap<String, Vec<String>> =
+        std::collections::HashMap::new();
+
+    for exp in experiences {
+        let plan_key = if exp.plan.is_empty() {
+            exp.id.to_string()
+        } else {
+            exp.plan.clone()
+        };
+        plan_map
+            .entry(plan_key)
+            .or_default()
+            .push(exp.id.to_string());
+    }
+
+    for (plan_id, ids) in plan_map {
+        if ids.len() > 1 {
+            for i in 0..ids.len() {
+                for j in (i + 1)..ids.len() {
+                    tracing::debug!(plan_id, "Building experience graph edge for plan");
+                    edges.push((ids[i].clone(), ids[j].clone(), "same_plan".to_string()));
+                }
+            }
+        }
+    }
+
+    edges
 }

@@ -13,7 +13,7 @@
 
 [package]
 name = "robot_brain"
-version = "0.0.1"
+version = "0.0.2"
 edition = "2024"  # Rust 2024 edition - latest stable (requires Rust 1.85.0+)
 description = "A Rust MCP server with runtime-loaded tool plugins"
 

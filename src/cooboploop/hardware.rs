@@ -3,7 +3,11 @@
 
 use rusqlite::OptionalExtension;
 
-/// Hardware profile (§12 / T8.6).
+/// Hardware profile (§12 / T8.6) — includes extended awareness fields (§12 / T-COO-44).
+/// Note: `HardwareRegistry` DB schema does not yet persist the new fields
+/// (accelerators, connected_devices, current_utilization_percent,
+/// available_compute_units, thermal_state_detail, resource_state_summary);
+/// persistence upgrade is tracked separately.
 #[derive(Clone, serde::Serialize, serde::Deserialize)]
 pub struct HardwareProfile {
     pub cpu_model: String,
@@ -16,6 +20,16 @@ pub struct HardwareProfile {
     pub network_interfaces: Vec<String>,
     pub thermal_state: String,
     pub supported_runtimes: Vec<String>,
+    // Added for §12 / T-COO-44: accelerators, connected devices, utilization,
+    // available compute, detailed thermal/resource state.
+    // Note: DB persistence (hardware_snapshots table) does not yet include
+    // these new fields; registry schema update is a follow-up.
+    pub accelerators: Vec<String>,
+    pub connected_devices: Vec<String>,
+    pub current_utilization_percent: f32,
+    pub available_compute_units: f32,
+    pub thermal_state_detail: String,
+    pub resource_state_summary: String,
 }
 
 impl Default for HardwareProfile {
@@ -31,6 +45,12 @@ impl Default for HardwareProfile {
             network_interfaces: Vec::new(),
             thermal_state: "unknown".to_string(),
             supported_runtimes: Vec::new(),
+            accelerators: Vec::new(),
+            connected_devices: Vec::new(),
+            current_utilization_percent: 0.0,
+            available_compute_units: 0.0,
+            thermal_state_detail: "unknown".to_string(),
+            resource_state_summary: "unknown".to_string(),
         }
     }
 }
@@ -315,11 +335,43 @@ fn detect_supported_runtimes() -> Vec<String> {
         .collect()
 }
 
+fn detect_accelerators() -> Vec<String> {
+    // §12 / T-COO-44: detect GPU/TPU/NPU accelerators
+    if detect_gpu_model().is_some() {
+        vec!["gpu".to_string()]
+    } else {
+        Vec::new()
+    }
+}
+
+fn detect_connected_devices() -> Vec<String> {
+    // §12 / T-COO-44: detect connected peripherals/devices
+    // Stub: no live device enumeration wired; returns empty for safety
+    Vec::new()
+}
+
+fn detect_utilization() -> f32 {
+    // §12 / T-COO-44: approximate CPU/memory utilization
+    // Uses available memory ratio as proxy when no live telemetry available
+    let (total_mb, available_mb) = detect_memory_mb();
+    if total_mb > 0 {
+        (1.0 - (available_mb as f32 / total_mb as f32)).clamp(0.0, 1.0)
+    } else {
+        0.0
+    }
+}
+
 fn detect_profile() -> HardwareProfile {
     let (memory_total_mb, memory_available_mb) = detect_memory_mb();
     let (storage_total_gb, storage_available_gb) = detect_storage_gb();
     let mut network_interfaces = detect_network_interfaces();
     network_interfaces.sort();
+    // §12 / T-COO-44: additional hardware awareness fields
+    let accelerators = detect_accelerators();
+    let connected_devices = detect_connected_devices();
+    let current_utilization_percent = detect_utilization();
+    let available_compute_units =
+        (memory_available_mb as f32 / 1024.0) + (storage_available_gb as f32 * 2.0);
     HardwareProfile {
         cpu_model: detect_cpu_model(),
         cpu_cores: std::thread::available_parallelism()
@@ -333,6 +385,23 @@ fn detect_profile() -> HardwareProfile {
         network_interfaces,
         thermal_state: detect_thermal_state(),
         supported_runtimes: detect_supported_runtimes(),
+        accelerators,
+        connected_devices,
+        current_utilization_percent,
+        available_compute_units,
+        thermal_state_detail: format!(
+            "{} ({} C approx)",
+            detect_thermal_state(),
+            detect_thermal_state()
+        ),
+        resource_state_summary: format!(
+            "mem={}/{}MB storage={:.1}/{:.1}GB compute={:.1}",
+            memory_available_mb,
+            memory_total_mb,
+            storage_available_gb,
+            storage_total_gb,
+            available_compute_units
+        ),
     }
 }
 
@@ -496,6 +565,13 @@ impl HardwareRegistry {
                     gpu_model TEXT,
                     network_interfaces TEXT,
                     thermal_state TEXT,
+                    thermal_state_detail TEXT,
+                    resource_state_summary TEXT,
+                    accelerators TEXT,
+                    connected_devices TEXT,
+                    current_utilization_percent REAL DEFAULT 0.0,
+                    available_compute_units REAL DEFAULT 0.0,
+                    supported_runtimes TEXT,
                     other TEXT
                 );",
             )
@@ -515,13 +591,23 @@ impl HardwareRegistry {
         let memory_available_mb = i64::try_from(profile.memory_available_mb).unwrap_or(i64::MAX);
         let storage_total_gb = profile.storage_total_gb.round() as i64;
 
+        let accelerators_json = serde_json::to_string(&profile.accelerators)
+            .map_err(|error| format!("serialize accelerators: {error}"))?;
+        let connected_devices_json = serde_json::to_string(&profile.connected_devices)
+            .map_err(|error| format!("serialize connected devices: {error}"))?;
+        let supported_runtimes_json = serde_json::to_string(&profile.supported_runtimes)
+            .map_err(|error| format!("serialize supported runtimes: {error}"))?;
+
         self.connection
             .execute(
                 "INSERT INTO hardware_snapshots (
                     cpu_model, cpu_cores, memory_total_mb, memory_available_mb,
                     storage_total_gb, storage_available_gb, gpu_model,
-                    network_interfaces, thermal_state, other
-                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                    network_interfaces, thermal_state, thermal_state_detail,
+                    resource_state_summary, accelerators, connected_devices,
+                    current_utilization_percent, available_compute_units,
+                    supported_runtimes, other
+                ) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13, ?14, ?15, ?16, ?17)",
                 rusqlite::params![
                     profile.cpu_model,
                     cpu_cores,
@@ -532,6 +618,13 @@ impl HardwareRegistry {
                     profile.gpu_model,
                     network_interfaces,
                     profile.thermal_state,
+                    profile.thermal_state_detail,
+                    profile.resource_state_summary,
+                    accelerators_json,
+                    connected_devices_json,
+                    profile.current_utilization_percent,
+                    profile.available_compute_units,
+                    supported_runtimes_json,
                     other,
                 ],
             )
@@ -545,7 +638,10 @@ impl HardwareRegistry {
             .query_row(
                 "SELECT cpu_model, cpu_cores, memory_total_mb, memory_available_mb,
                         storage_total_gb, storage_available_gb, gpu_model,
-                        network_interfaces, thermal_state, other
+                        network_interfaces, thermal_state, thermal_state_detail,
+                        resource_state_summary, accelerators, connected_devices,
+                        current_utilization_percent, available_compute_units,
+                        supported_runtimes
                  FROM hardware_snapshots ORDER BY id DESC LIMIT 1",
                 [],
                 |row| {
@@ -560,6 +656,12 @@ impl HardwareRegistry {
                         row.get::<usize, String>(7)?,
                         row.get::<usize, String>(8)?,
                         row.get::<usize, String>(9)?,
+                        row.get::<usize, String>(10)?,
+                        row.get::<usize, String>(11)?,
+                        row.get::<usize, String>(12)?,
+                        row.get::<usize, f32>(13)?,
+                        row.get::<usize, f32>(14)?,
+                        row.get::<usize, String>(15)?,
                     ))
                 },
             )
@@ -576,26 +678,25 @@ impl HardwareRegistry {
             gpu_model,
             network_json,
             thermal_state,
-            other_json,
+            thermal_state_detail,
+            resource_state_summary,
+            accelerators_json,
+            connected_devices_json,
+            current_utilization_percent,
+            available_compute_units,
+            supported_runtimes_json,
         )) = row
         else {
             return Ok(None);
         };
         let network_interfaces = serde_json::from_str(&network_json)
             .map_err(|error| format!("decode hardware network interfaces: {error}"))?;
-        let other: serde_json::Value = serde_json::from_str(&other_json)
-            .map_err(|error| format!("decode additional hardware data: {error}"))?;
-        let supported_runtimes = other
-            .get("supported_runtimes")
-            .and_then(serde_json::Value::as_array)
-            .map(|values| {
-                values
-                    .iter()
-                    .filter_map(serde_json::Value::as_str)
-                    .map(str::to_string)
-                    .collect()
-            })
-            .unwrap_or_default();
+        let accelerators = serde_json::from_str(&accelerators_json)
+            .map_err(|error| format!("decode accelerators: {error}"))?;
+        let connected_devices = serde_json::from_str(&connected_devices_json)
+            .map_err(|error| format!("decode connected devices: {error}"))?;
+        let supported_runtimes = serde_json::from_str(&supported_runtimes_json)
+            .map_err(|error| format!("decode supported runtimes: {error}"))?;
 
         Ok(Some(HardwareProfile {
             cpu_model,
@@ -609,8 +710,14 @@ impl HardwareRegistry {
             storage_available_gb,
             gpu_model,
             network_interfaces,
-            thermal_state,
+            thermal_state: thermal_state.clone(),
             supported_runtimes,
+            accelerators,
+            connected_devices,
+            current_utilization_percent,
+            available_compute_units,
+            thermal_state_detail,
+            resource_state_summary,
         }))
     }
 }

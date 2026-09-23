@@ -1,0 +1,2202 @@
+{
+  "title": "RoBoT Brain Comprehensive Tool Probe",
+  "timestamp": "2026-09-22 19:53:31",
+  "tool_probe": {
+    "total_tools": 206,
+    "working": [
+      {
+        "name": "list_acp_agents",
+        "response_keys": [
+          "agents",
+          "count",
+          "success"
+        ],
+        "response_preview": "{'agents': ['acp://system/main', 'acp://worker/1'], 'count': 2, 'success': True}",
+        "time_ms": 0.2
+      },
+      {
+        "name": "acp_agent_count",
+        "response_keys": [
+          "count",
+          "success"
+        ],
+        "response_preview": "{'count': 2, 'success': True}",
+        "time_ms": 0.2
+      },
+      {
+        "name": "acp_router",
+        "response_keys": [
+          "message",
+          "status",
+          "success"
+        ],
+        "response_preview": "{'message': 'ACP router is available', 'status': 'available', 'success': True}",
+        "time_ms": 0.1
+      },
+      {
+        "name": "acp_registry",
+        "response_keys": [
+          "agent_count",
+          "status",
+          "success"
+        ],
+        "response_preview": "{'agent_count': 2, 'status': 'available', 'success': True}",
+        "time_ms": 0.1
+      },
+      {
+        "name": "create_acp_message",
+        "response_keys": [
+          "conversation_id",
+          "message_id",
+          "message_type",
+          "payload",
+          "receiver",
+          "reply_to",
+          "sender",
+          "status",
+          "success",
+          "timestamp",
+          "ttl"
+        ],
+        "response_preview": "{'conversation_id': None, 'message_id': '5ae93847-7b41-4056-b982-d805ec1e236f', 'message_type': 'AcpMessageType::Request', 'payload': {}, 'receiver': 'acp://worker/1', 'reply_to': None, 'sender': 'acp",
+        "time_ms": 0.2
+      },
+      {
+        "name": "route_acp_message",
+        "response_keys": [
+          "message",
+          "response_id",
+          "routed",
+          "success"
+        ],
+        "response_preview": "{'message': 'Message routed successfully', 'response_id': 'e72fbe16-1411-4104-8cfe-0f791582fa8f', 'routed': True, 'success': True}",
+        "time_ms": 0.1
+      },
+      {
+        "name": "get_agent_capabilities",
+        "response_keys": [
+          "agent_id",
+          "capabilities",
+          "success"
+        ],
+        "response_preview": "{'agent_id': 'acp://test-agent/1', 'capabilities': [], 'success': True}",
+        "time_ms": 0.1
+      },
+      {
+        "name": "get_system_status",
+        "response_keys": [
+          "agent_count",
+          "agents",
+          "event_bus",
+          "evolution",
+          "loop_health",
+          "metrics",
+          "policy",
+          "registry_status",
+          "router_status",
+          "server",
+          "status",
+          "success"
+        ],
+        "response_preview": "{'agent_count': 2, 'agents': ['acp://system/main', 'acp://worker/1'], 'event_bus': {'pending_jobs': 254, 'subscribers': 3, 'worker_bus_addr': 2198984345696, 'worker_subscribers': 3}, 'evolution': {'ac",
+        "time_ms": 678.8
+      },
+      {
+        "name": "register_agent",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `agent_type`', 'success': False}",
+        "time_ms": 111.7
+      },
+      {
+        "name": "unregister_agent",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `agent_type`', 'success': False}",
+        "time_ms": 51.6
+      },
+      {
+        "name": "cooboploop_enqueue_goal",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `title`', 'success': False}",
+        "time_ms": 21.2
+      },
+      {
+        "name": "cooboploop_list_goals",
+        "response_keys": [
+          "count",
+          "goals",
+          "success"
+        ],
+        "response_preview": "{'count': 0, 'goals': [], 'success': True}",
+        "time_ms": 0.2
+      },
+      {
+        "name": "cooboploop_get_goal",
+        "response_keys": [
+          "found",
+          "message",
+          "success"
+        ],
+        "response_preview": "{'found': False, 'message': 'Goal test-goal not found', 'success': True}",
+        "time_ms": 0.1
+      },
+      {
+        "name": "cooboploop_update_goal_status",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `goal_id`', 'success': False}",
+        "time_ms": 24.8
+      },
+      {
+        "name": "cooboploop_run_source_discovery",
+        "response_keys": [
+          "count",
+          "requested_source_type",
+          "results",
+          "status",
+          "success"
+        ],
+        "response_preview": "{'count': 7, 'requested_source_type': None, 'results': [{'id': '412009ba-27a2-45f8-9435-ea9b8173f72a', 'source': 'HumanOrigin', 'status': 'Discovered', 'title': 'Awaiting human input'}, {'id': '3821d4",
+        "time_ms": 4590.5
+      },
+      {
+        "name": "cooboploop_evaluate_goal",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `goal_id`', 'success': False}",
+        "time_ms": 674.7
+      },
+      {
+        "name": "cooboploop_reprioritize_queue",
+        "response_keys": [
+          "count",
+          "status",
+          "success",
+          "updated"
+        ],
+        "response_preview": "{'count': 0, 'status': 'reprioritized', 'success': True, 'updated': []}",
+        "time_ms": 0.3
+      },
+      {
+        "name": "cooboploop_set_priority_policy",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `policy`', 'success': False}",
+        "time_ms": 74.5
+      },
+      {
+        "name": "cooboploop_record_capability_outcome",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `capability_id`', 'success': False}",
+        "time_ms": 41.9
+      },
+      {
+        "name": "cooboploop_get_capability_assessment",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `capability_id`', 'success': False}",
+        "time_ms": 267.2
+      },
+      {
+        "name": "cooboploop_list_capabilities",
+        "response_keys": [
+          "capabilities",
+          "count",
+          "message",
+          "status",
+          "success"
+        ],
+        "response_preview": "{'capabilities': [{'id': 'Mcp', 'last_assessed': None, 'level': 0.5, 'name': 'MCP', 'success_rate': 0.5}, {'id': 'Testing', 'last_assessed': None, 'level': 0.5, 'name': 'Testing', 'success_rate': 0.5}",
+        "time_ms": 0.3
+      },
+      {
+        "name": "cooboploop_start_loop",
+        "response_keys": [
+          "message",
+          "status",
+          "success"
+        ],
+        "response_preview": "{'message': 'Loop started', 'status': 'running', 'success': True}",
+        "time_ms": 0.2
+      },
+      {
+        "name": "cooboploop_stop_loop",
+        "response_keys": [
+          "message",
+          "status",
+          "success"
+        ],
+        "response_preview": "{'message': 'Loop stopped', 'status': 'stopped', 'success': True}",
+        "time_ms": 0.2
+      },
+      {
+        "name": "cooboploop_get_loop_status",
+        "response_keys": [
+          "cognitive_stage",
+          "current_stage",
+          "cycle_summary",
+          "cycles_completed",
+          "human_audit_summary",
+          "learning_events",
+          "max_cycles",
+          "state_summary",
+          "status",
+          "success"
+        ],
+        "response_preview": "{'cognitive_stage': 'Observe', 'current_stage': 'ObserveState', 'cycle_summary': 'cycles=0/100', 'cycles_completed': 0, 'human_audit_summary': '0 entries', 'learning_events': [], 'max_cycles': 100, 's",
+        "time_ms": 0.1
+      },
+      {
+        "name": "cooboploop_run_single_cycle",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid transition from Discovered to Active', 'success': False}",
+        "time_ms": 2080.9
+      },
+      {
+        "name": "cooboploop_step_loop",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid transition from Discovered to Active', 'success': False}",
+        "time_ms": 2040.5
+      },
+      {
+        "name": "cooboploop_run_post_task_evaluation",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `goal_id`', 'success': False}",
+        "time_ms": 17.4
+      },
+      {
+        "name": "cooboploop_get_idle_state",
+        "response_keys": [
+          "message",
+          "objectives_processed",
+          "phase",
+          "reevaluation_interval_secs",
+          "seconds_since_activity",
+          "status",
+          "strategic_candidates",
+          "success",
+          "useful_work"
+        ],
+        "response_preview": "{'message': 'Idle state retrieved', 'objectives_processed': 0, 'phase': 'Active', 'reevaluation_interval_secs': 60, 'seconds_since_activity': 0, 'status': 'ok', 'strategic_candidates': [], 'success': ",
+        "time_ms": 0.2
+      },
+      {
+        "name": "cooboploop_configure_idle_reevaluation_interval",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `seconds`', 'success': False}",
+        "time_ms": 24.5
+      },
+      {
+        "name": "cooboploop_create_research_objective",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `topic`', 'success': False}",
+        "time_ms": 16.8
+      },
+      {
+        "name": "cooboploop_get_hardware_profile",
+        "response_keys": [
+          "message",
+          "profile",
+          "status",
+          "success"
+        ],
+        "response_preview": "{'message': 'Hardware profile retrieved', 'profile': {'accelerators': ['gpu'], 'available_compute_units': 26079.26171875, 'connected_devices': [], 'cpu_cores': 32, 'cpu_model': 'Intel64 Family 6 Model",
+        "time_ms": 1525.2
+      },
+      {
+        "name": "cooboploop_detect_hardware_changes",
+        "response_keys": [
+          "change_count",
+          "changes",
+          "current_profile",
+          "message",
+          "status",
+          "success"
+        ],
+        "response_preview": "{'change_count': 1, 'changes': ['memory_available_mb: 92971 -> 92961'], 'current_profile': {'accelerators': ['gpu'], 'available_compute_units': 26079.25, 'connected_devices': [], 'cpu_cores': 32, 'cpu",
+        "time_ms": 1530.5
+      },
+      {
+        "name": "cooboploop_run_inspection",
+        "response_keys": [
+          "issues",
+          "issues_found",
+          "message",
+          "objective_ids",
+          "objectives_generated",
+          "status",
+          "success",
+          "target_filter"
+        ],
+        "response_preview": "{'issues': [{'description': 'Required project path is missing: E:\\\\Tor\\\\src_code\\\\RoBoT_Brain\\\\test_suite', 'recommended_action': 'Restore the independent test_suite project', 'severity': 'high', 'tar",
+        "time_ms": 243.3
+      },
+      {
+        "name": "cooboploop_get_modification_boundary",
+        "response_keys": [
+          "boundary",
+          "message",
+          "status",
+          "success"
+        ],
+        "response_preview": "{'boundary': 'Propose', 'message': 'Modification boundary retrieved', 'status': 'ok', 'success': True}",
+        "time_ms": 0.2
+      },
+      {
+        "name": "cooboploop_set_modification_boundary",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `boundary`', 'success': False}",
+        "time_ms": 24.5
+      },
+      {
+        "name": "cooboploop_run_opportunity_intake",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `source_url`', 'success': False}",
+        "time_ms": 25.2
+      },
+      {
+        "name": "cooboploop_get_pending_external_opportunities",
+        "response_keys": [
+          "count",
+          "message",
+          "note",
+          "pending",
+          "status",
+          "success"
+        ],
+        "response_preview": "{'count': 0, 'message': 'Pending external opportunities retrieved', 'note': 'All deferred external opportunities require human review', 'pending': [], 'status': 'ok', 'success': True}",
+        "time_ms": 0.2
+      },
+      {
+        "name": "cooboploop_set_autonomous_mode",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `enabled`', 'success': False}",
+        "time_ms": 24.4
+      },
+      {
+        "name": "cooboploop_get_autonomous_mode",
+        "response_keys": [
+          "enabled",
+          "message",
+          "status",
+          "success"
+        ],
+        "response_preview": "{'enabled': True, 'message': 'Autonomous mode retrieved', 'status': 'ok', 'success': True}",
+        "time_ms": 0.2
+      },
+      {
+        "name": "cooboploop_list_strategic_objectives",
+        "response_keys": [
+          "count",
+          "message",
+          "objectives",
+          "status",
+          "success"
+        ],
+        "response_preview": "{'count': 0, 'message': 'Strategic objectives listed', 'objectives': [], 'status': 'ok', 'success': True}",
+        "time_ms": 0.1
+      },
+      {
+        "name": "cooboploop_add_strategic_objective",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `name`', 'success': False}",
+        "time_ms": 66.8
+      },
+      {
+        "name": "cooboploop_remove_strategic_objective",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `id`', 'success': False}",
+        "time_ms": 216.3
+      },
+      {
+        "name": "cooboploop_get_objective_hierarchy",
+        "response_keys": [
+          "count",
+          "message",
+          "nodes",
+          "status",
+          "success"
+        ],
+        "response_preview": "{'count': 1, 'message': 'Objective hierarchy retrieved', 'nodes': [{'children': [], 'level': 'Mission', 'name': 'Mission'}], 'status': 'ok', 'success': True}",
+        "time_ms": 0.5
+      },
+      {
+        "name": "cooboploop_set_mission",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `mission`', 'success': False}",
+        "time_ms": 65.9
+      },
+      {
+        "name": "cooboploop_get_autonomy_levels",
+        "response_keys": [
+          "autonomy",
+          "capability_count",
+          "message",
+          "request",
+          "status",
+          "success"
+        ],
+        "response_preview": "{'autonomy': {'http': 'Manual', 'mcp': 'Manual', 'rust': 'Manual', 'sqlite': 'Manual', 'testing': 'Manual'}, 'capability_count': 5, 'message': 'Autonomy levels retrieved', 'request': {}, 'status': 'ok",
+        "time_ms": 0.2
+      },
+      {
+        "name": "cooboploop_promote_autonomy",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `capability_id`', 'success': False}",
+        "time_ms": 58.2
+      },
+      {
+        "name": "cooboploop_run_post_task_evaluation",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `goal_id`', 'success': False}",
+        "time_ms": 49.9
+      },
+      {
+        "name": "get_workflow",
+        "response_keys": [
+          "reminder",
+          "status",
+          "success",
+          "version",
+          "workflow"
+        ],
+        "response_preview": "{'reminder': 'You MUST follow this workflow. Call get_workflow again anytime you need a reminder.', 'status': 'workflow_retrieved', 'success': True, 'version': '1.0', 'workflow': {'critical_rules': ['",
+        "time_ms": 0.3
+      },
+      {
+        "name": "list_tools",
+        "response_keys": [
+          "count",
+          "success",
+          "tools",
+          "total_available"
+        ],
+        "response_preview": "{'count': 178, 'success': True, 'tools': [{'description': 'MANDATORY: Get workflow rules. MUST be called before any other tool. Returns the required workflow for this MCP server.', 'name': 'get_workfl",
+        "time_ms": 0.7
+      },
+      {
+        "name": "get_tool",
+        "response_keys": [
+          "found",
+          "success",
+          "tool"
+        ],
+        "response_preview": "{'found': True, 'success': True, 'tool': {'description': '[WORKFLOW: get_workflow + search_memory first] List all available MCP tools with optional filter', 'input_schema': {'properties': {'filter': {",
+        "time_ms": 0.4
+      },
+      {
+        "name": "connect_mcp_server",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `name`', 'success': False}",
+        "time_ms": 14.8
+      },
+      {
+        "name": "call_tool",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `tool_name`', 'success': False}",
+        "time_ms": 17.0
+      },
+      {
+        "name": "run_agent_goal",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `goal`', 'success': False}",
+        "time_ms": 16.3
+      },
+      {
+        "name": "record_experience",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `title`', 'success': False}",
+        "time_ms": 16.9
+      },
+      {
+        "name": "get_experience_stats",
+        "response_keys": [
+          "by_outcome",
+          "by_type",
+          "stats",
+          "success",
+          "total"
+        ],
+        "response_preview": "{'by_outcome': {'failure': 0, 'success': 594}, 'by_type': {'total': 594}, 'stats': {'by_outcome': {'failure': 0, 'success': 594}, 'by_type': {'total': 594}, 'total': 594}, 'success': True, 'total': 59",
+        "time_ms": 6.7
+      },
+      {
+        "name": "list_experiences",
+        "response_keys": [
+          "count",
+          "experiences",
+          "success"
+        ],
+        "response_preview": "{'count': 10, 'experiences': [{'confidence': 0.5, 'content': 'Experience: Tool execution: register_agent - tool=register_agent success=false args={} (outcome: Failure, committed: false, archived: fals",
+        "time_ms": 1.0
+      },
+      {
+        "name": "get_experience",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid UUID: invalid character: found `t` at 0', 'success': False}",
+        "time_ms": 16.9
+      },
+      {
+        "name": "get_worker_stats",
+        "response_keys": [
+          "stats",
+          "success",
+          "worker_count"
+        ],
+        "response_preview": "{'stats': [{'jobs_failed': 0, 'jobs_processed': 83, 'jobs_retried': 0, 'observer_name': 'MetricsObserver'}, {'jobs_failed': 0, 'jobs_processed': 99, 'jobs_retried': 0, 'observer_name': 'ReputationObse",
+        "time_ms": 0.2
+      },
+      {
+        "name": "get_worker_count",
+        "response_keys": [
+          "success",
+          "worker_count"
+        ],
+        "response_preview": "{'success': True, 'worker_count': 4}",
+        "time_ms": 0.1
+      },
+      {
+        "name": "add_evidence_to_experience",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `experience_id`', 'success': False}",
+        "time_ms": 16.6
+      },
+      {
+        "name": "archive_experience",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `experience_id`', 'success': False}",
+        "time_ms": 99.8
+      },
+      {
+        "name": "start_exploration",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `title`', 'success': False}",
+        "time_ms": 24.8
+      },
+      {
+        "name": "get_exploration_status",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `exploration_id`', 'success': False}",
+        "time_ms": 459.2
+      },
+      {
+        "name": "pause_exploration",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `exploration_id`', 'success': False}",
+        "time_ms": 282.8
+      },
+      {
+        "name": "resume_exploration",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `exploration_id`', 'success': False}",
+        "time_ms": 258.6
+      },
+      {
+        "name": "complete_exploration",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `exploration_id`', 'success': False}",
+        "time_ms": 53.9
+      },
+      {
+        "name": "abandon_exploration",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `exploration_id`', 'success': False}",
+        "time_ms": 204.2
+      },
+      {
+        "name": "record_attempt",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `exploration_id`', 'success': False}",
+        "time_ms": 141.7
+      },
+      {
+        "name": "add_hypothesis",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `exploration_id`', 'success': False}",
+        "time_ms": 224.6
+      },
+      {
+        "name": "evaluate_exploration_hypothesis",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `exploration_id`', 'success': False}",
+        "time_ms": 197.7
+      },
+      {
+        "name": "promote_finding",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `exploration_id`', 'success': False}",
+        "time_ms": 144.0
+      },
+      {
+        "name": "record_observation",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `content`', 'success': False}",
+        "time_ms": 137.7
+      },
+      {
+        "name": "create_hypothesis",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `statement`', 'success': False}",
+        "time_ms": 121.3
+      },
+      {
+        "name": "add_evidence",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `hypothesis_id`', 'success': False}",
+        "time_ms": 329.6
+      },
+      {
+        "name": "get_hypothesis",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `hypothesis_id`', 'success': False}",
+        "time_ms": 87.4
+      },
+      {
+        "name": "list_hypotheses",
+        "response_keys": [
+          "count",
+          "hypotheses",
+          "success"
+        ],
+        "response_preview": "{'count': 0, 'hypotheses': [], 'success': True}",
+        "time_ms": 8.4
+      },
+      {
+        "name": "list_observations",
+        "response_keys": [
+          "count",
+          "observations",
+          "success"
+        ],
+        "response_preview": "{'count': 10, 'observations': [{'content': 'Searched for: test', 'context': 'results_found=10', 'created_at': '2026-09-23T00:52:22.067576100+00:00', 'id': 'f85648b6-d812-4bc9-9cf0-1981f67efd69', 'obse",
+        "time_ms": 0.8
+      },
+      {
+        "name": "evaluate_hypothesis",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `hypothesis_id`', 'success': False}",
+        "time_ms": 107.8
+      },
+      {
+        "name": "get_knowledge",
+        "response_keys": [
+          "count",
+          "knowledge",
+          "success"
+        ],
+        "response_preview": "{'count': 0, 'knowledge': [], 'success': True}",
+        "time_ms": 1.8
+      },
+      {
+        "name": "extract_knowledge",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `hypothesis_id`', 'success': False}",
+        "time_ms": 104.4
+      },
+      {
+        "name": "get_evidence",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `evidence_id`', 'success': False}",
+        "time_ms": 150.0
+      },
+      {
+        "name": "list_evidence",
+        "response_keys": [
+          "count",
+          "evidence",
+          "success"
+        ],
+        "response_preview": "{'count': 0, 'evidence': [], 'success': True}",
+        "time_ms": 5.1
+      },
+      {
+        "name": "ingest_files",
+        "response_keys": [
+          "files",
+          "message",
+          "success",
+          "total_chunks"
+        ],
+        "response_preview": "{'files': [], 'message': 'No files found to ingest', 'success': True, 'total_chunks': 0}",
+        "time_ms": 0.2
+      },
+      {
+        "name": "list_importable",
+        "response_keys": [
+          "count",
+          "exe_directory",
+          "files",
+          "hint",
+          "import_folder",
+          "message",
+          "recursive",
+          "relative_path",
+          "success",
+          "total"
+        ],
+        "response_preview": "{'count': 0, 'exe_directory': 'E:\\\\Tor\\\\src_code\\\\RoBoT_Brain\\\\target\\\\release', 'files': [], 'hint': 'The files_to_import folder should be in the same directory as robot_brain.exe', 'import_folder': ",
+        "time_ms": 0.2
+      },
+      {
+        "name": "list_ingested_files",
+        "response_keys": [
+          "count",
+          "files",
+          "recursive",
+          "success",
+          "warning"
+        ],
+        "response_preview": "{'count': 0, 'files': [], 'recursive': True, 'success': True, 'warning': 'These files have been ingested into memory. Delete originals if no longer needed.'}",
+        "time_ms": 0.2
+      },
+      {
+        "name": "delete_ingested_files",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `files`', 'success': False}",
+        "time_ms": 1510.2
+      },
+      {
+        "name": "transcribe_audio",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `path`', 'success': False}",
+        "time_ms": 358.4
+      },
+      {
+        "name": "add_knowledge",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `statement`', 'success': False}",
+        "time_ms": 213.0
+      },
+      {
+        "name": "query_knowledge",
+        "response_keys": [
+          "best_match",
+          "items",
+          "query",
+          "returned",
+          "success",
+          "total_matches"
+        ],
+        "response_preview": "{'best_match': {'confidence': 0.8675000071525574, 'id': '700b01b0-11df-4b25-b1f2-ed82f29c13da', 'statement': 'NO unwrap/expect/panic/assert/todo!/unimplemented!, NO [allow(* pattern)], NO underscore-p",
+        "time_ms": 0.4
+      },
+      {
+        "name": "record_knowledge_application",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `knowledge_id`', 'success': False}",
+        "time_ms": 136.1
+      },
+      {
+        "name": "get_knowledge_stats",
+        "response_keys": [
+          "active",
+          "average_confidence",
+          "mature",
+          "needs_review",
+          "success",
+          "total"
+        ],
+        "response_preview": "{'active': 0, 'average_confidence': 0.8268750309944153, 'mature': 0, 'needs_review': 0, 'success': True, 'total': 8}",
+        "time_ms": 1.2
+      },
+      {
+        "name": "get_mature_knowledge",
+        "response_keys": [
+          "count",
+          "items",
+          "success"
+        ],
+        "response_preview": "{'count': 0, 'items': [], 'success': True}",
+        "time_ms": 0.3
+      },
+      {
+        "name": "update_knowledge",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `knowledge_id`', 'success': False}",
+        "time_ms": 3230.7
+      },
+      {
+        "name": "delete_knowledge",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `knowledge_id`', 'success': False}",
+        "time_ms": 124.9
+      },
+      {
+        "name": "get_related_knowledge",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `knowledge_id`', 'success': False}",
+        "time_ms": 25.0
+      },
+      {
+        "name": "validate_knowledge_dependencies",
+        "response_keys": [
+          "items_with_issues",
+          "success",
+          "validations"
+        ],
+        "response_preview": "{'items_with_issues': 0, 'success': True, 'validations': []}",
+        "time_ms": 0.3
+      },
+      {
+        "name": "bump_knowledge_version",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `knowledge_id`', 'success': False}",
+        "time_ms": 157.8
+      },
+      {
+        "name": "set_knowledge_status",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `knowledge_id`', 'success': False}",
+        "time_ms": 54.8
+      },
+      {
+        "name": "manage_knowledge_dependency",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `knowledge_id`', 'success': False}",
+        "time_ms": 20.1
+      },
+      {
+        "name": "add_knowledge_relation",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `knowledge_id`', 'success': False}",
+        "time_ms": 191.5
+      },
+      {
+        "name": "search_knowledge_by_tag",
+        "response_keys": [
+          "count",
+          "items",
+          "mode",
+          "success"
+        ],
+        "response_preview": "{'count': 0, 'items': [], 'mode': 'by_tag', 'success': True}",
+        "time_ms": 0.3
+      },
+      {
+        "name": "store_memory",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `content`', 'success': False}",
+        "time_ms": 16.5
+      },
+      {
+        "name": "search_memory",
+        "response_keys": [
+          "count",
+          "experience_id",
+          "observation_id",
+          "results",
+          "success"
+        ],
+        "response_preview": "{'count': 10, 'experience_id': '99b1c2d2-37b9-4dfb-a61d-de64790aefa3', 'observation_id': 'a6c1e888-19ee-4509-bfc7-ea174f580695', 'results': [{'accessed_at': '2026-09-23T00:43:04.824022200+00:00', 'con",
+        "time_ms": 41.9
+      },
+      {
+        "name": "get_memory",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid UUID: invalid character: found `t` at 0', 'success': False}",
+        "time_ms": 191.1
+      },
+      {
+        "name": "list_memories",
+        "response_keys": [
+          "count",
+          "database_count",
+          "memories",
+          "success",
+          "working_count"
+        ],
+        "response_preview": "{'count': 20, 'database_count': 10, 'memories': [{'accessed_at': '2026-09-23T00:52:20.203059100+00:00', 'confidence': 0.5, 'content': 'Experience: Tool execution: search_memory - tool=search_memory su",
+        "time_ms": 1.4
+      },
+      {
+        "name": "archive_memory",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `memory_id`', 'success': False}",
+        "time_ms": 15.4
+      },
+      {
+        "name": "delete_memory_by_id",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `memory_id`', 'success': False}",
+        "time_ms": 16.5
+      },
+      {
+        "name": "link_memories",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `from_id`', 'success': False}",
+        "time_ms": 86.2
+      },
+      {
+        "name": "ranked_search",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 13.7
+      },
+      {
+        "name": "store_embedding",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `memory_id`', 'success': False}",
+        "time_ms": 16.8
+      },
+      {
+        "name": "get_embedding",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `memory_id`', 'success': False}",
+        "time_ms": 158.1
+      },
+      {
+        "name": "search_similar",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query_embedding`', 'success': False}",
+        "time_ms": 16.8
+      },
+      {
+        "name": "list_embeddings",
+        "response_keys": [
+          "count",
+          "embeddings",
+          "success"
+        ],
+        "response_preview": "{'count': 5, 'embeddings': [{'dimension': 128, 'id': 'b8452947-8be2-479d-8a0a-e254e7f6113b', 'memory_id': 'b981c3c4-ed29-486d-b714-e531d09cafe6', 'model': 'hash-based'}, {'dimension': 128, 'id': '7c34",
+        "time_ms": 7.7
+      },
+      {
+        "name": "delete_embedding",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `memory_id`', 'success': False}",
+        "time_ms": 66.8
+      },
+      {
+        "name": "get_embedding_stats",
+        "response_keys": [
+          "success",
+          "total_embeddings"
+        ],
+        "response_preview": "{'success': True, 'total_embeddings': 5}",
+        "time_ms": 0.8
+      },
+      {
+        "name": "get_personality",
+        "response_keys": [
+          "communication_style",
+          "emotional_weight",
+          "humor_level",
+          "interaction_mode",
+          "preferences",
+          "preset",
+          "success",
+          "traits"
+        ],
+        "response_preview": "{'communication_style': 'Balanced', 'emotional_weight': 0.15000000596046448, 'humor_level': 0.30000001192092896, 'interaction_mode': 'Proactive', 'preferences': {'brevity': 0.5, 'familiarity': 0.60000",
+        "time_ms": 0.2
+      },
+      {
+        "name": "set_personality_traits",
+        "response_keys": [
+          "success",
+          "traits",
+          "updated"
+        ],
+        "response_preview": "{'success': True, 'traits': {'caution': 0.5, 'creativity': 0.6000000238418579, 'curiosity': 0.699999988079071, 'patience': 0.699999988079071, 'risk_tolerance': 0.4000000059604645, 'thoroughness': 0.80",
+        "time_ms": 0.3
+      },
+      {
+        "name": "apply_personality_preset",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `preset`', 'success': False}",
+        "time_ms": 23.7
+      },
+      {
+        "name": "list_personality_presets",
+        "response_keys": [
+          "current",
+          "presets",
+          "success"
+        ],
+        "response_preview": "{'current': 'balanced', 'presets': ['balanced', 'creative', 'cautious', 'bold', 'analytical'], 'success': True}",
+        "time_ms": 0.3
+      },
+      {
+        "name": "get_personality_decision",
+        "response_keys": [
+          "approach",
+          "confidence",
+          "reason",
+          "should_act",
+          "success"
+        ],
+        "response_preview": "{'approach': 'Thorough', 'confidence': 0.9500000476837158, 'reason': 'Based on balanced personality (curiosity=0.70, caution=0.50, risk=0.40, uncertainty=0.20, time=30s, emotion_weight=+0.15, interact",
+        "time_ms": 0.3
+      },
+      {
+        "name": "format_response",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `content`', 'success': False}",
+        "time_ms": 24.1
+      },
+      {
+        "name": "create_plan",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `goal`', 'success': False}",
+        "time_ms": 750.8
+      },
+      {
+        "name": "add_plan_step",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `plan_id`', 'success': False}",
+        "time_ms": 174.6
+      },
+      {
+        "name": "add_step_dependency",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `plan_id`', 'success': False}",
+        "time_ms": 116.7
+      },
+      {
+        "name": "get_plan",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `plan_id`', 'success': False}",
+        "time_ms": 146.1
+      },
+      {
+        "name": "list_plans",
+        "response_keys": [
+          "count",
+          "plans",
+          "success"
+        ],
+        "response_preview": "{'count': 1, 'plans': [{'completed_at': '2026-09-23T00:52:21.957638700+00:00', 'created_at': '2026-09-23T00:52:21.957638700+00:00', 'goal': 'Run periodic system maintenance: check knowledge base, vali",
+        "time_ms": 1.0
+      },
+      {
+        "name": "start_plan",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `plan_id`', 'success': False}",
+        "time_ms": 136.1
+      },
+      {
+        "name": "complete_step",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `plan_id`', 'success': False}",
+        "time_ms": 124.9
+      },
+      {
+        "name": "fail_step",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `plan_id`', 'success': False}",
+        "time_ms": 137.8
+      },
+      {
+        "name": "cancel_plan",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `plan_id`', 'success': False}",
+        "time_ms": 78.1
+      },
+      {
+        "name": "get_insights",
+        "response_keys": [
+          "count",
+          "insights",
+          "success"
+        ],
+        "response_preview": "{'count': 0, 'insights': [], 'success': True}",
+        "time_ms": 0.3
+      },
+      {
+        "name": "create_reflection",
+        "response_keys": [
+          "id",
+          "message",
+          "success"
+        ],
+        "response_preview": "{'id': '3886f018-5798-4fe3-9c0f-4843340c2277', 'message': 'Reflection generated', 'success': True}",
+        "time_ms": 0.3
+      },
+      {
+        "name": "analyze_patterns",
+        "response_keys": [
+          "analyzed_count",
+          "insights_count",
+          "message",
+          "patterns",
+          "recommendations",
+          "stored_patterns_count",
+          "success",
+          "themes"
+        ],
+        "response_preview": "{'analyzed_count': 0, 'insights_count': 0, 'message': 'No experience_ids provided. Showing all stored patterns. Call with experience_ids to analyze new patterns.', 'patterns': [], 'recommendations': [",
+        "time_ms": 0.3
+      },
+      {
+        "name": "get_patterns",
+        "response_keys": [
+          "count",
+          "patterns",
+          "success"
+        ],
+        "response_preview": "{'count': 0, 'patterns': [], 'success': True}",
+        "time_ms": 0.2
+      },
+      {
+        "name": "validate_reflection",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `reflection_id`', 'success': False}",
+        "time_ms": 129.2
+      },
+      {
+        "name": "list_reflections_by_status",
+        "response_keys": [
+          "count",
+          "reflections",
+          "success"
+        ],
+        "response_preview": "{'count': 0, 'reflections': [], 'success': True}",
+        "time_ms": 0.8
+      },
+      {
+        "name": "update_reflection",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `reflection_id`', 'success': False}",
+        "time_ms": 132.9
+      },
+      {
+        "name": "global_search",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 96.2
+      },
+      {
+        "name": "get_recommendations",
+        "response_keys": [
+          "based_on",
+          "recommendations",
+          "success"
+        ],
+        "response_preview": "{'based_on': 'recent_high_confidence_experiences', 'recommendations': [], 'success': True}",
+        "time_ms": 3.5
+      },
+      {
+        "name": "get_reputation",
+        "response_keys": [
+          "failure_count",
+          "score",
+          "success",
+          "success_count",
+          "tool_name",
+          "total_uses"
+        ],
+        "response_preview": "{'failure_count': 2, 'score': 0.0, 'success': True, 'success_count': 0, 'tool_name': 'list_tools', 'total_uses': 2}",
+        "time_ms": 1.0
+      },
+      {
+        "name": "research",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 77.3
+      },
+      {
+        "name": "quick_research",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 51.5
+      },
+      {
+        "name": "deep_research",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 123.5
+      },
+      {
+        "name": "find_error_resolution",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `error`', 'success': False}",
+        "time_ms": 172.2
+      },
+      {
+        "name": "web_search",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 143.9
+      },
+      {
+        "name": "web_open",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `url`', 'success': False}",
+        "time_ms": 83.8
+      },
+      {
+        "name": "web_extract",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `url`', 'success': False}",
+        "time_ms": 82.8
+      },
+      {
+        "name": "get_wikipedia",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 51.4
+      },
+      {
+        "name": "search_news",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 140.3
+      },
+      {
+        "name": "search_reddit",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 141.4
+      },
+      {
+        "name": "search_hackernews",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 125.1
+      },
+      {
+        "name": "search_youtube",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 192.5
+      },
+      {
+        "name": "search_substack",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `publications`', 'success': False}",
+        "time_ms": 140.5
+      },
+      {
+        "name": "search_bluesky",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 133.3
+      },
+      {
+        "name": "search_telegram",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `channel`', 'success': False}",
+        "time_ms": 133.4
+      },
+      {
+        "name": "search_mastodon",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 133.1
+      },
+      {
+        "name": "search_vk",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 133.5
+      },
+      {
+        "name": "search_preprints",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 141.5
+      },
+      {
+        "name": "search_datasets",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 149.8
+      },
+      {
+        "name": "search_osm",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 83.0
+      },
+      {
+        "name": "search_sec_filings",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 110.1
+      },
+      {
+        "name": "resurrect_dead_link",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `url`', 'success': False}",
+        "time_ms": 131.2
+      },
+      {
+        "name": "verify_citations",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `references`', 'success': False}",
+        "time_ms": 3299.2
+      },
+      {
+        "name": "find_counter_arguments",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 5581.0
+      },
+      {
+        "name": "validate_bibliography",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `bibliography`', 'success': False}",
+        "time_ms": 2100.2
+      },
+      {
+        "name": "format_citations",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `doi`', 'success': False}",
+        "time_ms": 5598.5
+      },
+      {
+        "name": "detect_trends",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `platforms`', 'success': False}",
+        "time_ms": 59.2
+      },
+      {
+        "name": "score_reliability",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `urls`', 'success': False}",
+        "time_ms": 174.0
+      },
+      {
+        "name": "register_skill",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `name`', 'success': False}",
+        "time_ms": 142.4
+      },
+      {
+        "name": "discover_skill",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `name`', 'success': False}",
+        "time_ms": 144.5
+      },
+      {
+        "name": "get_skill",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `skill_id`', 'success': False}",
+        "time_ms": 71.3
+      },
+      {
+        "name": "list_skills",
+        "response_keys": [
+          "count",
+          "skills",
+          "success"
+        ],
+        "response_preview": "{'count': 5, 'skills': [{'category': 'file_operation', 'description': 'Read contents of a file', 'enabled': True, 'id': 'd668a949-c937-46a6-9c74-74b30df4bc7a', 'mastery': 0.5, 'name': 'file_read', 'su",
+        "time_ms": 0.6
+      },
+      {
+        "name": "update_skill_mastery",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `skill_id`', 'success': False}",
+        "time_ms": 149.2
+      },
+      {
+        "name": "get_skill_recommendations",
+        "response_keys": [
+          "count",
+          "recommendations",
+          "success"
+        ],
+        "response_preview": "{'count': 5, 'recommendations': [{'category': 'file_operation', 'description': 'Read contents of a file', 'id': 'd668a949-c937-46a6-9c74-74b30df4bc7a', 'mastery': 0.5, 'name': 'file_read', 'reason': '",
+        "time_ms": 0.8
+      },
+      {
+        "name": "execute_skill",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `skill_id`', 'success': False}",
+        "time_ms": 1532.8
+      },
+      {
+        "name": "get_skill_stats",
+        "response_keys": [
+          "mastered_skills",
+          "stats",
+          "success"
+        ],
+        "response_preview": "{'mastered_skills': [{'execution_score': 0.5, 'id': 'd668a949-c937-46a6-9c74-74b30df4bc7a', 'mastery': 0.5, 'name': 'file_read'}, {'execution_score': 0.5, 'id': '72f4fb8f-b391-4d33-a41b-45f529afb26b',",
+        "time_ms": 0.6
+      },
+      {
+        "name": "apply_skill_decay",
+        "response_keys": [
+          "decay_rate",
+          "message",
+          "skills_decayed",
+          "status",
+          "success"
+        ],
+        "response_preview": "{'decay_rate': 0.05000000074505806, 'message': 'Decay applied to 0 skills', 'skills_decayed': 0, 'status': 'decay_applied', 'success': True}",
+        "time_ms": 0.4
+      },
+      {
+        "name": "enable_disable_skill",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `skill_id`', 'success': False}",
+        "time_ms": 139.8
+      },
+      {
+        "name": "search_skills",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `query`', 'success': False}",
+        "time_ms": 133.7
+      },
+      {
+        "name": "get_skill_metrics",
+        "response_keys": [
+          "count",
+          "metrics",
+          "ranked_by_success_rate",
+          "success"
+        ],
+        "response_preview": "{'count': 0, 'metrics': [], 'ranked_by_success_rate': [], 'success': True}",
+        "time_ms": 0.5
+      },
+      {
+        "name": "get_unreliable_skills",
+        "response_keys": [
+          "count",
+          "success",
+          "unreliable_skills"
+        ],
+        "response_preview": "{'count': 0, 'success': True, 'unreliable_skills': []}",
+        "time_ms": 0.3
+      },
+      {
+        "name": "clear_skill_metrics",
+        "response_keys": [
+          "status",
+          "success"
+        ],
+        "response_preview": "{'status': 'all_cleared', 'success': True}",
+        "time_ms": 0.3
+      },
+      {
+        "name": "search_skills_by_tag",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `tag`', 'success': False}",
+        "time_ms": 57.2
+      },
+      {
+        "name": "unregister_skill",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `skill_id`', 'success': False}",
+        "time_ms": 80.7
+      },
+      {
+        "name": "create_workflow",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `name`', 'success': False}",
+        "time_ms": 132.8
+      },
+      {
+        "name": "add_workflow_step",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `workflow_id`', 'success': False}",
+        "time_ms": 127.6
+      },
+      {
+        "name": "get_workflow_status",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `workflow_id`', 'success': False}",
+        "time_ms": 84.2
+      },
+      {
+        "name": "list_workflows",
+        "response_keys": [
+          "success",
+          "workflows"
+        ],
+        "response_preview": "{'success': True, 'workflows': []}",
+        "time_ms": 0.6
+      },
+      {
+        "name": "start_workflow",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `workflow_id`', 'success': False}",
+        "time_ms": 190.2
+      },
+      {
+        "name": "pause_workflow",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `workflow_id`', 'success': False}",
+        "time_ms": 5289.9
+      },
+      {
+        "name": "resume_workflow",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `workflow_id`', 'success': False}",
+        "time_ms": 200.6
+      },
+      {
+        "name": "cancel_workflow",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `workflow_id`', 'success': False}",
+        "time_ms": 90.9
+      },
+      {
+        "name": "delete_workflow",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `workflow_id`', 'success': False}",
+        "time_ms": 125.0
+      },
+      {
+        "name": "set_workflow_variable",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `workflow_id`', 'success': False}",
+        "time_ms": 267.7
+      },
+      {
+        "name": "get_session_state",
+        "response_keys": [
+          "exists",
+          "session_id",
+          "success"
+        ],
+        "response_preview": "{'exists': False, 'session_id': 'default', 'success': True}",
+        "time_ms": 0.5
+      },
+      {
+        "name": "cleanup_sessions",
+        "response_keys": [
+          "message",
+          "sessions_removed",
+          "success"
+        ],
+        "response_preview": "{'message': 'Cleaned up 0 expired session(s)', 'sessions_removed': 0, 'success': True}",
+        "time_ms": 0.4
+      },
+      {
+        "name": "upsert_world_entity",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `name`', 'success': False}",
+        "time_ms": 172.5
+      },
+      {
+        "name": "add_world_relationship",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `source_id`', 'success': False}",
+        "time_ms": 141.6
+      },
+      {
+        "name": "get_world_entity",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `id`', 'success': False}",
+        "time_ms": 58.9
+      },
+      {
+        "name": "find_world_entity",
+        "response_keys": [
+          "found",
+          "success"
+        ],
+        "response_preview": "{'found': False, 'success': True}",
+        "time_ms": 0.4
+      },
+      {
+        "name": "list_world_entities",
+        "response_keys": [
+          "count",
+          "entities",
+          "success"
+        ],
+        "response_preview": "{'count': 0, 'entities': [], 'success': True}",
+        "time_ms": 0.3
+      },
+      {
+        "name": "get_world_relationships",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `id`', 'success': False}",
+        "time_ms": 173.5
+      },
+      {
+        "name": "get_world_blockers",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `id`', 'success': False}",
+        "time_ms": 125.0
+      },
+      {
+        "name": "get_world_dependencies",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `id`', 'success': False}",
+        "time_ms": 191.6
+      },
+      {
+        "name": "get_consumed_resources",
+        "response_keys": [
+          "error",
+          "success"
+        ],
+        "response_preview": "{'error': 'Invalid parameters: missing field `id`', 'success': False}",
+        "time_ms": 308.3
+      },
+      {
+        "name": "get_world_model_stats",
+        "response_keys": [
+          "entity_count",
+          "relationship_count",
+          "success"
+        ],
+        "response_preview": "{'entity_count': 0, 'relationship_count': 0, 'success': True}",
+        "time_ms": 0.5
+      }
+    ],
+    "failed": [],
+    "skipped": [],
+    "by_category": {},
+    "summary": {
+      "working_count": 206,
+      "failed_count": 0,
+      "success_rate": "100.0%"
+    }
+  },
+  "ingest_system": {
+    "tested": [
+      "TXT file ingest",
+      "MD file ingest",
+      "CSV file ingest",
+      "XML file ingest",
+      "HTML file ingest",
+      "JSON file ingest",
+      "RS code ingest",
+      "PY code ingest",
+      "JS code ingest",
+      "TOML code ingest",
+      "YAML code ingest",
+      "SH script ingest",
+      "BAT script ingest",
+      "PS1 script ingest",
+      "ENV config ingest",
+      "INI config ingest",
+      "CONF config ingest",
+      "PROPERTIES config ingest",
+      "SRT subtitle ingest",
+      "PNG image ingest (metadata)",
+      "JPG image ingest (metadata)",
+      "SVG image ingest (metadata)"
+    ],
+    "working": [
+      {
+        "type": "TXT",
+        "file": "test.txt"
+      },
+      {
+        "type": "MD",
+        "file": "test.md"
+      },
+      {
+        "type": "CSV",
+        "file": "test.csv"
+      },
+      {
+        "type": "XML",
+        "file": "test.xml"
+      },
+      {
+        "type": "HTML",
+        "file": "test.html"
+      },
+      {
+        "type": "JSON",
+        "file": "test.json"
+      },
+      {
+        "type": "RS",
+        "file": "test.rs"
+      },
+      {
+        "type": "PY",
+        "file": "test.py"
+      },
+      {
+        "type": "JS",
+        "file": "test.js"
+      },
+      {
+        "type": "TOML",
+        "file": "test.toml"
+      },
+      {
+        "type": "YAML",
+        "file": "test.yaml"
+      },
+      {
+        "type": "SH",
+        "file": "test.sh"
+      },
+      {
+        "type": "BAT",
+        "file": "test.bat"
+      },
+      {
+        "type": "PS1",
+        "file": "test.ps1"
+      },
+      {
+        "type": "ENV",
+        "file": "test.env"
+      },
+      {
+        "type": "INI",
+        "file": "test.ini"
+      },
+      {
+        "type": "CONF",
+        "file": "test.conf"
+      },
+      {
+        "type": "PROPERTIES",
+        "file": "test.properties"
+      },
+      {
+        "type": "SRT",
+        "file": "test.srt"
+      },
+      {
+        "type": "PNG",
+        "file": "test.png",
+        "note": "metadata"
+      },
+      {
+        "type": "JPG",
+        "file": "test.jpg",
+        "note": "metadata"
+      },
+      {
+        "type": "SVG",
+        "file": "test.svg",
+        "note": "metadata"
+      }
+    ],
+    "failed": []
+  },
+  "search_system": {
+    "tested": [
+      "search_memory",
+      "global_search",
+      "ranked_search",
+      "search_similar"
+    ],
+    "working": [
+      {
+        "tool": "search_memory"
+      },
+      {
+        "tool": "global_search"
+      },
+      {
+        "tool": "ranked_search"
+      },
+      {
+        "tool": "search_similar"
+      }
+    ],
+    "failed": []
+  },
+  "mcp_acp_connection": {
+    "tested": [
+      "ACP list_agents",
+      "ACP registry",
+      "ACP router"
+    ],
+    "working": [
+      {
+        "tool": "list_acp_agents"
+      },
+      {
+        "tool": "acp_registry"
+      },
+      {
+        "tool": "acp_router"
+      }
+    ],
+    "failed": []
+  }
+}

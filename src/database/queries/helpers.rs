@@ -52,8 +52,10 @@ pub fn parse_time(value: &str) -> DateTime<Utc> {
 /// Convert bytes to f32 vector (for embeddings)
 pub fn bytes_to_embedding(bytes: &[u8]) -> Vec<f32> {
     bytes
-        .chunks_exact(4)
-        .map(|chunk| f32::from_le_bytes([chunk[0], chunk[1], chunk[2], chunk[3]]))
+        .as_chunks::<4>()
+        .0
+        .iter()
+        .map(|&chunk| f32::from_le_bytes(chunk))
         .collect()
 }
 
@@ -67,17 +69,17 @@ pub fn map_row_to_memory_card(row: &Row) -> rusqlite::Result<MemoryCard> {
     let uuid_str: String = row.get(0)?;
     let parent_id_str: String = row.get(4)?;
     let last_accessed_str: Option<String> = row.get(10)?;
-    
+
     Ok(MemoryCard {
         id: Uuid::parse_str(&uuid_str)
             .map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
         content: row.get(1)?,
         memory_type: parse_memory_type(&row.get::<_, String>(2)?),
         layer: parse_memory_layer(&row.get::<_, String>(3)?),
-        parent_id: if parent_id_str.is_empty() { 
-            None 
-        } else { 
-            Uuid::parse_str(&parent_id_str).ok() 
+        parent_id: if parent_id_str.is_empty() {
+            None
+        } else {
+            Uuid::parse_str(&parent_id_str).ok()
         },
         hierarchy_level: parse_hierarchy_level(&row.get::<_, String>(5)?),
         order_index: row.get(6)?,

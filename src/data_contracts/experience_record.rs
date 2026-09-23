@@ -10,7 +10,7 @@ use super::metadata::Metadata;
 ///
 /// Per Architecture Chapter 5.7:
 /// id, goal, plan_id, result, success, execution_time, cost,
-/// confidence_change, tool_usage, lessons, timestamp
+/// confidence_change, tool_usage, lessons_learned, timestamp
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct ExperienceRecord {
     /// Unique identifier for this experience.
@@ -38,7 +38,8 @@ pub struct ExperienceRecord {
     /// Tools used during this experience.
     pub tool_usage: Vec<String>,
     /// Lessons learned from this experience.
-    pub lessons: Vec<String>,
+    #[serde(alias = "lessons")]
+    pub lessons_learned: Vec<String>,
 }
 
 impl ExperienceRecord {
@@ -57,7 +58,7 @@ impl ExperienceRecord {
             cost: 0.0,
             confidence_change: 0.0,
             tool_usage: Vec::new(),
-            lessons: Vec::new(),
+            lessons_learned: Vec::new(),
         }
     }
 
@@ -81,7 +82,7 @@ impl ExperienceRecord {
 
     /// Record a lesson learned.
     pub fn with_lesson(mut self, lesson: &str) -> Self {
-        self.lessons.push(lesson.to_string());
+        self.lessons_learned.push(lesson.to_string());
         self
     }
 
@@ -113,7 +114,7 @@ impl Default for ExperienceRecord {
             cost: 0.0,
             confidence_change: 0.0,
             tool_usage: Vec::new(),
-            lessons: Vec::new(),
+            lessons_learned: Vec::new(),
         }
     }
 }

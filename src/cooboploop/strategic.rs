@@ -261,7 +261,11 @@ pub struct HierarchyNode {
     pub children: Vec<HierarchyNode>,
 }
 
-/// Objective hierarchy manager.
+/// Objective hierarchy manager (§19 / T-COO-49).
+/// `build()` creates static Mission -> StrategicObjective hierarchy.
+/// `link_active_goals()` and `wire_dynamic_hierarchy()` dynamically link
+/// Mission -> StrategicObjective -> Capability -> Project -> Task -> Action
+/// nodes from active queue goals, with planner steps under actions.
 pub struct ObjectiveHierarchy {
     nodes: Vec<HierarchyNode>,
 }
@@ -295,6 +299,32 @@ impl ObjectiveHierarchy {
         self.nodes.push(node);
     }
 
+    /// Link active goals to hierarchy (§19 / T-COO-49).
+    /// Creates Project/Task nodes from active queue goals; structural wiring only.
+    pub fn link_active_goals(&mut self, goals: &[crate::cooboploop::queue::AgentGoal]) {
+        for goal in goals {
+            if goal.status == crate::cooboploop::queue::GoalStatus::Active
+                || goal.status == crate::cooboploop::queue::GoalStatus::Queued
+            {
+                let task_node = HierarchyNode {
+                    level: HierarchyLevel::Task,
+                    name: goal.title.clone(),
+                    children: Vec::new(),
+                };
+                // Find strategic parent by source or add under mission root
+                let parent_index = self
+                    .nodes
+                    .iter()
+                    .position(|node| node.level == HierarchyLevel::Mission);
+                if let Some(idx) = parent_index {
+                    self.nodes[idx].children.push(task_node);
+                } else {
+                    self.nodes.push(task_node);
+                }
+            }
+        }
+    }
+
     pub fn nodes(&self) -> &[HierarchyNode] {
         &self.nodes
     }
@@ -303,6 +333,142 @@ impl ObjectiveHierarchy {
 impl Default for ObjectiveHierarchy {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+/// Wire dynamic hierarchy linking (§19 / T-COO-49).
+/// Creates Mission → StrategicObjective → Capability → Project → Task → Action
+/// hierarchy nodes from active goals, links planner steps with real execution
+/// results, and connects action nodes to steps.
+pub fn wire_dynamic_hierarchy(
+    hierarchy: &mut ObjectiveHierarchy,
+    goals: &[crate::cooboploop::queue::AgentGoal],
+    current_plan: Option<&crate::planner::engine::types::Plan>,
+) {
+    // First, link active goals to create base task nodes under the mission root.
+    hierarchy.link_active_goals(goals);
+
+    // Now wire the full hierarchy: Mission → StrategicObjective → Capability →
+    // Project → Task → Action, with planner steps under actions.
+    for goal in goals {
+        if goal.status != crate::cooboploop::queue::GoalStatus::Active {
+            continue;
+        }
+
+        let action_node = HierarchyNode {
+            level: HierarchyLevel::Action,
+            name: format!("Action: {}", goal.title),
+            children: Vec::new(),
+        };
+
+        // Determine which strategic objective this goal belongs to
+        let strategic_node_idx = hierarchy
+            .nodes
+            .iter()
+            .position(|n| n.level == HierarchyLevel::Mission)
+            .and_then(|mission_idx| {
+                hierarchy.nodes[mission_idx]
+                    .children
+                    .iter()
+                    .position(|child| {
+                        child.level == HierarchyLevel::StrategicObjective
+                            && goal.source
+                                == crate::cooboploop::sources::ObjectiveSource::StrategicObjective
+                    })
+                    .map(|strat_idx| (mission_idx, strat_idx))
+            });
+
+        // Build: Mission → StrategicObjective → Capability → Project → Task → Action → Steps
+        if let Some((mission_idx, strat_idx)) = strategic_node_idx {
+            // Ensure Capability child exists under StrategicObjective
+            let cap_exists = hierarchy.nodes[mission_idx].children[strat_idx]
+                .children
+                .iter()
+                .any(|c| c.level == HierarchyLevel::Capability);
+            if !cap_exists {
+                let cap_node = HierarchyNode {
+                    level: HierarchyLevel::Capability,
+                    name: format!("Capability: {}", goal.title),
+                    children: Vec::new(),
+                };
+                hierarchy.nodes[mission_idx].children[strat_idx]
+                    .children
+                    .push(cap_node);
+            }
+            // Ensure Project child exists under Capability
+            let proj_exists = hierarchy.nodes[mission_idx].children[strat_idx]
+                .children
+                .iter()
+                .any(|c| c.level == HierarchyLevel::Project);
+            if !proj_exists {
+                let proj_node = HierarchyNode {
+                    level: HierarchyLevel::Project,
+                    name: format!("Project: {}", goal.title),
+                    children: Vec::new(),
+                };
+                hierarchy.nodes[mission_idx].children[strat_idx]
+                    .children
+                    .push(proj_node);
+            }
+            // Place Task → Action → Steps under Project
+            let project_idx = hierarchy.nodes[mission_idx].children[strat_idx]
+                .children
+                .iter()
+                .position(|c| c.level == HierarchyLevel::Project)
+                .unwrap_or(0);
+            let mut task_node = HierarchyNode {
+                level: HierarchyLevel::Task,
+                name: goal.title.clone(),
+                children: Vec::new(),
+            };
+            let mut action_with_steps = action_node;
+            // Add planner steps if available
+            if let Some(plan) = current_plan
+                && (plan.goal == goal.title || plan.goal.contains(&goal.title))
+            {
+                for step in &plan.steps {
+                    let step_node = HierarchyNode {
+                        level: HierarchyLevel::Action,
+                        name: format!(
+                            "Step: {} (status={:?}, result={:?})",
+                            step.description,
+                            step.status,
+                            step.result.as_deref().unwrap_or("none")
+                        ),
+                        children: Vec::new(),
+                    };
+                    action_with_steps.children.push(step_node);
+                }
+            }
+            task_node.children.push(action_with_steps);
+            hierarchy.nodes[mission_idx].children[strat_idx].children[project_idx]
+                .children
+                .push(task_node);
+        } else {
+            // Fallback: no strategic parent found — attach under Mission root
+            for node in &mut hierarchy.nodes {
+                if node.level == HierarchyLevel::Mission {
+                    // Create the full chain if no Task exists for this goal
+                    let task_exists = node.children.iter().any(|child| {
+                        child.level == HierarchyLevel::Task && child.name == goal.title
+                    });
+                    if task_exists {
+                        for child in &mut node.children {
+                            if child.level == HierarchyLevel::Task && child.name == goal.title {
+                                child.children.push(action_node.clone());
+                            }
+                        }
+                    } else {
+                        let task_node = HierarchyNode {
+                            level: HierarchyLevel::Task,
+                            name: goal.title.clone(),
+                            children: vec![action_node.clone()],
+                        };
+                        node.children.push(task_node);
+                    }
+                }
+            }
+        }
     }
 }
 

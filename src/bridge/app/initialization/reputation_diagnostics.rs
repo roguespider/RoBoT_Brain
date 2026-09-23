@@ -9,6 +9,7 @@ use crate::bridge::app::state::App;
 use crate::experience::reputation::analytics::ReputationAnalytics;
 use crate::experience::reputation::factors::{FactorScore, ReputationFactor};
 use crate::experience::reputation::score::Reputation;
+use crate::experience::reputation::update_reputation;
 use crate::experience::types::reputation::{ReputationRecord, ReputationTarget};
 
 /// Verify reputation system APIs: ReputationAnalytics and ReputationRecord.
@@ -48,6 +49,9 @@ pub fn verify_reputation_system(app: &App) -> std::result::Result<(), String> {
         trend,
         confidence
     );
+
+    let score = update_reputation("diagnostics-tool", true);
+    tracing::info!("Reputation update verified: score={}", score);
 
     // Exercise ReputationRecord
     let mut record = ReputationRecord::new(ReputationTarget::Agent(rep.id.clone()));

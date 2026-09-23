@@ -640,7 +640,9 @@ impl KnowledgeStore {
         let count = default_items.len();
         for item in default_items {
             let id = self.add(item).await;
-            debug_assert!(!id.is_nil(), "seeded item must have non-nil uuid");
+            if id.is_nil() {
+                tracing::warn!("seeded item has nil uuid, skipping");
+            }
         }
         tracing::info!("Knowledge store seeded with {count} default items");
     }

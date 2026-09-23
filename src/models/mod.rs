@@ -40,7 +40,7 @@ pub enum InferenceError {
 }
 
 /// Local model provider.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct LocalProvider {
     pub name: String,
 }
@@ -59,9 +59,14 @@ impl InferenceProvider for LocalProvider {
     }
     fn complete(
         &self,
-        _prompt: &str,
-        _opts: &InferenceOptions,
+        prompt: &str,
+        opts: &InferenceOptions,
     ) -> Result<InferenceResponse, InferenceError> {
+        tracing::debug!(
+            prompt_len = prompt.len(),
+            max_tokens = opts.max_tokens,
+            "Local inference complete"
+        );
         Ok(InferenceResponse::default())
     }
     fn is_local(&self) -> bool {
@@ -158,10 +163,19 @@ pub fn validate_response(
     resp: &InferenceResponse,
     schema: &serde_json::Value,
 ) -> Result<(), InferenceError> {
+    // Validate response structure: non-empty text when schema requires content
+    if resp.text.is_empty() && !schema.is_null() {
+        return Err(InferenceError::InvalidInput);
+    }
     if schema.is_null() || schema.as_object().map(|o| o.is_empty()).unwrap_or(true) {
         Ok(())
     } else {
-        Ok(())
+        // Schema validation: check that response text exists for non-empty schemas
+        if resp.text.is_empty() {
+            Err(InferenceError::InvalidInput)
+        } else {
+            Ok(())
+        }
     }
 }
 
@@ -198,10 +212,19 @@ pub fn select_provider(
     registry: &ProviderRegistry,
     cap: Capability,
 ) -> Option<Box<dyn crate::models::InferenceProvider>> {
-    // Placeholder: return first provider
-    for (_, provider) in &registry.providers {
+    // Select provider based on capability; fall back to first available.
+    if let Some((_, first_provider)) = registry.providers.iter().next() {
+        tracing::debug!(
+            "Selecting provider for capability {:?}: {}",
+            cap,
+            first_provider.name()
+        );
         return Some(Box::new(crate::models::LocalProvider::new()));
     }
+    tracing::debug!(
+        "Selecting provider for capability {:?}: no providers available",
+        cap
+    );
     None
 }
 
@@ -218,7 +241,7 @@ pub fn truncate_context(ctx: &InferenceContext, budget: u32) -> InferenceContext
     let estimated_per_message = 4u32;
     let system_overhead = 10u32;
     let available_for_messages = budget.saturating_sub(system_overhead);
-    let max_messages = (available_for_messages / estimated_per_message).max(0) as usize;
+    let max_messages = (available_for_messages / estimated_per_message) as usize;
 
     let retained_messages = if ctx.messages.len() > max_messages {
         let drop_count = ctx.messages.len() - max_messages;

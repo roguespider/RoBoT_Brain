@@ -14,8 +14,11 @@ use crate::database::sqlite::SqliteDatabase;
 pub mod advanced_features;
 pub mod cooboploop;
 pub mod core_data_storage;
+pub mod experience_workflow_confidence;
 pub mod hierarchical_memory;
 pub mod job_queue;
+pub mod knowledge_graph;
+pub mod new_subsystems_v16;
 pub mod scheduling;
 pub mod tracking;
 
@@ -33,7 +36,7 @@ fn run_migrations(conn: &Connection) -> Result<()> {
     let mut version = current_version(conn)?;
 
     // Run all pending migrations sequentially
-    while version < 13 {
+    while version < 16 {
         match version {
             0..=2 => {
                 core_data_storage::run(conn)?;
@@ -59,6 +62,18 @@ fn run_migrations(conn: &Connection) -> Result<()> {
             12 => {
                 cooboploop::run(conn)?;
                 version = 13;
+            }
+            13 => {
+                knowledge_graph::run(conn)?;
+                version = 14;
+            }
+            14 => {
+                experience_workflow_confidence::run(conn)?;
+                version = 15;
+            }
+            15 => {
+                new_subsystems_v16::run(conn)?;
+                version = 16;
             }
             _ => break,
         }

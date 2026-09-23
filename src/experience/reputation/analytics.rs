@@ -1,6 +1,5 @@
 // /src/experience/reputation/analytics.rs
 
-
 use super::score::Reputation;
 
 pub struct ReputationAnalytics;
@@ -19,13 +18,9 @@ impl ReputationAnalytics {
             return 0.0;
         }
 
-        let first = reputation.history.first()
-            .map(|h| h.impact)
-            .unwrap_or(0.0);
+        let first = reputation.history.first().map(|h| h.impact).unwrap_or(0.0);
 
-        let last = reputation.history.last()
-            .map(|h| h.impact)
-            .unwrap_or(0.0);
+        let last = reputation.history.last().map(|h| h.impact).unwrap_or(0.0);
 
         last - first
     }

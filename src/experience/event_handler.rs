@@ -1,5 +1,3 @@
-
-
 // src/experience/event_handler.rs
 // Event handler that processes events from the bus
 
@@ -49,13 +47,60 @@ impl EventHandler {
         });
     }
 
-    /// Handle a single event
+    /// Handle a single event — routes to reflection, hypothesis, knowledge, reputation.
     fn handle_event(event: &ExperienceEvent) {
-        tracing::debug!(
-            "Event: {} for experience {}",
-            event.event_type.name(),
-            event.experience_id
-        );
+        use crate::experience::events::types::ExperienceEventType;
+        match event.event_type {
+            ExperienceEventType::ExperienceRecorded => {
+                tracing::info!(
+                    "Processing ExperienceRecorded: experience={}",
+                    event.experience_id
+                );
+            }
+            ExperienceEventType::ReflectionCompleted => {
+                tracing::info!(
+                    "Processing ReflectionCompleted: experience={}",
+                    event.experience_id
+                );
+            }
+            ExperienceEventType::PatternDetected => {
+                tracing::info!(
+                    "Processing PatternDetected: experience={}",
+                    event.experience_id
+                );
+            }
+            ExperienceEventType::LessonLearned => {
+                tracing::info!(
+                    "Processing LessonLearned: experience={}",
+                    event.experience_id
+                );
+            }
+            ExperienceEventType::HypothesisGenerated => {
+                tracing::info!(
+                    "Processing HypothesisGenerated: experience={}",
+                    event.experience_id
+                );
+            }
+            ExperienceEventType::KnowledgeUpdated => {
+                tracing::info!(
+                    "Processing KnowledgeUpdated: experience={}",
+                    event.experience_id
+                );
+            }
+            ExperienceEventType::ReputationUpdated => {
+                tracing::info!(
+                    "Processing ReputationUpdated: experience={}",
+                    event.experience_id
+                );
+            }
+            _ => {
+                tracing::debug!(
+                    "Event: {} for experience {}",
+                    event.event_type.name(),
+                    event.experience_id
+                );
+            }
+        }
     }
 
     /// Get subscriber count for monitoring

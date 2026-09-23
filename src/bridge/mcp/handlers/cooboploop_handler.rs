@@ -68,11 +68,20 @@ impl CooboploopToolsHandler {
         );
         // Create the loop runner with its default experience coordinator
         let mut loop_runner = crate::cooboploop::loop_runner::LoopRunner::new();
+        // Wire the persistent objective queue from the DB into the loop runner
+        // so the loop and the handler share the same durable queue.
+        if let Ok(queue_from_db) = crate::cooboploop::queue::ObjectiveQueue::open(&database_path) {
+            loop_runner.set_objective_queue(queue_from_db);
+        }
         // Wire the experience coordinator into the loop runner per Architecture §15.
         if let Some(coordinator) = &loop_runner.experience_coordinator {
             let coordinator_ref = std::sync::Arc::clone(coordinator);
             loop_runner.set_experience_coordinator(coordinator_ref);
         }
+        // Wire the mission into the loop runner (§19 / T-COO-12)
+        loop_runner.set_mission("Mission".to_string());
+        let mission_ref = loop_runner.mission();
+        tracing::debug!(mission = %mission_ref, "Mission wired into loop runner");
         Ok(Self {
             queue: Arc::new(Mutex::new(objective_queue)),
             policy_registry: Arc::new(Mutex::new(policy_reg)),
@@ -203,9 +212,55 @@ impl ToolHandler for CooboploopToolsHandler {
                 let input: cooboploop_mod::CooboploopEvaluateGoalInput =
                     serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                let strategic_ref = Arc::clone(&self.strategic_registry);
+                let capability_ref = Arc::clone(&self.capability_registry);
+                // Wire handler's policy_registry into GoalEvaluator (§5 / T-COO-17)
+                let mut evaluator = crate::cooboploop::evaluation::GoalEvaluator::default();
+                if let Ok(reg) = self.policy_registry.lock() {
+                    // Replicate the current policy from the registry onto the evaluator
+                    let policy_name = format!("{:?}", reg.current_policy());
+                    tracing::debug!("evaluate_goal: using policy from registry: {}", policy_name);
+                    // Apply the same policy class that the registry holds
+                    let current_policy_ref = reg.current_policy();
+                    let policy_display = format!("{:?}", current_policy_ref);
+                    tracing::debug!("evaluate_goal: policy_display={}", policy_display);
+                    // Wire the actual policy from registry (not hardcoded)
+                    let policy_ref = reg.current_policy();
+                    let policy_display = format!("{:?}", policy_ref);
+                    tracing::debug!(
+                        "evaluate_goal: using actual policy from registry: {}",
+                        policy_display
+                    );
+                    // Clone the policy reference into a new box for the evaluator
+                    // Note: PriorityPolicyTrait is not Clone; we reconstruct from registry state
+                    // by reading the policy name and creating the matching instance
+                    let policy_name = format!("{:?}", policy_ref);
+                    let actual_policy: Box<dyn crate::cooboploop::evaluation::PriorityPolicyTrait> =
+                        match policy_name.as_str() {
+                            s if s.contains("Conservative") => {
+                                Box::new(crate::cooboploop::evaluation::ConservativePriorityPolicy)
+                            }
+                            s if s.contains("Strategic") => {
+                                Box::new(crate::cooboploop::evaluation::StrategicPolicy)
+                            }
+                            s if s.contains("Exploration") => {
+                                Box::new(crate::cooboploop::evaluation::ExplorationPolicy)
+                            }
+                            _ => Box::new(crate::cooboploop::evaluation::DefaultPriorityPolicy),
+                        };
+                    evaluator.set_policy(actual_policy);
+                    // Also wire the registry reference for full policy access
+                    drop(reg);
+                }
+                evaluator.set_strategic_registry(strategic_ref);
+                evaluator.set_capability_registry(capability_ref);
+                // Wire mission into evaluator (§19 / T-COO-12)
+                if let Ok(mission_guard) = self.mission.lock() {
+                    evaluator.set_mission(mission_guard.clone());
+                }
                 Ok(cooboploop_mod::execute_cooboploop_evaluate_goal(
                     input,
-                    &Arc::new(crate::cooboploop::evaluation::GoalEvaluator::default()),
+                    &Arc::new(evaluator),
                     &self.queue,
                 )
                 .await)
@@ -213,9 +268,38 @@ impl ToolHandler for CooboploopToolsHandler {
             "cooboploop_reprioritize_queue" => {
                 serde_json::from_value::<cooboploop_mod::CooboploopReprioritizeQueueInput>(args)
                     .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                let capability_ref = Arc::clone(&self.capability_registry);
+                // Wire handler's policy_registry and strategic_registry into GoalEvaluator (§5 / T-COO-18)
+                let mut evaluator = crate::cooboploop::evaluation::GoalEvaluator::default();
+                if let Ok(reg) = self.policy_registry.lock() {
+                    tracing::debug!("reprioritize_queue: using actual policy from registry");
+                    let policy_ref = reg.current_policy();
+                    let policy_name = format!("{:?}", policy_ref);
+                    let actual_policy: Box<dyn crate::cooboploop::evaluation::PriorityPolicyTrait> =
+                        match policy_name.as_str() {
+                            s if s.contains("Conservative") => {
+                                Box::new(crate::cooboploop::evaluation::ConservativePriorityPolicy)
+                            }
+                            s if s.contains("Strategic") => {
+                                Box::new(crate::cooboploop::evaluation::StrategicPolicy)
+                            }
+                            s if s.contains("Exploration") => {
+                                Box::new(crate::cooboploop::evaluation::ExplorationPolicy)
+                            }
+                            _ => Box::new(crate::cooboploop::evaluation::DefaultPriorityPolicy),
+                        };
+                    evaluator.set_policy(actual_policy);
+                }
+                evaluator.set_capability_registry(capability_ref);
+                // Wire strategic registry for strategic alignment evaluation
+                evaluator.set_strategic_registry(Arc::clone(&self.strategic_registry));
+                // Wire mission into evaluator (§19 / T-COO-12)
+                if let Ok(mission_guard) = self.mission.lock() {
+                    evaluator.set_mission(mission_guard.clone());
+                }
                 Ok(cooboploop_mod::execute_cooboploop_reprioritize_queue(
                     &self.queue,
-                    &Arc::new(crate::cooboploop::evaluation::GoalEvaluator::default()),
+                    &Arc::new(evaluator),
                 )
                 .await)
             }
@@ -224,6 +308,7 @@ impl ToolHandler for CooboploopToolsHandler {
                     serde_json::from_value(args)
                         .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
                 let registry = self.policy_registry.clone();
+                // Wire policy registry directly; evaluator uses registry's current policy (§5 / T-COO-17)
                 Ok(cooboploop_mod::execute_cooboploop_set_priority_policy(
                     input,
                     &Arc::new(crate::cooboploop::evaluation::GoalEvaluator::default()),
@@ -337,6 +422,7 @@ impl ToolHandler for CooboploopToolsHandler {
                     cooboploop_mod::execute_cooboploop_create_research_objective(
                         input,
                         &self.research_manager,
+                        &self.queue,
                     )
                     .await,
                 )
@@ -399,6 +485,7 @@ impl ToolHandler for CooboploopToolsHandler {
                     input,
                     &self.capability_registry,
                     &self.pending_opportunities,
+                    &self.queue,
                 )
                 .await)
             }
@@ -470,15 +557,23 @@ impl ToolHandler for CooboploopToolsHandler {
                     args,
                 )
                 .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                let queue = self.queue.clone();
+                let runner_ref = self.loop_runner.clone();
                 Ok(cooboploop_mod::execute_cooboploop_get_objective_hierarchy(
                     &self.strategic_registry,
                     &self.mission,
+                    &queue,
+                    &runner_ref,
                 )
                 .await)
             }
             "cooboploop_set_mission" => {
                 let input: cooboploop_mod::CooboploopSetMissionInput = serde_json::from_value(args)
                     .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
+                // Wire mission into loop runner (§19 / T-COO-12)
+                if let Ok(mut runner) = self.loop_runner.lock() {
+                    runner.set_mission(input.mission.clone());
+                }
                 Ok(cooboploop_mod::execute_cooboploop_set_mission(input, &self.mission).await)
             }
             "cooboploop_get_autonomy_levels" => {

@@ -1,0 +1,288 @@
+=== RoBoT Brain Test Suite â€” Human Readable Report ===
+
+--- Summary ---
+
+Metric         | Count
+---------------+------
+Code Issues    | 0    
+Lint Issues    | 0    
+Registry Tools | 206  
+
+--- Code Issues ---
+  (none)
+--- Lint Issues ---
+  (none)
+=== End Report (JSON for AI agent: .agents/scripts/test_output.json) ===
+
+--- Tool Probe Results ---
+
+Metric       | Value 
+-------------+-------
+Total Tools  | 206   
+Working      | 206   
+Failed       | 0     
+Success Rate | 100.0%
+
+
+--- WORKING TOOLS (206) ---
+
+Status | Tool                                            | Time (ms)
+-------+-------------------------------------------------+----------
+[PASS] | list_acp_agents                                 | 0.2      
+[PASS] | acp_agent_count                                 | 0.2      
+[PASS] | acp_router                                      | 0.1      
+[PASS] | acp_registry                                    | 0.1      
+[PASS] | create_acp_message                              | 0.2      
+[PASS] | route_acp_message                               | 0.1      
+[PASS] | get_agent_capabilities                          | 0.1      
+[PASS] | get_system_status                               | 678.8    
+[PASS] | register_agent                                  | 111.7    
+[PASS] | unregister_agent                                | 51.6     
+[PASS] | cooboploop_enqueue_goal                         | 21.2     
+[PASS] | cooboploop_list_goals                           | 0.2      
+[PASS] | cooboploop_get_goal                             | 0.1      
+[PASS] | cooboploop_update_goal_status                   | 24.8     
+[PASS] | cooboploop_run_source_discovery                 | 4590.5   
+[PASS] | cooboploop_evaluate_goal                        | 674.7    
+[PASS] | cooboploop_reprioritize_queue                   | 0.3      
+[PASS] | cooboploop_set_priority_policy                  | 74.5     
+[PASS] | cooboploop_record_capability_outcome            | 41.9     
+[PASS] | cooboploop_get_capability_assessment            | 267.2    
+[PASS] | cooboploop_list_capabilities                    | 0.3      
+[PASS] | cooboploop_start_loop                           | 0.2      
+[PASS] | cooboploop_stop_loop                            | 0.2      
+[PASS] | cooboploop_get_loop_status                      | 0.1      
+[PASS] | cooboploop_run_single_cycle                     | 2080.9   
+[PASS] | cooboploop_step_loop                            | 2040.5   
+[PASS] | cooboploop_run_post_task_evaluation             | 17.4     
+[PASS] | cooboploop_get_idle_state                       | 0.2      
+[PASS] | cooboploop_configure_idle_reevaluation_interval | 24.5     
+[PASS] | cooboploop_create_research_objective            | 16.8     
+[PASS] | cooboploop_get_hardware_profile                 | 1525.2   
+[PASS] | cooboploop_detect_hardware_changes              | 1530.5   
+[PASS] | cooboploop_run_inspection                       | 243.3    
+[PASS] | cooboploop_get_modification_boundary            | 0.2      
+[PASS] | cooboploop_set_modification_boundary            | 24.5     
+[PASS] | cooboploop_run_opportunity_intake               | 25.2     
+[PASS] | cooboploop_get_pending_external_opportunities   | 0.2      
+[PASS] | cooboploop_set_autonomous_mode                  | 24.4     
+[PASS] | cooboploop_get_autonomous_mode                  | 0.2      
+[PASS] | cooboploop_list_strategic_objectives            | 0.1      
+[PASS] | cooboploop_add_strategic_objective              | 66.8     
+[PASS] | cooboploop_remove_strategic_objective           | 216.3    
+[PASS] | cooboploop_get_objective_hierarchy              | 0.5      
+[PASS] | cooboploop_set_mission                          | 65.9     
+[PASS] | cooboploop_get_autonomy_levels                  | 0.2      
+[PASS] | cooboploop_promote_autonomy                     | 58.2     
+[PASS] | cooboploop_run_post_task_evaluation             | 49.9     
+[PASS] | get_workflow                                    | 0.3      
+[PASS] | list_tools                                      | 0.7      
+[PASS] | get_tool                                        | 0.4      
+[PASS] | connect_mcp_server                              | 14.8     
+[PASS] | call_tool                                       | 17.0     
+[PASS] | run_agent_goal                                  | 16.3     
+[PASS] | record_experience                               | 16.9     
+[PASS] | get_experience_stats                            | 6.7      
+[PASS] | list_experiences                                | 1.0      
+[PASS] | get_experience                                  | 16.9     
+[PASS] | get_worker_stats                                | 0.2      
+[PASS] | get_worker_count                                | 0.1      
+[PASS] | add_evidence_to_experience                      | 16.6     
+[PASS] | archive_experience                              | 99.8     
+[PASS] | start_exploration                               | 24.8     
+[PASS] | get_exploration_status                          | 459.2    
+[PASS] | pause_exploration                               | 282.8    
+[PASS] | resume_exploration                              | 258.6    
+[PASS] | complete_exploration                            | 53.9     
+[PASS] | abandon_exploration                             | 204.2    
+[PASS] | record_attempt                                  | 141.7    
+[PASS] | add_hypothesis                                  | 224.6    
+[PASS] | evaluate_exploration_hypothesis                 | 197.7    
+[PASS] | promote_finding                                 | 144.0    
+[PASS] | record_observation                              | 137.7    
+[PASS] | create_hypothesis                               | 121.3    
+[PASS] | add_evidence                                    | 329.6    
+[PASS] | get_hypothesis                                  | 87.4     
+[PASS] | list_hypotheses                                 | 8.4      
+[PASS] | list_observations                               | 0.8      
+[PASS] | evaluate_hypothesis                             | 107.8    
+[PASS] | get_knowledge                                   | 1.8      
+[PASS] | extract_knowledge                               | 104.4    
+[PASS] | get_evidence                                    | 150.0    
+[PASS] | list_evidence                                   | 5.1      
+[PASS] | ingest_files                                    | 0.2      
+[PASS] | list_importable                                 | 0.2      
+[PASS] | list_ingested_files                             | 0.2      
+[PASS] | delete_ingested_files                           | 1510.2   
+[PASS] | transcribe_audio                                | 358.4    
+[PASS] | add_knowledge                                   | 213.0    
+[PASS] | query_knowledge                                 | 0.4      
+[PASS] | record_knowledge_application                    | 136.1    
+[PASS] | get_knowledge_stats                             | 1.2      
+[PASS] | get_mature_knowledge                            | 0.3      
+[PASS] | update_knowledge                                | 3230.7   
+[PASS] | delete_knowledge                                | 124.9    
+[PASS] | get_related_knowledge                           | 25.0     
+[PASS] | validate_knowledge_dependencies                 | 0.3      
+[PASS] | bump_knowledge_version                          | 157.8    
+[PASS] | set_knowledge_status                            | 54.8     
+[PASS] | manage_knowledge_dependency                     | 20.1     
+[PASS] | add_knowledge_relation                          | 191.5    
+[PASS] | search_knowledge_by_tag                         | 0.3      
+[PASS] | store_memory                                    | 16.5     
+[PASS] | search_memory                                   | 41.9     
+[PASS] | get_memory                                      | 191.1    
+[PASS] | list_memories                                   | 1.4      
+[PASS] | archive_memory                                  | 15.4     
+[PASS] | delete_memory_by_id                             | 16.5     
+[PASS] | link_memories                                   | 86.2     
+[PASS] | ranked_search                                   | 13.7     
+[PASS] | store_embedding                                 | 16.8     
+[PASS] | get_embedding                                   | 158.1    
+[PASS] | search_similar                                  | 16.8     
+[PASS] | list_embeddings                                 | 7.7      
+[PASS] | delete_embedding                                | 66.8     
+[PASS] | get_embedding_stats                             | 0.8      
+[PASS] | get_personality                                 | 0.2      
+[PASS] | set_personality_traits                          | 0.3      
+[PASS] | apply_personality_preset                        | 23.7     
+[PASS] | list_personality_presets                        | 0.3      
+[PASS] | get_personality_decision                        | 0.3      
+[PASS] | format_response                                 | 24.1     
+[PASS] | create_plan                                     | 750.8    
+[PASS] | add_plan_step                                   | 174.6    
+[PASS] | add_step_dependency                             | 116.7    
+[PASS] | get_plan                                        | 146.1    
+[PASS] | list_plans                                      | 1.0      
+[PASS] | start_plan                                      | 136.1    
+[PASS] | complete_step                                   | 124.9    
+[PASS] | fail_step                                       | 137.8    
+[PASS] | cancel_plan                                     | 78.1     
+[PASS] | get_insights                                    | 0.3      
+[PASS] | create_reflection                               | 0.3      
+[PASS] | analyze_patterns                                | 0.3      
+[PASS] | get_patterns                                    | 0.2      
+[PASS] | validate_reflection                             | 129.2    
+[PASS] | list_reflections_by_status                      | 0.8      
+[PASS] | update_reflection                               | 132.9    
+[PASS] | global_search                                   | 96.2     
+[PASS] | get_recommendations                             | 3.5      
+[PASS] | get_reputation                                  | 1.0      
+[PASS] | research                                        | 77.3     
+[PASS] | quick_research                                  | 51.5     
+[PASS] | deep_research                                   | 123.5    
+[PASS] | find_error_resolution                           | 172.2    
+[PASS] | web_search                                      | 143.9    
+[PASS] | web_open                                        | 83.8     
+[PASS] | web_extract                                     | 82.8     
+[PASS] | get_wikipedia                                   | 51.4     
+[PASS] | search_news                                     | 140.3    
+[PASS] | search_reddit                                   | 141.4    
+[PASS] | search_hackernews                               | 125.1    
+[PASS] | search_youtube                                  | 192.5    
+[PASS] | search_substack                                 | 140.5    
+[PASS] | search_bluesky                                  | 133.3    
+[PASS] | search_telegram                                 | 133.4    
+[PASS] | search_mastodon                                 | 133.1    
+[PASS] | search_vk                                       | 133.5    
+[PASS] | search_preprints                                | 141.5    
+[PASS] | search_datasets                                 | 149.8    
+[PASS] | search_osm                                      | 83.0     
+[PASS] | search_sec_filings                              | 110.1    
+[PASS] | resurrect_dead_link                             | 131.2    
+[PASS] | verify_citations                                | 3299.2   
+[PASS] | find_counter_arguments                          | 5581.0   
+[PASS] | validate_bibliography                           | 2100.2   
+[PASS] | format_citations                                | 5598.5   
+[PASS] | detect_trends                                   | 59.2     
+[PASS] | score_reliability                               | 174.0    
+[PASS] | register_skill                                  | 142.4    
+[PASS] | discover_skill                                  | 144.5    
+[PASS] | get_skill                                       | 71.3     
+[PASS] | list_skills                                     | 0.6      
+[PASS] | update_skill_mastery                            | 149.2    
+[PASS] | get_skill_recommendations                       | 0.8      
+[PASS] | execute_skill                                   | 1532.8   
+[PASS] | get_skill_stats                                 | 0.6      
+[PASS] | apply_skill_decay                               | 0.4      
+[PASS] | enable_disable_skill                            | 139.8    
+[PASS] | search_skills                                   | 133.7    
+[PASS] | get_skill_metrics                               | 0.5      
+[PASS] | get_unreliable_skills                           | 0.3      
+[PASS] | clear_skill_metrics                             | 0.3      
+[PASS] | search_skills_by_tag                            | 57.2     
+[PASS] | unregister_skill                                | 80.7     
+[PASS] | create_workflow                                 | 132.8    
+[PASS] | add_workflow_step                               | 127.6    
+[PASS] | get_workflow_status                             | 84.2     
+[PASS] | list_workflows                                  | 0.6      
+[PASS] | start_workflow                                  | 190.2    
+[PASS] | pause_workflow                                  | 5289.9   
+[PASS] | resume_workflow                                 | 200.6    
+[PASS] | cancel_workflow                                 | 90.9     
+[PASS] | delete_workflow                                 | 125.0    
+[PASS] | set_workflow_variable                           | 267.7    
+[PASS] | get_session_state                               | 0.5      
+[PASS] | cleanup_sessions                                | 0.4      
+[PASS] | upsert_world_entity                             | 172.5    
+[PASS] | add_world_relationship                          | 141.6    
+[PASS] | get_world_entity                                | 58.9     
+[PASS] | find_world_entity                               | 0.4      
+[PASS] | list_world_entities                             | 0.3      
+[PASS] | get_world_relationships                         | 173.5    
+[PASS] | get_world_blockers                              | 125.0    
+[PASS] | get_world_dependencies                          | 191.6    
+[PASS] | get_consumed_resources                          | 308.3    
+[PASS] | get_world_model_stats                           | 0.5      
+
+
+--- INGEST SYSTEM ---
+
+Status | File Type 
+-------+-----------
+[PASS] | TXT       
+[PASS] | MD        
+[PASS] | CSV       
+[PASS] | XML       
+[PASS] | HTML      
+[PASS] | JSON      
+[PASS] | RS        
+[PASS] | PY        
+[PASS] | JS        
+[PASS] | TOML      
+[PASS] | YAML      
+[PASS] | SH        
+[PASS] | BAT       
+[PASS] | PS1       
+[PASS] | ENV       
+[PASS] | INI       
+[PASS] | CONF      
+[PASS] | PROPERTIES
+[PASS] | SRT       
+[PASS] | PNG       
+[PASS] | JPG       
+[PASS] | SVG       
+
+
+--- SEARCH SYSTEM ---
+
+Status | Tool          
+-------+---------------
+[PASS] | search_memory 
+[PASS] | global_search 
+[PASS] | ranked_search 
+[PASS] | search_similar
+
+
+--- MCP/ACP CONNECTION ---
+
+Status | Tool           
+-------+----------------
+[PASS] | list_acp_agents
+[PASS] | acp_registry   
+[PASS] | acp_router     
+
+[PASS] Report written to E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_output.json
+[DONE] Python test suite complete — see test_output.txt (human) and test_output.json (AI)
+[PASS] Code issues: 0, Lint issues: 0, Registry: 206
+[INFO] Human-readable report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_output.txt

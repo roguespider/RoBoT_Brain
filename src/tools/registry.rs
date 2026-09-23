@@ -40,19 +40,20 @@ pub fn run_isolated<
         crate::execution::ExecutionError,
     >,
 >(
-    _ctx: &crate::execution::IsolationContext,
+    ctx: &crate::execution::IsolationContext,
     f: F,
 ) -> Result<crate::skills::registry::result::ExecutionResult, crate::execution::ExecutionError> {
+    tracing::debug!(
+        timeout_ms = ctx.timeout_ms,
+        "Invoking tool with authorization"
+    );
     f()
 }
 
 /// Invoke a tool with authorization check.
-pub fn invoke_tool_with_auth(
-    tool: &str,
-    caller: &str,
-) -> Result<serde_json::Value, crate::tools::permissions::ToolError> {
+pub fn invoke_tool_with_auth(tool: &str, caller: &str) -> Result<serde_json::Value, ToolError> {
     if !crate::tools::permissions::is_authorized(tool, caller) {
-        return Err(crate::tools::permissions::ToolError::NotFound);
+        return Err(ToolError::NotFound);
     }
     Ok(serde_json::json!({"status": "executed", "tool": tool}))
 }

@@ -3,8 +3,9 @@ use crate::research::config::env_key;
 #[cfg(feature = "http")]
 use crate::research::errors::ResearchError;
 #[cfg(feature = "http")]
-use crate::research::provider::{SearchResult, SearchSource};
+use crate::research::provider::SearchResult;
 
+#[derive(Debug)]
 #[cfg(feature = "http")]
 pub struct JinaProvider {
     api_key: Option<String>,

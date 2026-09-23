@@ -1,8 +1,7 @@
-
 // src/tools/agent/workflows.rs
 // Workflow and list tools execution
 
-use crate::bridge::tools::{get_tools_async, ToolOutput};
+use crate::bridge::tools::{ToolOutput, get_tools_async};
 
 use super::inputs::{GetWorkflowInput, ListToolsInput};
 
@@ -154,7 +153,7 @@ pub async fn execute_get_workflow(input: GetWorkflowInput) -> Result<ToolOutput,
                 "get_patterns": "Get stored patterns",
                 "get_insights": "Get actionable insights"
             }
-        })
+        }),
     };
 
     Ok(ToolOutput::success(serde_json::json!({
@@ -182,10 +181,16 @@ pub async fn execute_list_tools(input: ListToolsInput) -> Result<ToolOutput, any
             }
         })
         .map(|tool| {
+            // Truncate description to avoid exceeding stdio transport message limits
+            let desc = if tool.description.len() > 200 {
+                format!("{}...", &tool.description[..200])
+            } else {
+                tool.description.clone()
+            };
+            // Remove full input_schema from list response (use get_tool for details)
             serde_json::json!({
                 "name": tool.name,
-                "description": tool.description,
-                "input_schema": tool.input_schema
+                "description": desc,
             })
         })
         .collect();

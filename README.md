@@ -204,13 +204,13 @@ Releases are automated via GitHub Actions. To create a new release:
    ```
 
 3. **GitHub Actions** will automatically:
-   - ✅ Run tests on Windows, Linux, and macOS
-   - ✅ Build release binaries for all platforms:
+   - [PASS] Run tests on Windows, Linux, and macOS
+   - [PASS] Build release binaries for all platforms:
      - Windows: x86_64
      - Linux: x86_64, aarch64
      - macOS: x86_64, aarch64 (Apple Silicon)
-   - ✅ Generate SHA256 checksums
-   - ✅ Create a GitHub Release with all artifacts
+   - [PASS] Generate SHA256 checksums
+   - [PASS] Create a GitHub Release with all artifacts
 
 ### Download Pre-built Binaries
 
@@ -318,15 +318,15 @@ robot_brain --version
 
 | Layer | Purpose | Size | Status |
 |-------|---------|------|--------|
-| **Working Memory** | Active context with LRU eviction, TTL, promotion policies | In-memory | ✅ Implemented |
-| **Permanent Memory** | Indexed, connected, confidence weighted storage | In-memory + SQLite | ✅ Implemented |
-| **Memory Retrieval** | Unified retrieval across memory layers with relevance scoring | Unified API | ✅ Implemented |
-| **Index Card** (Short-term) | Lightweight metadata: ID, Title, Summary, Keywords, Pointer | ~200-500 bytes/card | ✅ Implemented (in-memory) |
-| **Flat Memory** (Raw Chunks) | Original document chunks in SQLite. Only high-scoring chunks receive embeddings | Variable | ⏳ Deferred |
-| **Graph Memory** | Stores relationships/facts only, never prose. Extracted async in background | Variable | ✅ Implemented (schema + tables) |
-| **Long-term Memory** | Promoted memories with full lineage tracking | Persistent | ✅ Implemented (lineage) |
+| **Working Memory** | Active context with LRU eviction, TTL, promotion policies | In-memory | [PASS] Implemented |
+| **Permanent Memory** | Indexed, connected, confidence weighted storage | In-memory + SQLite | [PASS] Implemented |
+| **Memory Retrieval** | Unified retrieval across memory layers with relevance scoring | Unified API | [PASS] Implemented |
+| **Index Card** (Short-term) | Lightweight metadata: ID, Title, Summary, Keywords, Pointer | ~200-500 bytes/card | [PASS] Implemented (in-memory) |
+| **Flat Memory** (Raw Chunks) | Original document chunks in SQLite. Only high-scoring chunks receive embeddings | Variable | [DEFERRED] Deferred |
+| **Graph Memory** | Stores relationships/facts only, never prose. Extracted async in background | Variable | [PASS] Implemented (schema + tables) |
+| **Long-term Memory** | Promoted memories with full lineage tracking | Persistent | [PASS] Implemented (lineage) |
 
-### Experience Compression (⏳ Deferred)
+### Experience Compression ([DEFERRED] Deferred)
 
 Not implemented. The `experience/compression/` module does not exist. When implemented:
 pattern detection, exception tracking, and aggregation of similar experiences.
@@ -435,14 +435,14 @@ The experience system tracks every action the agent takes, enabling learning ove
 
 | File | Component | Status |
 |------|-----------|--------|
-| `experience/types.rs` | `Experience`, `ExperienceType`, `ExperienceScore`, `ReputationRecord`, `OutcomeKind`, etc. | ✅ Implemented |
-| `experience/events.rs` | `ExperienceEvent` enum + `EventPayload` enum | ✅ Implemented |
-| `experience/observer.rs` | `ExperienceObserver` trait (name, accepts, observe, priority) | ✅ Implemented |
-| `experience/recorder.rs` | `ExperienceRecorder::record()` — inserts into DB via `ExperienceQueries` | ⚠️ Partial (see below) |
-| `experience/bus.rs` | Publish/subscribe routing for events | ❌ Stub (`bus.publish(experience_id)` only) |
-| `experience/queue.rs` | In-memory job queue with HashMap-backed push/pop/complete/fail | ✅ Implemented |
-| `experience/worker.rs` | Spawns async worker per observer, processes jobs from channel receiver | ✅ Implemented |
-| `experience/coordinator.rs` | Orchestrates full pipeline: recorder → scorer → reputation → hypothesis/exploration/reflection/evolution | ⚠️ Partial (imports resolved, but reflection/evolution stubbed) |
+| `experience/types.rs` | `Experience`, `ExperienceType`, `ExperienceScore`, `ReputationRecord`, `OutcomeKind`, etc. | [PASS] Implemented |
+| `experience/events.rs` | `ExperienceEvent` enum + `EventPayload` enum | [PASS] Implemented |
+| `experience/observer.rs` | `ExperienceObserver` trait (name, accepts, observe, priority) | [PASS] Implemented |
+| `experience/recorder.rs` | `ExperienceRecorder::record()` — inserts into DB via `ExperienceQueries` | [WARN] Partial (see below) |
+| `experience/bus.rs` | Publish/subscribe routing for events | [FAIL] Stub (`bus.publish(experience_id)` only) |
+| `experience/queue.rs` | In-memory job queue with HashMap-backed push/pop/complete/fail | [PASS] Implemented |
+| `experience/worker.rs` | Spawns async worker per observer, processes jobs from channel receiver | [PASS] Implemented |
+| `experience/coordinator.rs` | Orchestrates full pipeline: recorder → scorer → reputation → hypothesis/exploration/reflection/evolution | [WARN] Partial (imports resolved, but reflection/evolution stubbed) |
 
 ### Pipeline Design
 
@@ -457,10 +457,10 @@ Experience Recorded
         |
         v
     Notify Observers:
-    ├── Hypothesis Engine  ✅
-    ├── Exploration Engine  ✅
-    ├── Reflection Engine   ⚠️ Stubbed
-    └── Evolution Engine    ⚠️ Stubbed
+    ├── Hypothesis Engine  [PASS]
+    ├── Exploration Engine  [PASS]
+    ├── Reflection Engine   [WARN] Stubbed
+    └── Evolution Engine    [WARN] Stubbed
 ```
 
 ### Key Types
@@ -490,8 +490,8 @@ All previously-planned sub-modules now exist as files:
 | `reputation` | `experience/reputation/` | Update long-term reputation for tools/workflows/models |
 | `hypothesis` | `experience/hypothesis/` | Generate and track hypotheses from observations |
 | `exploration` | `experience/exploration/` | Test new candidates via controlled experimentation |
-| `reflection` | ⚠️ Stubbed | Analyze past experiences for patterns and improvements |
-| `evolution` | ⚠️ Stubbed | Adapt behavior based on accumulated experience |
+| `reflection` | [WARN] Stubbed | Analyze past experiences for patterns and improvements |
+| `evolution` | [WARN] Stubbed | Adapt behavior based on accumulated experience |
 
 ### Key Interfaces
 
@@ -514,25 +514,25 @@ pub trait ExperienceObserver: Send + Sync {
 
 ```
 src/
-├── main.rs                     ✅ App entry point
-├── lib.rs                      ✅ Crate root
-├── agent/                      ✅ Agent loop, context, safety gate
-│   ├── loop_runner.rs          ✅ AgentLoop::run() - main cognition loop
-│   ├── context.rs              ✅ Context engine integration
-│   ├── decision.rs             ✅ Action selection logic
-│   ├── types.rs                ✅ Agent types
-│   └── safety_gate/            ✅ Sandbox, hallucination detection, rollback
+├── main.rs                     [PASS] App entry point
+├── lib.rs                      [PASS] Crate root
+├── agent/                      [PASS] Agent loop, context, safety gate
+│   ├── loop_runner.rs          [PASS] AgentLoop::run() - main cognition loop
+│   ├── context.rs              [PASS] Context engine integration
+│   ├── decision.rs             [PASS] Action selection logic
+│   ├── types.rs                [PASS] Agent types
+│   └── safety_gate/            [PASS] Sandbox, hallucination detection, rollback
 │       ├── mod.rs
 │       ├── sandbox.rs
 │       ├── hallucination.rs
 │       ├── rollback.rs
 │       └── types.rs
 ├── database/
-│   ├── mod.rs                  ✅
-│   ├── sqlite.rs               ✅ Connection + initialization
-│   ├── models.rs               ✅ Database structs
+│   ├── mod.rs                  [PASS]
+│   ├── sqlite.rs               [PASS] Connection + initialization
+│   ├── models.rs               [PASS] Database structs
 │   ├── migrations/
-│   │   ├── mod.rs              ✅ 12 migrations (v0→v12)
+│   │   ├── mod.rs              [PASS] 12 migrations (v0→v12)
 │   │   ├── core_data_storage.rs
 │   │   ├── tracking.rs
 │   │   ├── scheduling.rs
@@ -540,396 +540,396 @@ src/
 │   │   ├── hierarchical_memory.rs
 │   │   └── job_queue.rs
 │   └── queries/
-│       ├── mod.rs              ✅
-│       ├── memory.rs           ✅
-│       ├── experiences.rs      ✅
-│       ├── observations.rs     ✅
-│       ├── relationships.rs    ✅
-│       ├── scheduled_tasks.rs  ✅
-│       ├── embeddings.rs       ✅
-│       └── helpers.rs          ✅
+│       ├── mod.rs              [PASS]
+│       ├── memory.rs           [PASS]
+│       ├── experiences.rs      [PASS]
+│       ├── observations.rs     [PASS]
+│       ├── relationships.rs    [PASS]
+│       ├── scheduled_tasks.rs  [PASS]
+│       ├── embeddings.rs       [PASS]
+│       └── helpers.rs          [PASS]
 ├── memory/
-│   ├── mod.rs                  ✅
-│   ├── working.rs              ✅ Working memory (LRU, TTL)
+│   ├── mod.rs                  [PASS]
+│   ├── working.rs              [PASS] Working memory (LRU, TTL)
 │   ├── permanent/
-│   │   ├── mod.rs              ✅
-│   │   ├── store.rs            ✅
-│   │   └── tests.rs            ✅
-│   ├── retrieval.rs            ✅ Unified retrieval across layers
-│   ├── pipeline.rs             ✅ Memory pipeline
-│   ├── repository.rs           ✅ Memory persistence
-│   └── types.rs                ✅ Memory types
+│   │   ├── mod.rs              [PASS]
+│   │   ├── store.rs            [PASS]
+│   │   └── tests.rs            [PASS]
+│   ├── retrieval.rs            [PASS] Unified retrieval across layers
+│   ├── pipeline.rs             [PASS] Memory pipeline
+│   ├── repository.rs           [PASS] Memory persistence
+│   └── types.rs                [PASS] Memory types
 ├── experience/
-│   ├── mod.rs                  ✅
-│   ├── coordinator.rs          ✅ Pipeline coordinator
-│   ├── bus.rs                  ✅ Pub/sub event bus
-│   ├── queue.rs                ✅ SQLite-backed job queue
-│   ├── worker.rs               ✅ Async worker
-│   ├── scorer.rs               ✅ Experience scoring
-│   ├── metrics.rs              ✅ Metrics collection
-│   ├── repository.rs           ✅ CRUD for encounters/experiences
-│   ├── encounter_recorder.rs   ✅ Encounter recording
-│   ├── event_handler.rs        ✅ Event handling
+│   ├── mod.rs                  [PASS]
+│   ├── coordinator.rs          [PASS] Pipeline coordinator
+│   ├── bus.rs                  [PASS] Pub/sub event bus
+│   ├── queue.rs                [PASS] SQLite-backed job queue
+│   ├── worker.rs               [PASS] Async worker
+│   ├── scorer.rs               [PASS] Experience scoring
+│   ├── metrics.rs              [PASS] Metrics collection
+│   ├── repository.rs           [PASS] CRUD for encounters/experiences
+│   ├── encounter_recorder.rs   [PASS] Encounter recording
+│   ├── event_handler.rs        [PASS] Event handling
 │   ├── events/
-│   │   ├── mod.rs              ✅
-│   │   ├── builders.rs         ✅
-│   │   ├── types.rs            ✅
-│   │   ├── payload.rs          ✅
-│   │   └── mod.rs              ✅
+│   │   ├── mod.rs              [PASS]
+│   │   ├── builders.rs         [PASS]
+│   │   ├── types.rs            [PASS]
+│   │   ├── payload.rs          [PASS]
+│   │   └── mod.rs              [PASS]
 │   ├── types/
-│   │   ├── mod.rs              ✅
-│   │   ├── experience.rs       ✅
-│   │   ├── encounter.rs        ✅
-│   │   ├── score.rs            ✅
-│   │   ├── reputation.rs       ✅
-│   │   ├── outcome.rs          ✅
-│   │   ├── evidence.rs         ✅
-│   │   ├── maturity.rs         ✅
-│   │   └── context.rs          ✅
+│   │   ├── mod.rs              [PASS]
+│   │   ├── experience.rs       [PASS]
+│   │   ├── encounter.rs        [PASS]
+│   │   ├── score.rs            [PASS]
+│   │   ├── reputation.rs       [PASS]
+│   │   ├── outcome.rs          [PASS]
+│   │   ├── evidence.rs         [PASS]
+│   │   ├── maturity.rs         [PASS]
+│   │   └── context.rs          [PASS]
 │   ├── observer/
-│   │   ├── mod.rs              ✅
-│   │   ├── experience.rs       ✅
+│   │   ├── mod.rs              [PASS]
+│   │   ├── experience.rs       [PASS]
 │   │   └── impls/
-│   │       ├── mod.rs          ✅
-│   │       ├── hypothesis.rs   ✅
-│   │       ├── metrics.rs      ✅
-│   │       └── reputation.rs   ✅
+│   │       ├── mod.rs          [PASS]
+│   │       ├── hypothesis.rs   [PASS]
+│   │       ├── metrics.rs      [PASS]
+│   │       └── reputation.rs   [PASS]
 │   ├── hypothesis/
-│   │   ├── mod.rs              ✅
+│   │   ├── mod.rs              [PASS]
 │   │   ├── core/
-│   │   │   ├── mod.rs          ✅
-│   │   │   ├── hypothesis.rs   ✅
-│   │   │   ├── evidence.rs     ✅
-│   │   │   ├── evaluator.rs    ✅
-│   │   │   └── lifecycle.rs    ✅
+│   │   │   ├── mod.rs          [PASS]
+│   │   │   ├── hypothesis.rs   [PASS]
+│   │   │   ├── evidence.rs     [PASS]
+│   │   │   ├── evaluator.rs    [PASS]
+│   │   │   └── lifecycle.rs    [PASS]
 │   │   ├── services/
-│   │   │   ├── mod.rs          ✅
-│   │   │   ├── analytics.rs    ✅
-│   │   │   ├── generator.rs    ✅
-│   │   │   ├── matcher.rs      ✅
-│   │   │   └── validator.rs    ✅
+│   │   │   ├── mod.rs          [PASS]
+│   │   │   ├── analytics.rs    [PASS]
+│   │   │   ├── generator.rs    [PASS]
+│   │   │   ├── matcher.rs      [PASS]
+│   │   │   └── validator.rs    [PASS]
 │   │   └── support/
-│   │       ├── mod.rs          ✅
-│   │       ├── statistics.rs   ✅
-│   │       ├── graph/          ✅ Graph algorithms
-│   │       ├── simulation.rs   ✅
-│   │       └── planner.rs      ✅
+│   │       ├── mod.rs          [PASS]
+│   │       ├── statistics.rs   [PASS]
+│   │       ├── graph/          [PASS] Graph algorithms
+│   │       ├── simulation.rs   [PASS]
+│   │       └── planner.rs      [PASS]
 │   ├── evolution/
-│   │   ├── mod.rs              ✅
-│   │   ├── behavior.rs         ✅
-│   │   ├── engine.rs           ✅
-│   │   └── evidence.rs         ✅
+│   │   ├── mod.rs              [PASS]
+│   │   ├── behavior.rs         [PASS]
+│   │   ├── engine.rs           [PASS]
+│   │   └── evidence.rs         [PASS]
 │   ├── exploration/
-│   │   ├── mod.rs              ✅
-│   │   ├── core.rs             ✅
-│   │   ├── attempt.rs          ✅
-│   │   ├── finding.rs          ✅
-│   │   ├── hypothesis.rs       ✅
-│   │   └── store.rs            ✅
+│   │   ├── mod.rs              [PASS]
+│   │   ├── core.rs             [PASS]
+│   │   ├── attempt.rs          [PASS]
+│   │   ├── finding.rs          [PASS]
+│   │   ├── hypothesis.rs       [PASS]
+│   │   └── store.rs            [PASS]
 │   ├── reflection/
-│   │   ├── mod.rs              ✅
-│   │   ├── insight.rs          ✅
-│   │   ├── pattern.rs          ✅
-│   │   ├── review.rs           ✅
-│   │   ├── types.rs            ✅
+│   │   ├── mod.rs              [PASS]
+│   │   ├── insight.rs          [PASS]
+│   │   ├── pattern.rs          [PASS]
+│   │   ├── review.rs           [PASS]
+│   │   ├── types.rs            [PASS]
 │   │   ├── engine/
-│   │   │   ├── mod.rs          ✅
-│   │   │   ├── config.rs       ✅
-│   │   │   └── reports.rs      ✅
+│   │   │   ├── mod.rs          [PASS]
+│   │   │   ├── config.rs       [PASS]
+│   │   │   └── reports.rs      [PASS]
 │   │   └── services/
-│   │       ├── mod.rs          ✅
-│   │       ├── analyzer.rs     ✅
-│   │       ├── generator.rs    ✅
-│   │       ├── repository.rs   ✅
-│   │       └── validator.rs    ✅
+│   │       ├── mod.rs          [PASS]
+│   │       ├── analyzer.rs     [PASS]
+│   │       ├── generator.rs    [PASS]
+│   │       ├── repository.rs   [PASS]
+│   │       └── validator.rs    [PASS]
 │   ├── reputation/
-│   │   ├── mod.rs              ✅
-│   │   ├── score.rs            ✅
-│   │   ├── factors.rs          ✅
-│   │   ├── decay.rs            ✅
-│   │   ├── analytics.rs        ✅
-│   │   └── repository.rs       ✅
+│   │   ├── mod.rs              [PASS]
+│   │   ├── score.rs            [PASS]
+│   │   ├── factors.rs          [PASS]
+│   │   ├── decay.rs            [PASS]
+│   │   ├── analytics.rs        [PASS]
+│   │   └── repository.rs       [PASS]
 │   ├── integration/
-│   │   ├── mod.rs              ✅
+│   │   ├── mod.rs              [PASS]
 │   │   ├── event_subscriber/
-│   │   │   ├── mod.rs          ✅
-│   │   │   ├── config.rs       ✅
-│   │   │   ├── handlers.rs     ✅
-│   │   │   ├── helpers.rs      ✅
-│   │   │   ├── runner.rs       ✅
-│   │   │   ├── reputation.rs   ✅
-│   │   │   └── config.rs       ✅
+│   │   │   ├── mod.rs          [PASS]
+│   │   │   ├── config.rs       [PASS]
+│   │   │   ├── handlers.rs     [PASS]
+│   │   │   ├── helpers.rs      [PASS]
+│   │   │   ├── runner.rs       [PASS]
+│   │   │   ├── reputation.rs   [PASS]
+│   │   │   └── config.rs       [PASS]
 │   │   ├── learning_coordinator/
-│   │   │   ├── mod.rs          ✅
-│   │   │   ├── config.rs       ✅
-│   │   │   ├── entry.rs        ✅
-│   │   │   ├── hypothesis.rs   ✅
-│   │   │   ├── knowledge.rs    ✅
-│   │   │   ├── exploration.rs  ✅
-│   │   │   ├── generalization.rs ✅
-│   │   │   ├── reinforcement.rs ✅
-│   │   │   ├── reputation.rs   ✅
-│   │   │   └── results.rs      ✅
-│   │   ├── reflection_pipeline.rs ✅
-│   │   └── hypothesis_pipeline.rs ✅
+│   │   │   ├── mod.rs          [PASS]
+│   │   │   ├── config.rs       [PASS]
+│   │   │   ├── entry.rs        [PASS]
+│   │   │   ├── hypothesis.rs   [PASS]
+│   │   │   ├── knowledge.rs    [PASS]
+│   │   │   ├── exploration.rs  [PASS]
+│   │   │   ├── generalization.rs [PASS]
+│   │   │   ├── reinforcement.rs [PASS]
+│   │   │   ├── reputation.rs   [PASS]
+│   │   │   └── results.rs      [PASS]
+│   │   ├── reflection_pipeline.rs [PASS]
+│   │   └── hypothesis_pipeline.rs [PASS]
 │   ├── worker_manager/
-│   │   ├── mod.rs              ✅
-│   │   ├── manager.rs          ✅
-│   │   └── background.rs       ✅
-│   ├── scheduler.rs            ✅ Background task scheduler
-│   └── metrics.rs              ✅ Experience metrics
+│   │   ├── mod.rs              [PASS]
+│   │   ├── manager.rs          [PASS]
+│   │   └── background.rs       [PASS]
+│   ├── scheduler.rs            [PASS] Background task scheduler
+│   └── metrics.rs              [PASS] Experience metrics
 ├── learning/
-│   ├── mod.rs                  ✅
-│   ├── pipeline.rs             ✅ Learning pipeline
-│   ├── candidates.rs           ✅ Candidate generation
-│   ├── hypothesis.rs           ✅ Hypothesis tracking
-│   ├── lineage.rs              ✅ Memory lineage
-│   ├── memory_state.rs         ✅ Memory state machine
-│   ├── promotion.rs            ✅ Promotion policy
+│   ├── mod.rs                  [PASS]
+│   ├── pipeline.rs             [PASS] Learning pipeline
+│   ├── candidates.rs           [PASS] Candidate generation
+│   ├── hypothesis.rs           [PASS] Hypothesis tracking
+│   ├── lineage.rs              [PASS] Memory lineage
+│   ├── memory_state.rs         [PASS] Memory state machine
+│   ├── promotion.rs            [PASS] Promotion policy
 │   └── working_memory/
-│       ├── mod.rs              ✅
-│       ├── memory_state.rs     ✅
-│       ├── promotion.rs        ✅
+│       ├── mod.rs              [PASS]
+│       ├── memory_state.rs     [PASS]
+│       ├── promotion.rs        [PASS]
 │       ├── store/
-│       │   ├── mod.rs          ✅
-│       │   ├── crud.rs         ✅
-│       │   ├── query.rs        ✅
-│       │   ├── processing.rs   ✅
-│       │   ├── state.rs        ✅
-│       │   └── structs.rs      ✅
+│       │   ├── mod.rs          [PASS]
+│       │   ├── crud.rs         [PASS]
+│       │   ├── query.rs        [PASS]
+│       │   ├── processing.rs   [PASS]
+│       │   ├── state.rs        [PASS]
+│       │   └── structs.rs      [PASS]
 ├── knowledge/
-│   ├── mod.rs                  ✅
-│   ├── store.rs                ✅ Knowledge store
-│   ├── query.rs                ✅ Knowledge queries
-│   └── types.rs                ✅ Knowledge types
+│   ├── mod.rs                  [PASS]
+│   ├── store.rs                [PASS] Knowledge store
+│   ├── query.rs                [PASS] Knowledge queries
+│   └── types.rs                [PASS] Knowledge types
 ├── personality/
-│   ├── mod.rs                  ✅
-│   ├── core.rs                 ✅
-│   ├── traits.rs               ✅
-│   ├── presets.rs              ✅
-│   ├── emotional.rs            ✅
-│   ├── decision_making.rs      ✅
-│   ├── decision.rs             ✅
-│   ├── communication.rs        ✅
-│   └── adaptation.rs           ✅
+│   ├── mod.rs                  [PASS]
+│   ├── core.rs                 [PASS]
+│   ├── traits.rs               [PASS]
+│   ├── presets.rs              [PASS]
+│   ├── emotional.rs            [PASS]
+│   ├── decision_making.rs      [PASS]
+│   ├── decision.rs             [PASS]
+│   ├── communication.rs        [PASS]
+│   └── adaptation.rs           [PASS]
 ├── planner/
-│   ├── mod.rs                  ✅
-│   ├── policy.rs               ✅ Policy engine
+│   ├── mod.rs                  [PASS]
+│   ├── policy.rs               [PASS] Policy engine
 │   └── engine/
-│       ├── mod.rs              ✅
-│       ├── planner.rs          ✅ Planning engine
-│       ├── actions.rs          ✅ Action candidates
-│       ├── replanning.rs       ✅ Replanning logic
-│       └── types.rs            ✅ Planner types
+│       ├── mod.rs              [PASS]
+│       ├── planner.rs          [PASS] Planning engine
+│       ├── actions.rs          [PASS] Action candidates
+│       ├── replanning.rs       [PASS] Replanning logic
+│       └── types.rs            [PASS] Planner types
 ├── skills/
-│   ├── mod.rs                  ✅
+│   ├── mod.rs                  [PASS]
 │   └── registry/
-│       ├── mod.rs              ✅
-│       ├── skill.rs            ✅
-│       ├── store.rs            ✅
-│       ├── executor.rs         ✅
-│       ├── context.rs          ✅
-│       ├── result.rs           ✅
-│       ├── metrics.rs          ✅
-│       └── types.rs            ✅
+│       ├── mod.rs              [PASS]
+│       ├── skill.rs            [PASS]
+│       ├── store.rs            [PASS]
+│       ├── executor.rs         [PASS]
+│       ├── context.rs          [PASS]
+│       ├── result.rs           [PASS]
+│       ├── metrics.rs          [PASS]
+│       └── types.rs            [PASS]
 ├── workflows/
-│   ├── mod.rs                  ✅
+│   ├── mod.rs                  [PASS]
 │   ├── enforcement/
-│   │   ├── mod.rs              ✅
-│   │   ├── enforcer.rs         ✅
-│   │   ├── tests.rs            ✅
-│   │   └── tests.rs            ✅
+│   │   ├── mod.rs              [PASS]
+│   │   ├── enforcer.rs         [PASS]
+│   │   ├── tests.rs            [PASS]
+│   │   └── tests.rs            [PASS]
 │   └── engine/
-│       ├── mod.rs              ✅
-│       ├── core.rs             ✅
-│       ├── types.rs            ✅
-│       ├── experience.rs       ✅
+│       ├── mod.rs              [PASS]
+│       ├── core.rs             [PASS]
+│       ├── types.rs            [PASS]
+│       ├── experience.rs       [PASS]
 │       └── executor/
-│           ├── mod.rs          ✅
-│           ├── execute.rs      ✅
-│           ├── actions.rs      ✅
-│           ├── experience.rs   ✅
-│           └── variables.rs    ✅
+│           ├── mod.rs          [PASS]
+│           ├── execute.rs      [PASS]
+│           ├── actions.rs      [PASS]
+│           ├── experience.rs   [PASS]
+│           └── variables.rs    [PASS]
 ├── world_model/
-│   ├── mod.rs                  ✅
-│   ├── store.rs                ✅
-│   └── types.rs                ✅
+│   ├── mod.rs                  [PASS]
+│   ├── store.rs                [PASS]
+│   └── types.rs                [PASS]
 ├── bridge/
-│   ├── mod.rs                  ✅
-│   ├── logging.rs              ✅
-│   ├── windows_console.rs      ✅
+│   ├── mod.rs                  [PASS]
+│   ├── logging.rs              [PASS]
+│   ├── windows_console.rs      [PASS]
 │   ├── mcp/
-│   │   ├── mod.rs              ✅
-│   │   ├── context.rs          ✅ MCP context
+│   │   ├── mod.rs              [PASS]
+│   │   ├── context.rs          [PASS] MCP context
 │   │   ├── types/
-│   │   │   ├── mod.rs          ✅
-│   │   │   ├── capabilities.rs ✅
-│   │   │   ├── info.rs         ✅
-│   │   │   └── tools.rs        ✅
-│   │   ├── handler.rs          ✅ MCP server handler
+│   │   │   ├── mod.rs          [PASS]
+│   │   │   ├── capabilities.rs [PASS]
+│   │   │   ├── info.rs         [PASS]
+│   │   │   └── tools.rs        [PASS]
+│   │   ├── handler.rs          [PASS] MCP server handler
 │   │   ├── client/
-│   │   │   ├── mod.rs          ✅
-│   │   │   ├── connection.rs   ✅
-│   │   │   ├── error.rs        ✅
-│   │   │   └── handler.rs      ✅
+│   │   │   ├── mod.rs          [PASS]
+│   │   │   ├── connection.rs   [PASS]
+│   │   │   ├── error.rs        [PASS]
+│   │   │   └── handler.rs      [PASS]
 │   │   └── handlers/
-│   │       ├── mod.rs          ✅
-│   │       ├── acp_handler.rs  ✅
-│   │       ├── agent_handler.rs ✅
-│   │       ├── experience_handler.rs ✅
-│   │       ├── exploration_handler.rs ✅
-│   │       ├── hypothesis_handler.rs ✅
-│   │       ├── ingestor_handler.rs ✅
-│   │       ├── knowledge_handler.rs ✅
-│   │       ├── memory_handler.rs ✅
-│   │       ├── personality_handler.rs ✅
-│   │       ├── planner_handler.rs ✅
-│   │       ├── reflection_handler.rs ✅
-│   │       ├── search_handler.rs ✅
-│   │       ├── skills_handler.rs ✅
-│   │       ├── workflow_handler.rs ✅
-│   │       └── world_model_handler.rs ✅
+│   │       ├── mod.rs          [PASS]
+│   │       ├── acp_handler.rs  [PASS]
+│   │       ├── agent_handler.rs [PASS]
+│   │       ├── experience_handler.rs [PASS]
+│   │       ├── exploration_handler.rs [PASS]
+│   │       ├── hypothesis_handler.rs [PASS]
+│   │       ├── ingestor_handler.rs [PASS]
+│   │       ├── knowledge_handler.rs [PASS]
+│   │       ├── memory_handler.rs [PASS]
+│   │       ├── personality_handler.rs [PASS]
+│   │       ├── planner_handler.rs [PASS]
+│   │       ├── reflection_handler.rs [PASS]
+│   │       ├── search_handler.rs [PASS]
+│   │       ├── skills_handler.rs [PASS]
+│   │       ├── workflow_handler.rs [PASS]
+│   │       └── world_model_handler.rs [PASS]
 │   ├── rmcp/
-│   │   ├── mod.rs              ✅ RMCP server
-│   │   ├── handler.rs          ✅
-│   │   ├── helpers.rs          ✅
-│   │   └── types.rs            ✅
+│   │   ├── mod.rs              [PASS] RMCP server
+│   │   ├── handler.rs          [PASS]
+│   │   ├── helpers.rs          [PASS]
+│   │   └── types.rs            [PASS]
 │   ├── app/
-│   │   ├── mod.rs              ✅ App initialization
-│   │   ├── personality.rs      ✅
-│   │   ├── scheduler.rs        ✅
-│   │   ├── state.rs            ✅
-│   │   ├── acp.rs              ✅
+│   │   ├── mod.rs              [PASS] App initialization
+│   │   ├── personality.rs      [PASS]
+│   │   ├── scheduler.rs        [PASS]
+│   │   ├── state.rs            [PASS]
+│   │   ├── acp.rs              [PASS]
 │   │   └── initialization/
-│   │       ├── mod.rs          ✅
-│   │       ├── core.rs         ✅
-│   │       ├── db.rs           ✅
-│   │       ├── mcp_context.rs  ✅
-│   │       ├── memory_scheduler.rs ✅
-│   │       ├── workers.rs      ✅
-│   │       ├── workflow_acp.rs ✅
-│   │       ├── agent_loop.rs   ✅
-│   │       ├── policy.rs       ✅
-│   │       ├── job_queue.rs    ✅
-│   │       ├── engines.rs      ✅
-│   │       ├── learning.rs     ✅
-│   │       ├── learning_pipeline.rs ✅
-│   │       ├── learning_coordinator.rs ✅
-│   │       ├── hypothesis_manager.rs ✅
-│   │       ├── candidates.rs   ✅
-│   │       ├── working_memory.rs ✅
-│   │       ├── lineage_tracker.rs ✅
-│   │       ├── exploration_repo.rs ✅
-│   │       ├── experience_repo.rs ✅
-│   │       ├── sub_health_log.rs ✅
-│   │       ├── acp_diagnostics.rs ✅
-│   │       ├── experience_recorder_diagnostics.rs ✅
-│   │       ├── experience_repo_diagnostics.rs ✅
-│   │       ├── exploration_repo_diagnostics.rs ✅
-│   │       ├── hypothesis_pipeline_diagnostics.rs ✅
-│   │       ├── hypothesis_manager_diagnostics.rs ✅
-│   │       ├── reflection_diagnostics.rs ✅
-│   │       ├── reflection_surface_diagnostics.rs ✅
-│   │       ├── reputation_diagnostics.rs ✅
-│   │       ├── scheduler_diagnostics.rs ✅
-│   │       ├── worker_diagnostics.rs ✅
-│   │       ├── personality_diagnostics.rs ✅
-│   │       ├── mcp_client_diagnostics.rs ✅
-│   │       └── diagnostics.rs  ✅
+│   │       ├── mod.rs          [PASS]
+│   │       ├── core.rs         [PASS]
+│   │       ├── db.rs           [PASS]
+│   │       ├── mcp_context.rs  [PASS]
+│   │       ├── memory_scheduler.rs [PASS]
+│   │       ├── workers.rs      [PASS]
+│   │       ├── workflow_acp.rs [PASS]
+│   │       ├── agent_loop.rs   [PASS]
+│   │       ├── policy.rs       [PASS]
+│   │       ├── job_queue.rs    [PASS]
+│   │       ├── engines.rs      [PASS]
+│   │       ├── learning.rs     [PASS]
+│   │       ├── learning_pipeline.rs [PASS]
+│   │       ├── learning_coordinator.rs [PASS]
+│   │       ├── hypothesis_manager.rs [PASS]
+│   │       ├── candidates.rs   [PASS]
+│   │       ├── working_memory.rs [PASS]
+│   │       ├── lineage_tracker.rs [PASS]
+│   │       ├── exploration_repo.rs [PASS]
+│   │       ├── experience_repo.rs [PASS]
+│   │       ├── sub_health_log.rs [PASS]
+│   │       ├── acp_diagnostics.rs [PASS]
+│   │       ├── experience_recorder_diagnostics.rs [PASS]
+│   │       ├── experience_repo_diagnostics.rs [PASS]
+│   │       ├── exploration_repo_diagnostics.rs [PASS]
+│   │       ├── hypothesis_pipeline_diagnostics.rs [PASS]
+│   │       ├── hypothesis_manager_diagnostics.rs [PASS]
+│   │       ├── reflection_diagnostics.rs [PASS]
+│   │       ├── reflection_surface_diagnostics.rs [PASS]
+│   │       ├── reputation_diagnostics.rs [PASS]
+│   │       ├── scheduler_diagnostics.rs [PASS]
+│   │       ├── worker_diagnostics.rs [PASS]
+│   │       ├── personality_diagnostics.rs [PASS]
+│   │       ├── mcp_client_diagnostics.rs [PASS]
+│   │       └── diagnostics.rs  [PASS]
 │   ├── acp/
-│   │   ├── mod.rs              ✅
-│   │   ├── agent.rs            ✅
-│   │   ├── message.rs          ✅
-│   │   ├── registry.rs         ✅
-│   │   ├── router.rs           ✅
-│   │   └── system_agent.rs     ✅
+│   │   ├── mod.rs              [PASS]
+│   │   ├── agent.rs            [PASS]
+│   │   ├── message.rs          [PASS]
+│   │   ├── registry.rs         [PASS]
+│   │   ├── router.rs           [PASS]
+│   │   └── system_agent.rs     [PASS]
 │   └── tools/
-│       ├── mod.rs              ✅
+│       ├── mod.rs              [PASS]
 │       ├── agent/
-│       │   ├── mod.rs          ✅
-│       │   ├── definitions.rs  ✅
-│       │   ├── inputs.rs       ✅
-│       │   ├── mcp_tools.rs    ✅
-│       │   └── workflows.rs    ✅
+│       │   ├── mod.rs          [PASS]
+│       │   ├── definitions.rs  [PASS]
+│       │   ├── inputs.rs       [PASS]
+│       │   ├── mcp_tools.rs    [PASS]
+│       │   └── workflows.rs    [PASS]
 │       ├── memory/
-│       │   ├── mod.rs          ✅
-│       │   ├── definitions.rs  ✅
+│       │   ├── mod.rs          [PASS]
+│       │   ├── definitions.rs  [PASS]
 │       │   ├── handlers/
-│       │   │   ├── mod.rs      ✅
-│       │   │   ├── query.rs    ✅
-│       │   │   ├── search.rs   ✅
-│       │   │   └── store.rs    ✅
-│       │   ├── helpers.rs      ✅
-│       │   ├── types.rs        ✅
-│       │   └── embedding.rs    ✅
+│       │   │   ├── mod.rs      [PASS]
+│       │   │   ├── query.rs    [PASS]
+│       │   │   ├── search.rs   [PASS]
+│       │   │   └── store.rs    [PASS]
+│       │   ├── helpers.rs      [PASS]
+│       │   ├── types.rs        [PASS]
+│       │   └── embedding.rs    [PASS]
 │       ├── experience/
-│       │   └── mod.rs          ✅
+│       │   └── mod.rs          [PASS]
 │       ├── exploration/
-│       │   ├── mod.rs          ✅
-│       │   ├── definitions.rs  ✅
+│       │   ├── mod.rs          [PASS]
+│       │   ├── definitions.rs  [PASS]
 │       │   └── handlers/
-│       │       ├── mod.rs      ✅
-│       │       ├── hypothesis.rs ✅
-│       │       ├── lifecycle.rs ✅
-│       │       ├── observation.rs ✅
-│       │       └── store.rs    ✅
+│       │       ├── mod.rs      [PASS]
+│       │       ├── hypothesis.rs [PASS]
+│       │       ├── lifecycle.rs [PASS]
+│       │       ├── observation.rs [PASS]
+│       │       └── store.rs    [PASS]
 │       ├── hypothesis/
-│       │   ├── mod.rs          ✅
-│       │   ├── execute.rs      ✅
-│       │   └── db.rs           ✅
+│       │   ├── mod.rs          [PASS]
+│       │   ├── execute.rs      [PASS]
+│       │   └── db.rs           [PASS]
 │       ├── ingestor/
-│       │   ├── mod.rs          ✅
-│       │   ├── definitions.rs  ✅
+│       │   ├── mod.rs          [PASS]
+│       │   ├── definitions.rs  [PASS]
 │       │   ├── core/
-│       │   │   ├── mod.rs      ✅
-│       │   │   ├── execute.rs  ✅
-│       │   │   ├── ingestion.rs ✅
-│       │   │   ├── helpers.rs  ✅
-│       │   │   ├── tracker.rs  ✅
-│       │   │   └── types.rs    ✅
-│       │   ├── semantic_chunker.rs ✅
-│       │   ├── text_extractor.rs ✅
-│       │   ├── audio_transcriber.rs ✅
-│       │   ├── json_importer.rs ✅
-│       │   ├── archive_handler.rs ✅
-│       │   ├── file_collector.rs ✅
-│       │   ├── workflow.rs     ✅
-│       │   └── workflow.rs     ✅
+│       │   │   ├── mod.rs      [PASS]
+│       │   │   ├── execute.rs  [PASS]
+│       │   │   ├── ingestion.rs [PASS]
+│       │   │   ├── helpers.rs  [PASS]
+│       │   │   ├── tracker.rs  [PASS]
+│       │   │   └── types.rs    [PASS]
+│       │   ├── semantic_chunker.rs [PASS]
+│       │   ├── text_extractor.rs [PASS]
+│       │   ├── audio_transcriber.rs [PASS]
+│       │   ├── json_importer.rs [PASS]
+│       │   ├── archive_handler.rs [PASS]
+│       │   ├── file_collector.rs [PASS]
+│       │   ├── workflow.rs     [PASS]
+│       │   └── workflow.rs     [PASS]
 │       ├── knowledge/
-│       │   └── mod.rs          ✅
+│       │   └── mod.rs          [PASS]
 │       ├── reflection/
-│       │   ├── mod.rs          ✅
-│       │   ├── definitions.rs  ✅
-│       │   ├── execute.rs      ✅
-│       │   └── types.rs        ✅
+│       │   ├── mod.rs          [PASS]
+│       │   ├── definitions.rs  [PASS]
+│       │   ├── execute.rs      [PASS]
+│       │   └── types.rs        [PASS]
 │       ├── search/
-│       │   └── mod.rs          ✅
+│       │   └── mod.rs          [PASS]
 │       ├── skills/
-│       │   └── mod.rs          ✅
+│       │   └── mod.rs          [PASS]
 │       ├── workflow/
-│       │   └── mod.rs          ✅
+│       │   └── mod.rs          [PASS]
 │       ├── personality/
-│       │   └── mod.rs          ✅
+│       │   └── mod.rs          [PASS]
 │       ├── planner/
-│       │   └── mod.rs          ✅
+│       │   └── mod.rs          [PASS]
 │       └── world_model/
-│           └── mod.rs          ✅
+│           └── mod.rs          [PASS]
 ├── cli/
-│   ├── mod.rs                  ✅
-│   ├── output.rs               ✅
+│   ├── mod.rs                  [PASS]
+│   ├── output.rs               [PASS]
 │   └── commands/
-│       ├── mod.rs              ✅
-│       ├── server.rs           ✅
-│       ├── init.rs             ✅
-│       ├── status.rs           ✅
-│       ├── diagnose.rs         ✅
-│       ├── memory.rs           ✅
-│       ├── experience.rs       ✅
-│       ├── config.rs           ✅
-│       └── migrate.rs          ✅
+│       ├── mod.rs              [PASS]
+│       ├── server.rs           [PASS]
+│       ├── init.rs             [PASS]
+│       ├── status.rs           [PASS]
+│       ├── diagnose.rs         [PASS]
+│       ├── memory.rs           [PASS]
+│       ├── experience.rs       [PASS]
+│       ├── config.rs           [PASS]
+│       └── migrate.rs          [PASS]
 ```
 
-**Legend:** ✅ Implemented | ⚠️ Stubbed/partial | ❌ Placeholder code only | 🟡 Partially done | 📋 Planned but not started
+**Legend:** [PASS] Implemented | [WARN] Stubbed/partial | [FAIL] Placeholder code only | [PARTIAL] Partially done | [INFO] Planned but not started
 
 ================================================================================
 Upgrades to Add
@@ -2455,7 +2455,7 @@ Exceptions
 
 Exactly what humans do.
 
-8. Hypothesis Engine ✅ **IMPLEMENTED**
+8. Hypothesis Engine [PASS] **IMPLEMENTED**
 
 The Hypothesis Engine makes RoBoT capable of learning rather than merely remembering.
 
@@ -2661,10 +2661,10 @@ tools\
 ┌─────────────────────────────┐
 │      Desktop UI (Rust)      │
 │                             │
-│ 🎤 Start Listening          │
-│ 📄 Drop Files Here          │
-│ 💬 Conversation             │
-│ 🧠 Agent Thoughts           │
+│ [MIC] Start Listening          │
+│ [FILE] Drop Files Here          │
+│ [CHAT] Conversation             │
+│ [AGENT] Agent Thoughts           │
 └──────────────┬──────────────┘
                │
                ▼
@@ -3046,34 +3046,34 @@ Delete a workflow completely.
 
 | Area | Status | Details |
 |------|--------|---------|
-| Database layer | ✅ Functional | Schema + 12 migrations (v0→v12 via `migrations/` module), CRUD queries all implemented |
-| Memory System | ✅ Complete | Working Memory, Permanent Memory, Memory Retrieval per Architecture §6.3 |
-| Event System | ✅ Complete | Full event catalog per Architecture §4.04 (30+ event types) |
-| Learning Pipeline | ✅ Implemented | Input→Observation→Memory→Experience→Knowledge→Planning→Decision→Action→Reflection |
-| Experience types/events | ✅ Complete | Full type system for experiences, scores, reputation, event payloads |
-| Observer pattern | ✅ Implemented | Trait defined with priority and filter hooks |
-| Job queue + worker | ✅ Implemented | SQLite-backed job queue with async worker (migrations/job_queue.rs) |
-| Event bus | ✅ Implemented | Full pub/sub with broadcast channel, subscriber tracking |
-| Experience coordinator | ✅ Implemented | Pipeline logic with all sub-modules wired up |
-| Experience recorder | ✅ Implemented | Record/success/failure methods working with database |
-| Experience repository | ✅ Implemented | Full CRUD for encounters and experiences |
-| Reflection system | ✅ Complete | Core types, services (analyzer, generator, repository, validator), patterns |
-| Hypothesis Engine | ✅ Implemented | Observation → Hypothesis → Test → Evidence → Knowledge pipeline with 9 MCP tools and full database support |
-| Exploration system | ✅ Implemented | Exploration tracking with repository |
-| Reputation system | ✅ Implemented | Full reputation tracking with decay and analytics |
-| Evolution system | ✅ Implemented | Behavior creation from insights, tracking, promotion/deprecation |
-| Metrics collection | ✅ Implemented | Counters, gauges, time series with aggregation |
-| Scheduler | ✅ Implemented | Background task scheduling with SQLite persistence |
-| MCP bridge | ✅ Implemented | RMCP, MCP, and ACP protocol implementations in `bridge/` folder |
-| MCP tools | ✅ Implemented | Memory, experience, reflection, search, and ingestor tools defined |
-| Planner module | ✅ Implemented | Planning engine and policy engine for task decomposition |
-| Skills module | ✅ Implemented | Skill registry for managing available skills |
-| Workflows module | ✅ Implemented | Workflow execution engine for multi-step tasks |
-| Learning module | ✅ Implemented | Working memory, hypothesis tracking, candidate generation, lineage tracking |
-| Experience Compression | ⏳ Deferred | Module not implemented yet |
-| CLI interface | ✅ Implemented | Command-line interface with server, memory, experience commands |
-| App entry point | ✅ Implemented | App struct with coordinator and stdio server |
-| Main entry point | ✅ Implemented | init_logging() and App::new().run() working |
+| Database layer | [PASS] Functional | Schema + 12 migrations (v0→v12 via `migrations/` module), CRUD queries all implemented |
+| Memory System | [PASS] Complete | Working Memory, Permanent Memory, Memory Retrieval per Architecture §6.3 |
+| Event System | [PASS] Complete | Full event catalog per Architecture §4.04 (30+ event types) |
+| Learning Pipeline | [PASS] Implemented | Input→Observation→Memory→Experience→Knowledge→Planning→Decision→Action→Reflection |
+| Experience types/events | [PASS] Complete | Full type system for experiences, scores, reputation, event payloads |
+| Observer pattern | [PASS] Implemented | Trait defined with priority and filter hooks |
+| Job queue + worker | [PASS] Implemented | SQLite-backed job queue with async worker (migrations/job_queue.rs) |
+| Event bus | [PASS] Implemented | Full pub/sub with broadcast channel, subscriber tracking |
+| Experience coordinator | [PASS] Implemented | Pipeline logic with all sub-modules wired up |
+| Experience recorder | [PASS] Implemented | Record/success/failure methods working with database |
+| Experience repository | [PASS] Implemented | Full CRUD for encounters and experiences |
+| Reflection system | [PASS] Complete | Core types, services (analyzer, generator, repository, validator), patterns |
+| Hypothesis Engine | [PASS] Implemented | Observation → Hypothesis → Test → Evidence → Knowledge pipeline with 9 MCP tools and full database support |
+| Exploration system | [PASS] Implemented | Exploration tracking with repository |
+| Reputation system | [PASS] Implemented | Full reputation tracking with decay and analytics |
+| Evolution system | [PASS] Implemented | Behavior creation from insights, tracking, promotion/deprecation |
+| Metrics collection | [PASS] Implemented | Counters, gauges, time series with aggregation |
+| Scheduler | [PASS] Implemented | Background task scheduling with SQLite persistence |
+| MCP bridge | [PASS] Implemented | RMCP, MCP, and ACP protocol implementations in `bridge/` folder |
+| MCP tools | [PASS] Implemented | Memory, experience, reflection, search, and ingestor tools defined |
+| Planner module | [PASS] Implemented | Planning engine and policy engine for task decomposition |
+| Skills module | [PASS] Implemented | Skill registry for managing available skills |
+| Workflows module | [PASS] Implemented | Workflow execution engine for multi-step tasks |
+| Learning module | [PASS] Implemented | Working memory, hypothesis tracking, candidate generation, lineage tracking |
+| Experience Compression | [DEFERRED] Deferred | Module not implemented yet |
+| CLI interface | [PASS] Implemented | Command-line interface with server, memory, experience commands |
+| App entry point | [PASS] Implemented | App struct with coordinator and stdio server |
+| Main entry point | [PASS] Implemented | init_logging() and App::new().run() working |
 
 ---
 
@@ -3090,7 +3090,7 @@ Delete a workflow completely.
 
 - **Knowledge graph is placeholder** — Broader knowledge representation needed
 
-## ⚖️ License & Fair-Pay Rule
+## [INFO] License & Fair-Pay Rule
 
 This project is open-source, but it is also built on fairness. We believe that if the community helps improve this software, the community should share in its financial success.
 

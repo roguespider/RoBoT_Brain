@@ -345,6 +345,9 @@ impl DefaultRuntimeAdapters {
             deadline: None,
             execution_history: Vec::new(),
             completion_state: None,
+            creation_timestamp: Some(chrono::Utc::now()),
+            last_evaluation: None,
+            ..Default::default()
         };
         let plan = self.planning.plan(&objective);
         let experience = Experience::new(

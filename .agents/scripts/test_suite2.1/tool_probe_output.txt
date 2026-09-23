@@ -1,0 +1,2620 @@
+======================================================================
+  COMPREHENSIVE TOOL PROBE — Testing ALL tools
+======================================================================
+[INFO] Starting comprehensive tool probe...
+[INFO] Connecting to robot_brain...
+[OK] Connected to robot_brain
+[INFO] Initializing workflow gate...
+[OK] Workflow gate initialized
+[INFO] Listing all tools...
+[INFO] Found 206 tools
+
+[INFO] Probing each tool...
+
+[OK] list_acp_agents (0ms)
+[OK] acp_agent_count (0ms)
+[OK] acp_router (0ms)
+[OK] acp_registry (1ms)
+[OK] create_acp_message (0ms)
+[OK] route_acp_message (0ms)
+[OK] get_agent_capabilities (0ms)
+[OK] get_system_status (446ms)
+[OK] register_agent (341ms)
+[OK] unregister_agent (17ms)
+[OK] cooboploop_enqueue_goal (25ms)
+[OK] cooboploop_list_goals (0ms)
+[OK] cooboploop_get_goal (0ms)
+[OK] cooboploop_update_goal_status (25ms)
+[OK] cooboploop_run_source_discovery (4576ms)
+[OK] cooboploop_evaluate_goal (81ms)
+[OK] cooboploop_reprioritize_queue (0ms)
+[OK] cooboploop_set_priority_policy (24ms)
+[OK] cooboploop_record_capability_outcome (468ms)
+[OK] cooboploop_get_capability_assessment (311ms)
+[OK] cooboploop_list_capabilities (1ms)
+[OK] cooboploop_start_loop (0ms)
+[OK] cooboploop_stop_loop (0ms)
+[OK] cooboploop_get_loop_status (0ms)
+[OK] cooboploop_run_single_cycle (1819ms)
+[OK] cooboploop_step_loop (1837ms)
+[OK] cooboploop_run_post_task_evaluation (71ms)
+[OK] cooboploop_get_idle_state (1ms)
+[OK] cooboploop_configure_idle_reevaluation_interval (41ms)
+[OK] cooboploop_create_research_objective (17ms)
+[OK] cooboploop_get_hardware_profile (1538ms)
+[OK] cooboploop_detect_hardware_changes (1509ms)
+[OK] cooboploop_run_inspection (453ms)
+[OK] cooboploop_get_modification_boundary (0ms)
+[OK] cooboploop_set_modification_boundary (125ms)
+[OK] cooboploop_run_opportunity_intake (58ms)
+[OK] cooboploop_get_pending_external_opportunities (0ms)
+[OK] cooboploop_set_autonomous_mode (50ms)
+[OK] cooboploop_get_autonomous_mode (0ms)
+[OK] cooboploop_list_strategic_objectives (0ms)
+[OK] cooboploop_add_strategic_objective (24ms)
+[OK] cooboploop_remove_strategic_objective (34ms)
+[OK] cooboploop_get_objective_hierarchy (0ms)
+[OK] cooboploop_set_mission (24ms)
+[OK] cooboploop_get_autonomy_levels (0ms)
+[OK] cooboploop_promote_autonomy (158ms)
+[OK] cooboploop_run_post_task_evaluation (16ms)
+[OK] get_workflow (0ms)
+[OK] list_tools (1ms)
+[OK] get_tool (0ms)
+[OK] connect_mcp_server (49ms)
+[OK] call_tool (25ms)
+[OK] run_agent_goal (25ms)
+[OK] record_experience (25ms)
+[OK] get_experience_stats (10ms)
+[OK] list_experiences (4ms)
+[OK] get_experience (20ms)
+[OK] get_worker_stats (1ms)
+[OK] get_worker_count (0ms)
+[OK] add_evidence_to_experience (53ms)
+[OK] archive_experience (21ms)
+[OK] start_exploration (350ms)
+[OK] get_exploration_status (25ms)
+[OK] pause_exploration (25ms)
+[OK] resume_exploration (75ms)
+[OK] complete_exploration (25ms)
+[OK] abandon_exploration (210ms)
+[OK] record_attempt (63ms)
+[OK] add_hypothesis (86ms)
+[OK] evaluate_exploration_hypothesis (200ms)
+[OK] promote_finding (175ms)
+[OK] record_observation (66ms)
+[OK] create_hypothesis (79ms)
+[OK] add_evidence (175ms)
+[OK] get_hypothesis (204ms)
+[OK] list_hypotheses (5ms)
+[OK] list_observations (1ms)
+[OK] evaluate_hypothesis (194ms)
+[OK] get_knowledge (5ms)
+[OK] extract_knowledge (129ms)
+[OK] get_evidence (133ms)
+[OK] list_evidence (5ms)
+[OK] ingest_files (0ms)
+[OK] list_importable (0ms)
+[OK] list_ingested_files (0ms)
+[OK] delete_ingested_files (136ms)
+[OK] transcribe_audio (142ms)
+[OK] add_knowledge (125ms)
+[OK] query_knowledge (0ms)
+[OK] record_knowledge_application (150ms)
+[OK] get_knowledge_stats (1ms)
+[OK] get_mature_knowledge (0ms)
+[OK] update_knowledge (99ms)
+[OK] delete_knowledge (133ms)
+[OK] get_related_knowledge (117ms)
+[OK] validate_knowledge_dependencies (0ms)
+[OK] bump_knowledge_version (116ms)
+[OK] set_knowledge_status (158ms)
+[OK] manage_knowledge_dependency (83ms)
+[OK] add_knowledge_relation (150ms)
+[OK] search_knowledge_by_tag (0ms)
+[OK] store_memory (125ms)
+[OK] search_memory (271ms)
+[OK] get_memory (203ms)
+[OK] list_memories (7ms)
+[OK] archive_memory (805ms)
+[OK] delete_memory_by_id (137ms)
+[OK] link_memories (316ms)
+[OK] ranked_search (134ms)
+[OK] store_embedding (149ms)
+[OK] get_embedding (142ms)
+[OK] search_similar (175ms)
+[OK] list_embeddings (5ms)
+[OK] delete_embedding (145ms)
+[OK] get_embedding_stats (6ms)
+[OK] get_personality (0ms)
+[OK] set_personality_traits (0ms)
+[OK] apply_personality_preset (144ms)
+[OK] list_personality_presets (0ms)
+[OK] get_personality_decision (0ms)
+[OK] format_response (125ms)
+[OK] create_plan (125ms)
+[OK] add_plan_step (75ms)
+[OK] add_step_dependency (91ms)
+[OK] get_plan (125ms)
+[OK] list_plans (0ms)
+[OK] start_plan (116ms)
+[OK] complete_step (183ms)
+[OK] fail_step (134ms)
+[OK] cancel_plan (74ms)
+[OK] get_insights (0ms)
+[OK] create_reflection (0ms)
+[OK] analyze_patterns (0ms)
+[OK] get_patterns (0ms)
+[OK] validate_reflection (150ms)
+[OK] list_reflections_by_status (1ms)
+[OK] update_reflection (120ms)
+[OK] global_search (137ms)
+[OK] get_recommendations (9ms)
+[OK] get_reputation (4ms)
+[OK] research (132ms)
+[OK] quick_research (163ms)
+[OK] deep_research (58ms)
+[OK] find_error_resolution (84ms)
+[OK] web_search (142ms)
+[OK] web_open (134ms)
+[OK] web_extract (150ms)
+[OK] get_wikipedia (166ms)
+[OK] search_news (125ms)
+[OK] search_reddit (126ms)
+[OK] search_hackernews (141ms)
+[OK] search_youtube (196ms)
+[OK] search_substack (145ms)
+[OK] search_bluesky (125ms)
+[OK] search_telegram (167ms)
+[OK] search_mastodon (158ms)
+[OK] search_vk (159ms)
+[OK] search_preprints (117ms)
+[OK] search_datasets (158ms)
+[OK] search_osm (125ms)
+[OK] search_sec_filings (166ms)
+[OK] resurrect_dead_link (134ms)
+[OK] verify_citations (116ms)
+[OK] find_counter_arguments (58ms)
+[OK] validate_bibliography (100ms)
+[OK] format_citations (50ms)
+[OK] detect_trends (25ms)
+[OK] score_reliability (26ms)
+[OK] register_skill (23ms)
+[OK] discover_skill (25ms)
+[OK] get_skill (33ms)
+[OK] list_skills (0ms)
+[OK] update_skill_mastery (24ms)
+[OK] get_skill_recommendations (0ms)
+[OK] execute_skill (25ms)
+[OK] get_skill_stats (0ms)
+[OK] apply_skill_decay (0ms)
+[OK] enable_disable_skill (24ms)
+[OK] search_skills (25ms)
+[OK] get_skill_metrics (0ms)
+[OK] get_unreliable_skills (0ms)
+[OK] clear_skill_metrics (0ms)
+[OK] search_skills_by_tag (24ms)
+[OK] unregister_skill (25ms)
+[OK] create_workflow (25ms)
+[OK] add_workflow_step (25ms)
+[OK] get_workflow_status (25ms)
+[OK] list_workflows (0ms)
+[OK] start_workflow (25ms)
+[OK] pause_workflow (25ms)
+[OK] resume_workflow (17ms)
+[OK] cancel_workflow (25ms)
+[OK] delete_workflow (25ms)
+[OK] set_workflow_variable (25ms)
+[OK] get_session_state (0ms)
+[OK] cleanup_sessions (0ms)
+[OK] upsert_world_entity (50ms)
+[OK] add_world_relationship (25ms)
+[OK] get_world_entity (25ms)
+[OK] find_world_entity (0ms)
+[OK] list_world_entities (0ms)
+[OK] get_world_relationships (24ms)
+[OK] get_world_blockers (25ms)
+[OK] get_world_dependencies (17ms)
+[OK] get_consumed_resources (17ms)
+[OK] get_world_model_stats (0ms)
+
+[INFO] Testing ingest system...
+[OK] TXT file ingest
+[OK] MD file ingest
+[OK] CSV file ingest
+[OK] XML file ingest
+[OK] HTML file ingest
+[OK] JSON file ingest
+[OK] RS code ingest
+[OK] PY code ingest
+[OK] JS code ingest
+[OK] TOML code ingest
+[OK] YAML code ingest
+[OK] SH script ingest
+[OK] BAT script ingest
+[OK] PS1 script ingest
+[OK] ENV config ingest
+[OK] INI config ingest
+[OK] CONF config ingest
+[OK] PROPERTIES config ingest
+[OK] SRT subtitle ingest
+[OK] PNG image ingest (metadata)
+[OK] JPG image ingest (metadata)
+[OK] SVG image ingest (metadata)
+
+[INFO] Testing search system...
+[OK] search_memory
+[OK] global_search
+[OK] ranked_search
+[OK] search_similar
+
+[INFO] Testing MCP/ACP connection...
+[OK] ACP list_acp_agents
+[OK] ACP registry
+[OK] ACP router
+
+[INFO] JSON report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_report.json
+[INFO] Human-readable report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_output.txt
+
+[INFO] Summary:
+  Working: 206/206
+  Failed: 0/206
+  Success rate: 100.0%
+======================================================================
+  COMPREHENSIVE TOOL PROBE — Testing ALL tools
+======================================================================
+[INFO] Starting comprehensive tool probe...
+[INFO] Connecting to robot_brain...
+[OK] Connected to robot_brain
+[INFO] Initializing workflow gate...
+[OK] Workflow gate initialized
+[INFO] Listing all tools...
+[INFO] Found 206 tools
+
+[INFO] Probing each tool...
+
+[OK] list_acp_agents (0ms)
+[OK] acp_agent_count (0ms)
+[OK] acp_router (0ms)
+[OK] acp_registry (0ms)
+[OK] create_acp_message (0ms)
+[OK] route_acp_message (0ms)
+[OK] get_agent_capabilities (0ms)
+[OK] get_system_status (714ms)
+[OK] register_agent (125ms)
+[OK] unregister_agent (158ms)
+[OK] cooboploop_enqueue_goal (25ms)
+[OK] cooboploop_list_goals (0ms)
+[OK] cooboploop_get_goal (0ms)
+[OK] cooboploop_update_goal_status (24ms)
+[OK] cooboploop_run_source_discovery (4595ms)
+[OK] cooboploop_evaluate_goal (220ms)
+[OK] cooboploop_reprioritize_queue (0ms)
+[OK] cooboploop_set_priority_policy (25ms)
+[OK] cooboploop_record_capability_outcome (25ms)
+[OK] cooboploop_get_capability_assessment (566ms)
+[OK] cooboploop_list_capabilities (0ms)
+[OK] cooboploop_start_loop (0ms)
+[OK] cooboploop_stop_loop (0ms)
+[OK] cooboploop_get_loop_status (0ms)
+[OK] cooboploop_run_single_cycle (2699ms)
+[OK] cooboploop_step_loop (1908ms)
+[OK] cooboploop_run_post_task_evaluation (42ms)
+[OK] cooboploop_get_idle_state (0ms)
+[OK] cooboploop_configure_idle_reevaluation_interval (24ms)
+[OK] cooboploop_create_research_objective (25ms)
+[OK] cooboploop_get_hardware_profile (1576ms)
+[OK] cooboploop_detect_hardware_changes (1532ms)
+[OK] cooboploop_run_inspection (366ms)
+[OK] cooboploop_get_modification_boundary (0ms)
+[OK] cooboploop_set_modification_boundary (16ms)
+[OK] cooboploop_run_opportunity_intake (17ms)
+[OK] cooboploop_get_pending_external_opportunities (0ms)
+[OK] cooboploop_set_autonomous_mode (24ms)
+[OK] cooboploop_get_autonomous_mode (0ms)
+[OK] cooboploop_list_strategic_objectives (0ms)
+[OK] cooboploop_add_strategic_objective (25ms)
+[OK] cooboploop_remove_strategic_objective (25ms)
+[OK] cooboploop_get_objective_hierarchy (0ms)
+[OK] cooboploop_set_mission (25ms)
+[OK] cooboploop_get_autonomy_levels (0ms)
+[OK] cooboploop_promote_autonomy (25ms)
+[OK] cooboploop_run_post_task_evaluation (25ms)
+[OK] get_workflow (0ms)
+[OK] list_tools (1ms)
+[OK] get_tool (0ms)
+[OK] connect_mcp_server (23ms)
+[OK] call_tool (25ms)
+[OK] run_agent_goal (25ms)
+[OK] record_experience (25ms)
+[OK] get_experience_stats (10ms)
+[OK] list_experiences (7ms)
+[OK] get_experience (91ms)
+[OK] get_worker_stats (0ms)
+[OK] get_worker_count (0ms)
+[OK] add_evidence_to_experience (24ms)
+[OK] archive_experience (100ms)
+[OK] start_exploration (25ms)
+[OK] get_exploration_status (25ms)
+[OK] pause_exploration (25ms)
+[OK] resume_exploration (25ms)
+[OK] complete_exploration (25ms)
+[OK] abandon_exploration (25ms)
+[OK] record_attempt (25ms)
+[OK] add_hypothesis (25ms)
+[OK] evaluate_exploration_hypothesis (25ms)
+[OK] promote_finding (24ms)
+[OK] record_observation (25ms)
+[OK] create_hypothesis (25ms)
+[OK] add_evidence (25ms)
+[OK] get_hypothesis (25ms)
+[OK] list_hypotheses (8ms)
+[OK] list_observations (2ms)
+[OK] evaluate_hypothesis (332ms)
+[OK] get_knowledge (9ms)
+[OK] extract_knowledge (149ms)
+[OK] get_evidence (193ms)
+[OK] list_evidence (4ms)
+[OK] ingest_files (0ms)
+[OK] list_importable (0ms)
+[OK] list_ingested_files (0ms)
+[OK] delete_ingested_files (185ms)
+[OK] transcribe_audio (158ms)
+[OK] add_knowledge (125ms)
+[OK] query_knowledge (1ms)
+[OK] record_knowledge_application (174ms)
+[OK] get_knowledge_stats (0ms)
+[OK] get_mature_knowledge (0ms)
+[OK] update_knowledge (158ms)
+[OK] delete_knowledge (167ms)
+[OK] get_related_knowledge (1844ms)
+[OK] validate_knowledge_dependencies (0ms)
+[OK] bump_knowledge_version (97ms)
+[OK] set_knowledge_status (125ms)
+[OK] manage_knowledge_dependency (193ms)
+[OK] add_knowledge_relation (67ms)
+[OK] search_knowledge_by_tag (0ms)
+[OK] store_memory (98ms)
+[OK] search_memory (5191ms)
+[OK] get_memory (66ms)
+[OK] list_memories (9ms)
+[OK] archive_memory (158ms)
+[OK] delete_memory_by_id (159ms)
+[OK] link_memories (150ms)
+[OK] ranked_search (149ms)
+[OK] store_embedding (68ms)
+[OK] get_embedding (92ms)
+[OK] search_similar (141ms)
+[OK] list_embeddings (4ms)
+[OK] delete_embedding (96ms)
+[OK] get_embedding_stats (4ms)
+[OK] get_personality (0ms)
+[OK] set_personality_traits (0ms)
+[OK] apply_personality_preset (4860ms)
+[OK] list_personality_presets (0ms)
+[OK] get_personality_decision (1ms)
+[OK] format_response (208ms)
+[OK] create_plan (166ms)
+[OK] add_plan_step (198ms)
+[OK] add_step_dependency (135ms)
+[OK] get_plan (133ms)
+[OK] list_plans (1ms)
+[OK] start_plan (116ms)
+[OK] complete_step (170ms)
+[OK] fail_step (147ms)
+[OK] cancel_plan (135ms)
+[OK] get_insights (0ms)
+[OK] create_reflection (0ms)
+[OK] analyze_patterns (0ms)
+[OK] get_patterns (0ms)
+[OK] validate_reflection (215ms)
+[OK] list_reflections_by_status (0ms)
+[OK] update_reflection (1758ms)
+[OK] global_search (138ms)
+[OK] get_recommendations (12ms)
+[OK] get_reputation (7ms)
+[OK] research (199ms)
+[OK] quick_research (135ms)
+[OK] deep_research (125ms)
+[OK] find_error_resolution (1968ms)
+[OK] web_search (123ms)
+[OK] web_open (125ms)
+[OK] web_extract (117ms)
+[OK] get_wikipedia (126ms)
+[OK] search_news (182ms)
+[OK] search_reddit (150ms)
+[OK] search_hackernews (142ms)
+[OK] search_youtube (142ms)
+[OK] search_substack (148ms)
+[OK] search_bluesky (168ms)
+[OK] search_telegram (191ms)
+[OK] search_mastodon (133ms)
+[OK] search_vk (166ms)
+[OK] search_preprints (150ms)
+[OK] search_datasets (142ms)
+[OK] search_osm (83ms)
+[OK] search_sec_filings (5590ms)
+[OK] resurrect_dead_link (4274ms)
+[OK] verify_citations (5549ms)
+[OK] find_counter_arguments (183ms)
+[OK] validate_bibliography (167ms)
+[OK] format_citations (77ms)
+[OK] detect_trends (151ms)
+[OK] score_reliability (145ms)
+[OK] register_skill (45ms)
+[OK] discover_skill (98ms)
+[OK] get_skill (5552ms)
+[OK] list_skills (0ms)
+[OK] update_skill_mastery (578ms)
+[OK] get_skill_recommendations (1ms)
+[OK] execute_skill (143ms)
+[OK] get_skill_stats (0ms)
+[OK] apply_skill_decay (0ms)
+[OK] enable_disable_skill (808ms)
+[OK] search_skills (116ms)
+[OK] get_skill_metrics (0ms)
+[OK] get_unreliable_skills (0ms)
+[OK] clear_skill_metrics (0ms)
+[OK] search_skills_by_tag (137ms)
+[OK] unregister_skill (169ms)
+[OK] create_workflow (119ms)
+[OK] add_workflow_step (149ms)
+[OK] get_workflow_status (133ms)
+[OK] list_workflows (5ms)
+[OK] start_workflow (437ms)
+[OK] pause_workflow (183ms)
+[OK] resume_workflow (175ms)
+[OK] cancel_workflow (142ms)
+[OK] delete_workflow (964ms)
+[OK] set_workflow_variable (186ms)
+[OK] get_session_state (2ms)
+[OK] cleanup_sessions (0ms)
+[OK] upsert_world_entity (152ms)
+[OK] add_world_relationship (145ms)
+[OK] get_world_entity (92ms)
+[OK] find_world_entity (1ms)
+[OK] list_world_entities (0ms)
+[OK] get_world_relationships (107ms)
+[OK] get_world_blockers (4166ms)
+[OK] get_world_dependencies (125ms)
+[OK] get_consumed_resources (193ms)
+[OK] get_world_model_stats (1ms)
+
+[INFO] Testing ingest system...
+[OK] TXT file ingest
+[OK] MD file ingest
+[OK] CSV file ingest
+[OK] XML file ingest
+[OK] HTML file ingest
+[OK] JSON file ingest
+[OK] RS code ingest
+[OK] PY code ingest
+[OK] JS code ingest
+[OK] TOML code ingest
+[OK] YAML code ingest
+[OK] SH script ingest
+[OK] BAT script ingest
+[OK] PS1 script ingest
+[OK] ENV config ingest
+[OK] INI config ingest
+[OK] CONF config ingest
+[OK] PROPERTIES config ingest
+[OK] SRT subtitle ingest
+[OK] PNG image ingest (metadata)
+[OK] JPG image ingest (metadata)
+[OK] SVG image ingest (metadata)
+
+[INFO] Testing search system...
+[OK] search_memory
+[OK] global_search
+[OK] ranked_search
+[OK] search_similar
+
+[INFO] Testing MCP/ACP connection...
+[OK] ACP list_acp_agents
+[OK] ACP registry
+[OK] ACP router
+
+[INFO] JSON report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_report.json
+[INFO] Human-readable report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_output.txt
+
+[INFO] Summary:
+  Working: 206/206
+  Failed: 0/206
+  Success rate: 100.0%
+======================================================================
+  COMPREHENSIVE TOOL PROBE — Testing ALL tools
+======================================================================
+[INFO] Starting comprehensive tool probe...
+[INFO] Connecting to robot_brain...
+[OK] Connected to robot_brain
+[INFO] Initializing workflow gate...
+[OK] Workflow gate initialized
+[INFO] Listing all tools...
+[INFO] Found 206 tools
+
+[INFO] Probing each tool...
+
+[OK] list_acp_agents (0ms)
+[OK] acp_agent_count (0ms)
+[OK] acp_router (0ms)
+[OK] acp_registry (0ms)
+[OK] create_acp_message (0ms)
+[OK] route_acp_message (0ms)
+[OK] get_agent_capabilities (0ms)
+[OK] get_system_status (415ms)
+[OK] register_agent (25ms)
+[OK] unregister_agent (25ms)
+[OK] cooboploop_enqueue_goal (75ms)
+[OK] cooboploop_list_goals (0ms)
+[OK] cooboploop_get_goal (0ms)
+[OK] cooboploop_update_goal_status (33ms)
+[OK] cooboploop_run_source_discovery (4615ms)
+[OK] cooboploop_evaluate_goal (25ms)
+[OK] cooboploop_reprioritize_queue (0ms)
+[OK] cooboploop_set_priority_policy (25ms)
+[OK] cooboploop_record_capability_outcome (25ms)
+[OK] cooboploop_get_capability_assessment (25ms)
+[OK] cooboploop_list_capabilities (0ms)
+[OK] cooboploop_start_loop (0ms)
+[OK] cooboploop_stop_loop (0ms)
+[OK] cooboploop_get_loop_status (0ms)
+[OK] cooboploop_run_single_cycle (2205ms)
+[OK] cooboploop_step_loop (1926ms)
+[OK] cooboploop_run_post_task_evaluation (42ms)
+[OK] cooboploop_get_idle_state (0ms)
+[OK] cooboploop_configure_idle_reevaluation_interval (83ms)
+[OK] cooboploop_create_research_objective (58ms)
+[OK] cooboploop_get_hardware_profile (1549ms)
+[OK] cooboploop_detect_hardware_changes (1525ms)
+[OK] cooboploop_run_inspection (450ms)
+[OK] cooboploop_get_modification_boundary (0ms)
+[OK] cooboploop_set_modification_boundary (25ms)
+[OK] cooboploop_run_opportunity_intake (100ms)
+[OK] cooboploop_get_pending_external_opportunities (0ms)
+[OK] cooboploop_set_autonomous_mode (24ms)
+[OK] cooboploop_get_autonomous_mode (0ms)
+[OK] cooboploop_list_strategic_objectives (0ms)
+[OK] cooboploop_add_strategic_objective (1558ms)
+[OK] cooboploop_remove_strategic_objective (300ms)
+[OK] cooboploop_get_objective_hierarchy (0ms)
+[OK] cooboploop_set_mission (75ms)
+[OK] cooboploop_get_autonomy_levels (1ms)
+[OK] cooboploop_promote_autonomy (32ms)
+[OK] cooboploop_run_post_task_evaluation (83ms)
+[OK] get_workflow (0ms)
+[OK] list_tools (1ms)
+[OK] get_tool (0ms)
+[OK] connect_mcp_server (98ms)
+[OK] call_tool (254ms)
+[OK] run_agent_goal (138ms)
+[OK] record_experience (133ms)
+[OK] get_experience_stats (13ms)
+[OK] list_experiences (4ms)
+[OK] get_experience (51ms)
+[OK] get_worker_stats (0ms)
+[OK] get_worker_count (0ms)
+[OK] add_evidence_to_experience (90ms)
+[OK] archive_experience (83ms)
+[OK] start_exploration (141ms)
+[OK] get_exploration_status (192ms)
+[OK] pause_exploration (61ms)
+[OK] resume_exploration (89ms)
+[OK] complete_exploration (194ms)
+[OK] abandon_exploration (66ms)
+[OK] record_attempt (152ms)
+[OK] add_hypothesis (170ms)
+[OK] evaluate_exploration_hypothesis (158ms)
+[OK] promote_finding (142ms)
+[OK] record_observation (203ms)
+[OK] create_hypothesis (199ms)
+[OK] add_evidence (225ms)
+[OK] get_hypothesis (164ms)
+[OK] list_hypotheses (4ms)
+[OK] list_observations (1ms)
+[OK] evaluate_hypothesis (119ms)
+[OK] get_knowledge (4ms)
+[OK] extract_knowledge (121ms)
+[OK] get_evidence (119ms)
+[OK] list_evidence (7ms)
+[OK] ingest_files (0ms)
+[OK] list_importable (0ms)
+[OK] list_ingested_files (0ms)
+[OK] delete_ingested_files (115ms)
+[OK] transcribe_audio (50ms)
+[OK] add_knowledge (75ms)
+[OK] query_knowledge (1ms)
+[OK] record_knowledge_application (150ms)
+[OK] get_knowledge_stats (0ms)
+[OK] get_mature_knowledge (0ms)
+[OK] update_knowledge (124ms)
+[OK] delete_knowledge (117ms)
+[OK] get_related_knowledge (133ms)
+[OK] validate_knowledge_dependencies (0ms)
+[OK] bump_knowledge_version (124ms)
+[OK] set_knowledge_status (100ms)
+[OK] manage_knowledge_dependency (117ms)
+[OK] add_knowledge_relation (119ms)
+[OK] search_knowledge_by_tag (1ms)
+[OK] store_memory (123ms)
+[OK] search_memory (373ms)
+[OK] get_memory (71ms)
+[OK] list_memories (6ms)
+[OK] archive_memory (73ms)
+[OK] delete_memory_by_id (158ms)
+[OK] link_memories (200ms)
+[OK] ranked_search (169ms)
+[OK] store_embedding (143ms)
+[OK] get_embedding (172ms)
+[OK] search_similar (182ms)
+[OK] list_embeddings (10ms)
+[OK] delete_embedding (154ms)
+[OK] get_embedding_stats (6ms)
+[OK] get_personality (1ms)
+[OK] set_personality_traits (1ms)
+[OK] apply_personality_preset (72ms)
+[OK] list_personality_presets (1ms)
+[OK] get_personality_decision (0ms)
+[OK] format_response (126ms)
+[OK] create_plan (141ms)
+[OK] add_plan_step (140ms)
+[OK] add_step_dependency (91ms)
+[OK] get_plan (43ms)
+[OK] list_plans (0ms)
+[OK] start_plan (101ms)
+[OK] complete_step (151ms)
+[OK] fail_step (143ms)
+[OK] cancel_plan (206ms)
+[OK] get_insights (0ms)
+[OK] create_reflection (2ms)
+[OK] analyze_patterns (0ms)
+[OK] get_patterns (0ms)
+[OK] validate_reflection (73ms)
+[OK] list_reflections_by_status (0ms)
+[OK] update_reflection (107ms)
+[OK] global_search (150ms)
+[OK] get_recommendations (9ms)
+[OK] get_reputation (6ms)
+[OK] research (235ms)
+[OK] quick_research (133ms)
+[OK] deep_research (150ms)
+[OK] find_error_resolution (156ms)
+[OK] web_search (138ms)
+[OK] web_open (62ms)
+[OK] web_extract (227ms)
+[OK] get_wikipedia (133ms)
+[OK] search_news (142ms)
+[OK] search_reddit (133ms)
+[OK] search_hackernews (125ms)
+[OK] search_youtube (158ms)
+[OK] search_substack (150ms)
+[OK] search_bluesky (64ms)
+[OK] search_telegram (94ms)
+[OK] search_mastodon (102ms)
+[OK] search_vk (166ms)
+[OK] search_preprints (123ms)
+[OK] search_datasets (57ms)
+[OK] search_osm (99ms)
+[OK] search_sec_filings (169ms)
+[OK] resurrect_dead_link (150ms)
+[OK] verify_citations (142ms)
+[OK] find_counter_arguments (173ms)
+[OK] validate_bibliography (235ms)
+[OK] format_citations (133ms)
+[OK] detect_trends (139ms)
+[OK] score_reliability (5588ms)
+[OK] register_skill (1204ms)
+[OK] discover_skill (142ms)
+[OK] get_skill (146ms)
+[OK] list_skills (1ms)
+[OK] update_skill_mastery (119ms)
+[OK] get_skill_recommendations (0ms)
+[OK] execute_skill (116ms)
+[OK] get_skill_stats (1ms)
+[OK] apply_skill_decay (0ms)
+[OK] enable_disable_skill (124ms)
+[OK] search_skills (132ms)
+[OK] get_skill_metrics (2ms)
+[OK] get_unreliable_skills (0ms)
+[OK] clear_skill_metrics (0ms)
+[OK] search_skills_by_tag (141ms)
+[OK] unregister_skill (48ms)
+[OK] create_workflow (152ms)
+[OK] add_workflow_step (175ms)
+[OK] get_workflow_status (191ms)
+[OK] list_workflows (0ms)
+[OK] start_workflow (80ms)
+[OK] pause_workflow (119ms)
+[OK] resume_workflow (175ms)
+[OK] cancel_workflow (198ms)
+[OK] delete_workflow (135ms)
+[OK] set_workflow_variable (150ms)
+[OK] get_session_state (0ms)
+[OK] cleanup_sessions (0ms)
+[OK] upsert_world_entity (141ms)
+[OK] add_world_relationship (175ms)
+[OK] get_world_entity (191ms)
+[OK] find_world_entity (0ms)
+[OK] list_world_entities (0ms)
+[OK] get_world_relationships (133ms)
+[OK] get_world_blockers (133ms)
+[OK] get_world_dependencies (138ms)
+[OK] get_consumed_resources (118ms)
+[OK] get_world_model_stats (0ms)
+
+[INFO] Testing ingest system...
+[OK] TXT file ingest
+[OK] MD file ingest
+[OK] CSV file ingest
+[OK] XML file ingest
+[OK] HTML file ingest
+[OK] JSON file ingest
+[OK] RS code ingest
+[OK] PY code ingest
+[OK] JS code ingest
+[OK] TOML code ingest
+[OK] YAML code ingest
+[OK] SH script ingest
+[OK] BAT script ingest
+[OK] PS1 script ingest
+[OK] ENV config ingest
+[OK] INI config ingest
+[OK] CONF config ingest
+[OK] PROPERTIES config ingest
+[OK] SRT subtitle ingest
+[OK] PNG image ingest (metadata)
+[OK] JPG image ingest (metadata)
+[OK] SVG image ingest (metadata)
+
+[INFO] Testing search system...
+[OK] search_memory
+[OK] global_search
+[OK] ranked_search
+[OK] search_similar
+
+[INFO] Testing MCP/ACP connection...
+[OK] ACP list_acp_agents
+[OK] ACP registry
+[OK] ACP router
+
+[INFO] JSON report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_report.json
+[INFO] Human-readable report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_output.txt
+
+[INFO] Summary:
+  Working: 206/206
+  Failed: 0/206
+  Success rate: 100.0%
+======================================================================
+  COMPREHENSIVE TOOL PROBE — Testing ALL tools
+======================================================================
+[INFO] Starting comprehensive tool probe...
+[INFO] Connecting to robot_brain...
+[OK] Connected to robot_brain
+[INFO] Initializing workflow gate...
+[OK] Workflow gate initialized
+[INFO] Listing all tools...
+[INFO] Found 206 tools
+
+[INFO] Probing each tool...
+
+[OK] list_acp_agents (0ms)
+[OK] acp_agent_count (0ms)
+[OK] acp_router (0ms)
+[OK] acp_registry (0ms)
+[OK] create_acp_message (0ms)
+[OK] route_acp_message (0ms)
+[OK] get_agent_capabilities (0ms)
+[OK] get_system_status (473ms)
+[OK] register_agent (25ms)
+[OK] unregister_agent (17ms)
+[OK] cooboploop_enqueue_goal (16ms)
+[OK] cooboploop_list_goals (0ms)
+[OK] cooboploop_get_goal (0ms)
+[OK] cooboploop_update_goal_status (16ms)
+[OK] cooboploop_run_source_discovery (4670ms)
+[OK] cooboploop_evaluate_goal (678ms)
+[OK] cooboploop_reprioritize_queue (0ms)
+[OK] cooboploop_set_priority_policy (625ms)
+[OK] cooboploop_record_capability_outcome (142ms)
+[OK] cooboploop_get_capability_assessment (125ms)
+[OK] cooboploop_list_capabilities (3ms)
+[OK] cooboploop_start_loop (0ms)
+[OK] cooboploop_stop_loop (1ms)
+[OK] cooboploop_get_loop_status (0ms)
+[OK] cooboploop_run_single_cycle (2053ms)
+[OK] cooboploop_step_loop (2241ms)
+[OK] cooboploop_run_post_task_evaluation (25ms)
+[OK] cooboploop_get_idle_state (0ms)
+[OK] cooboploop_configure_idle_reevaluation_interval (24ms)
+[OK] cooboploop_create_research_objective (25ms)
+[OK] cooboploop_get_hardware_profile (1538ms)
+[OK] cooboploop_detect_hardware_changes (1564ms)
+[OK] cooboploop_run_inspection (247ms)
+[OK] cooboploop_get_modification_boundary (0ms)
+[OK] cooboploop_set_modification_boundary (25ms)
+[OK] cooboploop_run_opportunity_intake (25ms)
+[OK] cooboploop_get_pending_external_opportunities (0ms)
+[OK] cooboploop_set_autonomous_mode (25ms)
+[OK] cooboploop_get_autonomous_mode (0ms)
+[OK] cooboploop_list_strategic_objectives (0ms)
+[OK] cooboploop_add_strategic_objective (16ms)
+[OK] cooboploop_remove_strategic_objective (25ms)
+[OK] cooboploop_get_objective_hierarchy (0ms)
+[OK] cooboploop_set_mission (25ms)
+[OK] cooboploop_get_autonomy_levels (0ms)
+[OK] cooboploop_promote_autonomy (25ms)
+[OK] cooboploop_run_post_task_evaluation (17ms)
+[OK] get_workflow (0ms)
+[OK] list_tools (1ms)
+[OK] get_tool (0ms)
+[OK] connect_mcp_server (15ms)
+[OK] call_tool (17ms)
+[OK] run_agent_goal (16ms)
+[OK] record_experience (75ms)
+[OK] get_experience_stats (11ms)
+[OK] list_experiences (5ms)
+[OK] get_experience (41ms)
+[OK] get_worker_stats (0ms)
+[OK] get_worker_count (0ms)
+[OK] add_evidence_to_experience (16ms)
+[OK] archive_experience (25ms)
+[OK] start_exploration (25ms)
+[OK] get_exploration_status (25ms)
+[OK] pause_exploration (25ms)
+[OK] resume_exploration (25ms)
+[OK] complete_exploration (25ms)
+[OK] abandon_exploration (25ms)
+[OK] record_attempt (30ms)
+[OK] add_hypothesis (28ms)
+[OK] evaluate_exploration_hypothesis (25ms)
+[OK] promote_finding (25ms)
+[OK] record_observation (25ms)
+[OK] create_hypothesis (25ms)
+[OK] add_evidence (25ms)
+[OK] get_hypothesis (504ms)
+[OK] list_hypotheses (1ms)
+[OK] list_observations (2ms)
+[OK] evaluate_hypothesis (360ms)
+[OK] get_knowledge (4ms)
+[OK] extract_knowledge (138ms)
+[OK] get_evidence (158ms)
+[OK] list_evidence (6ms)
+[OK] ingest_files (0ms)
+[OK] list_importable (0ms)
+[OK] list_ingested_files (0ms)
+[OK] delete_ingested_files (45ms)
+[OK] transcribe_audio (107ms)
+[OK] add_knowledge (175ms)
+[OK] query_knowledge (0ms)
+[OK] record_knowledge_application (133ms)
+[OK] get_knowledge_stats (0ms)
+[OK] get_mature_knowledge (0ms)
+[OK] update_knowledge (149ms)
+[OK] delete_knowledge (137ms)
+[OK] get_related_knowledge (127ms)
+[OK] validate_knowledge_dependencies (1ms)
+[OK] bump_knowledge_version (127ms)
+[OK] set_knowledge_status (125ms)
+[OK] manage_knowledge_dependency (133ms)
+[OK] add_knowledge_relation (125ms)
+[OK] search_knowledge_by_tag (0ms)
+[OK] store_memory (117ms)
+[OK] search_memory (233ms)
+[OK] get_memory (142ms)
+[OK] list_memories (10ms)
+[OK] archive_memory (140ms)
+[OK] delete_memory_by_id (150ms)
+[OK] link_memories (319ms)
+[OK] ranked_search (71ms)
+[OK] store_embedding (122ms)
+[OK] get_embedding (146ms)
+[OK] search_similar (58ms)
+[OK] list_embeddings (7ms)
+[OK] delete_embedding (102ms)
+[OK] get_embedding_stats (5ms)
+[OK] get_personality (0ms)
+[OK] set_personality_traits (0ms)
+[OK] apply_personality_preset (136ms)
+[OK] list_personality_presets (0ms)
+[OK] get_personality_decision (0ms)
+[OK] format_response (166ms)
+[OK] create_plan (141ms)
+[OK] add_plan_step (159ms)
+[OK] add_step_dependency (210ms)
+[OK] get_plan (74ms)
+[OK] list_plans (0ms)
+[OK] start_plan (149ms)
+[OK] complete_step (150ms)
+[OK] fail_step (156ms)
+[OK] cancel_plan (81ms)
+[OK] get_insights (0ms)
+[OK] create_reflection (0ms)
+[OK] analyze_patterns (0ms)
+[OK] get_patterns (0ms)
+[OK] validate_reflection (125ms)
+[OK] list_reflections_by_status (0ms)
+[OK] update_reflection (153ms)
+[OK] global_search (44ms)
+[OK] get_recommendations (8ms)
+[OK] get_reputation (6ms)
+[OK] research (151ms)
+[OK] quick_research (150ms)
+[OK] deep_research (158ms)
+[OK] find_error_resolution (133ms)
+[OK] web_search (158ms)
+[OK] web_open (175ms)
+[OK] web_extract (67ms)
+[OK] get_wikipedia (108ms)
+[OK] search_news (142ms)
+[OK] search_reddit (167ms)
+[OK] search_hackernews (175ms)
+[OK] search_youtube (150ms)
+[OK] search_substack (188ms)
+[OK] search_bluesky (57ms)
+[OK] search_telegram (155ms)
+[OK] search_mastodon (150ms)
+[OK] search_vk (175ms)
+[OK] search_preprints (133ms)
+[OK] search_datasets (175ms)
+[OK] search_osm (56ms)
+[OK] search_sec_filings (94ms)
+[OK] resurrect_dead_link (133ms)
+[OK] verify_citations (142ms)
+[OK] find_counter_arguments (109ms)
+[OK] validate_bibliography (174ms)
+[OK] format_citations (214ms)
+[OK] detect_trends (89ms)
+[OK] score_reliability (139ms)
+[OK] register_skill (142ms)
+[OK] discover_skill (158ms)
+[OK] get_skill (142ms)
+[OK] list_skills (1ms)
+[OK] update_skill_mastery (175ms)
+[OK] get_skill_recommendations (0ms)
+[OK] execute_skill (133ms)
+[OK] get_skill_stats (0ms)
+[OK] apply_skill_decay (0ms)
+[OK] enable_disable_skill (166ms)
+[OK] search_skills (161ms)
+[OK] get_skill_metrics (0ms)
+[OK] get_unreliable_skills (0ms)
+[OK] clear_skill_metrics (0ms)
+[OK] search_skills_by_tag (164ms)
+[OK] unregister_skill (289ms)
+[OK] create_workflow (160ms)
+[OK] add_workflow_step (194ms)
+[OK] get_workflow_status (214ms)
+[OK] list_workflows (0ms)
+[OK] start_workflow (142ms)
+[OK] pause_workflow (158ms)
+[OK] resume_workflow (150ms)
+[OK] cancel_workflow (174ms)
+[OK] delete_workflow (150ms)
+[OK] set_workflow_variable (134ms)
+[OK] get_session_state (1ms)
+[OK] cleanup_sessions (0ms)
+[OK] upsert_world_entity (165ms)
+[OK] add_world_relationship (133ms)
+[OK] get_world_entity (150ms)
+[OK] find_world_entity (0ms)
+[OK] list_world_entities (0ms)
+[OK] get_world_relationships (166ms)
+[OK] get_world_blockers (200ms)
+[OK] get_world_dependencies (150ms)
+[OK] get_consumed_resources (159ms)
+[OK] get_world_model_stats (0ms)
+
+[INFO] Testing ingest system...
+[OK] TXT file ingest
+[OK] MD file ingest
+[OK] CSV file ingest
+[OK] XML file ingest
+[OK] HTML file ingest
+[OK] JSON file ingest
+[OK] RS code ingest
+[OK] PY code ingest
+[OK] JS code ingest
+[OK] TOML code ingest
+[OK] YAML code ingest
+[OK] SH script ingest
+[OK] BAT script ingest
+[OK] PS1 script ingest
+[OK] ENV config ingest
+[OK] INI config ingest
+[OK] CONF config ingest
+[OK] PROPERTIES config ingest
+[OK] SRT subtitle ingest
+[OK] PNG image ingest (metadata)
+[OK] JPG image ingest (metadata)
+[OK] SVG image ingest (metadata)
+
+[INFO] Testing search system...
+[OK] search_memory
+[OK] global_search
+[OK] ranked_search
+[OK] search_similar
+
+[INFO] Testing MCP/ACP connection...
+[OK] ACP list_acp_agents
+[OK] ACP registry
+[OK] ACP router
+
+[INFO] JSON report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_report.json
+[INFO] Human-readable report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_output.txt
+
+[INFO] Summary:
+  Working: 206/206
+  Failed: 0/206
+  Success rate: 100.0%
+======================================================================
+  COMPREHENSIVE TOOL PROBE — Testing ALL tools
+======================================================================
+[INFO] Starting comprehensive tool probe...
+[INFO] Connecting to robot_brain...
+[OK] Connected to robot_brain
+[INFO] Initializing workflow gate...
+[OK] Workflow gate initialized
+[INFO] Listing all tools...
+[INFO] Found 206 tools
+
+[INFO] Probing each tool...
+
+[OK] list_acp_agents (0ms)
+[OK] acp_agent_count (0ms)
+[OK] acp_router (0ms)
+[OK] acp_registry (0ms)
+[OK] create_acp_message (0ms)
+[OK] route_acp_message (0ms)
+[OK] get_agent_capabilities (0ms)
+[OK] get_system_status (397ms)
+[OK] register_agent (299ms)
+[OK] unregister_agent (25ms)
+[OK] cooboploop_enqueue_goal (25ms)
+[OK] cooboploop_list_goals (0ms)
+[OK] cooboploop_get_goal (0ms)
+[OK] cooboploop_update_goal_status (33ms)
+[OK] cooboploop_run_source_discovery (4709ms)
+[OK] cooboploop_evaluate_goal (1972ms)
+[OK] cooboploop_reprioritize_queue (0ms)
+[OK] cooboploop_set_priority_policy (108ms)
+[OK] cooboploop_record_capability_outcome (17ms)
+[OK] cooboploop_get_capability_assessment (25ms)
+[OK] cooboploop_list_capabilities (0ms)
+[OK] cooboploop_start_loop (0ms)
+[OK] cooboploop_stop_loop (0ms)
+[OK] cooboploop_get_loop_status (0ms)
+[OK] cooboploop_run_single_cycle (1849ms)
+[OK] cooboploop_step_loop (2283ms)
+[OK] cooboploop_run_post_task_evaluation (83ms)
+[OK] cooboploop_get_idle_state (0ms)
+[OK] cooboploop_configure_idle_reevaluation_interval (42ms)
+[OK] cooboploop_create_research_objective (33ms)
+[OK] cooboploop_get_hardware_profile (1604ms)
+[OK] cooboploop_detect_hardware_changes (1587ms)
+[OK] cooboploop_run_inspection (308ms)
+[OK] cooboploop_get_modification_boundary (0ms)
+[OK] cooboploop_set_modification_boundary (17ms)
+[OK] cooboploop_run_opportunity_intake (31ms)
+[OK] cooboploop_get_pending_external_opportunities (0ms)
+[OK] cooboploop_set_autonomous_mode (19ms)
+[OK] cooboploop_get_autonomous_mode (0ms)
+[OK] cooboploop_list_strategic_objectives (0ms)
+[OK] cooboploop_add_strategic_objective (58ms)
+[OK] cooboploop_remove_strategic_objective (33ms)
+[OK] cooboploop_get_objective_hierarchy (0ms)
+[OK] cooboploop_set_mission (33ms)
+[OK] cooboploop_get_autonomy_levels (0ms)
+[OK] cooboploop_promote_autonomy (25ms)
+[OK] cooboploop_run_post_task_evaluation (16ms)
+[OK] get_workflow (0ms)
+[OK] list_tools (1ms)
+[OK] get_tool (0ms)
+[OK] connect_mcp_server (49ms)
+[OK] call_tool (25ms)
+[OK] run_agent_goal (34ms)
+[OK] record_experience (25ms)
+[OK] get_experience_stats (4ms)
+[OK] list_experiences (1ms)
+[OK] get_experience (30ms)
+[OK] get_worker_stats (0ms)
+[OK] get_worker_count (0ms)
+[OK] add_evidence_to_experience (23ms)
+[OK] archive_experience (25ms)
+[OK] start_exploration (16ms)
+[OK] get_exploration_status (17ms)
+[OK] pause_exploration (25ms)
+[OK] resume_exploration (34ms)
+[OK] complete_exploration (25ms)
+[OK] abandon_exploration (26ms)
+[OK] record_attempt (24ms)
+[OK] add_hypothesis (25ms)
+[OK] evaluate_exploration_hypothesis (33ms)
+[OK] promote_finding (33ms)
+[OK] record_observation (42ms)
+[OK] create_hypothesis (33ms)
+[OK] add_evidence (25ms)
+[OK] get_hypothesis (33ms)
+[OK] list_hypotheses (4ms)
+[OK] list_observations (1ms)
+[OK] evaluate_hypothesis (21ms)
+[OK] get_knowledge (5ms)
+[OK] extract_knowledge (20ms)
+[OK] get_evidence (33ms)
+[OK] list_evidence (5ms)
+[OK] ingest_files (1ms)
+[OK] list_importable (0ms)
+[OK] list_ingested_files (0ms)
+[OK] delete_ingested_files (77ms)
+[OK] transcribe_audio (16ms)
+[OK] add_knowledge (25ms)
+[OK] query_knowledge (0ms)
+[OK] record_knowledge_application (41ms)
+[OK] get_knowledge_stats (0ms)
+[OK] get_mature_knowledge (0ms)
+[OK] update_knowledge (27ms)
+[OK] delete_knowledge (81ms)
+[OK] get_related_knowledge (17ms)
+[OK] validate_knowledge_dependencies (0ms)
+[OK] bump_knowledge_version (24ms)
+[OK] set_knowledge_status (25ms)
+[OK] manage_knowledge_dependency (50ms)
+[OK] add_knowledge_relation (25ms)
+[OK] search_knowledge_by_tag (0ms)
+[OK] store_memory (25ms)
+[OK] search_memory (43ms)
+[OK] get_memory (31ms)
+[OK] list_memories (4ms)
+[OK] archive_memory (46ms)
+[OK] delete_memory_by_id (25ms)
+[OK] link_memories (25ms)
+[OK] ranked_search (25ms)
+[OK] store_embedding (25ms)
+[OK] get_embedding (25ms)
+[OK] search_similar (25ms)
+[OK] list_embeddings (4ms)
+[OK] delete_embedding (20ms)
+[OK] get_embedding_stats (6ms)
+[OK] get_personality (0ms)
+[OK] set_personality_traits (0ms)
+[OK] apply_personality_preset (19ms)
+[OK] list_personality_presets (0ms)
+[OK] get_personality_decision (0ms)
+[OK] format_response (24ms)
+[OK] create_plan (25ms)
+[OK] add_plan_step (25ms)
+[OK] add_step_dependency (17ms)
+[OK] get_plan (16ms)
+[OK] list_plans (0ms)
+[OK] start_plan (25ms)
+[OK] complete_step (16ms)
+[OK] fail_step (17ms)
+[OK] cancel_plan (16ms)
+[OK] get_insights (0ms)
+[OK] create_reflection (1ms)
+[OK] analyze_patterns (0ms)
+[OK] get_patterns (0ms)
+[OK] validate_reflection (24ms)
+[OK] list_reflections_by_status (0ms)
+[OK] update_reflection (66ms)
+[OK] global_search (50ms)
+[OK] get_recommendations (4ms)
+[OK] get_reputation (1ms)
+[OK] research (20ms)
+[OK] quick_research (25ms)
+[OK] deep_research (25ms)
+[OK] find_error_resolution (25ms)
+[OK] web_search (25ms)
+[OK] web_open (25ms)
+[OK] web_extract (35ms)
+[OK] get_wikipedia (40ms)
+[OK] search_news (33ms)
+[OK] search_reddit (25ms)
+[OK] search_hackernews (47ms)
+[OK] search_youtube (20ms)
+[OK] search_substack (25ms)
+[OK] search_bluesky (31ms)
+[OK] search_telegram (36ms)
+[OK] search_mastodon (25ms)
+[OK] search_vk (25ms)
+[OK] search_preprints (81ms)
+[OK] search_datasets (19ms)
+[OK] search_osm (25ms)
+[OK] search_sec_filings (25ms)
+[OK] resurrect_dead_link (25ms)
+[OK] verify_citations (33ms)
+[OK] find_counter_arguments (25ms)
+[OK] validate_bibliography (25ms)
+[OK] format_citations (43ms)
+[OK] detect_trends (89ms)
+[OK] score_reliability (75ms)
+[OK] register_skill (34ms)
+[OK] discover_skill (25ms)
+[OK] get_skill (33ms)
+[OK] list_skills (0ms)
+[OK] update_skill_mastery (30ms)
+[OK] get_skill_recommendations (1ms)
+[OK] execute_skill (35ms)
+[OK] get_skill_stats (0ms)
+[OK] apply_skill_decay (0ms)
+[OK] enable_disable_skill (25ms)
+[OK] search_skills (25ms)
+[OK] get_skill_metrics (0ms)
+[OK] get_unreliable_skills (0ms)
+[OK] clear_skill_metrics (0ms)
+[OK] search_skills_by_tag (41ms)
+[OK] unregister_skill (25ms)
+[OK] create_workflow (33ms)
+[OK] add_workflow_step (25ms)
+[OK] get_workflow_status (25ms)
+[OK] list_workflows (1ms)
+[OK] start_workflow (24ms)
+[OK] pause_workflow (25ms)
+[OK] resume_workflow (25ms)
+[OK] cancel_workflow (17ms)
+[OK] delete_workflow (16ms)
+[OK] set_workflow_variable (25ms)
+[OK] get_session_state (0ms)
+[OK] cleanup_sessions (0ms)
+[OK] upsert_world_entity (66ms)
+[OK] add_world_relationship (25ms)
+[OK] get_world_entity (25ms)
+[OK] find_world_entity (0ms)
+[OK] list_world_entities (0ms)
+[OK] get_world_relationships (24ms)
+[OK] get_world_blockers (50ms)
+[OK] get_world_dependencies (25ms)
+[OK] get_consumed_resources (42ms)
+[OK] get_world_model_stats (0ms)
+
+[INFO] Testing ingest system...
+[OK] TXT file ingest
+[OK] MD file ingest
+[OK] CSV file ingest
+[OK] XML file ingest
+[OK] HTML file ingest
+[OK] JSON file ingest
+[OK] RS code ingest
+[OK] PY code ingest
+[OK] JS code ingest
+[OK] TOML code ingest
+[OK] YAML code ingest
+[OK] SH script ingest
+[OK] BAT script ingest
+[OK] PS1 script ingest
+[OK] ENV config ingest
+[OK] INI config ingest
+[OK] CONF config ingest
+[OK] PROPERTIES config ingest
+[OK] SRT subtitle ingest
+[OK] PNG image ingest (metadata)
+[OK] JPG image ingest (metadata)
+[OK] SVG image ingest (metadata)
+
+[INFO] Testing search system...
+[OK] search_memory
+[OK] global_search
+[OK] ranked_search
+[OK] search_similar
+
+[INFO] Testing MCP/ACP connection...
+[OK] ACP list_acp_agents
+[OK] ACP registry
+[OK] ACP router
+
+[INFO] JSON report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_report.json
+[INFO] Human-readable report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_output.txt
+
+[INFO] Summary:
+  Working: 206/206
+  Failed: 0/206
+  Success rate: 100.0%
+======================================================================
+  COMPREHENSIVE TOOL PROBE — Testing ALL tools
+======================================================================
+[INFO] Starting comprehensive tool probe...
+[INFO] Connecting to robot_brain...
+[OK] Connected to robot_brain
+[INFO] Initializing workflow gate...
+[OK] Workflow gate initialized
+[INFO] Listing all tools...
+[INFO] Found 206 tools
+
+[INFO] Probing each tool...
+
+[OK] list_acp_agents (0ms)
+[OK] acp_agent_count (0ms)
+[OK] acp_router (0ms)
+[OK] acp_registry (0ms)
+[OK] create_acp_message (0ms)
+[OK] route_acp_message (0ms)
+[OK] get_agent_capabilities (0ms)
+[OK] get_system_status (253ms)
+[OK] register_agent (60ms)
+[OK] unregister_agent (17ms)
+[OK] cooboploop_enqueue_goal (33ms)
+[OK] cooboploop_list_goals (0ms)
+[OK] cooboploop_get_goal (0ms)
+[OK] cooboploop_update_goal_status (25ms)
+[OK] cooboploop_run_source_discovery (4790ms)
+[OK] cooboploop_evaluate_goal (276ms)
+[OK] cooboploop_reprioritize_queue (0ms)
+[OK] cooboploop_set_priority_policy (83ms)
+[OK] cooboploop_record_capability_outcome (59ms)
+[OK] cooboploop_get_capability_assessment (1211ms)
+[OK] cooboploop_list_capabilities (0ms)
+[OK] cooboploop_start_loop (0ms)
+[OK] cooboploop_stop_loop (0ms)
+[OK] cooboploop_get_loop_status (0ms)
+[OK] cooboploop_run_single_cycle (1895ms)
+[OK] cooboploop_step_loop (1983ms)
+[OK] cooboploop_run_post_task_evaluation (67ms)
+[OK] cooboploop_get_idle_state (0ms)
+[OK] cooboploop_configure_idle_reevaluation_interval (24ms)
+[OK] cooboploop_create_research_objective (75ms)
+[OK] cooboploop_get_hardware_profile (1588ms)
+[OK] cooboploop_detect_hardware_changes (1584ms)
+[OK] cooboploop_run_inspection (244ms)
+[OK] cooboploop_get_modification_boundary (0ms)
+[OK] cooboploop_set_modification_boundary (25ms)
+[OK] cooboploop_run_opportunity_intake (25ms)
+[OK] cooboploop_get_pending_external_opportunities (0ms)
+[OK] cooboploop_set_autonomous_mode (25ms)
+[OK] cooboploop_get_autonomous_mode (0ms)
+[OK] cooboploop_list_strategic_objectives (0ms)
+[OK] cooboploop_add_strategic_objective (24ms)
+[OK] cooboploop_remove_strategic_objective (83ms)
+[OK] cooboploop_get_objective_hierarchy (0ms)
+[OK] cooboploop_set_mission (25ms)
+[OK] cooboploop_get_autonomy_levels (0ms)
+[OK] cooboploop_promote_autonomy (50ms)
+[OK] cooboploop_run_post_task_evaluation (41ms)
+[OK] get_workflow (0ms)
+[OK] list_tools (1ms)
+[OK] get_tool (0ms)
+[OK] connect_mcp_server (23ms)
+[OK] call_tool (25ms)
+[OK] run_agent_goal (25ms)
+[OK] record_experience (25ms)
+[OK] get_experience_stats (7ms)
+[OK] list_experiences (1ms)
+[OK] get_experience (17ms)
+[OK] get_worker_stats (0ms)
+[OK] get_worker_count (0ms)
+[OK] add_evidence_to_experience (25ms)
+[OK] archive_experience (25ms)
+[OK] start_exploration (25ms)
+[OK] get_exploration_status (25ms)
+[OK] pause_exploration (158ms)
+[OK] resume_exploration (16ms)
+[OK] complete_exploration (242ms)
+[OK] abandon_exploration (25ms)
+[OK] record_attempt (25ms)
+[OK] add_hypothesis (25ms)
+[OK] evaluate_exploration_hypothesis (25ms)
+[OK] promote_finding (25ms)
+[OK] record_observation (309ms)
+[OK] create_hypothesis (167ms)
+[OK] add_evidence (3074ms)
+[OK] get_hypothesis (142ms)
+[OK] list_hypotheses (6ms)
+[OK] list_observations (1ms)
+[OK] evaluate_hypothesis (135ms)
+[OK] get_knowledge (4ms)
+[OK] extract_knowledge (155ms)
+[OK] get_evidence (133ms)
+[OK] list_evidence (4ms)
+[OK] ingest_files (0ms)
+[OK] list_importable (0ms)
+[OK] list_ingested_files (0ms)
+[OK] delete_ingested_files (120ms)
+[OK] transcribe_audio (133ms)
+[OK] add_knowledge (152ms)
+[OK] query_knowledge (0ms)
+[OK] record_knowledge_application (216ms)
+[OK] get_knowledge_stats (0ms)
+[OK] get_mature_knowledge (0ms)
+[OK] update_knowledge (206ms)
+[OK] delete_knowledge (158ms)
+[OK] get_related_knowledge (161ms)
+[OK] validate_knowledge_dependencies (0ms)
+[OK] bump_knowledge_version (55ms)
+[OK] set_knowledge_status (101ms)
+[OK] manage_knowledge_dependency (117ms)
+[OK] add_knowledge_relation (158ms)
+[OK] search_knowledge_by_tag (0ms)
+[OK] store_memory (115ms)
+[OK] search_memory (167ms)
+[OK] get_memory (104ms)
+[OK] list_memories (1ms)
+[OK] archive_memory (86ms)
+[OK] delete_memory_by_id (142ms)
+[OK] link_memories (152ms)
+[OK] ranked_search (148ms)
+[OK] store_embedding (152ms)
+[OK] get_embedding (52ms)
+[OK] search_similar (113ms)
+[OK] list_embeddings (6ms)
+[OK] delete_embedding (138ms)
+[OK] get_embedding_stats (5ms)
+[OK] get_personality (0ms)
+[OK] set_personality_traits (0ms)
+[OK] apply_personality_preset (175ms)
+[OK] list_personality_presets (0ms)
+[OK] get_personality_decision (0ms)
+[OK] format_response (415ms)
+[OK] create_plan (213ms)
+[OK] add_plan_step (148ms)
+[OK] add_step_dependency (159ms)
+[OK] get_plan (135ms)
+[OK] list_plans (1ms)
+[OK] start_plan (157ms)
+[OK] complete_step (139ms)
+[OK] fail_step (171ms)
+[OK] cancel_plan (138ms)
+[OK] get_insights (0ms)
+[OK] create_reflection (0ms)
+[OK] analyze_patterns (0ms)
+[OK] get_patterns (0ms)
+[OK] validate_reflection (41ms)
+[OK] list_reflections_by_status (1ms)
+[OK] update_reflection (129ms)
+[OK] global_search (120ms)
+[OK] get_recommendations (6ms)
+[OK] get_reputation (1ms)
+[OK] research (41ms)
+[OK] quick_research (301ms)
+[OK] deep_research (125ms)
+[OK] find_error_resolution (151ms)
+[OK] web_search (140ms)
+[OK] web_open (237ms)
+[OK] web_extract (130ms)
+[OK] get_wikipedia (133ms)
+[OK] search_news (133ms)
+[OK] search_reddit (58ms)
+[OK] search_hackernews (101ms)
+[OK] search_youtube (168ms)
+[OK] search_substack (157ms)
+[OK] search_bluesky (62ms)
+[OK] search_telegram (130ms)
+[OK] search_mastodon (151ms)
+[OK] search_vk (82ms)
+[OK] search_preprints (134ms)
+[OK] search_datasets (175ms)
+[OK] search_osm (191ms)
+[OK] search_sec_filings (150ms)
+[OK] resurrect_dead_link (292ms)
+[OK] verify_citations (258ms)
+[OK] find_counter_arguments (82ms)
+[OK] validate_bibliography (226ms)
+[OK] format_citations (374ms)
+[OK] detect_trends (167ms)
+[OK] score_reliability (1659ms)
+[OK] register_skill (192ms)
+[OK] discover_skill (254ms)
+[OK] get_skill (229ms)
+[OK] list_skills (1ms)
+[OK] update_skill_mastery (191ms)
+[OK] get_skill_recommendations (1ms)
+[OK] execute_skill (207ms)
+[OK] get_skill_stats (1ms)
+[OK] apply_skill_decay (0ms)
+[OK] enable_disable_skill (191ms)
+[OK] search_skills (183ms)
+[OK] get_skill_metrics (1ms)
+[OK] get_unreliable_skills (0ms)
+[OK] clear_skill_metrics (0ms)
+[OK] search_skills_by_tag (316ms)
+[OK] unregister_skill (49ms)
+[OK] create_workflow (183ms)
+[OK] add_workflow_step (234ms)
+[OK] get_workflow_status (93ms)
+[OK] list_workflows (1ms)
+[OK] start_workflow (148ms)
+[OK] pause_workflow (182ms)
+[OK] resume_workflow (2283ms)
+[OK] cancel_workflow (175ms)
+[OK] delete_workflow (184ms)
+[OK] set_workflow_variable (199ms)
+[OK] get_session_state (1ms)
+[OK] cleanup_sessions (1ms)
+[OK] upsert_world_entity (50ms)
+[OK] add_world_relationship (182ms)
+[OK] get_world_entity (83ms)
+[OK] find_world_entity (1ms)
+[OK] list_world_entities (1ms)
+[OK] get_world_relationships (132ms)
+[OK] get_world_blockers (183ms)
+[OK] get_world_dependencies (183ms)
+[OK] get_consumed_resources (510ms)
+[OK] get_world_model_stats (1ms)
+
+[INFO] Testing ingest system...
+[OK] TXT file ingest
+[OK] MD file ingest
+[OK] CSV file ingest
+[OK] XML file ingest
+[OK] HTML file ingest
+[OK] JSON file ingest
+[OK] RS code ingest
+[OK] PY code ingest
+[OK] JS code ingest
+[OK] TOML code ingest
+[OK] YAML code ingest
+[OK] SH script ingest
+[OK] BAT script ingest
+[OK] PS1 script ingest
+[OK] ENV config ingest
+[OK] INI config ingest
+[OK] CONF config ingest
+[OK] PROPERTIES config ingest
+[OK] SRT subtitle ingest
+[OK] PNG image ingest (metadata)
+[OK] JPG image ingest (metadata)
+[OK] SVG image ingest (metadata)
+
+[INFO] Testing search system...
+[OK] search_memory
+[OK] global_search
+[OK] ranked_search
+[OK] search_similar
+
+[INFO] Testing MCP/ACP connection...
+[OK] ACP list_acp_agents
+[OK] ACP registry
+[OK] ACP router
+
+[INFO] JSON report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_report.json
+[INFO] Human-readable report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_output.txt
+
+[INFO] Summary:
+  Working: 206/206
+  Failed: 0/206
+  Success rate: 100.0%
+======================================================================
+  COMPREHENSIVE TOOL PROBE — Testing ALL tools
+======================================================================
+[INFO] Starting comprehensive tool probe...
+[INFO] Connecting to robot_brain...
+[OK] Connected to robot_brain
+[INFO] Initializing workflow gate...
+[OK] Workflow gate initialized
+[INFO] Listing all tools...
+[INFO] Found 206 tools
+
+[INFO] Probing each tool...
+
+[OK] list_acp_agents (0ms)
+[OK] acp_agent_count (0ms)
+[OK] acp_router (0ms)
+[OK] acp_registry (0ms)
+[OK] create_acp_message (0ms)
+[OK] route_acp_message (0ms)
+[OK] get_agent_capabilities (0ms)
+[OK] get_system_status (198ms)
+[OK] register_agent (175ms)
+[OK] unregister_agent (17ms)
+[OK] cooboploop_enqueue_goal (25ms)
+[OK] cooboploop_list_goals (0ms)
+[OK] cooboploop_get_goal (0ms)
+[OK] cooboploop_update_goal_status (25ms)
+[OK] cooboploop_run_source_discovery (4747ms)
+[OK] cooboploop_evaluate_goal (60ms)
+[OK] cooboploop_reprioritize_queue (0ms)
+[OK] cooboploop_set_priority_policy (116ms)
+[OK] cooboploop_record_capability_outcome (25ms)
+[OK] cooboploop_get_capability_assessment (83ms)
+[OK] cooboploop_list_capabilities (0ms)
+[OK] cooboploop_start_loop (0ms)
+[OK] cooboploop_stop_loop (0ms)
+[OK] cooboploop_get_loop_status (0ms)
+[OK] cooboploop_run_single_cycle (1849ms)
+[OK] cooboploop_step_loop (1883ms)
+[OK] cooboploop_run_post_task_evaluation (25ms)
+[OK] cooboploop_get_idle_state (0ms)
+[OK] cooboploop_configure_idle_reevaluation_interval (49ms)
+[OK] cooboploop_create_research_objective (17ms)
+[OK] cooboploop_get_hardware_profile (1571ms)
+[OK] cooboploop_detect_hardware_changes (1592ms)
+[OK] cooboploop_run_inspection (288ms)
+[OK] cooboploop_get_modification_boundary (0ms)
+[OK] cooboploop_set_modification_boundary (22ms)
+[OK] cooboploop_run_opportunity_intake (25ms)
+[OK] cooboploop_get_pending_external_opportunities (1ms)
+[OK] cooboploop_set_autonomous_mode (108ms)
+[OK] cooboploop_get_autonomous_mode (0ms)
+[OK] cooboploop_list_strategic_objectives (0ms)
+[OK] cooboploop_add_strategic_objective (83ms)
+[OK] cooboploop_remove_strategic_objective (25ms)
+[OK] cooboploop_get_objective_hierarchy (0ms)
+[OK] cooboploop_set_mission (158ms)
+[OK] cooboploop_get_autonomy_levels (0ms)
+[OK] cooboploop_promote_autonomy (75ms)
+[OK] cooboploop_run_post_task_evaluation (50ms)
+[OK] get_workflow (0ms)
+[OK] list_tools (1ms)
+[OK] get_tool (0ms)
+[OK] connect_mcp_server (90ms)
+[OK] call_tool (50ms)
+[OK] run_agent_goal (25ms)
+[OK] record_experience (17ms)
+[OK] get_experience_stats (7ms)
+[OK] list_experiences (5ms)
+[OK] get_experience (63ms)
+[OK] get_worker_stats (0ms)
+[OK] get_worker_count (0ms)
+[OK] add_evidence_to_experience (25ms)
+[OK] archive_experience (25ms)
+[OK] start_exploration (75ms)
+[OK] get_exploration_status (25ms)
+[OK] pause_exploration (25ms)
+[OK] resume_exploration (25ms)
+[OK] complete_exploration (211ms)
+[OK] abandon_exploration (173ms)
+[OK] record_attempt (192ms)
+[OK] add_hypothesis (200ms)
+[OK] evaluate_exploration_hypothesis (166ms)
+[OK] promote_finding (167ms)
+[OK] record_observation (167ms)
+[OK] create_hypothesis (158ms)
+[OK] add_evidence (167ms)
+[OK] get_hypothesis (167ms)
+[OK] list_hypotheses (8ms)
+[OK] list_observations (1ms)
+[OK] evaluate_hypothesis (149ms)
+[OK] get_knowledge (9ms)
+[OK] extract_knowledge (166ms)
+[OK] get_evidence (164ms)
+[OK] list_evidence (6ms)
+[OK] ingest_files (0ms)
+[OK] list_importable (0ms)
+[OK] list_ingested_files (0ms)
+[OK] delete_ingested_files (79ms)
+[OK] transcribe_audio (117ms)
+[OK] add_knowledge (164ms)
+[OK] query_knowledge (1ms)
+[OK] record_knowledge_application (160ms)
+[OK] get_knowledge_stats (0ms)
+[OK] get_mature_knowledge (2ms)
+[OK] update_knowledge (186ms)
+[OK] delete_knowledge (171ms)
+[OK] get_related_knowledge (191ms)
+[OK] validate_knowledge_dependencies (0ms)
+[OK] bump_knowledge_version (174ms)
+[OK] set_knowledge_status (159ms)
+[OK] manage_knowledge_dependency (166ms)
+[OK] add_knowledge_relation (91ms)
+[OK] search_knowledge_by_tag (0ms)
+[OK] store_memory (142ms)
+[OK] search_memory (283ms)
+[OK] get_memory (142ms)
+[OK] list_memories (9ms)
+[OK] archive_memory (3406ms)
+[OK] delete_memory_by_id (25ms)
+[OK] link_memories (75ms)
+[OK] ranked_search (25ms)
+[OK] store_embedding (25ms)
+[OK] get_embedding (25ms)
+[OK] search_similar (125ms)
+[OK] list_embeddings (11ms)
+[OK] delete_embedding (1105ms)
+[OK] get_embedding_stats (8ms)
+[OK] get_personality (0ms)
+[OK] set_personality_traits (0ms)
+[OK] apply_personality_preset (50ms)
+[OK] list_personality_presets (0ms)
+[OK] get_personality_decision (0ms)
+[OK] format_response (25ms)
+[OK] create_plan (25ms)
+[OK] add_plan_step (25ms)
+[OK] add_step_dependency (25ms)
+[OK] get_plan (83ms)
+[OK] list_plans (0ms)
+[OK] start_plan (16ms)
+[OK] complete_step (25ms)
+[OK] fail_step (67ms)
+[OK] cancel_plan (25ms)
+[OK] get_insights (0ms)
+[OK] create_reflection (0ms)
+[OK] analyze_patterns (0ms)
+[OK] get_patterns (0ms)
+[OK] validate_reflection (82ms)
+[OK] list_reflections_by_status (0ms)
+[OK] update_reflection (17ms)
+[OK] global_search (26ms)
+[OK] get_recommendations (8ms)
+[OK] get_reputation (1ms)
+[OK] research (14ms)
+[OK] quick_research (125ms)
+[OK] deep_research (16ms)
+[OK] find_error_resolution (33ms)
+[OK] web_search (25ms)
+[OK] web_open (50ms)
+[OK] web_extract (17ms)
+[OK] get_wikipedia (33ms)
+[OK] search_news (25ms)
+[OK] search_reddit (92ms)
+[OK] search_hackernews (26ms)
+[OK] search_youtube (24ms)
+[OK] search_substack (626ms)
+[OK] search_bluesky (124ms)
+[OK] search_telegram (133ms)
+[OK] search_mastodon (50ms)
+[OK] search_vk (109ms)
+[OK] search_preprints (207ms)
+[OK] search_datasets (168ms)
+[OK] search_osm (107ms)
+[OK] search_sec_filings (209ms)
+[OK] resurrect_dead_link (124ms)
+[OK] verify_citations (134ms)
+[OK] find_counter_arguments (116ms)
+[OK] validate_bibliography (117ms)
+[OK] format_citations (100ms)
+[OK] detect_trends (133ms)
+[OK] score_reliability (142ms)
+[OK] register_skill (117ms)
+[OK] discover_skill (117ms)
+[OK] get_skill (141ms)
+[OK] list_skills (1ms)
+[OK] update_skill_mastery (115ms)
+[OK] get_skill_recommendations (0ms)
+[OK] execute_skill (196ms)
+[OK] get_skill_stats (0ms)
+[OK] apply_skill_decay (0ms)
+[OK] enable_disable_skill (100ms)
+[OK] search_skills (322ms)
+[OK] get_skill_metrics (0ms)
+[OK] get_unreliable_skills (0ms)
+[OK] clear_skill_metrics (0ms)
+[OK] search_skills_by_tag (171ms)
+[OK] unregister_skill (165ms)
+[OK] create_workflow (169ms)
+[OK] add_workflow_step (108ms)
+[OK] get_workflow_status (117ms)
+[OK] list_workflows (0ms)
+[OK] start_workflow (116ms)
+[OK] pause_workflow (150ms)
+[OK] resume_workflow (117ms)
+[OK] cancel_workflow (166ms)
+[OK] delete_workflow (150ms)
+[OK] set_workflow_variable (125ms)
+[OK] get_session_state (1ms)
+[OK] cleanup_sessions (0ms)
+[OK] upsert_world_entity (132ms)
+[OK] add_world_relationship (125ms)
+[OK] get_world_entity (157ms)
+[OK] find_world_entity (1ms)
+[OK] list_world_entities (0ms)
+[OK] get_world_relationships (159ms)
+[OK] get_world_blockers (126ms)
+[OK] get_world_dependencies (178ms)
+[OK] get_consumed_resources (163ms)
+[OK] get_world_model_stats (0ms)
+
+[INFO] Testing ingest system...
+[OK] TXT file ingest
+[OK] MD file ingest
+[OK] CSV file ingest
+[OK] XML file ingest
+[OK] HTML file ingest
+[OK] JSON file ingest
+[OK] RS code ingest
+[OK] PY code ingest
+[OK] JS code ingest
+[OK] TOML code ingest
+[OK] YAML code ingest
+[OK] SH script ingest
+[OK] BAT script ingest
+[OK] PS1 script ingest
+[OK] ENV config ingest
+[OK] INI config ingest
+[OK] CONF config ingest
+[OK] PROPERTIES config ingest
+[OK] SRT subtitle ingest
+[OK] PNG image ingest (metadata)
+[OK] JPG image ingest (metadata)
+[OK] SVG image ingest (metadata)
+
+[INFO] Testing search system...
+[OK] search_memory
+[OK] global_search
+[OK] ranked_search
+[OK] search_similar
+
+[INFO] Testing MCP/ACP connection...
+[OK] ACP list_acp_agents
+[OK] ACP registry
+[OK] ACP router
+
+[INFO] JSON report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_report.json
+[INFO] Human-readable report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_output.txt
+
+[INFO] Summary:
+  Working: 206/206
+  Failed: 0/206
+  Success rate: 100.0%
+======================================================================
+  COMPREHENSIVE TOOL PROBE — Testing ALL tools
+======================================================================
+[INFO] Starting comprehensive tool probe...
+[INFO] Connecting to robot_brain...
+[OK] Connected to robot_brain
+[INFO] Initializing workflow gate...
+[OK] Workflow gate initialized
+[INFO] Listing all tools...
+[INFO] Found 206 tools
+
+[INFO] Probing each tool...
+
+[OK] list_acp_agents (0ms)
+[OK] acp_agent_count (0ms)
+[OK] acp_router (0ms)
+[OK] acp_registry (0ms)
+[OK] create_acp_message (0ms)
+[OK] route_acp_message (0ms)
+[OK] get_agent_capabilities (0ms)
+[OK] get_system_status (761ms)
+[OK] register_agent (661ms)
+[OK] unregister_agent (25ms)
+[OK] cooboploop_enqueue_goal (17ms)
+[OK] cooboploop_list_goals (0ms)
+[OK] cooboploop_get_goal (0ms)
+[OK] cooboploop_update_goal_status (24ms)
+[OK] cooboploop_run_source_discovery (4803ms)
+[OK] cooboploop_evaluate_goal (455ms)
+[OK] cooboploop_reprioritize_queue (0ms)
+[OK] cooboploop_set_priority_policy (24ms)
+[OK] cooboploop_record_capability_outcome (25ms)
+[OK] cooboploop_get_capability_assessment (983ms)
+[OK] cooboploop_list_capabilities (0ms)
+[OK] cooboploop_start_loop (0ms)
+[OK] cooboploop_stop_loop (0ms)
+[OK] cooboploop_get_loop_status (0ms)
+[OK] cooboploop_run_single_cycle (1907ms)
+[OK] cooboploop_step_loop (1933ms)
+[OK] cooboploop_run_post_task_evaluation (25ms)
+[OK] cooboploop_get_idle_state (0ms)
+[OK] cooboploop_configure_idle_reevaluation_interval (25ms)
+[OK] cooboploop_create_research_objective (25ms)
+[OK] cooboploop_get_hardware_profile (1598ms)
+[OK] cooboploop_detect_hardware_changes (1607ms)
+[OK] cooboploop_run_inspection (519ms)
+[OK] cooboploop_get_modification_boundary (0ms)
+[OK] cooboploop_set_modification_boundary (25ms)
+[OK] cooboploop_run_opportunity_intake (25ms)
+[OK] cooboploop_get_pending_external_opportunities (0ms)
+[OK] cooboploop_set_autonomous_mode (24ms)
+[OK] cooboploop_get_autonomous_mode (0ms)
+[OK] cooboploop_list_strategic_objectives (0ms)
+[OK] cooboploop_add_strategic_objective (233ms)
+[OK] cooboploop_remove_strategic_objective (25ms)
+[OK] cooboploop_get_objective_hierarchy (0ms)
+[OK] cooboploop_set_mission (25ms)
+[OK] cooboploop_get_autonomy_levels (0ms)
+[OK] cooboploop_promote_autonomy (24ms)
+[OK] cooboploop_run_post_task_evaluation (25ms)
+[OK] get_workflow (0ms)
+[OK] list_tools (1ms)
+[OK] get_tool (0ms)
+[OK] connect_mcp_server (23ms)
+[OK] call_tool (567ms)
+[OK] run_agent_goal (16ms)
+[OK] record_experience (26ms)
+[OK] get_experience_stats (11ms)
+[OK] list_experiences (2ms)
+[OK] get_experience (120ms)
+[OK] get_worker_stats (0ms)
+[OK] get_worker_count (0ms)
+[OK] add_evidence_to_experience (49ms)
+[OK] archive_experience (4682ms)
+[OK] start_exploration (25ms)
+[OK] get_exploration_status (25ms)
+[OK] pause_exploration (358ms)
+[OK] resume_exploration (783ms)
+[OK] complete_exploration (17ms)
+[OK] abandon_exploration (16ms)
+[OK] record_attempt (25ms)
+[OK] add_hypothesis (25ms)
+[OK] evaluate_exploration_hypothesis (34ms)
+[OK] promote_finding (666ms)
+[OK] record_observation (16ms)
+[OK] create_hypothesis (33ms)
+[OK] add_evidence (17ms)
+[OK] get_hypothesis (16ms)
+[OK] list_hypotheses (4ms)
+[OK] list_observations (1ms)
+[OK] evaluate_hypothesis (12ms)
+[OK] get_knowledge (6ms)
+[OK] extract_knowledge (19ms)
+[OK] get_evidence (25ms)
+[OK] list_evidence (4ms)
+[OK] ingest_files (0ms)
+[OK] list_importable (0ms)
+[OK] list_ingested_files (0ms)
+[OK] delete_ingested_files (20ms)
+[OK] transcribe_audio (2176ms)
+[OK] add_knowledge (215ms)
+[OK] query_knowledge (0ms)
+[OK] record_knowledge_application (125ms)
+[OK] get_knowledge_stats (0ms)
+[OK] get_mature_knowledge (0ms)
+[OK] update_knowledge (224ms)
+[OK] delete_knowledge (125ms)
+[OK] get_related_knowledge (161ms)
+[OK] validate_knowledge_dependencies (0ms)
+[OK] bump_knowledge_version (138ms)
+[OK] set_knowledge_status (133ms)
+[OK] manage_knowledge_dependency (150ms)
+[OK] add_knowledge_relation (150ms)
+[OK] search_knowledge_by_tag (0ms)
+[OK] store_memory (133ms)
+[OK] search_memory (333ms)
+[OK] get_memory (141ms)
+[OK] list_memories (5ms)
+[OK] archive_memory (137ms)
+[OK] delete_memory_by_id (137ms)
+[OK] link_memories (138ms)
+[OK] ranked_search (108ms)
+[OK] store_embedding (117ms)
+[OK] get_embedding (108ms)
+[OK] search_similar (125ms)
+[OK] list_embeddings (6ms)
+[OK] delete_embedding (119ms)
+[OK] get_embedding_stats (6ms)
+[OK] get_personality (0ms)
+[OK] set_personality_traits (0ms)
+[OK] apply_personality_preset (127ms)
+[OK] list_personality_presets (0ms)
+[OK] get_personality_decision (0ms)
+[OK] format_response (124ms)
+[OK] create_plan (133ms)
+[OK] add_plan_step (150ms)
+[OK] add_step_dependency (150ms)
+[OK] get_plan (133ms)
+[OK] list_plans (0ms)
+[OK] start_plan (116ms)
+[OK] complete_step (74ms)
+[OK] fail_step (76ms)
+[OK] cancel_plan (133ms)
+[OK] get_insights (1ms)
+[OK] create_reflection (1ms)
+[OK] analyze_patterns (0ms)
+[OK] get_patterns (0ms)
+[OK] validate_reflection (131ms)
+[OK] list_reflections_by_status (0ms)
+[OK] update_reflection (142ms)
+[OK] global_search (138ms)
+[OK] get_recommendations (5ms)
+[OK] get_reputation (2ms)
+[OK] research (137ms)
+[OK] quick_research (109ms)
+[OK] deep_research (83ms)
+[OK] find_error_resolution (158ms)
+[OK] web_search (85ms)
+[OK] web_open (112ms)
+[OK] web_extract (87ms)
+[OK] get_wikipedia (148ms)
+[OK] search_news (182ms)
+[OK] search_reddit (1726ms)
+[OK] search_hackernews (133ms)
+[OK] search_youtube (125ms)
+[OK] search_substack (150ms)
+[OK] search_bluesky (125ms)
+[OK] search_telegram (141ms)
+[OK] search_mastodon (183ms)
+[OK] search_vk (133ms)
+[OK] search_preprints (133ms)
+[OK] search_datasets (125ms)
+[OK] search_osm (149ms)
+[OK] search_sec_filings (58ms)
+[OK] resurrect_dead_link (94ms)
+[OK] verify_citations (114ms)
+[OK] find_counter_arguments (117ms)
+[OK] validate_bibliography (175ms)
+[OK] format_citations (125ms)
+[OK] detect_trends (117ms)
+[OK] score_reliability (127ms)
+[OK] register_skill (123ms)
+[OK] discover_skill (158ms)
+[OK] get_skill (142ms)
+[OK] list_skills (2ms)
+[OK] update_skill_mastery (132ms)
+[OK] get_skill_recommendations (1ms)
+[OK] execute_skill (133ms)
+[OK] get_skill_stats (1ms)
+[OK] apply_skill_decay (0ms)
+[OK] enable_disable_skill (200ms)
+[OK] search_skills (141ms)
+[OK] get_skill_metrics (0ms)
+[OK] get_unreliable_skills (2ms)
+[OK] clear_skill_metrics (0ms)
+[OK] search_skills_by_tag (69ms)
+[OK] unregister_skill (137ms)
+[OK] create_workflow (175ms)
+[OK] add_workflow_step (167ms)
+[OK] get_workflow_status (167ms)
+[OK] list_workflows (0ms)
+[OK] start_workflow (116ms)
+[OK] pause_workflow (60ms)
+[OK] resume_workflow (181ms)
+[OK] cancel_workflow (133ms)
+[OK] delete_workflow (117ms)
+[OK] set_workflow_variable (128ms)
+[OK] get_session_state (0ms)
+[OK] cleanup_sessions (0ms)
+[OK] upsert_world_entity (116ms)
+[OK] add_world_relationship (133ms)
+[OK] get_world_entity (117ms)
+[OK] find_world_entity (1ms)
+[OK] list_world_entities (0ms)
+[OK] get_world_relationships (113ms)
+[OK] get_world_blockers (66ms)
+[OK] get_world_dependencies (135ms)
+[OK] get_consumed_resources (132ms)
+[OK] get_world_model_stats (1ms)
+
+[INFO] Testing ingest system...
+[OK] TXT file ingest
+[OK] MD file ingest
+[OK] CSV file ingest
+[OK] XML file ingest
+[OK] HTML file ingest
+[OK] JSON file ingest
+[OK] RS code ingest
+[OK] PY code ingest
+[OK] JS code ingest
+[OK] TOML code ingest
+[OK] YAML code ingest
+[OK] SH script ingest
+[OK] BAT script ingest
+[OK] PS1 script ingest
+[OK] ENV config ingest
+[OK] INI config ingest
+[OK] CONF config ingest
+[OK] PROPERTIES config ingest
+[OK] SRT subtitle ingest
+[OK] PNG image ingest (metadata)
+[OK] JPG image ingest (metadata)
+[OK] SVG image ingest (metadata)
+
+[INFO] Testing search system...
+[OK] search_memory
+[OK] global_search
+[OK] ranked_search
+[OK] search_similar
+
+[INFO] Testing MCP/ACP connection...
+[OK] ACP list_acp_agents
+[OK] ACP registry
+[OK] ACP router
+
+[INFO] JSON report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_report.json
+[INFO] Human-readable report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_output.txt
+
+[INFO] Summary:
+  Working: 206/206
+  Failed: 0/206
+  Success rate: 100.0%
+======================================================================
+  COMPREHENSIVE TOOL PROBE — Testing ALL tools
+======================================================================
+[INFO] Starting comprehensive tool probe...
+[INFO] Connecting to robot_brain...
+[OK] Connected to robot_brain
+[INFO] Initializing workflow gate...
+[OK] Workflow gate initialized
+[INFO] Listing all tools...
+[INFO] Found 206 tools
+
+[INFO] Probing each tool...
+
+[OK] list_acp_agents (0ms)
+[OK] acp_agent_count (0ms)
+[OK] acp_router (0ms)
+[OK] acp_registry (0ms)
+[OK] create_acp_message (0ms)
+[OK] route_acp_message (0ms)
+[OK] get_agent_capabilities (0ms)
+[OK] get_system_status (922ms)
+[OK] register_agent (158ms)
+[OK] unregister_agent (33ms)
+[OK] cooboploop_enqueue_goal (29ms)
+[OK] cooboploop_list_goals (0ms)
+[OK] cooboploop_get_goal (0ms)
+[OK] cooboploop_update_goal_status (12ms)
+[OK] cooboploop_run_source_discovery (4685ms)
+[OK] cooboploop_evaluate_goal (288ms)
+[OK] cooboploop_reprioritize_queue (1ms)
+[OK] cooboploop_set_priority_policy (1432ms)
+[OK] cooboploop_record_capability_outcome (25ms)
+[OK] cooboploop_get_capability_assessment (16ms)
+[OK] cooboploop_list_capabilities (0ms)
+[OK] cooboploop_start_loop (0ms)
+[OK] cooboploop_stop_loop (0ms)
+[OK] cooboploop_get_loop_status (0ms)
+[OK] cooboploop_run_single_cycle (1957ms)
+[OK] cooboploop_step_loop (4193ms)
+[OK] cooboploop_run_post_task_evaluation (356ms)
+[OK] cooboploop_get_idle_state (1ms)
+[OK] cooboploop_configure_idle_reevaluation_interval (1007ms)
+[OK] cooboploop_create_research_objective (25ms)
+[OK] cooboploop_get_hardware_profile (1545ms)
+[OK] cooboploop_detect_hardware_changes (1520ms)
+[OK] cooboploop_run_inspection (926ms)
+[OK] cooboploop_get_modification_boundary (0ms)
+[OK] cooboploop_set_modification_boundary (33ms)
+[OK] cooboploop_run_opportunity_intake (34ms)
+[OK] cooboploop_get_pending_external_opportunities (0ms)
+[OK] cooboploop_set_autonomous_mode (291ms)
+[OK] cooboploop_get_autonomous_mode (0ms)
+[OK] cooboploop_list_strategic_objectives (0ms)
+[OK] cooboploop_add_strategic_objective (112ms)
+[OK] cooboploop_remove_strategic_objective (129ms)
+[OK] cooboploop_get_objective_hierarchy (0ms)
+[OK] cooboploop_set_mission (117ms)
+[OK] cooboploop_get_autonomy_levels (0ms)
+[OK] cooboploop_promote_autonomy (1373ms)
+[OK] cooboploop_run_post_task_evaluation (100ms)
+[OK] get_workflow (0ms)
+[OK] list_tools (1ms)
+[OK] get_tool (0ms)
+[OK] connect_mcp_server (90ms)
+[OK] call_tool (100ms)
+[OK] run_agent_goal (99ms)
+[OK] record_experience (100ms)
+[OK] get_experience_stats (6ms)
+[OK] list_experiences (1ms)
+[OK] get_experience (93ms)
+[OK] get_worker_stats (0ms)
+[OK] get_worker_count (0ms)
+[OK] add_evidence_to_experience (99ms)
+[OK] archive_experience (124ms)
+[OK] start_exploration (100ms)
+[OK] get_exploration_status (84ms)
+[OK] pause_exploration (46ms)
+[OK] resume_exploration (62ms)
+[OK] complete_exploration (108ms)
+[OK] abandon_exploration (109ms)
+[OK] record_attempt (100ms)
+[OK] add_hypothesis (100ms)
+[OK] evaluate_exploration_hypothesis (108ms)
+[OK] promote_finding (54ms)
+[OK] record_observation (63ms)
+[OK] create_hypothesis (117ms)
+[OK] add_evidence (45ms)
+[OK] get_hypothesis (63ms)
+[OK] list_hypotheses (6ms)
+[OK] list_observations (1ms)
+[OK] evaluate_hypothesis (93ms)
+[OK] get_knowledge (4ms)
+[OK] extract_knowledge (96ms)
+[OK] get_evidence (100ms)
+[OK] list_evidence (4ms)
+[OK] ingest_files (0ms)
+[OK] list_importable (0ms)
+[OK] list_ingested_files (0ms)
+[OK] delete_ingested_files (87ms)
+[OK] transcribe_audio (100ms)
+[OK] add_knowledge (133ms)
+[OK] query_knowledge (0ms)
+[OK] record_knowledge_application (100ms)
+[OK] get_knowledge_stats (0ms)
+[OK] get_mature_knowledge (0ms)
+[OK] update_knowledge (99ms)
+[OK] delete_knowledge (100ms)
+[OK] get_related_knowledge (134ms)
+[OK] validate_knowledge_dependencies (0ms)
+[OK] bump_knowledge_version (392ms)
+[OK] set_knowledge_status (132ms)
+[OK] manage_knowledge_dependency (147ms)
+[OK] add_knowledge_relation (112ms)
+[OK] search_knowledge_by_tag (1ms)
+[OK] store_memory (142ms)
+[OK] search_memory (216ms)
+[OK] get_memory (108ms)
+[OK] list_memories (5ms)
+[OK] archive_memory (96ms)
+[OK] delete_memory_by_id (99ms)
+[OK] link_memories (160ms)
+[OK] ranked_search (132ms)
+[OK] store_embedding (150ms)
+[OK] get_embedding (125ms)
+[OK] search_similar (158ms)
+[OK] list_embeddings (4ms)
+[OK] delete_embedding (88ms)
+[OK] get_embedding_stats (6ms)
+[OK] get_personality (0ms)
+[OK] set_personality_traits (0ms)
+[OK] apply_personality_preset (118ms)
+[OK] list_personality_presets (0ms)
+[OK] get_personality_decision (0ms)
+[OK] format_response (107ms)
+[OK] create_plan (125ms)
+[OK] add_plan_step (108ms)
+[OK] add_step_dependency (108ms)
+[OK] get_plan (108ms)
+[OK] list_plans (0ms)
+[OK] start_plan (127ms)
+[OK] complete_step (106ms)
+[OK] fail_step (117ms)
+[OK] cancel_plan (108ms)
+[OK] get_insights (0ms)
+[OK] create_reflection (0ms)
+[OK] analyze_patterns (0ms)
+[OK] get_patterns (0ms)
+[OK] validate_reflection (98ms)
+[OK] list_reflections_by_status (0ms)
+[OK] update_reflection (108ms)
+[OK] global_search (109ms)
+[OK] get_recommendations (4ms)
+[OK] get_reputation (1ms)
+[OK] research (128ms)
+[OK] quick_research (140ms)
+[OK] deep_research (108ms)
+[OK] find_error_resolution (108ms)
+[OK] web_search (100ms)
+[OK] web_open (133ms)
+[OK] web_extract (108ms)
+[OK] get_wikipedia (62ms)
+[OK] search_news (182ms)
+[OK] search_reddit (211ms)
+[OK] search_hackernews (262ms)
+[OK] search_youtube (138ms)
+[OK] search_substack (202ms)
+[OK] search_bluesky (175ms)
+[OK] search_telegram (166ms)
+[OK] search_mastodon (117ms)
+[OK] search_vk (52ms)
+[OK] search_preprints (98ms)
+[OK] search_datasets (125ms)
+[OK] search_osm (108ms)
+[OK] search_sec_filings (117ms)
+[OK] resurrect_dead_link (115ms)
+[OK] verify_citations (127ms)
+[OK] find_counter_arguments (108ms)
+[OK] validate_bibliography (108ms)
+[OK] format_citations (108ms)
+[OK] detect_trends (108ms)
+[OK] score_reliability (109ms)
+[OK] register_skill (241ms)
+[OK] discover_skill (191ms)
+[OK] get_skill (128ms)
+[OK] list_skills (0ms)
+[OK] update_skill_mastery (55ms)
+[OK] get_skill_recommendations (3ms)
+[OK] execute_skill (113ms)
+[OK] get_skill_stats (1ms)
+[OK] apply_skill_decay (1ms)
+[OK] enable_disable_skill (52ms)
+[OK] search_skills (64ms)
+[OK] get_skill_metrics (1ms)
+[OK] get_unreliable_skills (0ms)
+[OK] clear_skill_metrics (0ms)
+[OK] search_skills_by_tag (115ms)
+[OK] unregister_skill (117ms)
+[OK] create_workflow (117ms)
+[OK] add_workflow_step (61ms)
+[OK] get_workflow_status (105ms)
+[OK] list_workflows (0ms)
+[OK] start_workflow (108ms)
+[OK] pause_workflow (117ms)
+[OK] resume_workflow (58ms)
+[OK] cancel_workflow (45ms)
+[OK] delete_workflow (164ms)
+[OK] set_workflow_variable (127ms)
+[OK] get_session_state (1ms)
+[OK] cleanup_sessions (0ms)
+[OK] upsert_world_entity (122ms)
+[OK] add_world_relationship (140ms)
+[OK] get_world_entity (108ms)
+[OK] find_world_entity (1ms)
+[OK] list_world_entities (0ms)
+[OK] get_world_relationships (124ms)
+[OK] get_world_blockers (150ms)
+[OK] get_world_dependencies (150ms)
+[OK] get_consumed_resources (117ms)
+[OK] get_world_model_stats (1ms)
+
+[INFO] Testing ingest system...
+[OK] TXT file ingest
+[OK] MD file ingest
+[OK] CSV file ingest
+[OK] XML file ingest
+[OK] HTML file ingest
+[OK] JSON file ingest
+[OK] RS code ingest
+[OK] PY code ingest
+[OK] JS code ingest
+[OK] TOML code ingest
+[OK] YAML code ingest
+[OK] SH script ingest
+[OK] BAT script ingest
+[OK] PS1 script ingest
+[OK] ENV config ingest
+[OK] INI config ingest
+[OK] CONF config ingest
+[OK] PROPERTIES config ingest
+[OK] SRT subtitle ingest
+[OK] PNG image ingest (metadata)
+[OK] JPG image ingest (metadata)
+[OK] SVG image ingest (metadata)
+
+[INFO] Testing search system...
+[OK] search_memory
+[OK] global_search
+[OK] ranked_search
+[OK] search_similar
+
+[INFO] Testing MCP/ACP connection...
+[OK] ACP list_acp_agents
+[OK] ACP registry
+[OK] ACP router
+
+[INFO] JSON report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_report.json
+[INFO] Human-readable report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_output.txt
+
+[INFO] Summary:
+  Working: 206/206
+  Failed: 0/206
+  Success rate: 100.0%
+======================================================================
+  COMPREHENSIVE TOOL PROBE — Testing ALL tools
+======================================================================
+[INFO] Starting comprehensive tool probe...
+[INFO] Connecting to robot_brain...
+[OK] Connected to robot_brain
+[INFO] Initializing workflow gate...
+[OK] Workflow gate initialized
+[INFO] Listing all tools...
+[INFO] Found 206 tools
+
+[INFO] Probing each tool...
+
+[OK] list_acp_agents (0ms)
+[OK] acp_agent_count (0ms)
+[OK] acp_router (0ms)
+[OK] acp_registry (0ms)
+[OK] create_acp_message (0ms)
+[OK] route_acp_message (0ms)
+[OK] get_agent_capabilities (0ms)
+[OK] get_system_status (679ms)
+[OK] register_agent (112ms)
+[OK] unregister_agent (52ms)
+[OK] cooboploop_enqueue_goal (21ms)
+[OK] cooboploop_list_goals (0ms)
+[OK] cooboploop_get_goal (0ms)
+[OK] cooboploop_update_goal_status (25ms)
+[OK] cooboploop_run_source_discovery (4590ms)
+[OK] cooboploop_evaluate_goal (675ms)
+[OK] cooboploop_reprioritize_queue (0ms)
+[OK] cooboploop_set_priority_policy (75ms)
+[OK] cooboploop_record_capability_outcome (42ms)
+[OK] cooboploop_get_capability_assessment (267ms)
+[OK] cooboploop_list_capabilities (0ms)
+[OK] cooboploop_start_loop (0ms)
+[OK] cooboploop_stop_loop (0ms)
+[OK] cooboploop_get_loop_status (0ms)
+[OK] cooboploop_run_single_cycle (2081ms)
+[OK] cooboploop_step_loop (2040ms)
+[OK] cooboploop_run_post_task_evaluation (17ms)
+[OK] cooboploop_get_idle_state (0ms)
+[OK] cooboploop_configure_idle_reevaluation_interval (24ms)
+[OK] cooboploop_create_research_objective (17ms)
+[OK] cooboploop_get_hardware_profile (1525ms)
+[OK] cooboploop_detect_hardware_changes (1530ms)
+[OK] cooboploop_run_inspection (243ms)
+[OK] cooboploop_get_modification_boundary (0ms)
+[OK] cooboploop_set_modification_boundary (24ms)
+[OK] cooboploop_run_opportunity_intake (25ms)
+[OK] cooboploop_get_pending_external_opportunities (0ms)
+[OK] cooboploop_set_autonomous_mode (24ms)
+[OK] cooboploop_get_autonomous_mode (0ms)
+[OK] cooboploop_list_strategic_objectives (0ms)
+[OK] cooboploop_add_strategic_objective (67ms)
+[OK] cooboploop_remove_strategic_objective (216ms)
+[OK] cooboploop_get_objective_hierarchy (1ms)
+[OK] cooboploop_set_mission (66ms)
+[OK] cooboploop_get_autonomy_levels (0ms)
+[OK] cooboploop_promote_autonomy (58ms)
+[OK] cooboploop_run_post_task_evaluation (50ms)
+[OK] get_workflow (0ms)
+[OK] list_tools (1ms)
+[OK] get_tool (0ms)
+[OK] connect_mcp_server (15ms)
+[OK] call_tool (17ms)
+[OK] run_agent_goal (16ms)
+[OK] record_experience (17ms)
+[OK] get_experience_stats (7ms)
+[OK] list_experiences (1ms)
+[OK] get_experience (17ms)
+[OK] get_worker_stats (0ms)
+[OK] get_worker_count (0ms)
+[OK] add_evidence_to_experience (17ms)
+[OK] archive_experience (100ms)
+[OK] start_exploration (25ms)
+[OK] get_exploration_status (459ms)
+[OK] pause_exploration (283ms)
+[OK] resume_exploration (259ms)
+[OK] complete_exploration (54ms)
+[OK] abandon_exploration (204ms)
+[OK] record_attempt (142ms)
+[OK] add_hypothesis (225ms)
+[OK] evaluate_exploration_hypothesis (198ms)
+[OK] promote_finding (144ms)
+[OK] record_observation (138ms)
+[OK] create_hypothesis (121ms)
+[OK] add_evidence (330ms)
+[OK] get_hypothesis (87ms)
+[OK] list_hypotheses (8ms)
+[OK] list_observations (1ms)
+[OK] evaluate_hypothesis (108ms)
+[OK] get_knowledge (2ms)
+[OK] extract_knowledge (104ms)
+[OK] get_evidence (150ms)
+[OK] list_evidence (5ms)
+[OK] ingest_files (0ms)
+[OK] list_importable (0ms)
+[OK] list_ingested_files (0ms)
+[OK] delete_ingested_files (1510ms)
+[OK] transcribe_audio (358ms)
+[OK] add_knowledge (213ms)
+[OK] query_knowledge (0ms)
+[OK] record_knowledge_application (136ms)
+[OK] get_knowledge_stats (1ms)
+[OK] get_mature_knowledge (0ms)
+[OK] update_knowledge (3231ms)
+[OK] delete_knowledge (125ms)
+[OK] get_related_knowledge (25ms)
+[OK] validate_knowledge_dependencies (0ms)
+[OK] bump_knowledge_version (158ms)
+[OK] set_knowledge_status (55ms)
+[OK] manage_knowledge_dependency (20ms)
+[OK] add_knowledge_relation (192ms)
+[OK] search_knowledge_by_tag (0ms)
+[OK] store_memory (17ms)
+[OK] search_memory (42ms)
+[OK] get_memory (191ms)
+[OK] list_memories (1ms)
+[OK] archive_memory (15ms)
+[OK] delete_memory_by_id (16ms)
+[OK] link_memories (86ms)
+[OK] ranked_search (14ms)
+[OK] store_embedding (17ms)
+[OK] get_embedding (158ms)
+[OK] search_similar (17ms)
+[OK] list_embeddings (8ms)
+[OK] delete_embedding (67ms)
+[OK] get_embedding_stats (1ms)
+[OK] get_personality (0ms)
+[OK] set_personality_traits (0ms)
+[OK] apply_personality_preset (24ms)
+[OK] list_personality_presets (0ms)
+[OK] get_personality_decision (0ms)
+[OK] format_response (24ms)
+[OK] create_plan (751ms)
+[OK] add_plan_step (175ms)
+[OK] add_step_dependency (117ms)
+[OK] get_plan (146ms)
+[OK] list_plans (1ms)
+[OK] start_plan (136ms)
+[OK] complete_step (125ms)
+[OK] fail_step (138ms)
+[OK] cancel_plan (78ms)
+[OK] get_insights (0ms)
+[OK] create_reflection (0ms)
+[OK] analyze_patterns (0ms)
+[OK] get_patterns (0ms)
+[OK] validate_reflection (129ms)
+[OK] list_reflections_by_status (1ms)
+[OK] update_reflection (133ms)
+[OK] global_search (96ms)
+[OK] get_recommendations (3ms)
+[OK] get_reputation (1ms)
+[OK] research (77ms)
+[OK] quick_research (52ms)
+[OK] deep_research (124ms)
+[OK] find_error_resolution (172ms)
+[OK] web_search (144ms)
+[OK] web_open (84ms)
+[OK] web_extract (83ms)
+[OK] get_wikipedia (51ms)
+[OK] search_news (140ms)
+[OK] search_reddit (141ms)
+[OK] search_hackernews (125ms)
+[OK] search_youtube (192ms)
+[OK] search_substack (141ms)
+[OK] search_bluesky (133ms)
+[OK] search_telegram (133ms)
+[OK] search_mastodon (133ms)
+[OK] search_vk (134ms)
+[OK] search_preprints (141ms)
+[OK] search_datasets (150ms)
+[OK] search_osm (83ms)
+[OK] search_sec_filings (110ms)
+[OK] resurrect_dead_link (131ms)
+[OK] verify_citations (3299ms)
+[OK] find_counter_arguments (5581ms)
+[OK] validate_bibliography (2100ms)
+[OK] format_citations (5598ms)
+[OK] detect_trends (59ms)
+[OK] score_reliability (174ms)
+[OK] register_skill (142ms)
+[OK] discover_skill (145ms)
+[OK] get_skill (71ms)
+[OK] list_skills (1ms)
+[OK] update_skill_mastery (149ms)
+[OK] get_skill_recommendations (1ms)
+[OK] execute_skill (1533ms)
+[OK] get_skill_stats (1ms)
+[OK] apply_skill_decay (0ms)
+[OK] enable_disable_skill (140ms)
+[OK] search_skills (134ms)
+[OK] get_skill_metrics (0ms)
+[OK] get_unreliable_skills (0ms)
+[OK] clear_skill_metrics (0ms)
+[OK] search_skills_by_tag (57ms)
+[OK] unregister_skill (81ms)
+[OK] create_workflow (133ms)
+[OK] add_workflow_step (128ms)
+[OK] get_workflow_status (84ms)
+[OK] list_workflows (1ms)
+[OK] start_workflow (190ms)
+[OK] pause_workflow (5290ms)
+[OK] resume_workflow (201ms)
+[OK] cancel_workflow (91ms)
+[OK] delete_workflow (125ms)
+[OK] set_workflow_variable (268ms)
+[OK] get_session_state (0ms)
+[OK] cleanup_sessions (0ms)
+[OK] upsert_world_entity (172ms)
+[OK] add_world_relationship (142ms)
+[OK] get_world_entity (59ms)
+[OK] find_world_entity (0ms)
+[OK] list_world_entities (0ms)
+[OK] get_world_relationships (174ms)
+[OK] get_world_blockers (125ms)
+[OK] get_world_dependencies (192ms)
+[OK] get_consumed_resources (308ms)
+[OK] get_world_model_stats (1ms)
+
+[INFO] Testing ingest system...
+[OK] TXT file ingest
+[OK] MD file ingest
+[OK] CSV file ingest
+[OK] XML file ingest
+[OK] HTML file ingest
+[OK] JSON file ingest
+[OK] RS code ingest
+[OK] PY code ingest
+[OK] JS code ingest
+[OK] TOML code ingest
+[OK] YAML code ingest
+[OK] SH script ingest
+[OK] BAT script ingest
+[OK] PS1 script ingest
+[OK] ENV config ingest
+[OK] INI config ingest
+[OK] CONF config ingest
+[OK] PROPERTIES config ingest
+[OK] SRT subtitle ingest
+[OK] PNG image ingest (metadata)
+[OK] JPG image ingest (metadata)
+[OK] SVG image ingest (metadata)
+
+[INFO] Testing search system...
+[OK] search_memory
+[OK] global_search
+[OK] ranked_search
+[OK] search_similar
+
+[INFO] Testing MCP/ACP connection...
+[OK] ACP list_acp_agents
+[OK] ACP registry
+[OK] ACP router
+
+[INFO] JSON report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_report.json
+[INFO] Human-readable report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1\test_tool_probe_output.txt
+
+[INFO] Summary:
+  Working: 206/206
+  Failed: 0/206
+  Success rate: 100.0%
