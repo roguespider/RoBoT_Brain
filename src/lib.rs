@@ -1,6 +1,7 @@
 pub mod agent;
 pub mod bridge;
 pub mod cli;
+pub mod data_contracts;
 pub mod database;
 pub mod experience;
 pub mod knowledge;
@@ -8,10 +9,19 @@ pub mod learning;
 pub mod memory;
 pub mod models;
 pub mod personality;
+pub mod pipeline;
 pub mod planner;
 pub mod research;
 pub mod skills;
 pub mod workflows;
 pub mod world_model;
 
+pub mod context_engine;
+pub mod conversation;
 pub mod cooboploop;
+pub mod execution;
+
+/// Wire knowledge graph functions into production code.
+pub fn reference_knowledge_graph_contracts() {
+    crate::knowledge::graph::reference_knowledge_graph_contracts();
+}

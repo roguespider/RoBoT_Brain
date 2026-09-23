@@ -9,4 +9,4 @@ mod experience;
 mod types;
 
 pub use core::SKIP_MEMORY_READ;
-pub use types::{Workflow, WorkflowEngine, WorkflowStatus};
+pub use types::{Workflow, WorkflowEngine, WorkflowStatus, WorkflowStep};

@@ -71,3 +71,35 @@ pub fn promote_research(
 
     Ok(memory.id.to_string())
 }
+
+/// Retrieve memory items for context construction.
+/// Returns up to `budget` items matching the query, sorted by relevance.
+pub async fn retrieve_for_context(
+    permanent: &PermanentMemory,
+    query: &str,
+    budget: usize,
+) -> Vec<crate::data_contracts::memory_record::MemoryRecord> {
+    let items = permanent.search(query).await;
+    items
+        .into_iter()
+        .take(budget)
+        .map(|item| {
+            let kind = match item.layer {
+                crate::memory::types::MemoryLayer::Working => {
+                    crate::data_contracts::memory_record::MemoryKind::Working
+                }
+                crate::memory::types::MemoryLayer::Permanent => {
+                    crate::data_contracts::memory_record::MemoryKind::Permanent
+                }
+            };
+            crate::data_contracts::memory_record::MemoryRecord {
+                id: item.id,
+                kind,
+                content: item.content,
+                importance: item.importance,
+                access_count: item.access_count,
+                metadata: crate::data_contracts::metadata::Metadata::default(),
+            }
+        })
+        .collect()
+}

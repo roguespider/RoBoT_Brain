@@ -532,3 +532,30 @@ impl KnowledgeVersionInfo {
         }
     }
 }
+
+// Per Architecture §20.1: concept-relationship fields for structured understanding.
+/// A node in the knowledge graph representing a concept or entity.
+pub struct KnowledgeNode {
+    /// Unique identifier for the node.
+    pub id: String,
+    /// Human-readable label.
+    pub label: String,
+    /// Kind/category of the concept (e.g. "fact", "procedure", "pattern").
+    pub kind: String,
+    /// Confidence in this node's validity (0.0-1.0).
+    pub confidence: f32,
+}
+
+/// An edge in the knowledge graph representing a relationship between two nodes.
+pub struct KnowledgeEdge {
+    /// Unique identifier for the edge.
+    pub id: String,
+    /// Source node ID.
+    pub source_id: String,
+    /// Target node ID.
+    pub target_id: String,
+    /// Type of relationship (e.g. "supports", "contradicts", "related_to").
+    pub relationship: String,
+    /// Confidence in this relationship's validity (0.0-1.0).
+    pub confidence: f32,
+}

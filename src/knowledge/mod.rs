@@ -13,6 +13,7 @@
 
 use crate::research::Finding;
 
+pub mod graph;
 pub mod query;
 pub mod store;
 pub mod types;

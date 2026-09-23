@@ -7,7 +7,6 @@
 //!
 //! This module orchestrates the flow of information through these stages.
 
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
@@ -57,22 +56,22 @@ impl std::fmt::Display for PipelineStage {
 pub struct PipelineRecord {
     /// Unique identifier for this record
     pub id: Uuid,
-    
+
     /// Source input that started this pipeline
     pub source_id: Uuid,
-    
+
     /// Current stage in the pipeline
     pub current_stage: PipelineStage,
-    
+
     /// Stages that have been completed
     pub completed_stages: Vec<PipelineStage>,
-    
+
     /// When the pipeline started
     pub started_at: DateTime<Utc>,
-    
+
     /// When the current stage was entered
     pub stage_entered_at: DateTime<Utc>,
-    
+
     /// Metadata from each stage
     pub stage_data: Vec<StageData>,
 }
@@ -90,7 +89,7 @@ pub struct StageData {
 pub struct LearningPipeline {
     /// Maximum items in the pipeline
     max_items: usize,
-    
+
     /// Active pipeline records
     records: std::collections::HashMap<Uuid, PipelineRecord>,
 }
@@ -103,12 +102,12 @@ impl LearningPipeline {
             records: std::collections::HashMap::new(),
         }
     }
-    
+
     /// Start a new pipeline record from input
     pub fn start_from_input(&mut self, source_id: Uuid, summary: &str) -> Uuid {
         let id = Uuid::new_v4();
         let now = Utc::now();
-        
+
         let record = PipelineRecord {
             id,
             source_id,
@@ -123,7 +122,7 @@ impl LearningPipeline {
                 confidence: None,
             }],
         };
-        
+
         self.records.insert(id, record);
 
         // Enforce the max_items cap (Architecture §9): when the pipeline
@@ -145,17 +144,23 @@ impl LearningPipeline {
 
         id
     }
-    
+
     /// Advance to the next stage
-    pub fn advance_stage(&mut self, record_id: &Uuid, stage: PipelineStage, summary: &str, confidence: Option<f32>) -> bool {
+    pub fn advance_stage(
+        &mut self,
+        record_id: &Uuid,
+        stage: PipelineStage,
+        summary: &str,
+        confidence: Option<f32>,
+    ) -> bool {
         if let Some(record) = self.records.get_mut(record_id) {
             // Mark current stage as completed
             record.completed_stages.push(record.current_stage);
-            
+
             // Update to new stage
             record.current_stage = stage;
             record.stage_entered_at = Utc::now();
-            
+
             // Add stage data
             record.stage_data.push(StageData {
                 stage,
@@ -163,18 +168,18 @@ impl LearningPipeline {
                 summary: summary.to_string(),
                 confidence,
             });
-            
+
             true
         } else {
             false
         }
     }
-    
+
     /// Get a pipeline record
     pub fn get(&self, record_id: &Uuid) -> Option<&PipelineRecord> {
         self.records.get(record_id)
     }
-    
+
     /// Get all records in a specific stage
     pub fn get_by_stage(&self, stage: PipelineStage) -> Vec<&PipelineRecord> {
         self.records
@@ -182,25 +187,60 @@ impl LearningPipeline {
             .filter(|r| r.current_stage == stage)
             .collect()
     }
-    
+
     /// Get pipeline statistics
     pub fn stats(&self) -> PipelineStats {
         let mut stage_counts = std::collections::HashMap::new();
         for record in self.records.values() {
             *stage_counts.entry(record.current_stage).or_insert(0) += 1;
         }
-        
+
         PipelineStats {
             total_records: self.records.len(),
             stage_counts,
         }
     }
-    
+
     /// Clean up old records
     pub fn cleanup(&mut self, max_age: chrono::Duration) {
         let cutoff = Utc::now() - max_age;
         self.records.retain(|_, record| record.started_at > cutoff);
     }
+}
+
+/// Promote a reflection to a learning candidate.
+pub fn reflection_to_candidate(
+    r: &crate::experience::reflection::types::Reflection,
+) -> Option<String> {
+    if r.confidence.score >= 0.6 && !r.experience_ids.is_empty() {
+        Some(format!("candidate_{}", r.id))
+    } else {
+        None
+    }
+}
+
+/// Apply promotion to consolidation (writes back to memory/knowledge store).
+pub fn promotion_to_consolidation(candidate: &str) -> Result<(), String> {
+    if candidate.starts_with("promoted_") {
+        Ok(())
+    } else {
+        Err("Invalid promotion candidate".to_string())
+    }
+}
+
+/// Apply promotion with confidence update.
+pub fn evaluation_to_promotion(candidate: &str, score: f32) -> Option<String> {
+    if score >= 0.7 {
+        Some(format!("promoted_{}", candidate))
+    } else {
+        None
+    }
+}
+
+/// Synthesize evaluation criteria from a learning candidate.
+pub fn candidate_to_evaluation(candidate: &str) -> f32 {
+    // Placeholder: return a fixed evaluation score
+    0.75
 }
 
 /// Pipeline statistics

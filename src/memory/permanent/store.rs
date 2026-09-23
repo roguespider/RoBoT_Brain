@@ -339,6 +339,20 @@ impl PermanentMemory {
         );
         Ok(count)
     }
+
+    /// Promote a memory item to permanent storage.
+    pub async fn promote_to_permanent(
+        &self,
+        item: MemoryItem,
+    ) -> Result<String, crate::memory::types::MemoryError> {
+        if item.confidence < 0.5 {
+            return Err(crate::memory::types::MemoryError::InsufficientConfidence);
+        }
+        let mut promoted = item;
+        promoted.layer = MemoryLayer::Permanent;
+        let id = self.store(promoted).await;
+        Ok(id.to_string())
+    }
 }
 
 impl Default for PermanentMemory {
