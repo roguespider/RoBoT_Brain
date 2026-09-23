@@ -298,6 +298,7 @@ pub async fn execute_add_plan_step(input: AddPlanStepInput, planner: &Arc<Planne
     {
         Ok(step) => ToolOutput::success(serde_json::json!({
             "status": "added",
+            "step_id": step.id.clone(),
             "id": step.id,
             "step": {
                 "id": step.id,

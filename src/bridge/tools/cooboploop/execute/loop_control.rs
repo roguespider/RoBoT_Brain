@@ -217,12 +217,16 @@ pub async fn execute_cooboploop_run_post_task_evaluation(
     runner: &Arc<Mutex<crate::cooboploop::loop_runner::LoopRunner>>,
     queue: &Arc<Mutex<crate::cooboploop::queue::ObjectiveQueue>>,
 ) -> ToolOutput {
-    // Look up the goal in the queue to get its real status
+    // Look up the goal in the queue to get its real status (reload from DB
+    // to see any transitions made by the loop runner's verify stage).
     let goal = {
-        let q = match queue.lock() {
+        let mut q = match queue.lock() {
             Ok(g) => g,
             Err(p) => p.into_inner(),
         };
+        if let Err(e) = q.reload() {
+            tracing::warn!("Failed to reload queue for post-task evaluation: {}", e);
+        }
         q.get(&input.goal_id)
     };
 
@@ -285,6 +289,29 @@ pub async fn execute_cooboploop_run_post_task_evaluation(
         .map(|g| format!("{:?}", g.status))
         .unwrap_or_else(|| "not_found".to_string());
 
+    // Wire: enqueue generated objectives from post-task evaluation
+    let new_goal_count = {
+        let evaluation = runner
+            .lock()
+            .map(|g| g.post_task_evaluation().clone())
+            .unwrap_or_else(|p| {
+                let guard = p.into_inner();
+                guard.post_task_evaluation().clone()
+            });
+        let generated = evaluation.generate_objectives();
+        let mut enqueued = 0;
+        for goal in generated {
+            let mut q = match queue.lock() {
+                Ok(g) => g,
+                Err(p) => p.into_inner(),
+            };
+            if q.enqueue(&goal).is_ok() {
+                enqueued += 1;
+            }
+        }
+        enqueued
+    };
+
     // Build evaluation result with real data
     ToolOutput::success(serde_json::json!({
         "message": "Post-task evaluation completed",
@@ -295,6 +322,7 @@ pub async fn execute_cooboploop_run_post_task_evaluation(
         "efficiency_score": efficiency_score,
         "plan_steps_completed": plan_steps_completed,
         "plan_steps_total": plan_steps_total,
+        "new_goals_enqueued": new_goal_count,
         "goal_found": goal.is_some(),
     }))
 }

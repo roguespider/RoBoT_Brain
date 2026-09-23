@@ -156,6 +156,21 @@ impl AgentLoop {
             crate::agent::decision::TierResult::ExperiencePassed => {
                 tracing::debug!("Internal sources passed cascade: experience");
             }
+            crate::agent::decision::TierResult::SkillsPassed => {
+                tracing::debug!("Internal sources passed cascade: skills");
+            }
+            crate::agent::decision::TierResult::ReflectionsPassed => {
+                tracing::debug!("Internal sources passed cascade: reflections");
+            }
+            crate::agent::decision::TierResult::WorkflowsPassed => {
+                tracing::debug!("Internal sources passed cascade: workflows/plans");
+            }
+            crate::agent::decision::TierResult::WorldModelPassed => {
+                tracing::debug!("Internal sources passed cascade: world model");
+            }
+            crate::agent::decision::TierResult::HypothesesPassed => {
+                tracing::debug!("Internal sources passed cascade: hypotheses");
+            }
             crate::agent::decision::TierResult::AllFailed => {
                 tracing::warn!("All internal source tiers failed — triggering research cascade");
                 if let Some(research_result) = trigger_research_on_failure(&goal.description).await

@@ -19,11 +19,27 @@ pub struct SqliteDatabase {
 impl SqliteDatabase {
     /// Open (or create) the application's database beside the executable.
     pub fn initialize() -> Result<Self> {
-        let exe_path = std::env::current_exe()
-            .context("Failed to get executable path")?;
-        let exe_dir = exe_path.parent()
+        // Use the directory containing the executable, resolved via canonicalize
+        // to avoid symlink issues. If we're running from a project root
+        // (detected by presence of Cargo.toml), fall back to target/release/.
+        let exe_path = std::env::current_exe().context("Failed to get executable path")?;
+        let canonical = match std::fs::canonicalize(&exe_path) {
+            Ok(c) => c,
+            Err(_) => exe_path,
+        };
+        let exe_dir = canonical
+            .parent()
             .context("Executable has no parent directory")?;
-        Self::initialize_at(exe_dir)
+
+        // Prevent database from being created in project root by checking for
+        // Cargo.toml in the directory. If found, use target/release/ instead.
+        let candidate_dir = if exe_dir.join("Cargo.toml").is_file() {
+            exe_dir.join("target").join("release")
+        } else {
+            exe_dir.to_path_buf()
+        };
+
+        Self::initialize_at(&candidate_dir)
     }
 
     /// Open (or create) a database at a specific location.
@@ -31,8 +47,7 @@ impl SqliteDatabase {
         let db_path = data_dir.as_ref().join("robot_brain.db");
 
         if let Some(parent) = db_path.parent() {
-            std::fs::create_dir_all(parent)
-                .context("Unable to create database directory")?;
+            std::fs::create_dir_all(parent).context("Unable to create database directory")?;
         }
 
         let database = Self { db_path };
@@ -53,7 +68,7 @@ impl SqliteDatabase {
     /// Configure SQLite for better concurrency with WAL mode.
     fn configure_connection(&self) -> Result<()> {
         let conn = Connection::open(&self.db_path)?;
-        
+
         // Enable WAL mode for better concurrency (allows concurrent reads during writes)
         // Note: Reduced busy_timeout from 30000ms to 5000ms to prevent long hangs when database is locked
         conn.execute_batch(
@@ -62,9 +77,9 @@ impl SqliteDatabase {
              PRAGMA busy_timeout=5000;
              PRAGMA cache_size=-64000;
              PRAGMA temp_store=MEMORY;
-             PRAGMA mmap_size=268435456;"
+             PRAGMA mmap_size=268435456;",
         )?;
-        
+
         tracing::info!("SQLite configured with WAL mode for improved concurrency");
         Ok(())
     }
@@ -72,14 +87,14 @@ impl SqliteDatabase {
     /// Open a fresh SQLite connection with optimized settings.
     pub fn connection(&self) -> Result<Connection> {
         let conn = Connection::open(&self.db_path)?;
-        
+
         // Ensure WAL mode is enabled on each connection
         // Note: Reduced busy_timeout from 30000ms to 5000ms to prevent long hangs
         conn.execute_batch(
             "PRAGMA journal_mode=WAL;
-             PRAGMA busy_timeout=5000;"
+             PRAGMA busy_timeout=5000;",
         )?;
-        
+
         Ok(conn)
     }
 
@@ -87,10 +102,10 @@ impl SqliteDatabase {
     /// This writes pending changes to the main database and truncates the WAL file.
     pub fn checkpoint(&self) -> Result<()> {
         let conn = Connection::open(&self.db_path)?;
-        
+
         // TRUNCATE checkpoint - writes all WAL content to db and truncates WAL file
         conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE)")?;
-        
+
         tracing::debug!("WAL checkpoint completed, temporary files cleaned up");
         Ok(())
     }
@@ -120,19 +135,22 @@ impl SqliteDatabase {
     pub fn cleanup_wal_files(&self) -> Result<()> {
         let wal_size_before = self.wal_size().unwrap_or(0);
         let shm_size_before = self.shm_size().unwrap_or(0);
-        
+
         self.checkpoint()?;
-        
+
         let wal_size_after = self.wal_size().unwrap_or(0);
         let shm_size_after = self.shm_size().unwrap_or(0);
-        
+
         if wal_size_before > 0 || shm_size_before > 0 {
             tracing::info!(
                 "WAL cleanup: WAL {} -> {} bytes, SHM {} -> {} bytes",
-                wal_size_before, wal_size_after, shm_size_before, shm_size_after
+                wal_size_before,
+                wal_size_after,
+                shm_size_before,
+                shm_size_after
             );
         }
-        
+
         Ok(())
     }
 

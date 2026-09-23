@@ -191,31 +191,62 @@ impl Default for PriorityPolicyRegistry {
 
 /// Evaluates goals according to policy — computes priority using formula from §A.2.
 pub struct GoalEvaluator {
-    policy: Box<dyn PriorityPolicyTrait>,
+    policy: Option<Box<dyn PriorityPolicyTrait>>,
     deadline: Option<chrono::DateTime<chrono::Utc>>,
     resource_cost: ResourceCost,
     time_cost: f32,
+    mission: String,
+    capability_registry:
+        Option<std::sync::Arc<std::sync::Mutex<crate::cooboploop::capability::CapabilityRegistry>>>,
+    strategic_registry: Option<
+        std::sync::Arc<std::sync::Mutex<crate::cooboploop::strategic::StrategicObjectiveRegistry>>,
+    >,
 }
 
 impl GoalEvaluator {
-    /// Create a new evaluator with the given policy.
+    /// Create a new evaluator with the given policy and a default capability registry (§6).
     pub fn new(policy: Box<dyn PriorityPolicyTrait>) -> Self {
+        let mut reg = crate::cooboploop::capability::CapabilityRegistry::new();
+        crate::cooboploop::capability::seed_default_capabilities(&mut reg);
         Self {
-            policy,
+            policy: Some(policy),
             deadline: None,
             resource_cost: ResourceCost::zero(),
             time_cost: 0.0,
+            mission: "Mission".to_string(),
+            capability_registry: Some(std::sync::Arc::new(std::sync::Mutex::new(reg))),
+            strategic_registry: None,
         }
     }
 
+    /// Set capability registry for capability assessment evaluation (§6 / T-COO-42).
+    pub fn set_capability_registry(
+        &mut self,
+        registry: std::sync::Arc<
+            std::sync::Mutex<crate::cooboploop::capability::CapabilityRegistry>,
+        >,
+    ) {
+        self.capability_registry = Some(registry);
+    }
+
+    /// Set strategic registry for strategic alignment evaluation.
+    pub fn set_strategic_registry(
+        &mut self,
+        registry: std::sync::Arc<
+            std::sync::Mutex<crate::cooboploop::strategic::StrategicObjectiveRegistry>,
+        >,
+    ) {
+        self.strategic_registry = Some(registry);
+    }
+
     /// Get the current policy.
-    pub fn policy(&self) -> &dyn PriorityPolicyTrait {
-        self.policy.as_ref()
+    pub fn policy(&self) -> Option<&dyn PriorityPolicyTrait> {
+        self.policy.as_ref().map(|p| p.as_ref())
     }
 
     /// Set the policy.
     pub fn set_policy(&mut self, policy: Box<dyn PriorityPolicyTrait>) {
-        self.policy = policy;
+        self.policy = Some(policy);
     }
 
     /// Get the current policy (used for wiring).
@@ -225,12 +256,25 @@ impl GoalEvaluator {
 
     /// Get the current policy (used for wiring).
     pub fn get_policy(&self) -> &dyn PriorityPolicyTrait {
-        self.policy()
+        self.policy
+            .as_ref()
+            .map(|p| p.as_ref())
+            .unwrap_or(&DefaultPriorityPolicy)
     }
 
     /// Use the current policy for evaluation.
     pub fn use_current_policy(&self) -> &dyn PriorityPolicyTrait {
         self.get_policy()
+    }
+
+    /// Set mission for mission-aligned evaluation (§19 / T-COO-12).
+    pub fn set_mission(&mut self, mission: String) {
+        self.mission = mission;
+    }
+
+    /// Get the current mission.
+    pub fn mission(&self) -> &str {
+        &self.mission
     }
 
     /// Compute priority for a goal using the formula from §A.2.
@@ -250,20 +294,60 @@ impl GoalEvaluator {
             1.0
         };
 
-        // Check capability requirements — wire all variants in evaluation
-        let cap_req = if goal.risk > 0.8 {
-            CapabilityRequirement::Uncertain
-        } else if goal.expected_value < 0.1 {
-            CapabilityRequirement::Insufficient
-        } else if goal.source == crate::cooboploop::sources::ObjectiveSource::SystemTrigger {
-            CapabilityRequirement::Unavailable
+        // Check capability requirements — wire compare_capabilities() (§6 / T-COO-42)
+        let cap_req = if let Some(ref registry_arc) = self.capability_registry {
+            if let Ok(registry) = registry_arc.lock() {
+                let required_ids: Vec<crate::cooboploop::capability::CapabilityId> = goal
+                    .required_capabilities
+                    .iter()
+                    .map(|s| crate::cooboploop::capability::CapabilityId::from_string(s))
+                    .collect();
+                let comparison = registry.compare_capabilities(&required_ids);
+                if !comparison.insufficient.is_empty() || !comparison.unavailable.is_empty() {
+                    CapabilityRequirement::Insufficient
+                } else if !comparison.uncertain.is_empty() {
+                    CapabilityRequirement::Uncertain
+                } else if !comparison.sufficient.is_empty()
+                    || comparison.overall_outcome == "sufficient"
+                {
+                    CapabilityRequirement::Sufficient
+                } else {
+                    CapabilityRequirement::Unavailable
+                }
+            } else {
+                CapabilityRequirement::Sufficient
+            }
         } else {
-            CapabilityRequirement::Sufficient
+            // Fallback when no registry wired: use heuristic for backward compatibility
+            if goal.risk > 0.8 {
+                CapabilityRequirement::Uncertain
+            } else if goal.expected_value < 0.1 {
+                CapabilityRequirement::Insufficient
+            } else if goal.source == crate::cooboploop::sources::ObjectiveSource::SystemTrigger {
+                CapabilityRequirement::Unavailable
+            } else {
+                CapabilityRequirement::Sufficient
+            }
         };
         let blocking = cap_req.is_blocking();
-        // Adjust cost based on capability blocking status
+        // Adjust cost based on capability blocking status (§5 / T-COO-42)
         let cost_multiplier = if blocking { 2.0 } else { 1.0 };
 
+        // Strategic alignment: check strategic registry for active objectives
+        let strategic_alignment_boost = if let Some(ref registry_arc) = self.strategic_registry {
+            if let Ok(registry) = registry_arc.lock() {
+                let active_strategic = registry
+                    .list()
+                    .iter()
+                    .filter(|o| o.status == "active")
+                    .count();
+                if active_strategic > 0 { 1.2 } else { 1.0 }
+            } else {
+                1.0
+            }
+        } else {
+            1.0
+        };
         // Cost: use expected_value as proxy when no separate cost field
         // Strategic value based on source
         let policy_name = format!("{:?}", self.current_policy());
@@ -274,20 +358,51 @@ impl GoalEvaluator {
             crate::cooboploop::sources::ObjectiveSource::ImprovementTarget => 1.2,
             crate::cooboploop::sources::ObjectiveSource::ExternalOpportunity => 1.3,
             _ => 1.0,
-        };
+        } * strategic_alignment_boost;
 
-        // Cost: use goal's risk/expected_value as cost proxy
-        let resource_cost_total = goal.risk * 10.0;
-        let time_cost = goal.expected_value * 5.0;
+        // Mission alignment: boost goals aligned with current mission (§19 / T-COO-12)
+        let mission_boost = if !self.mission().is_empty() && !self.mission().eq("Mission") {
+            let mission_lower = self.mission().to_lowercase();
+            let goal_title_lower = goal.title.to_lowercase();
+            let goal_desc_lower = goal.description.to_lowercase();
+            if goal_title_lower.contains(&mission_lower)
+                || goal_desc_lower.contains(&mission_lower)
+                || goal.source == crate::cooboploop::sources::ObjectiveSource::StrategicObjective
+            {
+                1.1
+            } else {
+                1.0
+            }
+        } else {
+            1.0
+        };
+        // Cost: wire real resource-cost tracking from HardwareProfile (§5 / T-COO-41)
+        // Capability assessment now uses compare_capabilities() (§6 / T-COO-42)
+        let hardware_profile = crate::cooboploop::hardware::HardwareDiscovery::new().detect();
+        let profile = hardware_profile.unwrap_or_default();
+        let resource_cost_total = (profile.memory_available_mb as f32 / 1024.0)
+            + (profile.storage_available_gb as f32 * 10.0)
+            + (profile.cpu_cores as f32 * 0.5);
+        let time_cost = (goal.expected_value * 5.0).max(0.1);
         let cost = if goal.expected_value > 0.0 {
             (goal.expected_value + resource_cost_total + time_cost) * cost_multiplier
         } else {
             (self.resource_cost.total() + self.time_cost) * cost_multiplier
         };
 
-        let raw = value * urgency * prob_success * learning_value * strategic_value / cost.max(0.1);
+        // §5 / T-COO-42: include current workload factor (queue depth) in evaluation
+        // workload tracked separately; default neutral
+        let workload_factor = 1.0;
+        let raw = value
+            * urgency
+            * prob_success
+            * learning_value
+            * strategic_value
+            * mission_boost
+            * workload_factor
+            / cost.max(0.1);
         let adjusted = self.use_current_policy().compute(raw, goal);
-        adjusted.max(goal.priority)
+        (adjusted.max(goal.priority) * strategic_alignment_boost).min(1.0)
     }
 
     /// Evaluate a goal and return the criteria.

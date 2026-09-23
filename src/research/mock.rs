@@ -14,10 +14,11 @@ impl MockProvider {
 impl SearchProvider for MockProvider {
     fn search(
         &self,
-        _query: &str,
+        query: &str,
     ) -> std::pin::Pin<
         Box<dyn std::future::Future<Output = Result<SearchResults, ResearchError>> + Send>,
     > {
+        tracing::debug!(query, "Mock search");
         let results = self.results.clone();
         Box::pin(async move {
             Ok(SearchResults {

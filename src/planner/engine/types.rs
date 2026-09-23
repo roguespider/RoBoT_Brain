@@ -20,6 +20,22 @@ pub struct Plan {
     pub confidence: f32,
 }
 
+impl Default for Plan {
+    fn default() -> Self {
+        Self {
+            id: String::new(),
+            goal: String::new(),
+            steps: Vec::new(),
+            status: PlanStatus::Pending,
+            created_at: chrono::Utc::now(),
+            completed_at: None,
+            knowledge_used: Vec::new(),
+            experiences_used: Vec::new(),
+            confidence: 0.5,
+        }
+    }
+}
+
 /// A single step within a plan
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PlanStep {
@@ -152,206 +168,6 @@ pub enum RiskLevel {
     Medium,
     High,
     Critical,
-}
-
-/// Validate that a set of plan steps has no dependency cycles.
-pub fn validate_no_cycles(steps: &[PlanStep]) -> bool {
-    let mut visited = std::collections::HashSet::new();
-    let mut rec_stack = std::collections::HashSet::new();
-
-    fn dfs(
-        step_id: &str,
-        steps: &[PlanStep],
-        visited: &mut std::collections::HashSet<String>,
-        rec_stack: &mut std::collections::HashSet<String>,
-    ) -> bool {
-        visited.insert(step_id.to_string());
-        rec_stack.insert(step_id.to_string());
-
-        if let Some(step) = steps.iter().find(|s| s.id == step_id) {
-            for dep in &step.dependencies {
-                if !visited.contains(dep) {
-                    if !dfs(dep, steps, visited, rec_stack) {
-                        return false;
-                    }
-                } else if rec_stack.contains(dep) {
-                    return false;
-                }
-            }
-        }
-
-        rec_stack.remove(step_id);
-        true
-    }
-
-    for step in steps {
-        if !visited.contains(&step.id) {
-            if !dfs(&step.id, steps, &mut visited, &mut rec_stack) {
-                return false;
-            }
-        }
-    }
-    true
-}
-
-/// Topological sort of plan steps by dependencies.
-pub fn topological_sort(steps: &[PlanStep]) -> Option<Vec<String>> {
-    let mut result = Vec::new();
-    let mut visited = std::collections::HashSet::new();
-    let mut temp_mark = std::collections::HashSet::new();
-
-    fn visit(
-        step_id: &str,
-        steps: &[PlanStep],
-        visited: &mut std::collections::HashSet<String>,
-        temp_mark: &mut std::collections::HashSet<String>,
-        result: &mut Vec<String>,
-    ) -> bool {
-        if temp_mark.contains(step_id) {
-            return false;
-        }
-        if visited.contains(step_id) {
-            return true;
-        }
-
-        temp_mark.insert(step_id.to_string());
-        if let Some(step) = steps.iter().find(|s| s.id == step_id) {
-            for dep in &step.dependencies {
-                if !visit(dep, steps, visited, temp_mark, result) {
-                    return false;
-                }
-            }
-        }
-        temp_mark.remove(step_id);
-        visited.insert(step_id.to_string());
-        result.push(step_id.to_string());
-        true
-    }
-
-    for step in steps {
-        if !visited.contains(&step.id) {
-            if !visit(&step.id, steps, &mut visited, &mut temp_mark, &mut result) {
-                return None;
-            }
-        }
-    }
-    Some(result)
-}
-
-/// Get steps that are ready to execute (all dependencies completed).
-pub fn get_ready_steps(steps: &[PlanStep], completed: &[String]) -> Vec<PlanStep> {
-    steps
-        .iter()
-        .filter(|step| step.dependencies.iter().all(|dep| completed.contains(dep)))
-        .cloned()
-        .collect()
-}
-
-/// Replan trigger types.
-#[derive(Debug, Clone, PartialEq)]
-pub enum ReplanTrigger {
-    StepFailed(String),
-    ConfidenceBelow(f32),
-    ExternalChange(String),
-}
-
-/// Check if replanning should occur.
-pub fn should_replan(trigger: &ReplanTrigger, _ctx: &str) -> bool {
-    match trigger {
-        ReplanTrigger::StepFailed(_) => true,
-        ReplanTrigger::ConfidenceBelow(_) => true,
-        ReplanTrigger::ExternalChange(_) => true,
-    }
-}
-
-/// Plan scoring structure.
-#[derive(Debug, Clone, Default)]
-pub struct PlanScore {
-    pub feasibility: f32,
-    pub confidence: f32,
-    pub cost_estimate: f32,
-}
-
-/// Score a plan based on evaluation.
-pub fn score_plan(plan: &Plan, eval: f32) -> PlanScore {
-    PlanScore {
-        feasibility: eval,
-        confidence: plan.confidence,
-        cost_estimate: plan.steps.len() as f32 * 0.1,
-    }
-}
-
-/// Reference the data-contract Plan type.
-pub fn reference_plan_contract() {
-    let _plan_ref = crate::data_contracts::plan_contract::placeholder;
-}
-
-/// Planning strategy selection.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum PlanningStrategy {
-    Sequential,
-    Parallel,
-    Greedy,
-}
-
-/// Select a planning strategy based on goal characteristics.
-pub fn select_strategy(goal: &Plan) -> PlanningStrategy {
-    if goal.confidence >= 0.8 {
-        PlanningStrategy::Greedy
-    } else if goal.goal.to_lowercase().contains("parallel")
-        || goal.goal.to_lowercase().contains("simultaneous")
-    {
-        PlanningStrategy::Parallel
-    } else {
-        PlanningStrategy::Sequential
-    }
-}
-
-/// Evaluate a candidate plan and return a score.
-pub fn evaluate_candidate(plan: &Plan) -> f32 {
-    1.0 / (1.0 + plan.steps.len() as f32)
-}
-
-/// Generate candidate plans for a goal.
-pub fn generate_candidates(goal: &Plan, n: usize) -> Vec<Plan> {
-    let mut candidates = Vec::new();
-    for i in 0..n {
-        let mut candidate = goal.clone();
-        candidate.id = format!("{}-candidate-{}", goal.id, i);
-        candidates.push(candidate);
-    }
-    candidates
-}
-
-/// Convert a plan to a workflow.
-pub fn plan_to_workflow(
-    plan: &crate::planner::engine::types::Plan,
-) -> crate::workflows::engine::Workflow {
-    crate::workflows::engine::Workflow {
-        id: plan.id.clone(),
-        name: plan.goal.clone(),
-        description: format!("Workflow from plan: {}", plan.goal),
-        steps: plan
-            .steps
-            .iter()
-            .map(|s| crate::workflows::engine::WorkflowStep {
-                id: s.id.clone(),
-                name: s.action.clone(),
-                action: s.action.clone(),
-                parameters: std::collections::HashMap::new(),
-                retry_count: 0,
-                max_retries: 3,
-                timeout_seconds: 300,
-                on_success: None,
-                on_failure: None,
-            })
-            .collect(),
-        variables: std::collections::HashMap::new(),
-        status: crate::workflows::engine::WorkflowStatus::Draft,
-        created_at: plan.created_at,
-        started_at: None,
-        completed_at: None,
-    }
 }
 
 /// Planner statistics

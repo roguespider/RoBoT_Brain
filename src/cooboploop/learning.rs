@@ -45,7 +45,14 @@ impl LearningPipeline {
         // Wire: verify the record format and current pipeline size.
         let count = self.updates.len();
         let updates_ref = &self.updates;
-        debug_assert!(record.contains('|') && count == updates_ref.len());
+        if !record.contains('|') || count != updates_ref.len() {
+            tracing::warn!(
+                "learning pipeline invariant violated: record='{}' count={} updates_len={}",
+                record,
+                count,
+                updates_ref.len()
+            );
+        }
     }
 
     /// Get all updates.

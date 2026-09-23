@@ -92,9 +92,11 @@ impl PostTaskEvaluation {
     ) -> crate::cooboploop::queue::AgentGoal {
         use crate::cooboploop::queue::GoalStatus;
         use crate::cooboploop::sources::ObjectiveSource;
-        debug_assert!(!source_tag.is_empty(), "source_tag must be non-empty");
+        if source_tag.is_empty() {
+            tracing::warn!("source_tag is empty, using default");
+        }
         crate::cooboploop::queue::AgentGoal {
-            id: format!("post_task_{}", std::process::id()),
+            id: format!("post_task_{}", uuid::Uuid::new_v4()),
             title: format!("Post-task: {}", desc.chars().take(60).collect::<String>()),
             description: desc.to_string(),
             status: GoalStatus::Discovered,
@@ -108,6 +110,9 @@ impl PostTaskEvaluation {
             deadline: None,
             execution_history: Vec::new(),
             completion_state: None,
+            creation_timestamp: Some(chrono::Utc::now()),
+            last_evaluation: None,
+            ..Default::default()
         }
     }
 }

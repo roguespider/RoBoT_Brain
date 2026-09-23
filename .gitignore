@@ -1,6 +1,6 @@
 # Protect workspace configuration
 .zed/
-
+.delta/
 # Block heavy, unstable Rust build folders and ghost files
 target/
 
@@ -18,8 +18,7 @@ __pycache__/
 # independent binary crate. Neither lock file should be committed.
 Cargo.lock
 
-# these are for user and local agent only
-# .agents/*
-# .agents/
-AGENTS.md
-.github/
+# SQLite database files (created at runtime, not source-controlled)
+robot_brain.db
+robot_brain.db-wal
+robot_brain.db-shm

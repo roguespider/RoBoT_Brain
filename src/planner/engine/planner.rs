@@ -92,6 +92,7 @@ impl Planner {
     pub async fn create_plan(&self, goal: impl Into<String>) -> Result<Plan> {
         let goal_str = goal.into();
         let plan = Self::draft_plan(&goal_str);
+        crate::planner::Goal::new(&plan.id, &goal_str).validate()?;
 
         let mut plans = self.active_plans.write().await;
         plans.insert(plan.id.clone(), plan.clone());
@@ -328,9 +329,15 @@ impl Planner {
         description: impl Into<String>,
         action: impl Into<String>,
     ) -> Result<PlanStep> {
+        let description = description.into();
+        if description.trim().is_empty() {
+            return Err(anyhow::anyhow!(
+                crate::planner::PlanError::EmptyStepDescription
+            ));
+        }
         let step = PlanStep {
             id: Uuid::new_v4().to_string(),
-            description: description.into(),
+            description,
             action: action.into(),
             dependencies: Vec::new(),
             status: StepStatus::Pending,
@@ -340,9 +347,11 @@ impl Planner {
         };
 
         let mut plans = self.active_plans.write().await;
-        if let Some(plan) = plans.get_mut(plan_id) {
-            plan.steps.push(step.clone());
-        }
+        let plan = plans
+            .get_mut(plan_id)
+            .ok_or_else(|| anyhow::anyhow!("Plan '{}' not found", plan_id))?;
+        plan.steps.push(step.clone());
+        drop(plans);
 
         self.metrics.increment("planner.steps.added").await;
 
@@ -358,9 +367,13 @@ impl Planner {
         knowledge_ids: Vec<uuid::Uuid>,
         experience_ids: Vec<uuid::Uuid>,
     ) -> Result<PlanStep> {
+        let description = description.into();
+        if description.trim().is_empty() {
+            return Err(crate::planner::PlanError::EmptyStepDescription.into());
+        }
         let step = PlanStep {
             id: Uuid::new_v4().to_string(),
-            description: description.into(),
+            description,
             action: action.into(),
             dependencies: Vec::new(),
             status: StepStatus::Pending,
@@ -370,10 +383,12 @@ impl Planner {
         };
 
         let mut plans = self.active_plans.write().await;
-        if let Some(plan) = plans.get_mut(plan_id) {
-            plan.steps.push(step.clone());
-            plan.confidence = self.calculate_plan_confidence(plan).await;
-        }
+        let plan = plans
+            .get_mut(plan_id)
+            .ok_or_else(|| anyhow::anyhow!("Plan '{}' not found", plan_id))?;
+        plan.steps.push(step.clone());
+        plan.confidence = self.calculate_plan_confidence(plan).await;
+        drop(plans);
 
         self.metrics.increment("planner.steps.added").await;
 
@@ -388,12 +403,35 @@ impl Planner {
         depends_on: &str,
     ) -> Result<()> {
         let mut plans = self.active_plans.write().await;
-        if let Some(plan) = plans.get_mut(plan_id)
-            && let Some(step) = plan.steps.iter_mut().find(|s| s.id == step_id)
-            && !step.dependencies.contains(&depends_on.to_string())
-        {
-            step.dependencies.push(depends_on.to_string());
+        let plan = plans
+            .get_mut(plan_id)
+            .ok_or_else(|| anyhow::anyhow!("Plan '{}' not found", plan_id))?;
+        if !plan.steps.iter().any(|step| step.id == depends_on) {
+            anyhow::bail!(
+                "Dependency '{}' not found in plan '{}'",
+                depends_on,
+                plan_id
+            );
         }
+
+        // Validate a candidate before committing so rejected edges cannot alter the plan.
+        let mut candidate_steps = plan.steps.clone();
+        let step = candidate_steps
+            .iter_mut()
+            .find(|step| step.id == step_id)
+            .ok_or_else(|| anyhow::anyhow!("Step '{}' not found in plan '{}'", step_id, plan_id))?;
+        if step
+            .dependencies
+            .iter()
+            .any(|dependency| dependency == depends_on)
+        {
+            return Ok(());
+        }
+        step.dependencies.push(depends_on.to_string());
+        if !crate::planner::validate_no_cycles(&candidate_steps) {
+            return Err(crate::planner::PlanError::CircularDependency.into());
+        }
+        plan.steps = candidate_steps;
         Ok(())
     }
 
@@ -907,5 +945,12 @@ impl Planner {
             .insert(plan.id.clone(), plan);
         tracing::info!("Planner seeded with default maintenance plan");
         Ok(())
+    }
+
+    /// Convert a plan to an execution request.
+    /// Integration: planner -> execution (Architecture §12.5)
+    pub fn plan_to_execution_request(&self, plan: &Plan) -> crate::execution::ExecutionRequest {
+        let actions: Vec<String> = plan.steps.iter().map(|s| s.action.clone()).collect();
+        crate::execution::execution_request_from_plan(&plan.id, &plan.goal, actions)
     }
 }

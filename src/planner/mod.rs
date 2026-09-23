@@ -8,203 +8,182 @@
 //! - Planning strategy selection
 //! - Candidate plan generation and evaluation
 
-use chrono::Utc;
+pub mod engine;
+pub mod policy;
 
-/// Error types for planning operations.
-#[derive(Debug, Clone, PartialEq)]
+pub use engine::Planner;
+pub use engine::types::PlanStep;
+pub use policy::PolicyEngine;
+
+/// A planning goal with validation rules
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Goal {
+    pub id: String,
+    pub description: String,
+    pub priority: u8,
+    pub deadline: Option<i64>,
+    pub completed: bool,
+}
+
+impl Goal {
+    pub fn new(id: impl Into<String>, description: impl Into<String>) -> Self {
+        Self {
+            id: id.into(),
+            description: description.into(),
+            priority: 5,
+            deadline: None,
+            completed: false,
+        }
+    }
+
+    /// Validate goal constraints before creating a plan.
+    pub fn validate(&self) -> Result<(), PlanError> {
+        if self.description.trim().is_empty() {
+            return Err(PlanError::EmptyDescription);
+        }
+        if self.priority > 10 {
+            return Err(PlanError::InvalidPriority);
+        }
+        if self
+            .deadline
+            .is_some_and(|deadline| deadline < chrono::Utc::now().timestamp())
+        {
+            return Err(PlanError::DeadlineInPast);
+        }
+        Ok(())
+    }
+}
+
+/// Planning errors for validation
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum PlanError {
-    /// Goal description is empty.
     EmptyDescription,
-    /// Priority is out of valid range (0..=10).
     InvalidPriority,
-    /// Deadline is in the past.
     DeadlineInPast,
-    /// Step description is empty.
     EmptyStepDescription,
-    /// Circular dependency detected in steps.
     CircularDependency,
 }
 
 impl std::fmt::Display for PlanError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            PlanError::EmptyDescription => write!(f, "Goal description must be non-empty"),
-            PlanError::InvalidPriority => write!(f, "Priority must be between 0 and 10"),
-            PlanError::DeadlineInPast => write!(f, "Deadline must be in the future"),
-            PlanError::EmptyStepDescription => write!(f, "Step description must be non-empty"),
-            PlanError::CircularDependency => {
-                write!(f, "Circular dependency detected in plan steps")
+            PlanError::EmptyDescription => write!(f, "goal description is empty"),
+            PlanError::InvalidPriority => write!(f, "priority must be between 0 and 10"),
+            PlanError::DeadlineInPast => write!(f, "deadline is in the past"),
+            PlanError::EmptyStepDescription => write!(f, "step description is empty"),
+            PlanError::CircularDependency => write!(f, "circular dependency detected"),
+        }
+    }
+}
+
+impl std::error::Error for PlanError {}
+
+/// Planning strategy selection
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlanningStrategy {
+    Sequential,
+    Parallel,
+    Greedy,
+}
+
+/// Select a planning strategy based on goal characteristics
+pub fn select_strategy(goal: &Goal) -> PlanningStrategy {
+    if goal.priority > 7 {
+        PlanningStrategy::Greedy
+    } else if goal.description.contains("parallel") || goal.description.contains("simultaneous") {
+        PlanningStrategy::Parallel
+    } else {
+        PlanningStrategy::Sequential
+    }
+}
+
+/// Validate that a set of plan steps has no circular dependencies (DFS)
+pub fn validate_no_cycles(steps: &[PlanStep]) -> bool {
+    let mut visited = std::collections::HashSet::new();
+    let mut rec_stack = std::collections::HashSet::new();
+
+    fn has_cycle(
+        step_id: &str,
+        steps: &[PlanStep],
+        visited: &mut std::collections::HashSet<String>,
+        rec_stack: &mut std::collections::HashSet<String>,
+    ) -> bool {
+        visited.insert(step_id.to_string());
+        rec_stack.insert(step_id.to_string());
+
+        let step = steps.iter().find(|s| s.id == step_id);
+        if let Some(s) = step {
+            for dep in &s.dependencies {
+                if !visited.contains(dep) {
+                    if has_cycle(dep, steps, visited, rec_stack) {
+                        return true;
+                    }
+                } else if rec_stack.contains(dep) {
+                    return true;
+                }
+            }
+        }
+
+        rec_stack.remove(step_id);
+        false
+    }
+
+    for step in steps {
+        if !visited.contains(&step.id) && has_cycle(&step.id, steps, &mut visited, &mut rec_stack) {
+            return false;
+        }
+    }
+    true
+}
+
+/// Topological sort of plan steps using Kahn's algorithm
+pub fn topological_sort(steps: &[PlanStep]) -> Option<Vec<String>> {
+    let mut in_degree: std::collections::HashMap<String, usize> = std::collections::HashMap::new();
+    let mut adj: std::collections::HashMap<String, Vec<String>> = std::collections::HashMap::new();
+
+    for step in steps {
+        in_degree.insert(step.id.clone(), 0);
+        adj.insert(step.id.clone(), Vec::new());
+    }
+
+    for step in steps {
+        for dep in &step.dependencies {
+            if adj.contains_key(dep) {
+                if let Some(adj_list) = adj.get_mut(dep) {
+                    adj_list.push(step.id.clone());
+                }
+                if let Some(deg) = in_degree.get_mut(&step.id) {
+                    *deg += 1;
+                }
             }
         }
     }
-}
 
-/// A goal to be planned and executed.
-pub struct Goal {
-    /// Unique identifier for the goal.
-    pub id: String,
-    /// Human-readable description of what needs to be achieved.
-    pub description: String,
-    /// Priority level (0 = lowest, 10 = highest).
-    pub priority: u8,
-    /// Optional deadline as Unix timestamp (seconds since epoch).
-    pub deadline: Option<i64>,
-    /// Whether the goal has been completed.
-    pub completed: bool,
-}
-
-impl Goal {
-    /// Create a new goal with the given id and description.
-    pub fn new(id: impl Into<String>, description: impl Into<String>, priority: u8) -> Self {
-        Goal {
-            id: id.into(),
-            description: description.into(),
-            priority,
-            deadline: None,
-            completed: false,
+    let mut queue: std::collections::VecDeque<String> = std::collections::VecDeque::new();
+    for (id, deg) in &in_degree {
+        if *deg == 0 {
+            queue.push_back(id.clone());
         }
     }
-}
 
-/// Validate a goal, ensuring all constraints are met.
-pub fn validate_goal(g: &Goal) -> Result<(), PlanError> {
-    if g.description.trim().is_empty() {
-        return Err(PlanError::EmptyDescription);
-    }
-    if g.priority > 10 {
-        return Err(PlanError::InvalidPriority);
-    }
-    if let Some(deadline) = g.deadline {
-        let now = Utc::now().timestamp();
-        if deadline < now {
-            return Err(PlanError::DeadlineInPast);
+    let mut result = Vec::new();
+    while let Some(current) = queue.pop_front() {
+        result.push(current.clone());
+        if let Some(neighbors) = adj.get(&current) {
+            for neighbor in neighbors {
+                if let Some(deg) = in_degree.get_mut(neighbor) {
+                    *deg -= 1;
+                    if *deg == 0 {
+                        queue.push_back(neighbor.clone());
+                    }
+                }
+            }
         }
     }
-    Ok(())
+
+    if result.len() == steps.len() {
+        Some(result)
+    } else {
+        None
+    }
 }
-
-/// Generate plan steps from a goal description.
-///
-/// Per Architecture Chapter 11.2: produces a skeleton plan with steps
-/// parsed from the goal's action verbs and keywords.
-pub fn generate_steps(goal: &Goal) -> Vec<crate::planner::engine::types::PlanStep> {
-    let lower = goal.description.to_lowercase();
-    let mut steps = Vec::new();
-
-    // Detect intent from keywords and generate matching steps.
-    let wants_search = lower.contains("find")
-        || lower.contains("search")
-        || lower.contains("lookup")
-        || lower.contains("retrieve")
-        || lower.contains("get");
-    let wants_store = lower.contains("store")
-        || lower.contains("save")
-        || lower.contains("record")
-        || lower.contains("remember");
-    let wants_knowledge = lower.contains("knowledge")
-        || lower.contains("learn")
-        || lower.contains("understand")
-        || lower.contains("know");
-    let wants_analyze = lower.contains("analyze")
-        || lower.contains("summarize")
-        || lower.contains("evaluate")
-        || lower.contains("assess");
-    let wants_plan = lower.contains("plan")
-        || lower.contains("create")
-        || lower.contains("design")
-        || lower.contains("build");
-
-    let mut step_num = 0u32;
-
-    if wants_search {
-        steps.push(crate::planner::engine::types::PlanStep {
-            id: format!("step-{}", step_num),
-            description: format!("Search for: {}", goal.description),
-            action: "search".to_string(),
-            dependencies: Vec::new(),
-            status: crate::planner::engine::types::StepStatus::Pending,
-            result: None,
-            supporting_knowledge: Vec::new(),
-            past_experiences: Vec::new(),
-        });
-        step_num += 1;
-    }
-
-    if wants_store {
-        steps.push(crate::planner::engine::types::PlanStep {
-            id: format!("step-{}", step_num),
-            description: format!("Store result: {}", goal.description),
-            action: "store".to_string(),
-            dependencies: Vec::new(),
-            status: crate::planner::engine::types::StepStatus::Pending,
-            result: None,
-            supporting_knowledge: Vec::new(),
-            past_experiences: Vec::new(),
-        });
-        step_num += 1;
-    }
-
-    if wants_knowledge {
-        steps.push(crate::planner::engine::types::PlanStep {
-            id: format!("step-{}", step_num),
-            description: format!("Extract knowledge: {}", goal.description),
-            action: "learn".to_string(),
-            dependencies: Vec::new(),
-            status: crate::planner::engine::types::StepStatus::Pending,
-            result: None,
-            supporting_knowledge: Vec::new(),
-            past_experiences: Vec::new(),
-        });
-        step_num += 1;
-    }
-
-    if wants_analyze {
-        steps.push(crate::planner::engine::types::PlanStep {
-            id: format!("step-{}", step_num),
-            description: format!("Analyze: {}", goal.description),
-            action: "analyze".to_string(),
-            dependencies: Vec::new(),
-            status: crate::planner::engine::types::StepStatus::Pending,
-            result: None,
-            supporting_knowledge: Vec::new(),
-            past_experiences: Vec::new(),
-        });
-        step_num += 1;
-    }
-
-    if wants_plan {
-        steps.push(crate::planner::engine::types::PlanStep {
-            id: format!("step-{}", step_num),
-            description: format!("Plan: {}", goal.description),
-            action: "plan".to_string(),
-            dependencies: Vec::new(),
-            status: crate::planner::engine::types::StepStatus::Pending,
-            result: None,
-            supporting_knowledge: Vec::new(),
-            past_experiences: Vec::new(),
-        });
-        step_num += 1;
-    }
-
-    // If no keywords matched, produce a default step.
-    if steps.is_empty() {
-        steps.push(crate::planner::engine::types::PlanStep {
-            id: format!("step-{}", step_num),
-            description: goal.description.clone(),
-            action: "execute".to_string(),
-            dependencies: Vec::new(),
-            status: crate::planner::engine::types::StepStatus::Pending,
-            result: None,
-            supporting_knowledge: Vec::new(),
-            past_experiences: Vec::new(),
-        });
-    }
-
-    steps
-}
-
-pub mod engine;
-pub mod policy;
-
-pub use engine::Planner;
-pub use policy::PolicyEngine;

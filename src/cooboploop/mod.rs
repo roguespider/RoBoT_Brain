@@ -81,6 +81,9 @@ pub fn init() {
         deadline: None,
         execution_history: vec![],
         completion_state: None,
+        creation_timestamp: Some(chrono::Utc::now()),
+        last_evaluation: None,
+        ..Default::default()
     };
     let get_result = objective_queue.get("test-queue-get");
     let update_result = objective_queue.update("test-queue-update", queued_goal.clone());

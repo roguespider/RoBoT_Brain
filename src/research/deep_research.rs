@@ -13,23 +13,67 @@ impl DeepMode {
     }
 
     fn generate_sub_questions(&self, query: &str) -> Vec<String> {
-        let keywords: Vec<String> = query.split_whitespace().map(|s| s.to_string()).collect();
-        keywords.into_iter().take(3).collect()
+        // Derive 1-3 sub-questions from the main query for deep research.
+        // Strategy: split on common question words and create focused sub-queries.
+        let base = query.trim();
+        let sub_queries = if base.contains("?")
+            || base.contains("how")
+            || base.contains("why")
+            || base.contains("what")
+        {
+            // Complex query: generate focused sub-questions
+            let parts: Vec<&str> = base.split_whitespace().collect();
+            if parts.len() > 3 {
+                vec![
+                    format!("What is {}?", base),
+                    format!("How does {} work?", base),
+                    format!("Why is {} important?", base),
+                ]
+            } else {
+                vec![
+                    base.to_string(),
+                    format!("Details about {}", base),
+                    format!("Context for {}", base),
+                ]
+            }
+        } else {
+            // Simple query: expand with related angles
+            vec![
+                base.to_string(),
+                format!("Overview of {}", base),
+                format!("Latest on {}", base),
+            ]
+        };
+        sub_queries
+            .into_iter()
+            .take(3)
+            .map(|s| s.trim().to_string())
+            .filter(|s| !s.is_empty())
+            .collect()
     }
 
     pub async fn run(&self, query: &str) -> Result<crate::research::ResearchResult, ResearchError> {
+        // Overall timeout for deep research: 60 seconds (Architecture §R7)
+        let overall_deadline = tokio::time::Instant::now() + Duration::from_secs(60);
         let sub_questions = self.generate_sub_questions(query);
         let mut all_results = Vec::new();
         for sub in &sub_questions {
-            let result = tokio::time::timeout(
-                Duration::from_secs(10),
-                self.pipeline.run_pipeline(sub, Mode::Deep),
-            )
-            .await
-            .map_err(|_| ResearchError::Timeout {
-                query: sub.clone(),
-                elapsed: Duration::from_secs(10),
-            })??;
+            // Enforce overall 60-second deadline for deep research
+            let remaining = overall_deadline.saturating_duration_since(tokio::time::Instant::now());
+            if remaining.is_zero() || remaining.as_secs() < 1 {
+                return Err(ResearchError::Timeout {
+                    query: sub.clone(),
+                    elapsed: Duration::from_secs(60),
+                });
+            }
+            let sub_timeout = std::cmp::min(remaining, Duration::from_secs(60));
+            let result =
+                tokio::time::timeout(sub_timeout, self.pipeline.run_pipeline(sub, Mode::Deep))
+                    .await
+                    .map_err(|_| ResearchError::Timeout {
+                        query: sub.clone(),
+                        elapsed: Duration::from_secs(60),
+                    })??;
             all_results.push(result.clone());
         }
         let all_findings: Vec<crate::research::Finding> = all_results
@@ -75,15 +119,22 @@ impl DeepMode {
                         if finding_a.source_url != finding_b.source_url
                             && finding_a.confidence > 0.7
                             && finding_b.confidence > 0.7
+                            && !finding_a.statement.is_empty()
+                            && !finding_b.statement.is_empty()
                         {
-                            // Different sources with high confidence may contradict
-                            contradictions.push(crate::research::Contradiction {
-                                claim_a: finding_a.statement.clone(),
-                                claim_b: finding_b.statement.clone(),
-                                source_a_url: finding_a.source_url.clone(),
-                                source_b_url: finding_b.source_url.clone(),
-                                resolution: "".to_string(),
-                            });
+                            // Different sources with high confidence and different content
+                            // may contradict; only flag if statements are meaningfully different.
+                            let a_lower = finding_a.statement.to_lowercase();
+                            let b_lower = finding_b.statement.to_lowercase();
+                            if a_lower != b_lower && a_lower.len() > 5 && b_lower.len() > 5 {
+                                contradictions.push(crate::research::Contradiction {
+                                    claim_a: finding_a.statement.clone(),
+                                    claim_b: finding_b.statement.clone(),
+                                    source_a_url: finding_a.source_url.clone(),
+                                    source_b_url: finding_b.source_url.clone(),
+                                    resolution: Some("Requires manual review".to_string()),
+                                });
+                            }
                         }
                     }
                 }

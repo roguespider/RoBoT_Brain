@@ -208,41 +208,6 @@ impl LearningPipeline {
     }
 }
 
-/// Promote a reflection to a learning candidate.
-pub fn reflection_to_candidate(
-    r: &crate::experience::reflection::types::Reflection,
-) -> Option<String> {
-    if r.confidence.score >= 0.6 && !r.experience_ids.is_empty() {
-        Some(format!("candidate_{}", r.id))
-    } else {
-        None
-    }
-}
-
-/// Apply promotion to consolidation (writes back to memory/knowledge store).
-pub fn promotion_to_consolidation(candidate: &str) -> Result<(), String> {
-    if candidate.starts_with("promoted_") {
-        Ok(())
-    } else {
-        Err("Invalid promotion candidate".to_string())
-    }
-}
-
-/// Apply promotion with confidence update.
-pub fn evaluation_to_promotion(candidate: &str, score: f32) -> Option<String> {
-    if score >= 0.7 {
-        Some(format!("promoted_{}", candidate))
-    } else {
-        None
-    }
-}
-
-/// Synthesize evaluation criteria from a learning candidate.
-pub fn candidate_to_evaluation(candidate: &str) -> f32 {
-    // Placeholder: return a fixed evaluation score
-    0.75
-}
-
 /// Pipeline statistics
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PipelineStats {

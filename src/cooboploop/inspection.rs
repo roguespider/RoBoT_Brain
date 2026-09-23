@@ -89,6 +89,99 @@ impl Inspector {
         Self { issues: Vec::new() }
     }
 
+    fn inspect_drivers(&mut self) {
+        let driver_paths = [
+            "/dev/nvidia0",
+            "/sys/class/drm/card0",
+            "/sys/bus/pci/devices",
+        ];
+        for path in &driver_paths {
+            if !std::path::Path::new(path).exists() {
+                self.record_issue(
+                    InspectionTarget::Drivers,
+                    "low",
+                    format!("Driver interface not detected: {path}"),
+                    "Verify driver installation and kernel module loading",
+                );
+            }
+        }
+    }
+
+    fn inspect_inference_engine(&mut self) {
+        if std::env::var("CUDA_VISIBLE_DEVICES").is_err()
+            && std::env::var("ROCM_VISIBLE_DEVICES").is_err()
+        {
+            self.record_issue(
+                InspectionTarget::InferenceEngine,
+                "low",
+                "No GPU inference runtime environment variables set".to_string(),
+                "Configure CUDA/ROCM or set inference engine environment",
+            );
+        }
+    }
+
+    fn inspect_mcp_layer(&mut self) {
+        if std::env::var("MCP_SERVER_URL").is_err() {
+            self.record_issue(
+                InspectionTarget::McpLayer,
+                "low",
+                "MCP server URL not configured".to_string(),
+                "Set MCP_SERVER_URL or verify MCP layer initialization",
+            );
+        }
+    }
+
+    fn inspect_libraries(&mut self) {
+        let lib_paths = ["/usr/lib", "/usr/local/lib", "/lib"];
+        for path in &lib_paths {
+            if !std::path::Path::new(path).exists() {
+                self.record_issue(
+                    InspectionTarget::Libraries,
+                    "low",
+                    format!("Library path missing: {path}"),
+                    "Restore standard library paths or verify installation",
+                );
+            }
+        }
+    }
+
+    fn inspect_services(&mut self) {
+        if std::env::var("SERVICE_STATUS").is_err() {
+            self.record_issue(
+                InspectionTarget::Services,
+                "low",
+                "No service status environment indicator found".to_string(),
+                "Verify background services and set SERVICE_STATUS if applicable",
+            );
+        }
+    }
+
+    fn inspect_logs(&mut self) {
+        let log_dir = std::path::Path::new("/var/log");
+        if !log_dir.exists() {
+            self.record_issue(
+                InspectionTarget::Logs,
+                "low",
+                "/var/log directory not accessible".to_string(),
+                "Verify log directory permissions and logging service",
+            );
+        }
+    }
+
+    fn inspect_hardware_interfaces(&mut self) {
+        let interface_paths = ["/sys/class/net", "/sys/class/usb", "/sys/class/pci"];
+        for path in &interface_paths {
+            if !std::path::Path::new(path).exists() {
+                self.record_issue(
+                    InspectionTarget::HardwareInterfaces,
+                    "low",
+                    format!("Hardware interface path missing: {path}"),
+                    "Verify hardware interfaces and kernel module loading",
+                );
+            }
+        }
+    }
+
     /// Inspect the active operating environment and return detected issues (§T8.15).
     pub fn scan(&mut self) -> Vec<InspectionIssue> {
         self.issues.clear();
@@ -96,6 +189,14 @@ impl Inspector {
         self.inspect_configuration();
         self.inspect_storage_and_database();
         self.inspect_checkout_layout();
+        // §13 / T-COO-45: wire remaining inspection targets
+        self.inspect_drivers();
+        self.inspect_inference_engine();
+        self.inspect_mcp_layer();
+        self.inspect_libraries();
+        self.inspect_services();
+        self.inspect_logs();
+        self.inspect_hardware_interfaces();
         self.issues.clone()
     }
 
@@ -325,6 +426,9 @@ impl Inspector {
                     deadline: None,
                     execution_history: Vec::new(),
                     completion_state: None,
+                    creation_timestamp: Some(chrono::Utc::now()),
+                    last_evaluation: None,
+                    ..Default::default()
                 }
             })
             .collect()

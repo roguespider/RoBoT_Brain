@@ -88,6 +88,7 @@ impl SearchProvider for BraveProvider {
                             url,
                             snippet,
                             relevance: 0.8,
+                            source: SearchSource::Web,
                         })
                     })
                     .collect::<Vec<_>>(),

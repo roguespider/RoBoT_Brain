@@ -3,9 +3,6 @@
 //! Handles merging duplicate memory records before promotion.
 
 use std::collections::hash_map::DefaultHasher;
-use std::hash::{Hash, Hasher};
-
-// Hash and Hasher are actively used in content_hash() for deduplication grouping.
 
 use crate::data_contracts::memory_record::MemoryRecord;
 

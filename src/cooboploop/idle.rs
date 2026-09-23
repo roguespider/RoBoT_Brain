@@ -110,6 +110,18 @@ pub struct IdleState {
 
     /// Number of knowledge gaps (§T7.2).
     pub knowledge_gaps_count: u32,
+
+    /// Whether maintenance is current (§10 / T-COO-08).
+    pub maintenance_current: bool,
+
+    /// Whether there are high-value research questions (§10 / T-COO-08).
+    pub high_value_research_pending: bool,
+
+    /// Whether there are relevant capability gaps (§10 / T-COO-08).
+    pub relevant_capability_gaps: bool,
+
+    /// Whether there are external opportunities (§10 / T-COO-08).
+    pub external_opportunities_available: bool,
 }
 
 impl IdleState {
@@ -123,12 +135,26 @@ impl IdleState {
             queue_empty: true,
             problems_count: 0,
             knowledge_gaps_count: 0,
+            maintenance_current: true,
+            high_value_research_pending: false,
+            relevant_capability_gaps: false,
+            external_opportunities_available: false,
         }
     }
 
-    /// Determine if the system should wait (be idle).
+    /// Determine if the system should wait (be idle) — checks all deliberate
+    /// inactivity conditions (§9-10 / T-COO-08): queue empty, no detected problems,
+    /// maintenance current, no high-value research, no capability gaps,
+    /// no external opportunities.
     pub fn should_wait(&self) -> bool {
-        matches!(self.phase, IdlePhase::Waiting | IdlePhase::Maintenance)
+        self.queue_empty
+            && self.problems_count == 0
+            && self.knowledge_gaps_count == 0
+            && self.maintenance_current
+            && !self.high_value_research_pending
+            && !self.relevant_capability_gaps
+            && !self.external_opportunities_available
+            && matches!(self.phase, IdlePhase::Waiting | IdlePhase::Maintenance)
     }
 
     /// Set the reevaluation interval.
@@ -164,6 +190,11 @@ impl IdleState {
             work.push(ActivityCategory::MemoryMaintenance);
             work.push(ActivityCategory::PerformanceOptimization);
             work.push(ActivityCategory::EnvironmentalObservation);
+            work.push(ActivityCategory::BugInvestigation);
+            work.push(ActivityCategory::Research);
+            work.push(ActivityCategory::CapabilityDevelopment);
+            work.push(ActivityCategory::SelfImprovement);
+            work.push(ActivityCategory::KnowledgeConsolidation);
             // Wire DeliberateInactivity when not active
             inactivity = Some(DeliberateInactivity::new(
                 self.phase.clone(),
