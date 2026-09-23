@@ -18,6 +18,10 @@ __pycache__/
 # independent binary crate. Neither lock file should be committed.
 Cargo.lock
 
+# Agent documentation and scripts - NEVER commit
+.agents/
+AGENTS.md
+
 # SQLite database files (created at runtime, not source-controlled)
 robot_brain.db
 robot_brain.db-wal
