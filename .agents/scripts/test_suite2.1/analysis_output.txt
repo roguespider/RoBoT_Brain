@@ -1,4 +1,0 @@
-[PASS] Report written to E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_output.json
-[DONE] Python test suite complete — see test_output.txt (human) and test_output.json (AI)
-[PASS] Code issues: 0, Lint issues: 0, Registry: 206
-[INFO] Human-readable report written to: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_output.txt
