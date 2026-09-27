@@ -14,6 +14,7 @@
 use crate::memory::types::ResearchProvenance;
 
 pub mod embedding;
+pub mod integrity;
 pub mod permanent;
 pub mod pipeline;
 pub mod procedural;
@@ -28,13 +29,58 @@ pub use permanent::PermanentMemory;
 pub use retrieval::MemoryRetrieval;
 pub use working::WorkingMemory;
 
-/// Promote research findings to permanent memory.
-/// Integration gate: confidence >= 0.7 AND outcome = solved.
-/// Stores provenance: { url, provider, timestamp, query }.
-pub fn promote_research(
+/// Build the memory item a validated research finding promotes to.
+///
+/// Kept separate from the gate and the write so both can be reasoned about
+/// independently: the gate decides *whether* a finding is worth keeping, this
+/// decides *what* is kept, and the repository decides whether it landed.
+fn build_research_memory(
+    finding: &crate::research::Finding,
+    confidence: f32,
+    provenance: &ResearchProvenance,
+) -> crate::memory::types::MemoryItem {
+    // The stored content carries the finding's statement AND its provenance, so
+    // the memory is self-describing and independently verifiable: a reader can
+    // tell where the claim came from without a second lookup (R12, Rule 3).
+    let content = format!(
+        "{}\n\n[provenance] url={} provider={} query={} retrieved_at={}",
+        finding.statement.trim(),
+        provenance.url,
+        provenance.provider,
+        provenance.query,
+        provenance.timestamp
+    );
+    let mut memory = crate::memory::types::MemoryItem::new(
+        crate::memory::types::MemoryLayer::Permanent,
+        crate::memory::types::MemoryType::Knowledge,
+        content,
+        "research".to_string(),
+    );
+    memory.confidence = confidence;
+    memory.add_tag("research".to_string());
+    memory.add_tag("web".to_string());
+    memory.add_tag(provenance.provider.clone());
+    memory
+}
+
+/// Promote a research finding to permanent memory and persist it.
+///
+/// research_engine.md Rule 8 and R12: research-derived knowledge is NOT stored
+/// automatically. It is promoted only when experience validates it, meaning
+/// confidence >= 0.7 AND outcome = solved. The gate is enforced here rather than
+/// by the caller, so no call site can bypass it.
+///
+/// The item is written through the same `MemoryRepository` that `store_memory`
+/// uses, which makes the promotion durable and retrievable by `search_memory`
+/// and `list_memories`. A failed write is reported as `StorageFailed` rather
+/// than being logged and dropped: a promotion that never persisted is data loss
+/// the caller must be able to see.
+pub fn promote_research_finding(
+    finding: &crate::research::Finding,
     confidence: f32,
     outcome: &str,
     provenance: ResearchProvenance,
+    repository: &dyn crate::memory::repository::MemoryRepository,
 ) -> Result<String, crate::memory::types::MemoryError> {
     // Gate: confidence >= 0.7 AND outcome = solved
     if confidence < 0.7 {
@@ -45,33 +91,30 @@ pub fn promote_research(
         return Err(crate::memory::types::MemoryError::InsufficientConfidence);
     }
 
-    // Build content with provenance
-    let content = format!(
-        "Research finding (provider={}, query={}, url={}, timestamp={})",
-        provenance.provider, provenance.query, provenance.url, provenance.timestamp
-    );
+    let memory = build_research_memory(finding, confidence, &provenance);
+    let memory_id = memory.id.to_string();
 
-    // Create a permanent memory item
-    let memory = crate::memory::types::MemoryItem::new(
-        crate::memory::types::MemoryLayer::Permanent,
-        crate::memory::types::MemoryType::Knowledge,
-        content,
-        "research".to_string(),
-    );
-
-    // Set confidence and tag with provenance details
-    let mut memory = memory;
-    memory.confidence = confidence;
-    memory.add_tag("research".to_string());
-    memory.add_tag(provenance.provider.clone());
+    repository.store(&memory).map_err(|e| {
+        // The write failure is logged before it is mapped, because the
+        // storage error carries the cause (constraint violation, locked
+        // database) that the unit variant alone would discard.
+        tracing::error!(
+            memory_id = %memory_id,
+            provider = %provenance.provider,
+            error = %e,
+            "Failed to persist a promoted research finding"
+        );
+        crate::memory::types::MemoryError::StorageFailed
+    })?;
 
     tracing::info!(
-        memory_id = %memory.id,
+        memory_id = %memory_id,
         provider = %provenance.provider,
+        source_url = %provenance.url,
         "Research finding promoted to permanent memory"
     );
 
-    Ok(memory.id.to_string())
+    Ok(memory_id)
 }
 
 /// Active reference to semantic/procedural memory contracts.
@@ -115,6 +158,11 @@ pub fn reference_memory_layer_apis() {
         min_confidence = policy.min_confidence,
         "Forgetting policy API referenced"
     );
+}
+
+/// Active reference to memory integrity contracts.
+pub fn reference_memory_integrity_contracts() {
+    crate::memory::integrity::reference_memory_integrity_contracts();
 }
 
 /// Integration: retrieve memory for context and optionally promote.

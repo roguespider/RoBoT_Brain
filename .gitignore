@@ -26,3 +26,7 @@ AGENTS.md
 robot_brain.db
 robot_brain.db-wal
 robot_brain.db-shm
+
+# Windows reserved-name ghost file created by a `> nul` redirect on a
+# POSIX-style shell. Not addressable by the agent file tools; needs a shell.
+nul

@@ -1,27 +1,34 @@
-#[cfg(feature = "http")]
-use crate::research::config::env_key;
-#[cfg(feature = "http")]
-use crate::research::errors::ResearchError;
-#[cfg(feature = "http")]
-use crate::research::provider::{SearchProvider, SearchResult, SearchResults, SearchSource};
-#[cfg(feature = "http")]
-use reqwest::Client;
+//! Brave Search adapter — the secondary provider (research_engine.md R14).
+//!
+//! Used only as a failover target when the primary DuckDuckGo adapter fails, and
+//! only when `BRAVE_API_KEY` is configured. Without a key it reports
+//! `ProviderUnavailable` rather than returning an empty success, so the pipeline
+//! moves to it only when it can actually answer (R14, Rule 6).
 
-#[cfg(feature = "http")]
+use crate::research::errors::ResearchError;
+use crate::research::provider::{SearchProvider, SearchResult, SearchResults, SearchSource};
+
+const ENDPOINT: &str = "https://api.search.brave.com/res/v1/web/search";
+const PROVIDER: &str = "brave";
+
 pub struct BraveProvider {
     api_key: Option<String>,
 }
 
-#[cfg(feature = "http")]
 impl BraveProvider {
     pub fn new() -> Self {
         Self {
-            api_key: env_key("BRAVE_API_KEY"),
+            api_key: crate::research::config::env_key("BRAVE_API_KEY"),
         }
     }
 }
 
-#[cfg(feature = "http")]
+impl Default for BraveProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl SearchProvider for BraveProvider {
     fn search(
         &self,
@@ -32,72 +39,74 @@ impl SearchProvider for BraveProvider {
         let query = query.to_string();
         let api_key = self.api_key.clone();
         Box::pin(async move {
-            let api_key = match api_key {
-                Some(key) => key,
-                None => {
-                    return Err(ResearchError::ProviderUnavailable {
-                        provider: "brave".into(),
-                    });
-                }
+            let Some(api_key) = api_key else {
+                return Err(ResearchError::ProviderUnavailable {
+                    provider: format!("{PROVIDER} (set BRAVE_API_KEY to enable)"),
+                });
             };
 
-            let client = Client::new();
-            let url = format!(
-                "https://api.search.brave.com/res/v1/web/search?q={}&count=5",
-                urlencoding::encode(&query)
-            );
-
-            let resp = client
+            let url = format!("{ENDPOINT}?q={}&count=10", urlencoding::encode(&query));
+            let http = crate::research::http::client(PROVIDER)?;
+            let response = http
                 .get(&url)
                 .header("Accept", "application/json")
-                .header("Accept-Encoding", "gzip")
                 .header("X-Subscription-Token", &api_key)
                 .send()
                 .await
-                .map_err(|e| ResearchError::ProviderError {
-                    provider: "brave".into(),
-                    message: e.to_string(),
-                })?;
-
-            if !resp.status().is_success() {
-                let status = resp.status();
-                let body = resp.text().await.unwrap_or_default();
-                return Err(ResearchError::ProviderError {
-                    provider: "brave".into(),
-                    message: format!("Brave API error {}: {}", status, body),
-                });
+                .map_err(|e| crate::research::http::transport_error(PROVIDER, e))?;
+            if !response.status().is_success() {
+                return Err(crate::research::http::status_error(
+                    PROVIDER,
+                    response.status(),
+                ));
             }
+            let payload: serde_json::Value = response
+                .json()
+                .await
+                .map_err(|e| crate::research::http::transport_error(PROVIDER, e))?;
 
-            let json: serde_json::Value =
-                resp.json()
-                    .await
-                    .map_err(|e| ResearchError::ProviderError {
-                        provider: "brave".into(),
-                        message: e.to_string(),
-                    })?;
+            let items = payload
+                .get("web")
+                .and_then(|w| w.get("results"))
+                .and_then(|r| r.as_array())
+                .cloned()
+                .unwrap_or_default();
+            let total = items.len();
+            let mut accepted = 0usize;
+            let results: Vec<SearchResult> = items
+                .iter()
+                .filter_map(|item| {
+                    let title = item.get("title")?.as_str()?;
+                    let url = item.get("url")?.as_str()?;
+                    if !crate::research::sanitize::is_citable_url(url) {
+                        return None;
+                    }
+                    let snippet = item
+                        .get("description")
+                        .and_then(|d| d.as_str())
+                        .unwrap_or("");
+                    // Brave orders by its own relevance without exposing a
+                    // score, so the accepted sequence order carries the rank (R5).
+                    let relevance =
+                        crate::research::sanitize::positional_relevance(accepted, total);
+                    accepted += 1;
+                    Some(crate::research::sanitize::build_result(
+                        title,
+                        url,
+                        snippet,
+                        relevance,
+                        SearchSource::Web,
+                    ))
+                })
+                .collect();
 
-            let results = match json.get("web").and_then(|w| w.get("results")) {
-                Some(serde_json::Value::Array(items)) => items
-                    .iter()
-                    .filter_map(|item| {
-                        let title = item.get("title")?.as_str()?.to_string();
-                        let url = item.get("url")?.as_str()?.to_string();
-                        let snippet = item.get("description")?.as_str()?.to_string();
-                        Some(SearchResult {
-                            title,
-                            url,
-                            snippet,
-                            relevance: 0.8,
-                            source: SearchSource::Web,
-                        })
-                    })
-                    .collect::<Vec<_>>(),
-                _ => Vec::new(),
-            };
+            // An empty Brave response is reported as `NoResults`, so the
+            // pipeline can distinguish "no matches" from "provider failed".
+            let results = crate::research::http::require_results(PROVIDER, &query, results)?;
 
             Ok(SearchResults {
                 results,
-                provider: "brave".to_string(),
+                provider: PROVIDER.to_string(),
                 query,
                 retrieved_at: chrono::Utc::now(),
             })
@@ -105,7 +114,7 @@ impl SearchProvider for BraveProvider {
     }
 
     fn name(&self) -> &str {
-        "brave"
+        PROVIDER
     }
 
     fn supports(&self, source: SearchSource) -> bool {

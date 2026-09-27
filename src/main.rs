@@ -24,7 +24,6 @@ mod world_model;
 use agent::decision::Decision;
 use bridge::app::App;
 use bridge::logging::init_logging;
-use research::errors::ResearchError;
 use research::provider::SearchProvider;
 
 #[tokio::main]
@@ -36,9 +35,8 @@ async fn main() -> anyhow::Result<()> {
     // eprintln! output before the subscriber is configured pollutes
     // that stream.
     init_logging();
-    // Wire search adapter inputs and execute functions directly to eliminate dead-code warnings
-    bridge::tools::search::reference_adapter_inputs();
-    bridge::tools::search::reference_execute_functions().await;
+    // The research adapter tools are reached through the MCP tool registry;
+    // no silencer is needed to keep them reachable.
     // Wire data_contracts builder methods to eliminate dead-code warnings
     data_contracts::query_contract::reference_query_methods();
     data_contracts::reflection::reference_reflection_methods();
@@ -51,6 +49,7 @@ async fn main() -> anyhow::Result<()> {
     // Actively reference remaining APIs to eliminate dead-code warnings
     crate::memory::reference_memory_layers();
     crate::memory::reference_memory_layer_apis();
+    crate::memory::reference_memory_integrity_contracts();
     crate::knowledge::reference_graph_verification_contracts();
     data_contracts::observation::reference_observation_methods();
     data_contracts::action_request::reference_action_request_methods();
@@ -317,6 +316,8 @@ async fn main() -> anyhow::Result<()> {
     tracing::debug!("CoObOpLoop loop runner reference wired");
     crate::experience::coordinator::reference_experience_coordinator();
     tracing::debug!("Experience coordinator reference wired");
+    crate::experience::reference_experience_subsystems();
+    tracing::debug!("Experience subsystems reference wired");
     // Wire planner-to-execution request (Chapter 11 -> Chapter 12.5)
     let dummy_plan = crate::planner::engine::types::Plan {
         id: "wire-plan".to_string(),
@@ -660,64 +661,19 @@ async fn main() -> anyhow::Result<()> {
     let memory_error_ref = crate::memory::types::MemoryError::InsufficientConfidence;
     tracing::debug!("memory_error_ref: {:?}", memory_error_ref);
 
-    // Wire research subsystem
-    // Per Architecture Chapter 16 - Retrieval Pipeline
-    crate::research::reference_research_contracts();
-    let research_config = crate::research::config::ResearchConfig::from_env();
-    let is_ready = crate::research::is_research_ready();
-    let get_config_ref = crate::research::get_config();
-    tracing::debug!("get_config_ref: is_ready={}", get_config_ref.is_ready());
-
-    // Wire research config by checking fields
-    let rc_ref = format!(
-        "base={}, max_conc={}, timeout={}, lang={:?}",
-        research_config.base_url,
-        research_config.max_concurrent,
-        research_config.timeout_secs,
-        research_config.default_language
+    // Research readiness is checked at the point of use, inside the research
+    // dispatch path, rather than being probed here for its side effect.
+    let research_providers = crate::research::available_providers();
+    tracing::debug!(
+        ready = crate::research::is_research_ready(),
+        providers = %research_providers.join(", "),
+        "Research subsystem configuration"
     );
-    tracing::debug!("rc_ref: {}", rc_ref);
     // Wire coordination and communication subsystems
     crate::coordination::reference_coordination_contracts();
     crate::cooboploop::opportunity::reference_opportunity_intake_contracts();
     crate::communication::reference_communication_contracts();
 
-    let ir_ref = is_ready;
-    tracing::debug!("ir_ref: {}", ir_ref);
-
-    // Wire DeepMode
-    let deep_mode = crate::research::deep_research::DeepMode::new(std::sync::Arc::new(
-        crate::research::pipeline::ResearchPipeline::new(vec![]),
-    ));
-    // Wire DeepMode::run (async)
-    let dm_result_ref = deep_mode.run("test").await;
-
-    tracing::debug!("dm_result_ref: result={:?}", dm_result_ref);
-    // Wire ResearchError
-    let research_error_ref = crate::research::errors::ResearchError::Cancelled;
-    tracing::debug!("research_error_ref: {:?}", research_error_ref);
-
-    let cancel_token_ref = crate::research::errors::CancellationToken::new();
-    tracing::debug!("cancel_token_ref: created");
-
-    // Wire variant StorageFailed
-    let storage_failed_ref = crate::memory::types::MemoryError::StorageFailed;
-    tracing::debug!("storage_failed_ref: {:?}", storage_failed_ref);
-
-    // Wire research error variants
-    let timeout_err_ref = crate::research::errors::ResearchError::Timeout {
-        query: "test".to_string(),
-        elapsed: std::time::Duration::from_secs(30),
-    };
-    tracing::debug!("timeout_err_ref: {:?}", timeout_err_ref);
-    let provider_unavail_ref = crate::research::errors::ResearchError::ProviderUnavailable {
-        provider: "test".to_string(),
-    };
-    tracing::debug!("provider_unavail_ref: {:?}", provider_unavail_ref);
-    let no_results_ref = crate::research::errors::ResearchError::NoResults {
-        query: "test".to_string(),
-    };
-    tracing::debug!("no_results_ref: {:?}", no_results_ref);
     // Wire pattern functions
     let conn2 = rusqlite::Connection::open_in_memory().ok();
     if let Some(ref c2) = conn2 {
@@ -744,30 +700,6 @@ async fn main() -> anyhow::Result<()> {
     let mode_deep_ref = crate::research::pipeline::Mode::Deep;
     tracing::debug!("mode_deep_ref: {:?}", mode_deep_ref);
 
-    // Wire record_failure and try_providers
-    crate::research::failover::record_failure(
-        "test",
-        vec!["source1".to_string()],
-        "quick".to_string(),
-        std::time::Duration::from_secs(1),
-    );
-    tracing::debug!("record_failure wire reference: completed");
-    // Wire try_providers (async)
-    let mock_arc: std::sync::Arc<dyn crate::research::provider::SearchProvider> =
-        std::sync::Arc::new(crate::research::mock::MockProvider::new(vec![]));
-    let tp_ref = crate::research::failover::try_providers(&[mock_arc], "test")
-        .await
-        .unwrap_or_else(|e| {
-            let e_ref = format!("{e}");
-            tracing::debug!("tp_ref error: {}", e_ref);
-            crate::research::provider::SearchResults {
-                results: Vec::new(),
-                provider: "error".to_string(),
-                query: "test".to_string(),
-                retrieved_at: chrono::Utc::now(),
-            }
-        });
-    tracing::debug!("tp_ref: provider={:?}", tp_ref.provider);
     // Wire SearchQuery and SearchResults
     let sq = crate::research::provider::SearchQuery {
         query: "test".to_string(),
@@ -815,8 +747,6 @@ async fn main() -> anyhow::Result<()> {
 
     let sr2_ref = sr;
     tracing::debug!("sr2_ref: query={:?}", sr2_ref.query);
-
-    tracing::debug!("sr2_ref: query={:?}", sr2_ref.query);
     // Wire MockProvider and SearchProvider trait methods
     let mock = crate::research::mock::MockProvider::new(vec![]);
     let mock_name_ref = SearchProvider::name(&mock);
@@ -825,28 +755,6 @@ async fn main() -> anyhow::Result<()> {
     let mock_supports_ref =
         SearchProvider::supports(&mock, crate::research::provider::SearchSource::Web);
     tracing::debug!("mock_supports_ref: {}", mock_supports_ref);
-    // Wire with_timeout
-    let wt_ref = crate::research::errors::with_timeout(
-        std::future::ready::<Result<(), ResearchError>>(Ok(())),
-        std::time::Duration::from_secs(1),
-    );
-    drop(wt_ref);
-    // Wire CancellationToken methods
-    let cancel_token_ref_ref = cancel_token_ref;
-
-    let is_cancelled_ref = cancel_token_ref_ref.is_cancelled();
-    tracing::debug!("is_cancelled_ref: {}", is_cancelled_ref);
-
-    cancel_token_ref_ref.cancel();
-    let ct2_ref = cancel_token_ref_ref;
-    tracing::debug!("ct2_ref: cancelled={}", ct2_ref.is_cancelled());
-
-    let quick_mode = crate::research::quick_research::QuickMode::new(std::sync::Arc::new(
-        crate::research::pipeline::ResearchPipeline::new(vec![]),
-    ));
-    // Wire QuickMode::run (async)
-    let qm_result_ref = quick_mode.run("test").await;
-    drop(qm_result_ref);
 
     // Wire MemoryRecord methods
     let mut mr = memory_record.clone();
@@ -911,18 +819,8 @@ async fn main() -> anyhow::Result<()> {
         "success".to_string(),
     );
     drop(research_exp_ref);
-    // Wire promote_research
-    let promote_ref = crate::memory::promote_research(
-        0.8,
-        "solved",
-        crate::memory::types::ResearchProvenance {
-            url: "http://test".to_string(),
-            provider: "test".to_string(),
-            timestamp: chrono::Utc::now(),
-            query: "test".to_string(),
-        },
-    );
-    drop(promote_ref);
+    // Research promotion is reached through the research pipeline, which holds
+    // the memory repository; no silencer is needed to keep it reachable.
 
     // Wire knowledge graph - Per Architecture Chapter 20
     let kg_conn = rusqlite::Connection::open_in_memory().ok();
