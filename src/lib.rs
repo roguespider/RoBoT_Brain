@@ -204,8 +204,8 @@ pub fn wire_all_contracts() {
     reference_deployment_contracts();
     reference_security_contracts();
     reference_architecture_validation_contracts();
-    crate::bridge::tools::search::reference_adapter_inputs();
-    // reference_execute_functions is async; called separately when needed
+    // The per-source research adapter input structs and their handlers are
+    // reached through the MCP tool registry, not through a silencer.
 }
 
 /// Wire storage architecture contracts.

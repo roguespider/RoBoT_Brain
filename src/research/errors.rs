@@ -69,6 +69,10 @@ impl From<reqwest::Error> for ResearchError {
 use std::sync::Arc;
 use std::sync::atomic::{AtomicBool, Ordering};
 
+/// Await a future with a bounded timeout, mapping expiry to `ResearchError::Timeout`.
+///
+/// This is the general-purpose timeout helper for callers that hold a future of
+/// their own rather than a pipeline run.
 pub async fn with_timeout<F, T>(fut: F, dur: std::time::Duration) -> Result<T, ResearchError>
 where
     F: std::future::Future<Output = T>,
@@ -81,10 +85,17 @@ where
         })
 }
 
+/// Cancellation signal shared between a caller and a running research operation.
+///
+/// A `oneshot` channel carries the cancel edge, and an atomic flag lets a hot loop
+/// poll for cancellation without awaiting. The flag is what the pipeline checks
+/// between provider calls, so a cancel stops new requests promptly even though the
+/// in-flight request itself can only be abandoned by dropping its future.
 pub struct CancellationToken {
-    // tokio::sync::oneshot for cancellation signal (Architecture §R9)
+    /// Sends the one-way cancel edge; taken on first use so a second cancel is
+    /// a no-op rather than a send on a consumed channel.
     cancel_tx: std::sync::Arc<std::sync::Mutex<Option<tokio::sync::oneshot::Sender<()>>>>,
-    // AtomicBool allows synchronous cancellation checks without await
+    /// Pollable cancellation state.
     is_cancelled: Arc<AtomicBool>,
 }
 

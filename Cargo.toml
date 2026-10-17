@@ -18,7 +18,13 @@ edition = "2024"  # Rust 2024 edition - latest stable (requires Rust 1.85.0+)
 description = "A Rust MCP server with runtime-loaded tool plugins"
 
 [features]
-default = ["audio"]
+# `http` MUST stay in default: it gates reqwest+scraper and therefore the entire
+# research subsystem (src/research/, ~2138 LOC). Without it the research MCP tools
+# compile to empty stubs and the agent silently loses all external evidence
+# retrieval (research_engine.md R3/R4, Rule 4 "Provider Agnostic").
+# Build without it only via `--no-default-features --features audio` for
+# air-gapped deployments.
+default = ["audio", "http"]
 audio = ["dep:candle-core", "dep:candle-nn", "dep:candle-transformers", "dep:hf-hub", "dep:tokenizers"]
 tools-agent = []
 tools-experience = []

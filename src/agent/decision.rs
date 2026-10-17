@@ -369,35 +369,46 @@ impl Decision {
 }
 
 /// Trigger the research pipeline when all internal sources failed (§15 / T-COO-50).
-/// Fully wired 9-tier cascade: uses full adapter registry, constructs
-/// evidence packets from findings/sources/contradictions, applies promotion
-/// gating (confidence >= 0.7 + outcome = solved), and records experience.
+///
+/// This is tier 9 of the 9-tier confidence cascade. It runs only after tiers 1-8
+/// have all failed, builds a bounded evidence packet from the findings, and
+/// reports whether that packet is eligible for memory promotion (confidence
+/// >= 0.7 with no unresolved contradictions).
+///
+/// Returns `None` when research is unavailable or fails. The failure is logged
+/// with its cause rather than being converted into an empty success, so the
+/// caller can tell "no evidence found" from "research could not run".
 pub async fn trigger_research_on_failure(query: &str) -> Option<ResearchResult> {
     #[cfg(feature = "http")]
     {
-        use crate::research::pipeline::{Mode, ResearchPipeline};
-        // Build provider list using the full adapter registry (primary + fallback + per-source)
+        // Readiness is checked here, at the point of use, so a disabled or
+        // unconfigured subsystem is detected before a query is issued (R9).
+        if !crate::research::is_research_ready() {
+            tracing::warn!(
+                query,
+                "{}",
+                crate::research::adapter_registry::readiness_report()
+            );
+            return None;
+        }
         let providers = crate::research::adapter_registry::all_providers();
-        let pipeline = ResearchPipeline::new(providers);
-        match pipeline.run_pipeline(query, Mode::Auto).await {
+        let pipeline = crate::research::pipeline::ResearchPipeline::new(providers);
+        match pipeline
+            .run_pipeline(query, crate::research::pipeline::Mode::Auto)
+            .await
+        {
             Ok(result) => {
-                // Evidence packet construction: build structured evidence from findings
-                let evidence_packet = crate::research::EvidencePacket {
-                    query: query.to_string(),
-                    findings: result.findings.clone(),
-                    sources: result.sources.clone(),
-                    contradictions: result.contradictions.clone(),
-                    confidence: result.confidence,
-                    limitations: result.limitations.clone(),
-                    retrieved_at: result.retrieved_at,
-                };
+                let evidence_packet = result.to_evidence_packet();
                 tracing::debug!(
                     evidence_items = evidence_packet.findings.len(),
                     source_items = evidence_packet.sources.len(),
                     contradiction_items = evidence_packet.contradictions.len(),
+                    confidence = evidence_packet.confidence,
                     "9-tier cascade evidence packet constructed"
                 );
-                // Promotion gating: only promote when confidence >= 0.7 and outcome validates
+                // Promotion eligibility is reported for observability. The
+                // promotion itself happens inside the pipeline, which applies
+                // the same gate before writing to memory (R12, Rule 8).
                 let promotion_eligible = result.confidence >= 0.7
                     && !result.findings.is_empty()
                     && result.contradictions.is_empty();
@@ -405,7 +416,7 @@ pub async fn trigger_research_on_failure(query: &str) -> Option<ResearchResult> 
                     tracing::info!(
                         query = %query,
                         confidence = result.confidence,
-                        "9-tier cascade promotion gate passed — evidence packet eligible for promotion"
+                        "9-tier cascade promotion gate passed"
                     );
                 } else {
                     tracing::debug!(
@@ -413,13 +424,13 @@ pub async fn trigger_research_on_failure(query: &str) -> Option<ResearchResult> 
                         confidence = result.confidence,
                         findings = result.findings.len(),
                         contradictions = result.contradictions.len(),
-                        "9-tier cascade promotion gate blocked — evidence packet not eligible"
+                        "9-tier cascade promotion gate blocked"
                     );
                 }
                 Some(result)
             }
             Err(e) => {
-                tracing::error!("Research pipeline failed: {e}");
+                tracing::error!(query, error = %e, "Research pipeline failed");
                 None
             }
         }

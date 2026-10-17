@@ -588,28 +588,28 @@ impl ToolHandler for SearchToolsHandler {
             "research" => {
                 let input: search::ResearchInput = serde_json::from_value(args)
                     .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                search::execute_research(input)
+                search::execute_research(input, &self.context.database)
                     .await
                     .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
             }
             "quick_research" => {
                 let input: search::QuickResearchInput = serde_json::from_value(args)
                     .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                search::execute_quick_research(input)
+                search::execute_quick_research(input, &self.context.database)
                     .await
                     .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
             }
             "deep_research" => {
                 let input: search::DeepResearchInput = serde_json::from_value(args)
                     .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                search::execute_deep_research(input)
+                search::execute_deep_research(input, &self.context.database)
                     .await
                     .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
             }
             "find_error_resolution" => {
                 let input: search::FindErrorResolutionInput = serde_json::from_value(args)
                     .map_err(|e| HandlerError::InvalidParams(e.to_string()))?;
-                search::execute_find_error_resolution(input)
+                search::execute_find_error_resolution(input, &self.context.database)
                     .await
                     .map_err(|e| HandlerError::ExecutionFailed(e.to_string()))
             }

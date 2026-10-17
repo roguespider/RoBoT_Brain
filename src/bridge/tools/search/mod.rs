@@ -9,8 +9,37 @@ use serde::{Deserialize, Serialize};
 use crate::bridge::tools::ToolOutput;
 use crate::database::queries;
 use crate::database::sqlite::SqliteDatabase;
-#[cfg(feature = "http")]
-use crate::research::provider::SearchProvider;
+
+/// Build the structured error returned when the `http` cargo feature is off.
+///
+/// research_engine.md Rule 6 requires provider failures to surface as
+/// structured errors. Returning `success: true` with an empty payload would be
+/// strictly worse: the calling LLM reads a hollow success as a real answer and
+/// hallucinates from the absence of data. Every http-gated tool therefore
+/// reports `success: false` with this message instead.
+///
+/// `subject` is the query/URL/channel that was requested. It is echoed back so
+/// the caller can tell which request was refused, and so the parameter is used
+/// meaningfully on the no-http build rather than being dropped.
+#[cfg(not(feature = "http"))]
+fn http_feature_unavailable_for(tool: &str, subject: &str) -> String {
+    let requested = match subject.is_empty() {
+        true => String::new(),
+        false => format!(" Request was: {subject}."),
+    };
+    format!(
+        "Research tool '{tool}' is unavailable.{requested} This build of robot_brain was \
+         compiled without the 'http' cargo feature, so no external research provider is \
+         loaded. Rebuild with the default features (which include 'http') to enable it. \
+         No evidence was retrieved -- do not treat this as an answer."
+    )
+}
+
+/// Variant for per-source adapters, which do not echo the request subject.
+#[cfg(not(feature = "http"))]
+fn http_feature_unavailable(tool: &str) -> String {
+    http_feature_unavailable_for(tool, "")
+}
 
 /// Tool: Full-text search across all data
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
@@ -574,57 +603,74 @@ pub async fn execute_web_extract(input: WebExtractInput) -> Result<ToolOutput> {
     #[cfg(feature = "http")]
     {
         let jina = crate::research::jina::JinaProvider::new();
-        let text = jina
-            .extract(&input.url)
-            .await
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        if !jina.is_configured() {
+            // Report the missing credential rather than an opaque failure, so
+            // the operator can see this is a configuration gap (Rule 6).
+            return Ok(ToolOutput::error(format!(
+                "web_extract is not configured: set JINA_API_KEY to enable hosted content extraction. Request was: {}",
+                input.url
+            )));
+        }
+        // The extraction deadline is enforced here so a slow page cannot hold
+        // the tool open past its budget (R9 Rule 5).
+        let extraction = jina.extract(&input.url);
+        let text =
+            crate::research::errors::with_timeout(extraction, std::time::Duration::from_secs(30))
+                .await
+                .map_err(|e| anyhow::anyhow!("{}", e))??;
+        // Extracted page text is untrusted web data and is framed as such
+        // before it crosses the MCP boundary (Rule 9).
+        let (content, truncated) = crate::research::sanitize::truncate_with_marker(
+            &crate::research::sanitize::sanitize_text(&text),
+            8000,
+        );
         Ok(ToolOutput::success(serde_json::json!({
             "url": input.url,
-            "extracted_text": text,
-            "length": text.len()
+            "provider": "jina",
+            "extracted_text": crate::research::sanitize::as_quoted_data("PAGE", &content),
+            "length": content.chars().count(),
+            "truncated": truncated,
         })))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(serde_json::json!({
-            "url": input.url,
-            "message": "HTTP feature not enabled",
-            "extracted_text": ""
-        })))
+        Ok(ToolOutput::error(http_feature_unavailable_for(
+            "web_extract",
+            &input.url,
+        )))
     }
 }
 
 pub async fn execute_web_open(input: WebOpenInput) -> Result<ToolOutput> {
     #[cfg(feature = "http")]
     {
-        let client = reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(10))
-            .build()
-            .map_err(|e| anyhow::anyhow!("Failed to build HTTP client: {}", e))?;
-        let resp = client
-            .get(&input.url)
-            .send()
-            .await
-            .map_err(|e| anyhow::anyhow!("Failed to fetch URL: {}", e))?;
-        let status = resp.status();
-        let body = resp.text().await.unwrap_or_default();
-        let cleaned = crate::research::sanitize::strip_html(&body);
-        let cleaned = crate::research::sanitize::strip_control_chars(&cleaned);
+        // The page is fetched and reduced to readable text. Raw HTML is never
+        // returned across the MCP boundary (Rule 9), and the content is framed
+        // as untrusted data so it cannot be mistaken for an instruction.
+        let body = crate::research::http::get_text("web_open", &input.url).await?;
+        let (content, truncated) = crate::research::sanitize::truncate_with_marker(
+            &crate::research::sanitize::sanitize_text(&body),
+            4000,
+        );
+        if content.trim().is_empty() {
+            return Ok(ToolOutput::error(format!(
+                "No readable text was extracted from {}. The page may be empty, script-rendered, or blocked automated access.",
+                input.url
+            )));
+        }
         Ok(ToolOutput::success(serde_json::json!({
             "url": input.url,
-            "status": status.as_u16(),
-            "message": "URL opened and content retrieved",
-            "content_length": cleaned.len(),
-            "content_preview": cleaned.chars().take(500).collect::<String>()
+            "provider": "web_open",
+            "content": crate::research::sanitize::as_quoted_data("PAGE", &content),
+            "content_length": content.chars().count(),
+            "truncated": truncated,
         })))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(serde_json::json!({
-            "url": input.url,
-            "message": "HTTP feature not enabled",
-            "status": 0
-        })))
+        Ok(ToolOutput::error(http_feature_unavailable_for(
+            "web_open", &input.url,
+        )))
     }
 }
 
@@ -633,35 +679,81 @@ pub struct ResearchInput {
     pub query: String,
 }
 
-pub async fn execute_research(input: ResearchInput) -> Result<ToolOutput> {
+/// Render a completed research result as the MCP payload for a research tool.
+///
+/// The payload is the bounded evidence packet the LLM reasons over: findings,
+/// sources with full provenance, contradictions and limitations. Raw provider
+/// HTML never crosses this boundary (Rule 2, Rule 9). The accompanying summary
+/// is explicitly marked as third-party data so the reasoning step has an
+/// unambiguous trust boundary.
+/// Build a research pipeline wired to the memory repository.
+///
+/// Validated findings must be durable, not merely constructed (R12), so every
+/// entry point that can run research builds its pipeline through this helper
+/// rather than constructing one directly.
+#[cfg(feature = "http")]
+fn pipeline_with_memory(
+    database: &Arc<SqliteDatabase>,
+) -> crate::research::pipeline::ResearchPipeline {
+    use crate::memory::repository::SqliteMemoryRepository;
+    let providers = crate::research::adapter_registry::all_providers();
+    let repository = Arc::new(SqliteMemoryRepository::new((**database).clone()));
+    crate::research::pipeline::ResearchPipeline::new(providers).with_memory_repository(repository)
+}
+
+#[cfg(feature = "http")]
+fn research_payload(result: &crate::research::ResearchResult, mode: &str) -> ToolOutput {
+    let packet = result.to_evidence_packet();
+    // The packet is serialized once to confirm it round-trips across the MCP
+    // boundary (R8). A result that cannot be serialized is reported as an error
+    // rather than returned as a partially-formed payload.
+    let serialized = crate::research::evidence::serialize_result(result);
+    let round_trips = crate::research::evidence::deserialize_result(&serialized).is_some();
+    ToolOutput::success(serde_json::json!({
+        "mode": mode,
+        "question": packet.query,
+        "findings": packet.findings,
+        "sources": packet.sources,
+        "contradictions": packet.contradictions,
+        "limitations": packet.limitations,
+        "confidence": packet.confidence,
+        "queries": result.queries,
+        "retrieved_at": packet.retrieved_at,
+        "findings_count": packet.findings.len(),
+        "sources_count": packet.sources.len(),
+        "contradictions_count": packet.contradictions.len(),
+        "evidence_summary": crate::research::evidence::build_evidence_summary(result),
+        "evidence_packet_serialized": serialized,
+        "evidence_packet_round_trips": round_trips,
+    }))
+}
+
+pub async fn execute_research(
+    input: ResearchInput,
+    database: &Arc<SqliteDatabase>,
+) -> Result<ToolOutput> {
     #[cfg(feature = "http")]
     {
-        let providers = crate::research::adapter_registry::all_providers();
-        let pipeline = crate::research::pipeline::ResearchPipeline::new(providers);
+        if !crate::research::is_research_ready() {
+            return Ok(ToolOutput::error(format!(
+                "research is not available. Request was: {}. {}",
+                input.query,
+                crate::research::adapter_registry::readiness_report()
+            )));
+        }
+        let pipeline = pipeline_with_memory(database);
         let result = pipeline
             .run_pipeline(&input.query, crate::research::pipeline::Mode::Auto)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(serde_json::json!({
-            "question": result.question,
-            "findings": result.findings,
-            "sources": result.sources,
-            "contradictions": result.contradictions,
-            "limitations": result.limitations,
-            "confidence": result.confidence,
-            "retrieved_at": result.retrieved_at,
-            "queries": result.queries,
-            "findings_count": result.findings.len(),
-            "sources_count": result.sources.len(),
-            "contradictions_count": result.contradictions.len()
-        })))
+        Ok(research_payload(&result, "auto"))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(serde_json::json!({
-            "message": format!("HTTP feature not enabled for query: {}", input.query),
-            "findings": 0
-        })))
+        Ok(ToolOutput::error(http_feature_unavailable_for(
+            "research",
+            &input.query,
+        )))
     }
 }
 
@@ -670,39 +762,27 @@ pub struct QuickResearchInput {
     pub query: String,
 }
 
-pub async fn execute_quick_research(input: QuickResearchInput) -> Result<ToolOutput> {
+pub async fn execute_quick_research(
+    input: QuickResearchInput,
+    database: &Arc<SqliteDatabase>,
+) -> Result<ToolOutput> {
     #[cfg(feature = "http")]
     {
-        let providers = crate::research::adapter_registry::all_providers();
         let quick = crate::research::quick_research::QuickMode::new(Arc::new(
-            crate::research::pipeline::ResearchPipeline::new(providers),
+            pipeline_with_memory(database),
         ));
         let result = quick
             .run(&input.query)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(serde_json::json!({
-            "question": result.question,
-            "findings": result.findings,
-            "sources": result.sources,
-            "contradictions": result.contradictions,
-            "limitations": result.limitations,
-            "confidence": result.confidence,
-            "retrieved_at": result.retrieved_at,
-            "queries": result.queries,
-            "findings_count": result.findings.len(),
-            "sources_count": result.sources.len(),
-            "contradictions_count": result.contradictions.len(),
-            "mode": "quick"
-        })))
+        Ok(research_payload(&result, "quick"))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(serde_json::json!({
-            "message": format!("HTTP feature not enabled for quick query: {}", input.query),
-            "findings": 0,
-            "mode": "quick"
-        })))
+        Ok(ToolOutput::error(http_feature_unavailable_for(
+            "quick_research",
+            &input.query,
+        )))
     }
 }
 
@@ -711,39 +791,26 @@ pub struct DeepResearchInput {
     pub query: String,
 }
 
-pub async fn execute_deep_research(input: DeepResearchInput) -> Result<ToolOutput> {
+pub async fn execute_deep_research(
+    input: DeepResearchInput,
+    database: &Arc<SqliteDatabase>,
+) -> Result<ToolOutput> {
     #[cfg(feature = "http")]
     {
-        let providers = crate::research::adapter_registry::all_providers();
-        let deep = crate::research::deep_research::DeepMode::new(Arc::new(
-            crate::research::pipeline::ResearchPipeline::new(providers),
-        ));
+        let deep =
+            crate::research::deep_research::DeepMode::new(Arc::new(pipeline_with_memory(database)));
         let result = deep
             .run(&input.query)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(serde_json::json!({
-            "question": result.question,
-            "findings": result.findings,
-            "sources": result.sources,
-            "contradictions": result.contradictions,
-            "limitations": result.limitations,
-            "confidence": result.confidence,
-            "retrieved_at": result.retrieved_at,
-            "queries": result.queries,
-            "findings_count": result.findings.len(),
-            "sources_count": result.sources.len(),
-            "contradictions_count": result.contradictions.len(),
-            "mode": "deep"
-        })))
+        Ok(research_payload(&result, "deep"))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(serde_json::json!({
-            "message": format!("HTTP feature not enabled for deep query: {}", input.query),
-            "findings": 0,
-            "mode": "deep"
-        })))
+        Ok(ToolOutput::error(http_feature_unavailable_for(
+            "deep_research",
+            &input.query,
+        )))
     }
 }
 
@@ -752,79 +819,85 @@ pub struct FindErrorResolutionInput {
     pub error: String,
 }
 
-pub async fn execute_find_error_resolution(input: FindErrorResolutionInput) -> Result<ToolOutput> {
+pub async fn execute_find_error_resolution(
+    input: FindErrorResolutionInput,
+    database: &Arc<SqliteDatabase>,
+) -> Result<ToolOutput> {
     #[cfg(feature = "http")]
     {
-        let providers = crate::research::adapter_registry::all_providers();
-        let pipeline = crate::research::pipeline::ResearchPipeline::new(providers);
+        let pipeline = pipeline_with_memory(database);
         let query = format!("error resolution for: {}", input.error);
         match pipeline
             .run_pipeline(&query, crate::research::pipeline::Mode::Quick)
             .await
         {
-            Ok(result) => Ok(ToolOutput::success(serde_json::json!({
-                "error": input.error,
-                "resolution": "Searched external sources for resolution",
-                "suggestion": format!("Found {} findings with confidence {:.2}", result.findings.len(), result.confidence),
-                "findings": result.findings,
-                "sources": result.sources,
-                "contradictions": result.contradictions,
-                "limitations": result.limitations,
-                "confidence": result.confidence,
-                "retrieved_at": result.retrieved_at,
-                "queries": result.queries,
-                "findings_count": result.findings.len(),
-                "sources_count": result.sources.len(),
-                "contradictions_count": result.contradictions.len()
-            }))),
-            Err(_) => Ok(ToolOutput::success(serde_json::json!({
-                "error": input.error,
-                "resolution": "Check logs and retry",
-                "suggestion": "Review error message and verify inputs; external search unavailable"
-            }))),
+            Ok(result) => {
+                let mut payload = research_payload(&result, "quick");
+                if let Some(data) = payload.data.as_object_mut() {
+                    data.insert("error_text".to_string(), serde_json::json!(input.error));
+                }
+                Ok(payload)
+            }
+            Err(e) => {
+                // Do NOT fabricate a resolution. Returning success here with
+                // "Check logs and retry" tells the LLM that a search happened
+                // and produced a verdict, which invites it to invent a fix.
+                // Propagate the real cause instead (Rule 6, structured errors).
+                tracing::warn!(error = %e, "error-resolution research pipeline failed");
+                Err(anyhow::anyhow!(
+                    "error-resolution research failed for '{}': {}",
+                    input.error,
+                    e
+                ))
+            }
         }
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(serde_json::json!({
-            "error": input.error,
-            "resolution": "Check logs and retry",
-            "suggestion": "Review error message and verify inputs; HTTP feature not enabled"
-        })))
+        Ok(ToolOutput::error(http_feature_unavailable_for(
+            "find_error_resolution",
+            &input.error,
+        )))
     }
 }
 
 pub async fn execute_web_search(input: WebSearchInput) -> Result<ToolOutput> {
     #[cfg(feature = "http")]
     {
-        let provider = crate::research::duckduckgo::DuckDuckGoProvider::new()
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
-        let results = provider
-            .search(&input.query)
+        // The tool is provider-agnostic: it queries the configured chain
+        // (DuckDuckGo primary, Brave secondary when keyed) rather than naming a
+        // provider, and reports the chain outcome honestly (R14, Rule 4).
+        let providers = crate::research::adapter_registry::all_providers();
+        let results = crate::research::failover::try_providers(&providers, &input.query)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
         Ok(ToolOutput::success(serde_json::json!({
             "query": input.query,
+            "provider": results.provider,
+            "retrieved_at": results.retrieved_at,
             "results": results.results.iter().map(|r| serde_json::json!({
                 "title": r.title,
                 "url": r.url,
                 "snippet": r.snippet,
-                "relevance": r.relevance
+                "relevance": r.relevance,
             })).collect::<Vec<_>>(),
-            "provider": results.provider
         })))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(serde_json::json!({
-            "query": input.query,
-            "message": "HTTP feature not enabled",
-            "results": []
-        })))
+        Ok(ToolOutput::error(http_feature_unavailable_for(
+            "web_search",
+            &input.query,
+        )))
     }
 }
 
-// Adapter execution stubs (Architecture §R11 / per-source adapters)
+// Per-source adapters (research_engine.md Tool Catalog, R11).
+//
+// Each handler returns the adapter's ACTUAL results with full provenance, never
+// a result count. Returning a count is worse than returning nothing: the calling
+// LLM reads a non-zero count as evidence that the search succeeded and invents
+// the content that was never returned.
 #[derive(Debug, Clone, Serialize, Deserialize, schemars::JsonSchema)]
 pub struct AdapterQueryInput {
     pub query: String,
@@ -890,609 +963,563 @@ pub struct AdapterCitationsInput {
     pub format: String,
 }
 
+/// Render a provider result set as the MCP payload for a per-source adapter.
+///
+/// The payload carries every result with its title, URL, snippet and relevance,
+/// so the caller can read the evidence and cite it. A note is attached when the
+/// result count exceeds what is returned, so the cap is never silent.
+#[cfg(feature = "http")]
+fn adapter_payload(
+    provider: &'static str,
+    query: &str,
+    results: Vec<crate::research::provider::SearchResult>,
+    limit: usize,
+    extra: Vec<(&str, serde_json::Value)>,
+) -> ToolOutput {
+    let total = results.len();
+    let returned: Vec<_> = results.into_iter().take(limit).collect();
+    let dropped = total.saturating_sub(returned.len());
+    let mut payload = serde_json::json!({
+        "provider": provider,
+        "query": query,
+        "result_count": returned.len(),
+        "results": returned.iter().map(|r| serde_json::json!({
+            "title": r.title,
+            "url": r.url,
+            "snippet": r.snippet,
+            "relevance": r.relevance,
+        })).collect::<Vec<_>>(),
+    });
+    if dropped > 0 {
+        payload["truncation_notice"] = serde_json::json!(format!(
+            "{dropped} further results were retrieved and are not shown; raise the limit to see them."
+        ));
+    }
+    for (key, value) in extra {
+        payload[key] = value;
+    }
+    ToolOutput::success(payload)
+}
+
+/// Guard for the no-http build: report the tool as unavailable, never as empty.
+#[cfg(not(feature = "http"))]
+fn adapter_unavailable(tool: &str, subject: &str) -> Result<ToolOutput> {
+    Ok(ToolOutput::error(http_feature_unavailable_for(
+        tool, subject,
+    )))
+}
+
 pub async fn execute_get_wikipedia(input: AdapterQueryInput) -> Result<ToolOutput> {
     #[cfg(feature = "http")]
     {
         let provider = crate::research::wikipedia::WikipediaProvider::new();
         let results = provider
-            .search(&input.query)
+            .fetch(&input.query, 10)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"query": input.query, "provider":"wikipedia", "results": results.results.len()}),
+        Ok(adapter_payload(
+            "wikipedia",
+            &input.query,
+            results,
+            10,
+            Vec::new(),
         ))
     }
     #[cfg(not(feature = "http"))]
     {
-        tracing::debug!(query = %input.query, "Wikipedia search - HTTP not enabled");
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("get_wikipedia", &input.query)
     }
 }
+
 pub async fn execute_search_news(input: AdapterQueryInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
     #[cfg(feature = "http")]
     {
         let provider = crate::research::news::NewsProvider::new();
         let results = provider
-            .search(&input.query)
+            .fetch(&input.query, 25)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"query": input.query, "provider":"news", "results": results.results.len()}),
+        Ok(adapter_payload(
+            "google_news",
+            &input.query,
+            results,
+            15,
+            Vec::new(),
         ))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("search_news", &input.query)
     }
 }
+
 pub async fn execute_search_reddit(input: AdapterSubredditInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
     #[cfg(feature = "http")]
     {
         let provider = crate::research::reddit::RedditProvider::new();
         let results = provider
-            .search(&input.query)
+            .fetch(&input.query, input.subreddit.as_deref(), 25)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"query": input.query, "subreddit": input.subreddit, "provider":"reddit", "results": results.results.len()}),
+        Ok(adapter_payload(
+            "reddit",
+            &input.query,
+            results,
+            15,
+            vec![("subreddit", serde_json::json!(input.subreddit))],
         ))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("search_reddit", &input.query)
     }
 }
+
 pub async fn execute_search_hackernews(input: AdapterQueryInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
     #[cfg(feature = "http")]
     {
         let provider = crate::research::hackernews::HackerNewsProvider::new();
         let results = provider
-            .search(&input.query)
+            .fetch(&input.query, 20)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"query": input.query, "provider":"hackernews", "results": results.results.len()}),
+        Ok(adapter_payload(
+            "hackernews",
+            &input.query,
+            results,
+            15,
+            Vec::new(),
         ))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("search_hackernews", &input.query)
     }
 }
+
 pub async fn execute_search_youtube(input: AdapterYouTubeInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
     #[cfg(feature = "http")]
     {
         let provider = crate::research::youtube::YouTubeProvider::new();
         let results = provider
-            .search(&input.query)
+            .fetch(&input.query, input.include_transcript.unwrap_or(false), 10)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"query": input.query, "include_transcript": input.include_transcript, "provider":"youtube", "results": results.results.len()}),
+        Ok(adapter_payload(
+            "youtube",
+            &input.query,
+            results,
+            10,
+            Vec::new(),
         ))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("search_youtube", &input.query)
     }
 }
+
 pub async fn execute_search_substack(input: AdapterSubstackInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
     #[cfg(feature = "http")]
     {
         let provider = crate::research::substack::SubstackProvider::new();
+        let limit = input.max_posts.unwrap_or(20).clamp(1, 50);
         let results = provider
-            .search(&input.publications)
+            .fetch(&input.publications, limit)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"publications": input.publications, "max_posts": input.max_posts, "provider":"substack", "results": results.results.len()}),
+        Ok(adapter_payload(
+            "substack",
+            &input.publications,
+            results,
+            limit,
+            vec![("max_posts", serde_json::json!(limit))],
         ))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("search_substack", &input.publications)
     }
 }
+
 pub async fn execute_search_bluesky(input: AdapterBlueskyInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
     #[cfg(feature = "http")]
     {
         let provider = crate::research::bluesky::BlueskyProvider::new();
         let results = provider
-            .search(&input.query)
+            .fetch(&input.query, input.sort.as_deref(), 25)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"query": input.query, "sort": input.sort, "provider":"bluesky", "results": results.results.len()}),
+        Ok(adapter_payload(
+            "bluesky",
+            &input.query,
+            results,
+            15,
+            vec![("sort", serde_json::json!(input.sort))],
         ))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("search_bluesky", &input.query)
     }
 }
+
 pub async fn execute_search_telegram(input: AdapterTelegramInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
     #[cfg(feature = "http")]
     {
         let provider = crate::research::telegram::TelegramProvider::new();
+        let limit = input.max_messages.unwrap_or(20).clamp(1, 100);
         let results = provider
-            .search(&input.channel)
+            .fetch(&input.channel, limit)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"channel": input.channel, "max_messages": input.max_messages, "provider":"telegram", "results": results.results.len()}),
+        Ok(adapter_payload(
+            "telegram",
+            &input.channel,
+            results,
+            limit,
+            Vec::new(),
         ))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("search_telegram", &input.channel)
     }
 }
+
 pub async fn execute_search_mastodon(input: AdapterQueryInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
     #[cfg(feature = "http")]
     {
         let provider = crate::research::mastodon::MastodonProvider::new();
         let results = provider
-            .search(&input.query)
+            .fetch(&input.query, 20)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"query": input.query, "provider":"mastodon", "results": results.results.len()}),
+        Ok(adapter_payload(
+            "mastodon",
+            &input.query,
+            results,
+            15,
+            Vec::new(),
         ))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("search_mastodon", &input.query)
     }
 }
+
 pub async fn execute_search_vk(input: AdapterQueryInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
     #[cfg(feature = "http")]
     {
         let provider = crate::research::vk::VkProvider::new();
         let results = provider
-            .search(&input.query)
+            .fetch(&input.query, 20)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"query": input.query, "provider":"vk", "results": results.results.len()}),
-        ))
+        Ok(adapter_payload("vk", &input.query, results, 15, Vec::new()))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("search_vk", &input.query)
     }
 }
+
 pub async fn execute_search_preprints(input: AdapterQueryInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
     #[cfg(feature = "http")]
     {
         let provider = crate::research::preprints::PreprintsProvider::new();
         let results = provider
-            .search(&input.query)
+            .fetch(&input.query, 20)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"query": input.query, "provider":"preprints", "results": results.results.len()}),
+        Ok(adapter_payload(
+            "arxiv",
+            &input.query,
+            results,
+            15,
+            Vec::new(),
         ))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("search_preprints", &input.query)
     }
 }
+
 pub async fn execute_search_datasets(input: AdapterQueryInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
     #[cfg(feature = "http")]
     {
         let provider = crate::research::datasets::DatasetsProvider::new();
         let results = provider
-            .search(&input.query)
+            .fetch(&input.query, 20)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"query": input.query, "provider":"datasets", "results": results.results.len()}),
+        Ok(adapter_payload(
+            "zenodo",
+            &input.query,
+            results,
+            15,
+            Vec::new(),
         ))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("search_datasets", &input.query)
     }
 }
+
 pub async fn execute_search_osm(input: AdapterOsmInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
     #[cfg(feature = "http")]
     {
         let provider = crate::research::osm::OsmProvider::new();
         let results = provider
-            .search(&input.query)
+            .fetch(&input.query, input.location.as_deref(), 15)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"query": input.query, "location": input.location, "provider":"osm", "results": results.results.len()}),
+        Ok(adapter_payload(
+            "openstreetmap",
+            &input.query,
+            results,
+            15,
+            vec![("location", serde_json::json!(input.location))],
         ))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("search_osm", &input.query)
     }
 }
+
 pub async fn execute_search_sec_filings(input: AdapterSecFilingsInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
     #[cfg(feature = "http")]
     {
         let provider = crate::research::sec_filings::SecFilingsProvider::new();
         let results = provider
-            .search(&input.query)
+            .fetch(&input.query, input.filing_type.as_deref(), 20)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"query": input.query, "filing_type": input.filing_type, "provider":"sec_filings", "results": results.results.len()}),
+        Ok(adapter_payload(
+            "sec_edgar",
+            &input.query,
+            results,
+            15,
+            vec![("filing_type", serde_json::json!(input.filing_type))],
         ))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("search_sec_filings", &input.query)
     }
 }
+
 pub async fn execute_resurrect_dead_link(input: AdapterUrlInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
     #[cfg(feature = "http")]
     {
         let provider = crate::research::wayback::WaybackProvider::new();
-        let results = provider
-            .search(&input.url)
+        let snapshot = provider
+            .resurrect(&input.url)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"url": input.url, "provider":"wayback", "results": results.results.len()}),
-        ))
+        Ok(ToolOutput::success(serde_json::json!({
+            "provider": "wayback_machine",
+            "original_url": input.url,
+            "archived_url": snapshot.url,
+            "title": snapshot.title,
+            "snapshot": snapshot.snippet,
+            "retrieved_at": chrono::Utc::now(),
+        })))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("resurrect_dead_link", &input.url)
     }
 }
+
 pub async fn execute_verify_citations(input: AdapterReferencesInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
     #[cfg(feature = "http")]
     {
+        if input.references.is_empty() {
+            return Ok(ToolOutput::error(
+                "verify_citations requires at least one reference to verify.",
+            ));
+        }
         let provider = crate::research::crossref::CrossrefProvider::new();
-        let results = provider
-            .search("citation verification")
-            .await
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"references": input.references, "provider":"crossref", "results": results.results.len()}),
-        ))
+        let mut verified = Vec::new();
+        let mut unverified = Vec::new();
+        for reference in &input.references {
+            let doi = match reference.as_str() {
+                Some(text) if !text.trim().is_empty() => text.trim().to_string(),
+                Some(_) => continue,
+                None => match reference.get("DOI").or_else(|| reference.get("doi")) {
+                    Some(value) if value.is_string() => {
+                        value.as_str().unwrap_or_default().trim().to_string()
+                    }
+                    _ => continue,
+                },
+            };
+            if doi.is_empty() {
+                continue;
+            }
+            match provider.verify_doi(&doi).await {
+                Ok(record) => verified.push(serde_json::json!({
+                    "doi": doi,
+                    "title": record.title,
+                    "url": record.url,
+                    "snippet": record.snippet,
+                })),
+                Err(e) => unverified.push(serde_json::json!({
+                    "doi": doi,
+                    "reason": e.to_string(),
+                })),
+            }
+        }
+        if verified.is_empty() && unverified.is_empty() {
+            return Ok(ToolOutput::error(
+                "verify_citations found no DOI in the supplied references; nothing could be verified.",
+            ));
+        }
+        Ok(ToolOutput::success(serde_json::json!({
+            "provider": "crossref",
+            "verified": verified,
+            "unverified": unverified,
+            "verified_count": verified.len(),
+            "unverified_count": unverified.len(),
+        })))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("verify_citations", "")
     }
 }
+
 pub async fn execute_find_counter_arguments(input: AdapterQueryInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
     #[cfg(feature = "http")]
     {
         let provider = crate::research::counter_arguments::CounterArgumentsProvider::new();
         let results = provider
-            .search(&input.query)
+            .fetch(&input.query, 15)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"query": input.query, "provider":"counter_arguments", "results": results.results.len()}),
+        Ok(adapter_payload(
+            "semantic_scholar",
+            &input.query,
+            results,
+            15,
+            Vec::new(),
         ))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("find_counter_arguments", &input.query)
     }
 }
+
 pub async fn execute_validate_bibliography(input: AdapterBibliographyInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
     #[cfg(feature = "http")]
     {
+        if input.bibliography.is_empty() {
+            return Ok(ToolOutput::error(
+                "validate_bibliography requires at least one reference to validate.",
+            ));
+        }
         let provider = crate::research::validate_bibliography::ValidateBibliographyProvider::new();
-        let results = provider
-            .search("bibliography validation")
-            .await
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"bibliography": input.bibliography, "provider":"validate_bibliography", "results": results.results.len()}),
-        ))
+        let statuses = provider.validate(&input.bibliography).await;
+        let verified_count = statuses.iter().filter(|s| s.verified).count();
+        Ok(ToolOutput::success(serde_json::json!({
+            "provider": "crossref",
+            "entries": statuses,
+            "verified_count": verified_count,
+            "unverified_count": statuses.len() - verified_count,
+        })))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("validate_bibliography", "")
     }
 }
+
 pub async fn execute_format_citations(input: AdapterCitationsInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
     #[cfg(feature = "http")]
     {
         let provider = crate::research::format_citations::FormatCitationsProvider::new();
-        let results = provider
-            .search(&input.doi)
+        let citation = provider
+            .format(&input.doi, &input.format)
             .await
             .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"doi": input.doi, "format": input.format, "provider":"format_citations", "results": results.results.len()}),
-        ))
+        Ok(ToolOutput::success(serde_json::json!({
+            "provider": "crossref",
+            "doi": input.doi,
+            "format": input.format,
+            "citation": citation,
+        })))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("format_citations", &input.doi)
     }
 }
+
 pub async fn execute_detect_trends(input: AdapterPlatformsInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
     #[cfg(feature = "http")]
     {
+        if input.platforms.is_empty() {
+            return Ok(ToolOutput::error(
+                "detect_trends requires at least one platform (supported: hackernews, reddit).",
+            ));
+        }
         let provider = crate::research::detect_trends::DetectTrendsProvider::new();
-        let results = provider
-            .search("trends")
-            .await
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"platforms": input.platforms, "provider":"detect_trends", "results": results.results.len()}),
-        ))
+        let (results, reports) = provider.fetch(&input.platforms, 10).await;
+        if results.is_empty() {
+            // No platform produced a trend. Report why, so the caller can tell an
+            // unreachable platform from one with no matching items.
+            let reasons: Vec<String> = reports.iter().filter_map(|r| r.reason.clone()).collect();
+            return Ok(ToolOutput::error(format!(
+                "detect_trends retrieved no trending items. {}",
+                if reasons.is_empty() {
+                    "Every queried platform returned an empty result.".to_string()
+                } else {
+                    reasons.join("; ")
+                }
+            )));
+        }
+        Ok(ToolOutput::success(serde_json::json!({
+            "platforms": input.platforms,
+            "result_count": results.len(),
+            "results": results.iter().map(|r| serde_json::json!({
+                "title": r.title,
+                "url": r.url,
+                "snippet": r.snippet,
+                "relevance": r.relevance,
+            })).collect::<Vec<_>>(),
+            "platform_reports": reports,
+        })))
     }
     #[cfg(not(feature = "http"))]
     {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+        adapter_unavailable("detect_trends", "")
     }
 }
+
 pub async fn execute_score_reliability(input: AdapterUrlsInput) -> Result<ToolOutput> {
-    tracing::debug!("search input received: {:?}", input);
-    #[cfg(feature = "http")]
-    {
-        let provider = crate::research::score_reliability::ScoreReliabilityProvider::new();
-        let results = provider
-            .search("reliability")
-            .await
-            .map_err(|e| anyhow::anyhow!("{}", e))?;
-        Ok(ToolOutput::success(
-            serde_json::json!({"urls": input.urls, "provider":"score_reliability", "results": results.results.len()}),
-        ))
+    // This tool is rule-based and performs no network call, so it works on every
+    // build rather than being gated behind the `http` feature.
+    if input.urls.is_empty() {
+        return Ok(ToolOutput::error(
+            "score_reliability requires at least one URL to assess.",
+        ));
     }
-    #[cfg(not(feature = "http"))]
-    {
-        Ok(ToolOutput::success(
-            serde_json::json!({"message":"HTTP feature not enabled"}),
-        ))
+    let provider = crate::research::score_reliability::ScoreReliabilityProvider::new();
+    let assessments = provider.score_all(&input.urls);
+    if assessments.is_empty() {
+        return Ok(ToolOutput::error(
+            "score_reliability received no non-empty URLs to assess.",
+        ));
     }
-}
-
-/// Actively reference adapter input structs to eliminate dead-code warnings.
-pub fn reference_adapter_inputs() {
-    let q = AdapterQueryInput {
-        query: "test".to_string(),
-    };
-    tracing::debug!("AdapterQueryInput: query={}", q.query);
-    let u = AdapterUrlInput {
-        url: "http://test".to_string(),
-    };
-    tracing::debug!("AdapterUrlInput: url={}", u.url);
-    let r = AdapterReferencesInput {
-        references: vec![serde_json::json!({})],
-    };
-    tracing::debug!("AdapterReferencesInput: refs={}", r.references.len());
-    let b = AdapterBibliographyInput {
-        bibliography: vec![serde_json::json!({})],
-    };
-    tracing::debug!("AdapterBibliographyInput: bibs={}", b.bibliography.len());
-    let p = AdapterPlatformsInput {
-        platforms: vec!["reddit".to_string()],
-    };
-    tracing::debug!("AdapterPlatformsInput: count={}", p.platforms.len());
-    let us = AdapterUrlsInput {
-        urls: vec!["http://test".to_string()],
-    };
-    tracing::debug!("AdapterUrlsInput: count={}", us.urls.len());
-    let sr = AdapterSubredditInput {
-        query: "rust".to_string(),
-        subreddit: Some("rust".to_string()),
-    };
-    tracing::debug!("AdapterSubredditInput: query={}", sr.query);
-    let yt = AdapterYouTubeInput {
-        query: "rust tutorial".to_string(),
-        include_transcript: Some(true),
-    };
-    tracing::debug!("AdapterYouTubeInput: query={}", yt.query);
-    let ss = AdapterSubstackInput {
-        publications: "tech".to_string(),
-        max_posts: Some(5),
-    };
-    tracing::debug!("AdapterSubstackInput: pubs={}", ss.publications);
-    let bs = AdapterBlueskyInput {
-        query: "rustlang".to_string(),
-        sort: Some("latest".to_string()),
-    };
-    tracing::debug!("AdapterBlueskyInput: query={}", bs.query);
-    let tg = AdapterTelegramInput {
-        channel: "rustlang".to_string(),
-        max_messages: Some(10),
-    };
-    tracing::debug!("AdapterTelegramInput: channel={}", tg.channel);
-    let osm = AdapterOsmInput {
-        query: "library".to_string(),
-        location: Some("40.7128,-74.0060".to_string()),
-    };
-    tracing::debug!("AdapterOsmInput: query={}", osm.query);
-    let sec = AdapterSecFilingsInput {
-        query: "AAPL".to_string(),
-        filing_type: Some("10-K".to_string()),
-    };
-    tracing::debug!("AdapterSecFilingsInput: query={}", sec.query);
-    let ci = AdapterCitationsInput {
-        doi: "10.1234/test".to_string(),
-        format: "apa".to_string(),
-    };
-    tracing::debug!("AdapterCitationsInput: doi={}", ci.doi);
-}
-
-/// Actively reference execute functions to eliminate dead-code warnings.
-pub async fn reference_execute_functions() {
-    let r1 = execute_get_wikipedia(AdapterQueryInput {
-        query: "test".to_string(),
-    })
-    .await;
-    tracing::debug!("execute_get_wikipedia: {:?}", r1.is_ok());
-    let r2 = execute_search_news(AdapterQueryInput {
-        query: "test".to_string(),
-    })
-    .await;
-    tracing::debug!("execute_search_news: {:?}", r2.is_ok());
-    let r3 = execute_search_reddit(AdapterSubredditInput {
-        query: "test".to_string(),
-        subreddit: None,
-    })
-    .await;
-    tracing::debug!("execute_search_reddit: {:?}", r3.is_ok());
-    let r4 = execute_search_hackernews(AdapterQueryInput {
-        query: "test".to_string(),
-    })
-    .await;
-    tracing::debug!("execute_search_hackernews: {:?}", r4.is_ok());
-    let r5 = execute_search_youtube(AdapterYouTubeInput {
-        query: "test".to_string(),
-        include_transcript: None,
-    })
-    .await;
-    tracing::debug!("execute_search_youtube: {:?}", r5.is_ok());
-    let r6 = execute_search_substack(AdapterSubstackInput {
-        publications: "test".to_string(),
-        max_posts: None,
-    })
-    .await;
-    tracing::debug!("execute_search_substack: {:?}", r6.is_ok());
-    let r7 = execute_search_bluesky(AdapterBlueskyInput {
-        query: "test".to_string(),
-        sort: None,
-    })
-    .await;
-    tracing::debug!("execute_search_bluesky: {:?}", r7.is_ok());
-    let r8 = execute_search_telegram(AdapterTelegramInput {
-        channel: "test".to_string(),
-        max_messages: None,
-    })
-    .await;
-    tracing::debug!("execute_search_telegram: {:?}", r8.is_ok());
-    let r9 = execute_search_mastodon(AdapterQueryInput {
-        query: "test".to_string(),
-    })
-    .await;
-    tracing::debug!("execute_search_mastodon: {:?}", r9.is_ok());
-    let r10 = execute_search_vk(AdapterQueryInput {
-        query: "test".to_string(),
-    })
-    .await;
-    tracing::debug!("execute_search_vk: {:?}", r10.is_ok());
-    let r11 = execute_search_preprints(AdapterQueryInput {
-        query: "test".to_string(),
-    })
-    .await;
-    tracing::debug!("execute_search_preprints: {:?}", r11.is_ok());
-    let r12 = execute_search_datasets(AdapterQueryInput {
-        query: "test".to_string(),
-    })
-    .await;
-    tracing::debug!("execute_search_datasets: {:?}", r12.is_ok());
-    let r13 = execute_search_osm(AdapterOsmInput {
-        query: "test".to_string(),
-        location: None,
-    })
-    .await;
-    tracing::debug!("execute_search_osm: {:?}", r13.is_ok());
-    let r14 = execute_search_sec_filings(AdapterSecFilingsInput {
-        query: "test".to_string(),
-        filing_type: None,
-    })
-    .await;
-    tracing::debug!("execute_search_sec_filings: {:?}", r14.is_ok());
-    let r15 = execute_resurrect_dead_link(AdapterUrlInput {
-        url: "http://test".to_string(),
-    })
-    .await;
-    tracing::debug!("execute_resurrect_dead_link: {:?}", r15.is_ok());
-    let r16 = execute_verify_citations(AdapterReferencesInput {
-        references: vec![serde_json::json!({"doi": "test"})],
-    })
-    .await;
-    tracing::debug!("execute_verify_citations: {:?}", r16.is_ok());
-    let r17 = execute_find_counter_arguments(AdapterQueryInput {
-        query: "test".to_string(),
-    })
-    .await;
-    tracing::debug!("execute_find_counter_arguments: {:?}", r17.is_ok());
-    let r18 = execute_validate_bibliography(AdapterBibliographyInput {
-        bibliography: vec![],
-    })
-    .await;
-    tracing::debug!("execute_validate_bibliography: {:?}", r18.is_ok());
-    let r19 = execute_format_citations(AdapterCitationsInput {
-        doi: "test".to_string(),
-        format: "apa".to_string(),
-    })
-    .await;
-    tracing::debug!("execute_format_citations: {:?}", r19.is_ok());
-    let r20 = execute_detect_trends(AdapterPlatformsInput {
-        platforms: vec!["test".to_string()],
-    })
-    .await;
-    tracing::debug!("execute_detect_trends: {:?}", r20.is_ok());
-    let r21 = execute_score_reliability(AdapterUrlsInput {
-        urls: vec!["http://test".to_string()],
-    })
-    .await;
-    tracing::debug!("execute_score_reliability: {:?}", r21.is_ok());
-    tracing::debug!("execute_functions: 21 functions called");
+    Ok(ToolOutput::success(serde_json::json!({
+        "provider": "rule_based",
+        "method": "structural URL analysis (scheme, host, persistent identifier, path specificity)",
+        "assessments": assessments,
+        "assessment_count": assessments.len(),
+    })))
 }
