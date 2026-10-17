@@ -2,31 +2,23 @@
 .zed/
 .delta/
 # Block heavy, unstable Rust build folders and ghost files
-target/
-
-LLModel/
-
-# Generated test output (do not commit)
-agents/scripts/test_suite2/test_suite_output.txt
-agents/scripts/test_suite2/test_suite_report.json
-
-# Python live-test cache
-__pycache__/
-*.pyc
+target/*
 
 # Cargo.lock — robot_brain is a binary crate; test_suite is a separate
 # independent binary crate. Neither lock file should be committed.
 Cargo.lock
 
 # Agent documentation and scripts - NEVER commit
-.agents/
 AGENTS.md
-
-# SQLite database files (created at runtime, not source-controlled)
-robot_brain.db
-robot_brain.db-wal
-robot_brain.db-shm
-
-# Windows reserved-name ghost file created by a `> nul` redirect on a
-# POSIX-style shell. Not addressable by the agent file tools; needs a shell.
-nul
+.agents/githooks/*
+.agents/githooks/pre-commit
+.agents/githooks/pre-push
+.agents/notes/*
+.agents/notes/ToDo.md
+.agents/TEST_SUITE_NOTES.md
+.agents/PLAN.md
+.agents/LARGE_FILE_REFACTOR.md
+.agents/context_save.md
+.agents/CHANGELOG.md
+.agents/skills/robot-brain/skill.md
+.agents/scripts/test_output.txt

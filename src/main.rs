@@ -49,7 +49,6 @@ async fn main() -> anyhow::Result<()> {
     // Actively reference remaining APIs to eliminate dead-code warnings
     crate::memory::reference_memory_layers();
     crate::memory::reference_memory_layer_apis();
-    crate::memory::reference_memory_integrity_contracts();
     crate::knowledge::reference_graph_verification_contracts();
     data_contracts::observation::reference_observation_methods();
     data_contracts::action_request::reference_action_request_methods();
@@ -316,8 +315,6 @@ async fn main() -> anyhow::Result<()> {
     tracing::debug!("CoObOpLoop loop runner reference wired");
     crate::experience::coordinator::reference_experience_coordinator();
     tracing::debug!("Experience coordinator reference wired");
-    crate::experience::reference_experience_subsystems();
-    tracing::debug!("Experience subsystems reference wired");
     // Wire planner-to-execution request (Chapter 11 -> Chapter 12.5)
     let dummy_plan = crate::planner::engine::types::Plan {
         id: "wire-plan".to_string(),

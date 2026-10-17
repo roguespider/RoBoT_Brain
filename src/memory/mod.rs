@@ -14,7 +14,6 @@
 use crate::memory::types::ResearchProvenance;
 
 pub mod embedding;
-pub mod integrity;
 pub mod permanent;
 pub mod pipeline;
 pub mod procedural;
@@ -158,11 +157,6 @@ pub fn reference_memory_layer_apis() {
         min_confidence = policy.min_confidence,
         "Forgetting policy API referenced"
     );
-}
-
-/// Active reference to memory integrity contracts.
-pub fn reference_memory_integrity_contracts() {
-    crate::memory::integrity::reference_memory_integrity_contracts();
 }
 
 /// Integration: retrieve memory for context and optionally promote.
