@@ -173,6 +173,11 @@ impl IdleState {
         self.get_interval()
     }
 
+    /// Enter wait phase (deliberate inactivity).
+    pub fn enter_wait(&mut self) {
+        self.phase = IdlePhase::Waiting;
+    }
+
     /// Evaluate categories with useful work available (§7.4).
     pub fn evaluate_useful_work(
         &mut self,

@@ -17,7 +17,7 @@ pub mod inspection;
 pub mod learning;
 pub mod learning_pipeline;
 pub mod llm_provider;
-pub mod loop_runner;
+pub mod loop_runner_engine;
 pub mod opportunity;
 pub mod post_task;
 pub mod queue;
@@ -92,9 +92,8 @@ pub fn init() {
         crate::cooboploop::queue::GoalStatus::Accepted,
     );
 
-    let mut loop_runner = crate::cooboploop::loop_runner::LoopRunner::new();
-    let mut return_queue = crate::cooboploop::queue::ObjectiveQueue::new();
-    let return_count = loop_runner.return_to_queue(&mut return_queue, &[]);
+    let mut loop_runner = crate::cooboploop::loop_runner_engine::LoopRunner::new();
+    let return_count = loop_runner.return_to_queue(&[]);
 
     let mut pipeline = crate::cooboploop::self_improvement::SelfImprovementPipeline::new();
     let stage = pipeline.current_stage();
@@ -126,7 +125,7 @@ pub fn init() {
     let idle_wait = idle.should_wait();
 
     // Wire LoopRunner
-    let loop_runner = crate::cooboploop::loop_runner::LoopRunner::new();
+    let loop_runner = crate::cooboploop::loop_runner_engine::LoopRunner::new();
     let cycle_summary_str = loop_runner.cycle_summary();
 
     let lp = crate::cooboploop::learning::LearningPipeline::new();
