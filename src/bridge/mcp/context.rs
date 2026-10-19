@@ -139,7 +139,17 @@ impl McpContext {
             world_model,
             enforcer,
         } = systems;
-        let skill_executor = Arc::new(SkillExecutor::new(skills.clone()));
+        let skill_executor = Arc::new(SkillExecutor::with_subsystems(
+            skills.clone(),
+            crate::skills::registry::executor::SubsystemRefs {
+                permanent_memory: permanent_memory.clone(),
+                working_memory: working_memory.clone(),
+                memory_retrieval: memory_retrieval.clone(),
+                planner: planner.clone(),
+                database: database.clone(),
+                experience: coordinator.clone(),
+            },
+        ));
         let safety_gate = Arc::new(SafetyGate::new());
         Self {
             database,
