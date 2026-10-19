@@ -8,7 +8,7 @@ use crate::experience::types::OutcomeKind;
 use crate::workflows::engine::SKIP_MEMORY_READ;
 use crate::workflows::engine::types::WorkflowEngine;
 
-use crate::workflows::engine::experience::{
+use crate::workflows::engine::types::{
     build_experience_description, map_action_to_experience_type,
 };
 

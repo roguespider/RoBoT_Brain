@@ -24,6 +24,61 @@ pub struct Workflow {
     pub completed_at: Option<chrono::DateTime<chrono::Utc>>,
 }
 
+/// Status of a single workflow step
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum StepStatus {
+    /// Step has not been executed yet
+    #[default]
+    Pending,
+    /// Step is currently running
+    Running,
+    /// Step completed successfully
+    Completed,
+    /// Step failed after all retries exhausted
+    Failed,
+}
+
+/// Result of executing a single workflow step
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct StepResult {
+    pub step_id: String,
+    pub step_name: String,
+    pub status: StepStatus,
+    pub output: Option<crate::bridge::tools::ToolOutput>,
+    pub error: Option<String>,
+    pub retry_count: u32,
+    pub started_at: Option<chrono::DateTime<chrono::Utc>>,
+    pub completed_at: Option<chrono::DateTime<chrono::Utc>>,
+}
+
+impl StepResult {
+    pub fn new(step_id: String, step_name: String) -> Self {
+        Self {
+            step_id,
+            step_name,
+            status: StepStatus::Pending,
+            output: None,
+            error: None,
+            retry_count: 0,
+            started_at: None,
+            completed_at: None,
+        }
+    }
+
+    pub fn with_error(step_id: String, step_name: String, error: String) -> Self {
+        Self {
+            step_id,
+            step_name,
+            status: StepStatus::Failed,
+            output: None,
+            error: Some(error),
+            retry_count: 0,
+            started_at: None,
+            completed_at: Some(chrono::Utc::now()),
+        }
+    }
+}
+
 /// A single step in a workflow
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkflowStep {
@@ -34,6 +89,8 @@ pub struct WorkflowStep {
     pub retry_count: u32,
     pub max_retries: u32,
     pub timeout_seconds: u64,
+    /// Step IDs that must complete successfully before this step can run
+    pub depends_on: Vec<String>,
     pub on_success: Option<String>,
     pub on_failure: Option<String>,
 }
@@ -47,6 +104,18 @@ pub enum WorkflowStatus {
     Completed,
     Failed,
     Cancelled,
+}
+
+/// Failure policy for workflow execution
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+pub enum WorkflowFailurePolicy {
+    /// Stop workflow execution on first step failure
+    #[default]
+    StopOnFirstFailure,
+    /// Continue executing other steps even if some fail
+    ContinueOnError,
+    /// Continue but mark failed steps; retry unblocked steps on next run
+    RetryUnblocked,
 }
 
 /// Workflow execution engine
@@ -70,6 +139,181 @@ pub struct ExperienceRecord {
     pub title: String,
     pub interpretation: Option<String>,
     pub reflection_questions: Vec<String>,
+}
+
+use crate::bridge::tools::ToolOutput;
+
+impl ExperienceRecord {
+    /// Create a new experience record with separated observation/interpretation
+    pub fn new(action: &str, params: &HashMap<String, String>, result: &ToolOutput) -> Self {
+        let observation = Self::build_observation(action, params);
+        let outcome = Self::build_outcome(result);
+        let search_query = build_search_query(action, params);
+        let title = format!(
+            "Workflow: {}",
+            params
+                .get("title")
+                .or(params.get("name"))
+                .cloned()
+                .unwrap_or_else(|| action.replace('_', " "))
+        );
+        let outcome_kind = if result.success { "success" } else { "failure" }.to_string();
+
+        let reflection_questions = vec![
+            "Why did this happen?".to_string(),
+            "Was the outcome expected?".to_string(),
+            "What should change?".to_string(),
+            "What should be attempted next?".to_string(),
+        ];
+
+        Self {
+            action: action.to_string(),
+            observation,
+            outcome,
+            outcome_kind,
+            search_query,
+            title,
+            interpretation: None,
+            reflection_questions,
+        }
+    }
+
+    /// Build raw observation - observable facts only
+    fn build_observation(action: &str, params: &HashMap<String, String>) -> String {
+        let target = params
+            .get("path")
+            .or_else(|| params.get("file_path"))
+            .or_else(|| params.get("name"))
+            .or_else(|| params.get("title"))
+            .or_else(|| params.get("command"))
+            .map(|v| format!(" on '{}'", v))
+            .unwrap_or_default();
+
+        match action {
+            "create_file" | "write_file" => format!("File operation: create/write{}", target),
+            "edit_file" => format!("File operation: edit{}", target),
+            "delete_file" => format!("File operation: delete{}", target),
+            "run_command" | "execute_command" | "bash" => format!("Command executed{}", target),
+            "create_reflection" => "Reflection created".to_string(),
+            "ingest_files" | "import_files" => "Files ingested".to_string(),
+            "record_experience" => "Experience recorded".to_string(),
+            "search_memory" | "get_memory" => "Memory accessed".to_string(),
+            "add_knowledge" => "Knowledge added".to_string(),
+            _ => format!("Action: {}", action),
+        }
+    }
+
+    /// Build outcome description
+    fn build_outcome(result: &ToolOutput) -> String {
+        let status = if result.success { "success" } else { "failure" };
+        let summary = extract_result_summary(result);
+        format!("{}: {}", status, summary)
+    }
+
+    /// Convert to description string for storage
+    /// Separates observation from interpretation for architecture #5
+    pub fn to_description(&self) -> String {
+        let mut parts = Vec::new();
+
+        parts.push(format!("[TITLE] {}", self.title));
+        parts.push(format!("[ACTION] {}", self.action));
+        parts.push(format!("[OBSERVATION] {}", self.observation));
+        parts.push(format!("[OUTCOME] {}", self.outcome));
+        parts.push(format!("[OUTCOME_KIND] {}", self.outcome_kind));
+        parts.push(format!("[SEARCH_QUERY] {}", self.search_query));
+
+        if let Some(ref interp) = self.interpretation {
+            parts.push(format!("[INTERPRETATION] {}", interp));
+        } else {
+            parts.push("[INTERPRETATION] Pending reflection".to_string());
+        }
+
+        parts.push("[REFLECTION QUESTIONS]".to_string());
+        for q in &self.reflection_questions {
+            parts.push(format!("  - {}", q));
+        }
+
+        parts.join("\n")
+    }
+}
+
+/// Build experience description
+pub fn build_experience_description(
+    action: &str,
+    params: &HashMap<String, String>,
+    result: &ToolOutput,
+) -> String {
+    let record = ExperienceRecord::new(action, params, result);
+    record.to_description()
+}
+
+/// Map workflow action names to ExperienceType
+pub fn map_action_to_experience_type(action: &str) -> String {
+    match action {
+        // File operations
+        "create_file" | "write_file" | "edit_file" | "delete_file" => "tool_execution".to_string(),
+
+        // Command execution
+        "run_command" | "execute_command" | "bash" => "tool_execution".to_string(),
+
+        // Memory operations
+        "store_memory" | "write_memory" => "memory_store".to_string(),
+        "search_memory" | "read_memory" | "get_memory" => "memory_lookup".to_string(),
+
+        // Workflow operations
+        "create_workflow" | "start_workflow" | "execute_workflow" => "workflow".to_string(),
+
+        // Reflection
+        "create_reflection" | "reflect" => "reflection".to_string(),
+
+        // File ingestion
+        "ingest_files" | "import_files" => "tool_execution".to_string(),
+
+        // Experience recording
+        "record_experience" => "learning".to_string(),
+
+        // Generic fallback
+        _ => "system".to_string(),
+    }
+}
+
+/// Build search query from action and parameters
+pub fn build_search_query(action: &str, params: &HashMap<String, String>) -> String {
+    let mut parts = vec![action.replace('_', " ")];
+
+    for value in params.values() {
+        if !value.is_empty() && value.len() < 100 {
+            let normalized_value = value.replace(['[', ']', '{', '}'], "").trim().to_string();
+            if !normalized_value.is_empty() {
+                parts.push(normalized_value);
+            }
+        }
+    }
+
+    let query = parts.join(" ");
+    if query.len() > 200 {
+        query[..200].to_string()
+    } else {
+        query
+    }
+}
+
+/// Extract a brief summary from the result
+pub fn extract_result_summary(result: &ToolOutput) -> String {
+    result
+        .data
+        .get("message")
+        .or_else(|| result.data.get("summary"))
+        .or_else(|| result.data.get("content"))
+        .and_then(|v| v.as_str())
+        .map(|s| {
+            if s.len() > 100 {
+                format!("{}...", &s[..100])
+            } else {
+                s.to_string()
+            }
+        })
+        .unwrap_or_else(|| "No details".to_string())
 }
 
 impl Clone for WorkflowEngine {

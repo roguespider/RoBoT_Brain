@@ -1,13 +1,13 @@
 // src/workflows/engine/executor/actions.rs
 //! Action execution for workflow steps
 
-use std::collections::HashMap;
-use std::sync::Arc;
 use anyhow::Result;
 use serde_json::json;
+use std::collections::HashMap;
+use std::sync::Arc;
 
-use crate::experience::types::OutcomeKind;
 use crate::bridge::tools::{self, ToolOutput};
+use crate::experience::types::OutcomeKind;
 use crate::workflows::engine::types::WorkflowEngine;
 
 impl WorkflowEngine {
@@ -16,22 +16,39 @@ impl WorkflowEngine {
         &self,
         action: &str,
         params: &HashMap<String, String>,
+        variables: &HashMap<String, String>,
+        step_results: &HashMap<String, ToolOutput>,
     ) -> Result<ToolOutput> {
+        // Log variable substitution context for debugging
+        if !variables.is_empty() {
+            tracing::debug!(
+                "Workflow step '{}' has {} variables, {} step results",
+                action,
+                variables.len(),
+                step_results.len()
+            );
+        }
         let get_param = |key: &str| params.get(key).cloned().unwrap_or_default();
 
         match action {
             // Memory actions
             "store_memory" => {
                 // store_memory requires working_memory which workflow engine doesn't have
-                Ok(ToolOutput::error("store_memory action requires working_memory which is not available in workflow engine. Use ingest_file for file ingestion."))
+                Ok(ToolOutput::error(
+                    "store_memory action requires working_memory which is not available in workflow engine. Use ingest_file for file ingestion.",
+                ))
             }
             "search_memory" => {
                 // search_memory requires memory_retrieval which workflow engine doesn't have
-                Ok(ToolOutput::error("search_memory action requires memory_retrieval which is not available in workflow engine"))
+                Ok(ToolOutput::error(
+                    "search_memory action requires memory_retrieval which is not available in workflow engine",
+                ))
             }
             "list_memories" => {
                 // list_memories requires memory_retrieval which workflow engine doesn't have
-                Ok(ToolOutput::error("list_memories action requires memory_retrieval which is not available in workflow engine"))
+                Ok(ToolOutput::error(
+                    "list_memories action requires memory_retrieval which is not available in workflow engine",
+                ))
             }
 
             // Experience actions
@@ -49,13 +66,14 @@ impl WorkflowEngine {
                         .cloned()
                         .unwrap_or_else(|| "general".to_string()),
                     outcome: parse_outcome_kind(
-                        params.get("outcome").map(|s| s.as_str()).unwrap_or("success"),
+                        params
+                            .get("outcome")
+                            .map(|s| s.as_str())
+                            .unwrap_or("success"),
                     ),
                     context: context_value,
-                    confidence: params.get("confidence")
-                        .and_then(|v| v.parse::<f32>().ok()),
-                    importance: params.get("importance")
-                        .and_then(|v| v.parse::<f32>().ok()),
+                    confidence: params.get("confidence").and_then(|v| v.parse::<f32>().ok()),
+                    importance: params.get("importance").and_then(|v| v.parse::<f32>().ok()),
                     tags: None,
                 };
 
@@ -63,11 +81,13 @@ impl WorkflowEngine {
                     let scorer = crate::experience::scorer::ExperienceScorer::new();
                     let bus = Arc::new(crate::experience::bus::ExperienceBus::new());
                     let metrics = Arc::new(crate::experience::metrics::MetricsCollector::new());
-                    let coordinator = Arc::new(
-                        crate::experience::coordinator::ExperienceCoordinator::new(scorer, bus, metrics),
-                    );
+                    let coordinator =
+                        Arc::new(crate::experience::coordinator::ExperienceCoordinator::new(
+                            scorer, bus, metrics,
+                        ));
                     let result =
-                        tools::experience::execute_record_experience(input, &coordinator, db).await?;
+                        tools::experience::execute_record_experience(input, &coordinator, db)
+                            .await?;
                     Ok(result)
                 } else {
                     Ok(ToolOutput::success(json!({
@@ -90,14 +110,17 @@ impl WorkflowEngine {
                 };
 
                 let reflection = Arc::new(crate::experience::reflection::ReflectionEngine::new());
-                let result = tools::reflection::execute_create_reflection(input, &reflection).await?;
+                let result =
+                    tools::reflection::execute_create_reflection(input, &reflection).await?;
                 Ok(result)
             }
 
             // Ingestor actions
             "ingest_files" => {
                 // ingest_files requires working_memory which workflow engine doesn't have
-                Ok(ToolOutput::error("ingest_files action requires working_memory which is not available in workflow engine"))
+                Ok(ToolOutput::error(
+                    "ingest_files action requires working_memory which is not available in workflow engine",
+                ))
             }
 
             // Generic tool call

@@ -52,7 +52,9 @@ impl WorkflowEngine {
             }
 
             // Execute the step action
-            let result = self.execute_step_action(&step.action, &params).await;
+            let result = self
+                .execute_step_action(&step.action, &params, &variables, &step_results)
+                .await;
 
             match result {
                 Ok(output) => {
