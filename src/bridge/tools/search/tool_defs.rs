@@ -1,11 +1,18 @@
 // src/bridge/tools/search/definitions.rs
-// Search tool definitions and schema
+// Search tool definitions - the McpTool list used by the handler.
+
+pub const GLOBAL_SEARCH: &str = "global_search";
+pub const GET_RECOMMENDATIONS: &str = "get_recommendations";
+pub const GET_REPUTATION: &str = "get_reputation";
+pub const WEB_SEARCH: &str = "web_search";
+pub const WEB_OPEN: &str = "web_open";
+pub const WEB_EXTRACT: &str = "web_extract";
+pub const RESEARCH: &str = "research";
+pub const QUICK_RESEARCH: &str = "quick_research";
+pub const DEEP_RESEARCH: &str = "deep_research";
+pub const FIND_ERROR_RESOLUTION: &str = "find_error_resolution";
 
 pub fn all() -> Vec<crate::bridge::mcp::McpTool> {
-    all_tools()
-}
-
-fn all_tools() -> Vec<crate::bridge::mcp::McpTool> {
     macro_rules! desc {
         ($s:expr) => {
             format!("[WORKFLOW: get_workflow + search_memory first] {}", $s)
@@ -13,7 +20,7 @@ fn all_tools() -> Vec<crate::bridge::mcp::McpTool> {
     }
     vec![
         crate::bridge::mcp::McpTool {
-            name: "global_search".to_string(),
+            name: GLOBAL_SEARCH.to_string(),
             description: desc!("Search across all memories, experiences, and reflections"),
             input_schema: serde_json::json!({
                 "type": "object",
@@ -37,7 +44,7 @@ fn all_tools() -> Vec<crate::bridge::mcp::McpTool> {
             }),
         },
         crate::bridge::mcp::McpTool {
-            name: "get_recommendations".to_string(),
+            name: GET_RECOMMENDATIONS.to_string(),
             description: desc!("Get recommendations based on learned patterns"),
             input_schema: serde_json::json!({
                 "type": "object",
@@ -55,7 +62,7 @@ fn all_tools() -> Vec<crate::bridge::mcp::McpTool> {
             }),
         },
         crate::bridge::mcp::McpTool {
-            name: "get_reputation".to_string(),
+            name: GET_REPUTATION.to_string(),
             description: desc!("Get reputation score for a tool"),
             input_schema: serde_json::json!({
                 "type": "object",
@@ -69,7 +76,7 @@ fn all_tools() -> Vec<crate::bridge::mcp::McpTool> {
             }),
         },
         crate::bridge::mcp::McpTool {
-            name: "web_extract".to_string(),
+            name: WEB_EXTRACT.to_string(),
             description: desc!("Extract content from a URL using Jina"),
             input_schema: serde_json::json!({
                 "type": "object",
@@ -83,7 +90,7 @@ fn all_tools() -> Vec<crate::bridge::mcp::McpTool> {
             }),
         },
         crate::bridge::mcp::McpTool {
-            name: "research".to_string(),
+            name: RESEARCH.to_string(),
             description: desc!("Run research pipeline (auto-selects quick/deep)"),
             input_schema: serde_json::json!({
                 "type": "object",
@@ -97,7 +104,7 @@ fn all_tools() -> Vec<crate::bridge::mcp::McpTool> {
             }),
         },
         crate::bridge::mcp::McpTool {
-            name: "quick_research".to_string(),
+            name: QUICK_RESEARCH.to_string(),
             description: desc!("Run quick research (fast mode)"),
             input_schema: serde_json::json!({
                 "type": "object",
@@ -111,7 +118,7 @@ fn all_tools() -> Vec<crate::bridge::mcp::McpTool> {
             }),
         },
         crate::bridge::mcp::McpTool {
-            name: "deep_research".to_string(),
+            name: DEEP_RESEARCH.to_string(),
             description: desc!("Run deep research (thorough mode)"),
             input_schema: serde_json::json!({
                 "type": "object",
@@ -125,7 +132,7 @@ fn all_tools() -> Vec<crate::bridge::mcp::McpTool> {
             }),
         },
         crate::bridge::mcp::McpTool {
-            name: "find_error_resolution".to_string(),
+            name: FIND_ERROR_RESOLUTION.to_string(),
             description: desc!("Find error resolution"),
             input_schema: serde_json::json!({
                 "type": "object",
@@ -139,7 +146,7 @@ fn all_tools() -> Vec<crate::bridge::mcp::McpTool> {
             }),
         },
         crate::bridge::mcp::McpTool {
-            name: "web_open".to_string(),
+            name: WEB_OPEN.to_string(),
             description: desc!("Open a web URL"),
             input_schema: serde_json::json!({
                 "type": "object",
@@ -153,7 +160,7 @@ fn all_tools() -> Vec<crate::bridge::mcp::McpTool> {
             }),
         },
         crate::bridge::mcp::McpTool {
-            name: "web_search".to_string(),
+            name: WEB_SEARCH.to_string(),
             description: desc!("Search the web using DuckDuckGo"),
             input_schema: serde_json::json!({
                 "type": "object",

@@ -127,16 +127,21 @@ class CodeAnalyzer:
                 if not quote_before:
                     issues.append(Issue(file_path, i, "Panic", "panic!() macro found"))
 
-            # underscore prefix
-            if not is_comment and self.patterns["underscore_prefix"].search(line):
-                issues.append(
-                    Issue(
-                        file_path,
-                        i,
-                        "UnderscorePrefix",
-                        "Underscore-prefixed identifier",
-                    )
-                )
+            # underscore prefix — skip if inside string literal
+            if not is_comment:
+                _up_match = self.patterns["underscore_prefix"].search(line)
+                if _up_match is not None:
+                    match_pos = _up_match.start()
+                    quote_before = line[:match_pos].count('"') % 2 == 1
+                    if not quote_before:
+                        issues.append(
+                            Issue(
+                                file_path,
+                                i,
+                                "UnderscorePrefix",
+                                "Underscore-prefixed identifier",
+                            )
+                        )
 
             # let _ = ...
             if self.patterns["underscore_ignore"].search(line):
