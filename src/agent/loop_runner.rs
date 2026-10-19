@@ -167,6 +167,43 @@ impl AgentLoop {
             }
             crate::agent::decision::TierResult::WorldModelPassed => {
                 tracing::debug!("Internal sources passed cascade: world model");
+                // Use world_model graph reasoning: check for blockers on the goal.
+                if let Ok(goal_uuid) = goal.id.parse::<uuid::Uuid>() {
+                    let blockers = self.deps.world_model.detect_blocks(goal_uuid).await;
+                    if !blockers.is_empty() {
+                        tracing::warn!(
+                            blocker_count = blockers.len(),
+                            "Goal has {} blocker(s) in world model",
+                            blockers.len()
+                        );
+                    }
+                    // Also check for dependency paths in the world model.
+                    let deps = self.deps.world_model.dependencies_of(goal_uuid).await;
+                    if !deps.is_empty() {
+                        tracing::debug!(
+                            dep_count = deps.len(),
+                            "Goal depends on {} entity(ies) in world model",
+                            deps.len()
+                        );
+                    }
+                    // Check if there's a path from goal to any consumed resources.
+                    let resources = self.deps.world_model.resources_consumed_by(goal_uuid).await;
+                    for resource in &resources {
+                        if let Some(path) = self
+                            .deps
+                            .world_model
+                            .find_path(goal_uuid, resource.id)
+                            .await
+                        {
+                            tracing::debug!(
+                                path_length = path.len(),
+                                "Path from goal to resource '{}' has {} hop(s)",
+                                resource.name,
+                                path.len()
+                            );
+                        }
+                    }
+                }
             }
             crate::agent::decision::TierResult::HypothesesPassed => {
                 tracing::debug!("Internal sources passed cascade: hypotheses");

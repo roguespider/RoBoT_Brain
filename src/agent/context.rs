@@ -15,6 +15,7 @@ use crate::knowledge::KnowledgeStore;
 use crate::memory::retrieval::MemoryRetrieval;
 use crate::personality::Personality;
 use crate::planner::Planner;
+use crate::world_model::WorldModel;
 
 use super::safety_gate::SafetyGate;
 
@@ -50,6 +51,9 @@ pub struct AgentDeps {
     pub personality: Arc<Mutex<Personality>>,
     /// Metrics collection for loop-health monitoring (T1-13..T1-16).
     pub metrics: Arc<Metrics>,
+    /// World Model — typed entity-relationship graph for graph-based reasoning
+    /// (Architecture §14, TASK-V2-06).
+    pub world_model: Arc<WorldModel>,
 }
 
 impl AgentDeps {
@@ -69,6 +73,7 @@ impl AgentDeps {
             safety_gate: context.safety_gate.clone(),
             personality,
             metrics: context.metrics.clone(),
+            world_model: context.world_model.clone(),
         }
     }
 }

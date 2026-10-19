@@ -166,6 +166,59 @@ impl WorldModel {
     pub async fn relationship_count(&self) -> usize {
         self.relationships.read().await.len()
     }
+
+    /// Graph traversal: find a path from source to target through relationships.
+    /// Returns the sequence of entity IDs forming the path, if one exists.
+    /// Uses BFS to find shortest path in the relationship graph.
+    pub async fn find_path(&self, source_id: Uuid, target_id: Uuid) -> Option<Vec<Uuid>> {
+        if source_id == target_id {
+            return Some(vec![source_id]);
+        }
+        let rels = self.relationships.read().await;
+        // Build adjacency list from relationships (bidirectional)
+        let mut adj: HashMap<Uuid, Vec<Uuid>> = HashMap::new();
+        for r in rels.iter() {
+            adj.entry(r.source).or_default().push(r.target);
+            adj.entry(r.target).or_default().push(r.source);
+        }
+        drop(rels);
+        // BFS
+        use std::collections::VecDeque;
+        let mut visited = std::collections::HashSet::new();
+        let mut queue: VecDeque<Uuid> = VecDeque::new();
+        queue.push_back(source_id);
+        let mut parent: HashMap<Uuid, Uuid> = HashMap::new();
+        visited.insert(source_id);
+        while let Some(current) = queue.pop_front() {
+            if let Some(neighbors) = adj.get(&current) {
+                for &next in neighbors {
+                    if visited.insert(next) {
+                        parent.insert(next, current);
+                        if next == target_id {
+                            // Reconstruct path
+                            let mut path = Vec::new();
+                            let mut cur = target_id;
+                            while cur != source_id {
+                                path.push(cur);
+                                cur = parent[&cur];
+                            }
+                            path.push(source_id);
+                            path.reverse();
+                            return Some(path);
+                        }
+                        queue.push_back(next);
+                    }
+                }
+            }
+        }
+        None
+    }
+
+    /// Alias for blockers_of — returns entities that block the given goal/entity.
+    /// Per Architecture §14: "what blocks this goal?"
+    pub async fn detect_blocks(&self, goal_id: Uuid) -> Vec<Entity> {
+        self.blockers_of(goal_id).await
+    }
 }
 
 impl Default for WorldModel {
