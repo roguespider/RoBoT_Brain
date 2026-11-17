@@ -18,8 +18,11 @@ pub mod experience_workflow_confidence;
 pub mod hierarchical_memory;
 pub mod job_queue;
 pub mod knowledge_graph;
+pub mod memory_contract;
 pub mod new_subsystems_v16;
 pub mod scheduling;
+pub mod security;
+pub mod subsystems_v18;
 pub mod tracking;
 
 /// Run all pending migrations.
@@ -36,7 +39,7 @@ fn run_migrations(conn: &Connection) -> Result<()> {
     let mut version = current_version(conn)?;
 
     // Run all pending migrations sequentially
-    while version < 16 {
+    while version < 19 {
         match version {
             0..=2 => {
                 core_data_storage::run(conn)?;
@@ -74,6 +77,18 @@ fn run_migrations(conn: &Connection) -> Result<()> {
             15 => {
                 new_subsystems_v16::run(conn)?;
                 version = 16;
+            }
+            16 => {
+                memory_contract::run(conn)?;
+                version = 17;
+            }
+            17 => {
+                subsystems_v18::run(conn)?;
+                version = 18;
+            }
+            18 => {
+                security::run(conn)?;
+                version = 19;
             }
             _ => break,
         }
