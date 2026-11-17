@@ -7,6 +7,8 @@
 //! real autonomous maintenance tasks: compaction, aging, checkpointing,
 //! and pattern learning (Architecture §23.6.5).
 
+use crate::database::sqlite::SqliteDatabase;
+
 /// Maintenance worker with real autonomous maintenance tasks.
 pub mod maintenance;
 pub use maintenance::{
@@ -172,7 +174,7 @@ impl BackgroundWorkerSystem {
 
     /// Start all enabled workers by submitting initial tasks to the supervisor.
     /// Per Architecture §23.7: workers SHALL be started during bootstrap.
-    pub fn start_workers(&mut self) {
+    pub fn start_workers(&mut self, db: &SqliteDatabase) {
         use crate::scheduler::{WorkerPriority, WorkerTask, WorkerType, schedule_task};
 
         if self.memory_worker.enabled {
@@ -232,7 +234,7 @@ impl BackgroundWorkerSystem {
         if self.knowledge_graph_worker.enabled {
             let task = WorkerTask::new(
                 "kg-worker-001",
-                WorkerType::KnowledgeGraphWorker,
+                crate::scheduler::WorkerType::KnowledgeGraphWorker,
                 serde_json::json!({"action": "start"}),
                 WorkerPriority::Normal,
             );
@@ -265,6 +267,37 @@ impl BackgroundWorkerSystem {
                 tracing::warn!("Worker: maintenance scheduling failed (capacity full)");
             }
         }
+
+        let results = self.process_tasks(db);
+        for (task_id, success) in &results {
+            tracing::info!(task_id, success, "Worker task executed");
+        }
+    }
+
+    /// Process pending tasks from the supervisor and run scheduled maintenance.
+    /// Per Architecture §23.7: workers execute tasks asynchronously with DB-backed results.
+    pub fn process_tasks(&mut self, db: &SqliteDatabase) -> Vec<(String, bool)> {
+        let results = self.supervisor.execute_pending();
+
+        let maintenance_results = self.maintenance_scheduler.run_maintenance(db);
+        match maintenance_results {
+            Ok(results) => {
+                for result in &results {
+                    tracing::info!(
+                        task = %result.task_type,
+                        success = result.success,
+                        records = result.records_affected,
+                        duration_ms = result.duration_ms,
+                        "Maintenance task executed"
+                    );
+                }
+            }
+            Err(e) => {
+                tracing::error!("Maintenance failed: {}", e);
+            }
+        }
+
+        results
     }
 
     /// Stop all workers by clearing pending tasks.
