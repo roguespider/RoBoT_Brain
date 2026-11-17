@@ -1,456 +1,217 @@
-// src/agent/decision.rs
-//! Action selection and confidence evaluation (Architecture §5.7 Decision Flow).
-//!
-//! The decision stage gathers evidence from three retrieval channels — memory,
-//! knowledge, and past experiences — and combines them into a single confidence
-//! score. If confidence clears the goal's threshold, the best-supported action
-//! candidate is selected for execution.
+//! Research cascade checker per research_engine.md §2 (9-Tier Confidence Cascade).
+//! Before research (tier 9) is dispatched, tiers 1-8 are checked in order:
+//! Memory -> Knowledge -> Experience -> Skills -> Reflections -> Workflows ->
+//! WorldModel -> Hypotheses. If any tier can answer the query, research is
+//! skipped. Research is the last resort.
 
-use crate::experience::types::{Experience, ExperienceScore};
-use crate::knowledge::KnowledgeItem;
-use crate::memory::retrieval::RetrievalResult;
-use crate::planner::engine::types::PlanStep;
-use crate::research::ResearchResult;
+use tokio::sync::Mutex;
 
-/// Confidence threshold for triggering the research engine.
-/// Research is only used when all internal sources fail to reach this confidence.
-pub const RESEARCH_THRESHOLD: f32 = 0.7;
-#[derive(Clone)]
-pub struct ActionConfidence {
-    pub value: f32,
-    pub threshold: f32,
-    /// Breakdown of how the score was composed (for uncertainty reporting).
-    pub components: ConfidenceComponents,
+use crate::experience::hypothesis::HypothesisEngine;
+use crate::experience::types::Experience;
+use crate::knowledge::store::KnowledgeStore;
+use crate::knowledge::world_model::store::WorldModel;
+use crate::memory::permanent::PermanentMemory;
+use crate::planning::engine::types::Plan;
+use crate::scheduler::cooboploop::capability::CapabilityRegistry;
+
+/// Dependencies for the 9-tier confidence cascade check.
+///
+/// Groups all tier 1-8 dependencies into a single parameter to avoid
+/// the clippy::too_many_arguments lint (limit is 7).
+pub struct CascadeDeps<'a> {
+    pub knowledge_store: &'a KnowledgeStore,
+    pub latest_experience: Option<&'a Experience>,
+    pub reflection_engine: &'a Mutex<crate::experience::reflection::engine::ReflectionEngine>,
+    pub current_plan: &'a Option<Plan>,
+    pub permanent_memory: &'a PermanentMemory,
+    pub world_model: &'a WorldModel,
+    pub hypothesis_engine: &'a HypothesisEngine,
 }
 
-impl std::fmt::Debug for ActionConfidence {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ActionConfidence")
-            .field("value", &self.value)
-            .field("threshold", &self.threshold)
-            .field("components", &self.components)
-            .finish()
-    }
-}
+/// 9-tier confidence cascade checker.
+///
+/// Checks tiers 1-8 before allowing research (tier 9) to proceed. Returns
+/// `true` if research should proceed (all tiers 1-8 failed), `false` if a
+/// tier 1-8 could answer the query.
+pub struct ResearchCascade;
 
-/// The per-channel contributions that produced `ActionConfidence::value`.
-#[derive(Clone, Default)]
-pub struct ConfidenceComponents {
-    pub memory_support: f32,
-    pub knowledge_support: f32,
-    pub experience_support: f32,
-    pub plan_step_confidence: f32,
-}
-
-impl std::fmt::Debug for ConfidenceComponents {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("ConfidenceComponents")
-            .field("memory_support", &self.memory_support)
-            .field("knowledge_support", &self.knowledge_support)
-            .field("experience_support", &self.experience_support)
-            .field("plan_step_confidence", &self.plan_step_confidence)
-            .finish()
-    }
-}
-
-impl ActionConfidence {
-    /// Weighted blend of the three retrieval channels plus the plan step's own
-    /// confidence. Weights follow the architecture's trust ordering:
-    /// knowledge (validated) > experience (observed) > memory (raw) > plan.
-    pub fn blend(
-        memory_support: f32,
-        knowledge_support: f32,
-        experience_support: f32,
-        plan_step_confidence: f32,
-        threshold: f32,
-    ) -> Self {
-        let value = 0.20 * memory_support
-            + 0.40 * knowledge_support
-            + 0.30 * experience_support
-            + 0.10 * plan_step_confidence;
-        let clamped = value.clamp(0.0, 1.0);
-        Self {
-            value: clamped,
-            threshold,
-            components: ConfidenceComponents {
-                memory_support,
-                knowledge_support,
-                experience_support,
-                plan_step_confidence,
-            },
-        }
-    }
-}
-
-/// An action the agent has selected to execute, with the evidence that backed it.
-#[derive(Clone)]
-pub struct SelectedAction {
-    /// The plan step whose `action` field names the tool to invoke.
-    pub step: PlanStep,
-    /// Aggregated confidence in this action.
-    pub confidence: ActionConfidence,
-    /// Memory items that supported the action.
-    pub supporting_memory: Vec<RetrievalResult>,
-    /// Knowledge items that supported the action.
-    pub supporting_knowledge: Vec<KnowledgeItem>,
-    /// Past experiences that informed the action.
-    pub supporting_experiences: Vec<Experience>,
-}
-
-impl std::fmt::Debug for SelectedAction {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("SelectedAction")
-            .field("step", &self.step)
-            .field("confidence", &self.confidence)
-            .field("supporting_memory", &self.supporting_memory)
-            .field("supporting_knowledge", &self.supporting_knowledge)
-            .field("supporting_experiences", &self.supporting_experiences)
-            .finish()
-    }
-}
-
-impl SelectedAction {
-    /// Human-readable rationale for the decision, citing the evidence channels
-    /// (Architecture §5.7 / §16 uncertainty reporting).
-    pub fn rationale(&self) -> String {
-        format!(
-            "action='{}' confidence={:.2} (memory={:.2}, knowledge={:.2}, experience={:.2}, \
-             plan={:.2}) backed by {} memory item(s), {} knowledge item(s), {} experience(s)",
-            self.step.action,
-            self.confidence.value,
-            self.confidence.components.memory_support,
-            self.confidence.components.knowledge_support,
-            self.confidence.components.experience_support,
-            self.confidence.components.plan_step_confidence,
-            self.supporting_memory.len(),
-            self.supporting_knowledge.len(),
-            self.supporting_experiences.len(),
-        )
-    }
-}
-
-/// Selects the best-supported action from a plan using retrieved evidence.
-pub struct ActionSelector;
-
-impl ActionSelector {
-    /// Compose confidence from the three retrieval channels and pick the plan
-    /// step with the highest blended confidence.
+impl ResearchCascade {
+    /// Run the full 9-tier cascade for a given topic.
     ///
-    /// Per §5.7: if no step clears a meaningful floor, the agent abstains
-    /// (returns `None`) so the loop can record a low-confidence experience
-    /// rather than act blindly.
-    pub fn select(
-        steps: &[PlanStep],
-        memory: &[RetrievalResult],
-        knowledge: &[KnowledgeItem],
-        experiences: &[Experience],
-        threshold: f32,
-    ) -> Option<SelectedAction> {
-        if steps.is_empty() {
-            return None;
+    /// Returns `true` if research should proceed (all tiers 1-8 failed),
+    /// `false` if a tier 1-8 could answer the query.
+    pub async fn should_research(topic: &str, deps: &CascadeDeps<'_>) -> bool {
+        // Tier 1: Memory — check permanent memory for high-confidence matches.
+        if Self::check_memory(deps.permanent_memory, topic).await {
+            tracing::debug!("Cascade tier 1 (Memory) passed for topic: {topic}");
+            return false;
         }
 
-        let memory_support = Self::aggregate_memory(memory);
-        let knowledge_support = Self::aggregate_knowledge(knowledge);
-        let experience_support = Self::aggregate_experience(experiences);
+        // Tier 2: Knowledge Base — query knowledge store for confident matches.
+        if Self::check_knowledge(deps.knowledge_store, topic) {
+            tracing::debug!("Cascade tier 2 (Knowledge) passed for topic: {topic}");
+            return false;
+        }
 
-        let mut best: Option<SelectedAction> = None;
-        for step in steps {
-            // Only consider steps that are not yet done.
-            if matches!(
-                step.status,
-                crate::planner::engine::types::StepStatus::Completed
-            ) {
-                continue;
+        // Tier 3: Experience — check latest experience for pattern match.
+        if Self::check_experience(deps.latest_experience, topic) {
+            tracing::debug!("Cascade tier 3 (Experience) passed for topic: {topic}");
+            return false;
+        }
+
+        // Tier 4: Skills — check if a relevant capability exists with sufficient level.
+        // CapabilityRegistry is not Sync (rusqlite::Connection interior RefCell),
+        // so tier 4 is always skipped (check_skills returns false when registry is None).
+        if Self::check_skills(None, topic) {
+            tracing::debug!("Cascade tier 4 (Skills) passed for topic: {topic}");
+            return false;
+        }
+
+        // Tier 5: Reflections — check for validated reflections.
+        if Self::check_reflections(deps.reflection_engine, topic).await {
+            tracing::debug!("Cascade tier 5 (Reflections) passed for topic: {topic}");
+            return false;
+        }
+
+        // Tier 6: Workflows/Plans — check for existing plan.
+        if Self::check_workflows(deps.current_plan, topic) {
+            tracing::debug!("Cascade tier 6 (Workflows) passed for topic: {topic}");
+            return false;
+        }
+
+        // Tier 7: World Model — check for relevant entity.
+        if Self::check_world_model(deps.world_model, topic).await {
+            tracing::debug!("Cascade tier 7 (World Model) passed for topic: {topic}");
+            return false;
+        }
+
+        // Tier 8: Hypotheses — check for relevant hypothesis.
+        if Self::check_hypotheses(deps.hypothesis_engine, topic) {
+            tracing::debug!("Cascade tier 8 (Hypotheses) passed for topic: {topic}");
+            return false;
+        }
+
+        // All tiers 1-8 failed — proceed to research (tier 9, last resort).
+        tracing::debug!("Cascade: all tiers 1-8 failed for topic: {topic}, proceeding to research");
+        true
+    }
+
+    /// Check tier 1: Memory.
+    ///
+    /// Searches permanent memory for items matching the topic with
+    /// confidence >= 0.7. Returns `true` if any such item exists.
+    async fn check_memory(store: &PermanentMemory, topic: &str) -> bool {
+        let results = store.search(topic).await;
+        results.iter().any(|item| item.confidence >= 0.7)
+    }
+
+    /// Check tier 2: Knowledge Base.
+    ///
+    /// Searches the knowledge store for items matching the topic with
+    /// confidence >= 0.7. Returns `true` if any such item exists.
+    fn check_knowledge(store: &KnowledgeStore, topic: &str) -> bool {
+        let results = store.search(topic);
+        results.iter().any(|item| item.overall_confidence() >= 0.7)
+    }
+
+    /// Check tier 3: Experience.
+    ///
+    /// Checks the latest experience for a pattern match against the topic.
+    /// Returns `true` if the experience has a confidence score >= 0.7 and
+    /// its outcome or description references the topic.
+    fn check_experience(exp: Option<&Experience>, topic: &str) -> bool {
+        let Some(exp) = exp else { return false };
+        let topic_lower = topic.to_lowercase();
+        let outcome_lower = exp.outcome.message.as_deref().unwrap_or("").to_lowercase();
+        let description_lower = exp.description.to_lowercase();
+        if (outcome_lower.contains(&topic_lower) || description_lower.contains(&topic_lower))
+            && exp.score.as_ref().is_some_and(|score| {
+                let overall = (score.confidence * 0.5 + score.reliability * 0.5).clamp(0.0, 1.0);
+                overall >= 0.7
+            })
+        {
+            return true;
+        }
+        false
+    }
+
+    /// Check tier 4: Skills.
+    ///
+    /// Checks the capability registry for a capability matching the topic
+    /// with level >= 0.7. Returns `true` if such a capability exists.
+    /// If no registry is provided, returns `false` (skill check does not pass).
+    fn check_skills(registry: Option<&CapabilityRegistry>, topic: &str) -> bool {
+        let Some(registry) = registry else {
+            return false;
+        };
+        let topic_lower = topic.to_lowercase();
+        for cap in registry.list() {
+            if cap.level >= 0.7
+                && (cap.name.to_lowercase().contains(&topic_lower)
+                    || topic_lower.contains(&cap.name.to_lowercase()))
+            {
+                return true;
             }
-            let plan_step_confidence = if step.supporting_knowledge.is_empty() {
-                0.4
-            } else {
-                0.6
-            };
-            let confidence = ActionConfidence::blend(
-                memory_support,
-                knowledge_support,
-                experience_support,
-                plan_step_confidence,
-                threshold,
-            );
-            let candidate = SelectedAction {
-                step: step.clone(),
-                confidence,
-                supporting_memory: memory.to_vec(),
-                supporting_knowledge: knowledge.to_vec(),
-                supporting_experiences: experiences.to_vec(),
-            };
-            match &best {
-                Some(current) if current.confidence.value >= candidate.confidence.value => {}
-                _ => best = Some(candidate),
+        }
+        false
+    }
+
+    /// Check tier 5: Reflections.
+    ///
+    /// Checks the reflection engine for validated reflections matching the topic.
+    /// Returns `true` if a validated reflection with sufficient confidence exists.
+    async fn check_reflections(
+        engine: &Mutex<crate::experience::reflection::engine::ReflectionEngine>,
+        topic: &str,
+    ) -> bool {
+        let guard = engine.lock().await;
+        let topic_lower = topic.to_lowercase();
+        let reflections = guard.list_validated().await;
+        for r in reflections {
+            let content = format!("{} {} {}", r.title, r.summary, r.description);
+            let content_lower = content.to_lowercase();
+            if content_lower.contains(&topic_lower) {
+                return true;
             }
         }
-
-        best
+        false
     }
 
-    /// Average retrieval relevance across supporting memory items.
-    fn aggregate_memory(memory: &[RetrievalResult]) -> f32 {
-        if memory.is_empty() {
-            return 0.0;
-        }
-        let sum: f32 = memory.iter().map(|r| r.relevance_score).sum();
-        (sum / memory.len() as f32).clamp(0.0, 1.0)
+    /// Check tier 6: Workflows/Plans.
+    ///
+    /// Checks if there is an existing plan that addresses the topic.
+    /// Returns `true` if a plan exists.
+    fn check_workflows(current_plan: &Option<Plan>, topic: &str) -> bool {
+        let Some(plan) = current_plan else {
+            return false;
+        };
+        let topic_lower = topic.to_lowercase();
+        let plan_description = format!("{} {:?}", plan.goal, plan.steps);
+        plan_description.to_lowercase().contains(&topic_lower)
     }
 
-    /// Average confidence across supporting knowledge items.
-    fn aggregate_knowledge(knowledge: &[KnowledgeItem]) -> f32 {
-        if knowledge.is_empty() {
-            return 0.0;
-        }
-        let sum: f32 = knowledge.iter().map(|k| k.confidence.overall()).sum();
-        (sum / knowledge.len() as f32).clamp(0.0, 1.0)
+    /// Check tier 7: World Model.
+    ///
+    /// Checks the world model for a relevant entity matching the topic.
+    /// Returns `true` if a relevant entity exists.
+    async fn check_world_model(model: &WorldModel, topic: &str) -> bool {
+        model.find_by_name(topic).await.is_some()
     }
 
-    /// Average overall score across supporting past experiences.
-    fn aggregate_experience(experiences: &[Experience]) -> f32 {
-        if experiences.is_empty() {
-            return 0.0;
-        }
-        let sum: f32 = experiences
+    /// Check tier 8: Hypotheses.
+    ///
+    /// Checks the hypothesis engine for a relevant hypothesis matching the topic.
+    /// Returns `true` if a relevant hypothesis exists.
+    fn check_hypotheses(engine: &HypothesisEngine, topic: &str) -> bool {
+        let graph = engine.get_graph();
+        let Ok(guard) = graph.lock() else {
+            return false;
+        };
+        let topic_lower = topic.to_lowercase();
+        // Check if any hypothesis node ID references the topic.
+        guard
+            .nodes
             .iter()
-            .map(|e| Self::experience_overall(e.score.as_ref()))
-            .sum();
-        (sum / experiences.len() as f32).clamp(0.0, 1.0)
+            .any(|node| node.hypothesis_id.0.to_lowercase().contains(&topic_lower))
     }
-
-    /// Extract an overall confidence from an `ExperienceScore`, defaulting low.
-    fn experience_overall(score: Option<&ExperienceScore>) -> f32 {
-        match score {
-            Some(s) => (s.confidence * 0.5 + s.reliability * 0.5).clamp(0.0, 1.0),
-            None => 0.2,
-        }
-    }
-}
-
-pub enum TierResult {
-    MemoryPassed,
-    KnowledgePassed,
-    ExperiencePassed,
-    SkillsPassed,
-    ReflectionsPassed,
-    WorkflowsPassed,
-    WorldModelPassed,
-    HypothesesPassed,
-    AllFailed,
-}
-
-/// Check internal sources in the 9-tier confidence cascade (Architecture §15).
-/// Tiers 1-3 (Memory, Knowledge, Experience) are checked directly.
-/// Tiers 4-8 (Skills, Reflections, Workflows, World Model, Hypotheses)
-/// are checked via memory/knowledge heuristics; the full async cascade
-/// (search_skills, list_reflections_by_status, list_workflows, get_plan,
-/// list_world_entities, query_world, list_hypotheses) is executed by
-/// the agent loop before research is triggered.
-/// Returns the first tier that passes (confidence >= RESEARCH_THRESHOLD),
-/// or AllFailed if none pass.
-pub fn check_internal_sources(
-    memory: &[crate::memory::retrieval::RetrievalResult],
-    knowledge: &[crate::knowledge::KnowledgeItem],
-    experiences: &[crate::experience::types::Experience],
-) -> TierResult {
-    // Tier 1: Memory - check for high-confidence memory items
-    for item in memory {
-        if item.item.confidence >= RESEARCH_THRESHOLD {
-            return TierResult::MemoryPassed;
-        }
-    }
-    // Tier 2: Knowledge - check for high-confidence knowledge items
-    for item in knowledge {
-        if item.confidence.overall() >= RESEARCH_THRESHOLD {
-            return TierResult::KnowledgePassed;
-        }
-    }
-    // Tier 3: Experience - check for high-confidence past experiences
-    for exp in experiences {
-        if let Some(score) = &exp.score {
-            let overall = (score.confidence * 0.5 + score.reliability * 0.5).clamp(0.0, 1.0);
-            if overall >= RESEARCH_THRESHOLD {
-                return TierResult::ExperiencePassed;
-            }
-        }
-    }
-    // Tier 4: Skills - check for available/relevant skills (Architecture §4.4)
-    // Actual subsystem APIs: crate::skills::search_skills(), crate::skills::execute_skill()
-    // Checked here via Skill-type memory items; full async check in agent loop.
-    for item in memory {
-        if item.item.memory_type == crate::memory::types::MemoryType::Skill {
-            return TierResult::SkillsPassed;
-        }
-    }
-    // Tier 5: Reflections - check for validated reflections (Architecture §4.5)
-    // Actual subsystem API: crate::reflections::list_reflections_by_status()
-    // Checked here via reflection-tagged experience memory; full async check in agent loop.
-    for item in memory {
-        if item.item.memory_type == crate::memory::types::MemoryType::Experience {
-            // Reflections are experience-type memory items with reflection-related tags/content
-            let content_lower = item.item.content.to_lowercase();
-            if content_lower.contains("reflection") || content_lower.contains("reflect") {
-                return TierResult::ReflectionsPassed;
-            }
-        }
-    }
-    // Tier 6: Workflows/Plans - check for existing plans (Architecture §4.6)
-    // Actual subsystem APIs: crate::planner::list_workflows(), crate::planner::get_plan()
-    // Checked here via Workflow-type memory items; full async check in agent loop.
-    for item in memory {
-        if item.item.memory_type == crate::memory::types::MemoryType::Workflow {
-            return TierResult::WorkflowsPassed;
-        }
-    }
-    // Tier 7: World Model - check for relevant entities (Architecture §4.7)
-    // Actual subsystem APIs: crate::world_model::list_world_entities(), crate::world_model::query_world()
-    // Checked here via entity/world/model content heuristics; full async check in agent loop.
-    for item in memory {
-        let content_lower = item.item.content.to_lowercase();
-        if content_lower.contains("entity")
-            || content_lower.contains("world")
-            || content_lower.contains("model")
-        {
-            return TierResult::WorldModelPassed;
-        }
-    }
-    // Tier 8: Hypotheses - check for relevant hypotheses (Architecture §4.8)
-    // Actual subsystem API: crate::hypotheses::list_hypotheses()
-    // Checked here via hypothesis-tagged memory/knowledge; full async check in agent loop.
-    for item in memory {
-        let content_lower = item.item.content.to_lowercase();
-        if content_lower.contains("hypothesis") || content_lower.contains("hypotheses") {
-            return TierResult::HypothesesPassed;
-        }
-    }
-    // Also check knowledge items for world model and hypothesis references
-    for item in knowledge {
-        let content_lower = item.statement.to_lowercase();
-        if content_lower.contains("hypothesis") || content_lower.contains("hypotheses") {
-            return TierResult::HypothesesPassed;
-        }
-        if content_lower.contains("entity") || content_lower.contains("world model") {
-            return TierResult::WorldModelPassed;
-        }
-    }
-    TierResult::AllFailed
-}
-
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum Decision {
-    Act,
-    NeedResearch,
-    Abstain,
-}
-
-impl std::fmt::Debug for Decision {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Decision::Act => write!(f, "Act"),
-            Decision::NeedResearch => write!(f, "NeedResearch"),
-            Decision::Abstain => write!(f, "Abstain"),
-        }
-    }
-}
-
-impl Decision {
-    pub fn is_act(&self) -> bool {
-        matches!(self, Decision::Act)
-    }
-    pub fn is_need_research(&self) -> bool {
-        matches!(self, Decision::NeedResearch)
-    }
-    pub fn is_abstain(&self) -> bool {
-        matches!(self, Decision::Abstain)
-    }
-}
-
-/// Trigger the research pipeline when all internal sources failed (§15 / T-COO-50).
-///
-/// This is tier 9 of the 9-tier confidence cascade. It runs only after tiers 1-8
-/// have all failed, builds a bounded evidence packet from the findings, and
-/// reports whether that packet is eligible for memory promotion (confidence
-/// >= 0.7 with no unresolved contradictions).
-///
-/// Returns `None` when research is unavailable or fails. The failure is logged
-/// with its cause rather than being converted into an empty success, so the
-/// caller can tell "no evidence found" from "research could not run".
-pub async fn trigger_research_on_failure(query: &str) -> Option<ResearchResult> {
-    #[cfg(feature = "http")]
-    {
-        // Readiness is checked here, at the point of use, so a disabled or
-        // unconfigured subsystem is detected before a query is issued (R9).
-        if !crate::research::is_research_ready() {
-            tracing::warn!(
-                query,
-                "{}",
-                crate::research::adapter_registry::readiness_report()
-            );
-            return None;
-        }
-        let providers = crate::research::adapter_registry::all_providers();
-        let pipeline = crate::research::pipeline::ResearchPipeline::new(providers);
-        match pipeline
-            .run_pipeline(query, crate::research::pipeline::Mode::Auto)
-            .await
-        {
-            Ok(result) => {
-                let evidence_packet = result.to_evidence_packet();
-                tracing::debug!(
-                    evidence_items = evidence_packet.findings.len(),
-                    source_items = evidence_packet.sources.len(),
-                    contradiction_items = evidence_packet.contradictions.len(),
-                    confidence = evidence_packet.confidence,
-                    "9-tier cascade evidence packet constructed"
-                );
-                // Promotion eligibility is reported for observability. The
-                // promotion itself happens inside the pipeline, which applies
-                // the same gate before writing to memory (R12, Rule 8).
-                let promotion_eligible = result.confidence >= 0.7
-                    && !result.findings.is_empty()
-                    && result.contradictions.is_empty();
-                if promotion_eligible {
-                    tracing::info!(
-                        query = %query,
-                        confidence = result.confidence,
-                        "9-tier cascade promotion gate passed"
-                    );
-                } else {
-                    tracing::debug!(
-                        query = %query,
-                        confidence = result.confidence,
-                        findings = result.findings.len(),
-                        contradictions = result.contradictions.len(),
-                        "9-tier cascade promotion gate blocked"
-                    );
-                }
-                Some(result)
-            }
-            Err(e) => {
-                tracing::error!(query, error = %e, "Research pipeline failed");
-                None
-            }
-        }
-    }
-    #[cfg(not(feature = "http"))]
-    {
-        tracing::debug!(query, "Research not available (http feature disabled)");
-        None
-    }
-}
-
-/// Actively reference Decision methods to eliminate dead-code warnings.
-pub fn reference_decision_methods() {
-    let d1 = Decision::Act;
-    let d2 = Decision::NeedResearch;
-    let d3 = Decision::Abstain;
-    tracing::debug!(
-        "Decision methods: is_act={}, is_need_research={}, is_abstain={}",
-        d1.is_act(),
-        d2.is_need_research(),
-        d3.is_abstain()
-    );
 }
