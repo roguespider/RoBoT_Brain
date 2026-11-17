@@ -11,18 +11,26 @@
 //! - Retry Policy (per-tool retry characteristics)
 //! - Artifacts (explicit artifact management)
 
+pub mod adapters;
 pub mod coordinator;
 pub mod dispatcher;
 pub mod execution_pipeline;
 pub mod executor;
 pub mod experience;
 pub mod external;
+pub mod health;
 pub mod lifecycle;
+pub mod mcp;
+pub mod metrics;
 pub mod permissions;
+pub mod plugins;
 pub mod registry;
+pub mod result;
 pub mod retry_policy;
+pub mod sandbox;
 pub mod streaming;
 pub mod telemetry;
+pub mod timeout;
 pub mod validator;
 
 /// Wire permission checker into production paths.
