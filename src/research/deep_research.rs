@@ -66,9 +66,17 @@ impl DeepMode {
             return dedupe(clauses.iter().map(|c| c.to_string()).collect());
         }
 
-        // A query that is already a question is searched as asked.
+        // A query that is already a question is decomposed into distinct
+        // sub-questions about its subject rather than re-searching the same
+        // question (which would add no new angles).
         if base.ends_with('?') {
-            return vec![base.to_string()];
+            let subject = Self::extract_subject(base);
+            return dedupe(
+                QUESTION_FORMS
+                    .iter()
+                    .map(|form| form.replace("{subject}", subject))
+                    .collect(),
+            );
         }
 
         dedupe(
@@ -77,6 +85,32 @@ impl DeepMode {
                 .map(|form| form.replace("{subject}", base))
                 .collect(),
         )
+    }
+
+    /// Extract the subject from a question by stripping common question
+    /// prefixes and a trailing question mark, so sub-questions are generated
+    /// about the topic rather than restating the full question.
+    fn extract_subject(query: &str) -> &str {
+        let q = query.trim().trim_end_matches('?').trim();
+        let lower = q.to_lowercase();
+        const PREFIXES: [&str; 10] = [
+            "what is ",
+            "who is ",
+            "where is ",
+            "when is ",
+            "how is ",
+            "how does ",
+            "how do ",
+            "what are ",
+            "who are ",
+            "where are ",
+        ];
+        for prefix in PREFIXES {
+            if lower.starts_with(prefix) {
+                return q[prefix.len()..].trim();
+            }
+        }
+        q
     }
 
     /// Run deep research over the derived sub-questions.
