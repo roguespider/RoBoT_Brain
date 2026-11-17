@@ -12,6 +12,7 @@ use rusqlite::Connection;
 use crate::database::sqlite::SqliteDatabase;
 
 pub mod advanced_features;
+pub mod cognitive_observability;
 pub mod cooboploop;
 pub mod core_data_storage;
 pub mod experience_workflow_confidence;
@@ -39,7 +40,7 @@ fn run_migrations(conn: &Connection) -> Result<()> {
     let mut version = current_version(conn)?;
 
     // Run all pending migrations sequentially
-    while version < 19 {
+    while version < 20 {
         match version {
             0..=2 => {
                 core_data_storage::run(conn)?;
@@ -89,6 +90,10 @@ fn run_migrations(conn: &Connection) -> Result<()> {
             18 => {
                 security::run(conn)?;
                 version = 19;
+            }
+            19 => {
+                cognitive_observability::run(conn)?;
+                version = 20;
             }
             _ => break,
         }
