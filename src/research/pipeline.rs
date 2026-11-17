@@ -167,18 +167,20 @@ impl ResearchPipeline {
         // requires. A bare `tokio::time::timeout` would abandon the future
         // without signalling the providers.
         let token = Arc::clone(&self.cancellation);
+        let search_token = token.clone();
         let search = async move {
-            let results = self.search_with_failover(trimmed, &token).await;
-            (results, token)
+            let results = self.search_with_failover(trimmed, &search_token).await;
+            (results, search_token)
         };
 
         let outcome = tokio::time::timeout(budget, search).await;
-        let (raw_results, _token) = match outcome {
+        let (raw_results, _) = match outcome {
             Ok(pair) => pair,
             Err(_) => {
                 // Signal cancellation so any provider work that is still
                 // unwinding observes it, then record the failed research so the
                 // pattern analysis can see which queries time out (R13).
+                // Dropping the token stops any in-flight provider fetch.
                 self.cancellation.cancel();
                 self.record_experience(trimmed, mode, Vec::new(), "failed", started.elapsed());
                 return Err(ResearchError::Timeout {
@@ -533,15 +535,13 @@ const STOP_WORDS: [&str; 24] = [
 ];
 
 /// Negation and stance markers that indicate opposing claims.
-const OPPOSITION_MARKERS: [&str; 8] = [
+const OPPOSITION_MARKERS: [&str; 6] = [
     "not",
     "never",
     "no evidence",
     "contradicts",
     "disproves",
     "refutes",
-    "however",
-    "but",
 ];
 
 /// Decide whether two statements about a shared subject actually disagree.
@@ -566,12 +566,12 @@ fn detect_opposition(a: &str, b: &str, subject: &str) -> Option<String> {
     }
 
     // The same subject with different measured values is a real conflict.
-    if let (Some(a_num), Some(b_num)) = (a_numeric, b_numeric) {
-        if a_num != b_num {
-            return Some(format!(
-                "Sources report different values for '{subject}' ({a_num} vs {b_num}); the figures require manual reconciliation."
-            ));
-        }
+    if let (Some(a_num), Some(b_num)) = (a_numeric, b_numeric)
+        && a_num != b_num
+    {
+        return Some(format!(
+            "Sources report different values for '{subject}' ({a_num} vs {b_num}); the figures require manual reconciliation."
+        ));
     }
 
     None
