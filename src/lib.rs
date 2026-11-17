@@ -31,6 +31,7 @@ pub mod workers;
 pub mod confidence;
 pub mod config;
 pub mod context;
+pub mod context_engine;
 pub mod conversation;
 pub use scheduler::cooboploop;
 pub mod deployment;
