@@ -11,6 +11,7 @@ use super::super::queue::{AgentGoal, GoalStatus};
 use super::super::sources::ObjectiveSource;
 use super::LoopRunner;
 use super::enums::LoopStage;
+use crate::memory::restructure_hierarchy;
 use std::sync::Arc;
 
 impl LoopRunner {
@@ -264,6 +265,13 @@ impl LoopRunner {
                 tracing::warn!("Autonomous maintenance: failed to initialize database");
             }
         }
+        // Wire memory hierarchy maintenance into cycle (Architecture §14):
+        let promoted = restructure_hierarchy(&mut self.memory_hierarchy);
+        tracing::debug!(
+            "Memory hierarchy restructured: {} records promoted",
+            promoted
+        );
+
         // Hardware-adaptive capability assessment (Section 12 / Section 22):
         if let Ok(mut discovery) = self.hardware_discovery.lock() {
             if let Some(profile) = discovery.detect() {

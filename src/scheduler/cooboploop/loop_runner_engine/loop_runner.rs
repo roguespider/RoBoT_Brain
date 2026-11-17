@@ -31,6 +31,7 @@ use super::enums::{CognitiveCycleStage, CyclePhase, LoopStage};
 use crate::api::bridge::app::agent::AutonomousAgentManager;
 use crate::knowledge::store::KnowledgeStore;
 use crate::learning::strategic::StrategicLearningEngine;
+use crate::memory::MemoryHierarchy;
 use crate::scheduler::cooboploop::Inspector;
 use crate::scheduler::cooboploop::hardware::HardwareDiscovery;
 use crate::workers::MaintenanceScheduler;
@@ -123,6 +124,8 @@ pub struct LoopRunner {
     pub(crate) inspector: Mutex<Inspector>,
     /// Knowledge store for learning feedback (Section 15: Knowledge Update).
     pub(crate) knowledge_store: KnowledgeStore,
+    /// Memory hierarchy for autonomous promotion/compression/forgetting (Architecture §14).
+    pub(crate) memory_hierarchy: MemoryHierarchy,
     /// Strategy tracker for learning feedback (Section 15: Strategy Refinement).
     pub(crate) strategy_tracker: Mutex<StrategyTracker>,
 }
@@ -184,6 +187,7 @@ impl LoopRunner {
             hardware_registry: None,
             inspector: Mutex::new(Inspector::new()),
             knowledge_store: KnowledgeStore::new(10000),
+            memory_hierarchy: MemoryHierarchy::new(),
             strategy_tracker: Mutex::new(StrategyTracker::new()),
         };
         config.apply_to(&mut instance);
