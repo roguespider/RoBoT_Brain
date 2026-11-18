@@ -57,6 +57,10 @@ impl AgentLoop {
         let context_assembly = engine
             .assemble_context(&correlation_id, &goal.description, &goal.description, 50)
             .await;
+        // Return the wired engine to the mutex for subsequent calls
+        if let Ok(mut guard) = self.deps.context_engine.lock() {
+            *guard = engine;
+        }
         tracing::info!(
             correlation_id = %correlation_id,
             context_size = context_assembly.stages.len(),
