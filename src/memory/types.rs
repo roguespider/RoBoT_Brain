@@ -6,21 +6,121 @@ use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-/// Memory layer type - Per Architecture §6.3
+/// Memory layer type - Per Architecture Chapter 08.
+/// All 9 layers: Working, Short-Term, Long-Term, Semantic, Episodic,
+/// Procedural, Graph, Index, Archive.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Hash, Default)]
 pub enum MemoryLayer {
-    /// Working Memory - Temporary information used during active tasks
+    /// Working Memory - Temporary information during active reasoning
     #[default]
     Working,
-    /// Permanent Memory - Curated knowledge retained after evaluation
-    Permanent,
+    /// Short-Term Memory - Bridges nearby conversations
+    ShortTerm,
+    /// Long-Term Memory - Durable learned knowledge
+    LongTerm,
+    /// Semantic Memory - Facts independent of specific events
+    Semantic,
+    /// Episodic Memory - Specific experiences and events
+    Episodic,
+    /// Procedural Memory - How to perform tasks
+    Procedural,
+    /// Graph Memory - Connected knowledge with relationships
+    Graph,
+    /// Index Memory - Symbolic indexes for fast lookup (layer missing in prior code)
+    Index,
+    /// Archive Memory - Old/low-value items preserved but inactive
+    Archive,
 }
 
 impl std::fmt::Display for MemoryLayer {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             MemoryLayer::Working => write!(f, "Working"),
-            MemoryLayer::Permanent => write!(f, "Permanent"),
+            MemoryLayer::ShortTerm => write!(f, "ShortTerm"),
+            MemoryLayer::LongTerm => write!(f, "LongTerm"),
+            MemoryLayer::Semantic => write!(f, "Semantic"),
+            MemoryLayer::Episodic => write!(f, "Episodic"),
+            MemoryLayer::Procedural => write!(f, "Procedural"),
+            MemoryLayer::Graph => write!(f, "Graph"),
+            MemoryLayer::Index => write!(f, "Index"),
+            MemoryLayer::Archive => write!(f, "Archive"),
+        }
+    }
+}
+
+impl MemoryLayer {
+    /// Return the default layer for newly observed memories.
+    pub fn default_for_observation() -> Self {
+        Self::Working
+    }
+
+    /// Check if this layer supports permanent storage.
+    pub fn is_permanent(&self) -> bool {
+        matches!(
+            self,
+            Self::LongTerm
+                | Self::Semantic
+                | Self::Episodic
+                | Self::Procedural
+                | Self::Graph
+                | Self::Index
+                | Self::Archive
+        )
+    }
+
+    /// Check if this layer supports graph-based retrieval.
+    pub fn supports_graph(&self) -> bool {
+        matches!(self, Self::Graph | Self::Semantic | Self::Episodic)
+    }
+
+    /// Check if this layer supports symbolic/index lookup.
+    pub fn supports_index(&self) -> bool {
+        matches!(self, Self::Index | Self::Semantic | Self::Procedural)
+    }
+
+    /// Return the promotion target for this layer, if any.
+    /// Per Architecture Chapter 08: Working→ShortTerm→LongTerm→Semantic→Episodic→Procedural→Graph→Index→Archive.
+    pub fn promote_to(&self) -> Option<MemoryLayer> {
+        match self {
+            MemoryLayer::Working => Some(MemoryLayer::ShortTerm),
+            MemoryLayer::ShortTerm => Some(MemoryLayer::LongTerm),
+            MemoryLayer::LongTerm => Some(MemoryLayer::Semantic),
+            MemoryLayer::Semantic => Some(MemoryLayer::Episodic),
+            MemoryLayer::Episodic => Some(MemoryLayer::Procedural),
+            MemoryLayer::Procedural => Some(MemoryLayer::Graph),
+            MemoryLayer::Graph => Some(MemoryLayer::Index),
+            MemoryLayer::Index => Some(MemoryLayer::Archive),
+            MemoryLayer::Archive => None,
+        }
+    }
+
+    /// Return the demotion target for this layer, if any.
+    pub fn demote_to(&self) -> Option<MemoryLayer> {
+        match self {
+            MemoryLayer::ShortTerm => Some(MemoryLayer::Working),
+            MemoryLayer::LongTerm => Some(MemoryLayer::ShortTerm),
+            MemoryLayer::Semantic => Some(MemoryLayer::LongTerm),
+            MemoryLayer::Episodic => Some(MemoryLayer::Semantic),
+            MemoryLayer::Procedural => Some(MemoryLayer::Episodic),
+            MemoryLayer::Graph => Some(MemoryLayer::Procedural),
+            MemoryLayer::Index => Some(MemoryLayer::Graph),
+            MemoryLayer::Archive => Some(MemoryLayer::Index),
+            MemoryLayer::Working => None,
+        }
+    }
+
+    /// Return a human-readable name for the layer.
+    pub fn name(&self) -> &'static str {
+        match self {
+            MemoryLayer::Working => "working",
+            MemoryLayer::ShortTerm => "short_term",
+            MemoryLayer::LongTerm => "long_term",
+            MemoryLayer::Semantic => "semantic",
+            MemoryLayer::Episodic => "episodic",
+            MemoryLayer::Procedural => "procedural",
+            MemoryLayer::Graph => "graph",
+            MemoryLayer::Index => "index",
+            MemoryLayer::Archive => "archive",
         }
     }
 }
@@ -30,6 +130,8 @@ impl std::fmt::Display for MemoryLayer {
 pub enum MemoryType {
     /// Experience-based memory
     Experience,
+    /// Concept stored as knowledge
+    Concept,
     /// Knowledge fact
     Knowledge,
     /// Procedural skill
@@ -46,6 +148,7 @@ impl std::fmt::Display for MemoryType {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         let s = match self {
             MemoryType::Experience => "experience",
+            MemoryType::Concept => "concept",
             MemoryType::Knowledge => "knowledge",
             MemoryType::Skill => "skill",
             MemoryType::Workflow => "workflow",
@@ -103,6 +206,9 @@ pub struct MemoryItem {
     /// Content/description of this memory
     pub content: String,
 
+    /// Optional title (MemoryRecord contract, Architecture §5.6).
+    pub title: Option<String>,
+
     /// Confidence level (0.0 - 1.0)
     pub confidence: f32,
 
@@ -130,6 +236,9 @@ pub struct MemoryItem {
     /// Source of this memory (experience, user, system)
     pub source: String,
 
+    /// Memory lifecycle state (Working, Candidate, Accepted, Permanent, Archived)
+    pub lifecycle: crate::memory::lifecycle::MemoryLifecycle,
+
     /// Related memory IDs
     pub related_ids: Vec<Uuid>,
 }
@@ -149,12 +258,14 @@ impl MemoryItem {
             memory_type,
             status: MemoryStatus::Active,
             content,
+            title: None,
             confidence: 0.5,
             importance: 0.5,
             created_at: now,
             accessed_at: now,
             modified_at: now,
             last_consolidated: None,
+            lifecycle: crate::memory::lifecycle::MemoryLifecycle::Working,
             access_count: 0,
             tags: Vec::new(),
             source,
@@ -171,7 +282,37 @@ impl MemoryItem {
     /// Archive this memory
     pub fn archive(&mut self) {
         self.status = MemoryStatus::Archived;
+        self.lifecycle = crate::memory::lifecycle::MemoryLifecycle::Archived;
         self.modified_at = Utc::now();
+    }
+
+    /// Promote this memory to the next lifecycle state
+    pub fn promote(&mut self) -> bool {
+        let next = match self.lifecycle {
+            crate::memory::lifecycle::MemoryLifecycle::Working => {
+                Some(crate::memory::lifecycle::MemoryLifecycle::Candidate)
+            }
+            crate::memory::lifecycle::MemoryLifecycle::Candidate => {
+                Some(crate::memory::lifecycle::MemoryLifecycle::Accepted)
+            }
+            crate::memory::lifecycle::MemoryLifecycle::Accepted => {
+                Some(crate::memory::lifecycle::MemoryLifecycle::Permanent)
+            }
+            crate::memory::lifecycle::MemoryLifecycle::Permanent => None,
+            crate::memory::lifecycle::MemoryLifecycle::Archived => None,
+        };
+        match next {
+            Some(state) => {
+                self.lifecycle = state;
+                self.modified_at = Utc::now();
+                if state == crate::memory::lifecycle::MemoryLifecycle::Permanent {
+                    self.last_consolidated = Some(Utc::now());
+                    self.layer = MemoryLayer::LongTerm;
+                }
+                true
+            }
+            None => false,
+        }
     }
 
     /// Add a tag
@@ -194,12 +335,20 @@ impl From<&MemoryCard> for MemoryItem {
         Self {
             id: card.id,
             layer: match card.layer {
-                crate::database::models::MemoryLayer::Working => MemoryLayer::Working,
-                crate::database::models::MemoryLayer::Permanent => MemoryLayer::Permanent,
+                MemoryLayer::Working => MemoryLayer::Working,
+                MemoryLayer::ShortTerm => MemoryLayer::ShortTerm,
+                MemoryLayer::LongTerm => MemoryLayer::LongTerm,
+                MemoryLayer::Semantic => MemoryLayer::Semantic,
+                MemoryLayer::Episodic => MemoryLayer::Episodic,
+                MemoryLayer::Procedural => MemoryLayer::Procedural,
+                MemoryLayer::Graph => MemoryLayer::Graph,
+                MemoryLayer::Index => MemoryLayer::Index,
+                MemoryLayer::Archive => MemoryLayer::Archive,
             },
             memory_type: match card.memory_type {
                 crate::database::models::MemoryType::Note => MemoryType::Experience,
                 crate::database::models::MemoryType::Fact => MemoryType::Knowledge,
+                crate::database::models::MemoryType::Concept => MemoryType::Concept,
                 crate::database::models::MemoryType::Task => MemoryType::Skill,
                 crate::database::models::MemoryType::File => MemoryType::Workflow,
                 crate::database::models::MemoryType::Conversation => MemoryType::Context,
@@ -211,12 +360,14 @@ impl From<&MemoryCard> for MemoryItem {
             },
             status: MemoryStatus::Active,
             content: card.content.clone(),
+            title: card.title.clone(),
             confidence: card.confidence,
             importance: card.importance,
             created_at: card.created_at,
             accessed_at: card.last_accessed.unwrap_or(card.created_at),
             modified_at: card.updated_at,
             last_consolidated: None,
+            lifecycle: crate::memory::lifecycle::MemoryLifecycle::Working,
             access_count: card.access_count,
             tags: Vec::new(),
             source: card
@@ -233,17 +384,26 @@ impl From<MemoryItem> for MemoryCard {
         Self {
             id: item.id,
             content: item.content,
+            title: item.title,
             memory_type: match item.memory_type {
                 MemoryType::Experience => crate::database::models::MemoryType::Experience,
                 MemoryType::Knowledge => crate::database::models::MemoryType::Fact,
+                MemoryType::Concept => crate::database::models::MemoryType::Concept,
                 MemoryType::Skill => crate::database::models::MemoryType::Code,
                 MemoryType::Workflow => crate::database::models::MemoryType::File,
                 MemoryType::Context => crate::database::models::MemoryType::Conversation,
                 MemoryType::Observation => crate::database::models::MemoryType::Event,
             },
             layer: match item.layer {
-                MemoryLayer::Working => crate::database::models::MemoryLayer::Working,
-                MemoryLayer::Permanent => crate::database::models::MemoryLayer::Permanent,
+                MemoryLayer::Working => MemoryLayer::Working,
+                MemoryLayer::ShortTerm => MemoryLayer::ShortTerm,
+                MemoryLayer::LongTerm => MemoryLayer::LongTerm,
+                MemoryLayer::Semantic => MemoryLayer::Semantic,
+                MemoryLayer::Episodic => MemoryLayer::Episodic,
+                MemoryLayer::Procedural => MemoryLayer::Procedural,
+                MemoryLayer::Graph => MemoryLayer::Graph,
+                MemoryLayer::Index => MemoryLayer::Index,
+                MemoryLayer::Archive => MemoryLayer::Archive,
             },
             parent_id: None,
             hierarchy_level: HierarchyLevel::Document,

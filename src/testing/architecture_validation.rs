@@ -352,14 +352,3 @@ pub fn validate_architecture_v0_0_2() -> ArchitectureValidator {
     validate_architecture()
 }
 
-/// Active reference to architecture validation contracts.
-pub fn reference_architecture_validation() {
-    let validator = validate_architecture_v0_0_2();
-    tracing::debug!(
-        aligned = validator.is_aligned(),
-        missing = validator.get_missing_components().len(),
-        deviations = validator.get_major_deviations().len(),
-        checks = validator.get_checks().len(),
-        "Architecture validation referenced"
-    );
-}

@@ -1,0 +1,29 @@
+============================= test session starts =============================
+platform win32 -- Python 3.13.17, pytest-9.1.1, pluggy-1.6.0 -- E:\Python\python.exe
+cachedir: .pytest_cache
+rootdir: E:\Tor\src_code\RoBoT_Brain\.agents\scripts\test_suite2.1
+configfile: pytest.ini
+plugins: anyio-4.15.1, asyncio-1.4.0, xdist-3.8.0, typeguard-4.5.2
+asyncio: mode=Mode.AUTO, debug=False, asyncio_default_fixture_loop_scope=None, asyncio_default_test_loop_scope=function
+collecting ... collected 291 items
+
+test_all_params.py::test_all_206_tools_with_params SKIPPED (all_tool...) [  0%]
+test_audio_ingest_pipeline.py::test_audio_transcribe_ingest_pipeline FAILED [  0%]
+test_comprehensive.py::TestACPFull::test_register_agent PASSED           [  1%]
+test_comprehensive.py::TestACPFull::test_list_acp_agents PASSED          [  1%]
+test_comprehensive.py::TestACPFull::test_acp_agent_count PASSED          [  1%]
+test_comprehensive.py::TestACPFull::test_acp_registry PASSED             [  2%]
+test_comprehensive.py::TestACPFull::test_acp_router PASSED               [  2%]
+test_comprehensive.py::TestACPFull::test_route_acp_message PASSED        [  2%]
+test_comprehensive.py::TestACPFull::test_create_acp_message PASSED       [  3%]
+test_comprehensive.py::TestACPFull::test_get_agent_capabilities PASSED   [  3%]
+test_comprehensive.py::TestACPFull::test_get_system_status PASSED        [  3%]
+test_comprehensive.py::TestACPFull::test_unregister_agent PASSED         [  4%]
+test_comprehensive.py::TestMemoryMCP::test_store_memory PASSED           [  4%]
+test_comprehensive.py::TestMemoryMCP::test_search_memory PASSED          [  4%]
+test_comprehensive.py::TestMemoryMCP::test_list_memories PASSED          [  5%]
+test_comprehensive.py::TestMemoryMCP::test_get_memory PASSED             [  5%]
+test_comprehensive.py::TestMemoryMCP::test_delete_memory_by_id PASSED    [  5%]
+test_comprehensive.py::TestMemoryMCP::test_archive_memory PASSED         [  6%]
+test_comprehensive.py::TestMemoryMCP::test_link_memories PASSED          [  6%]
+test_comprehensive.py::TestMemoryMCP::test_get_embedding 

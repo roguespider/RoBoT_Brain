@@ -69,10 +69,8 @@ pub fn collect_objectives(runner: &mut LoopRunner) {
     // Wires OpportunityIntake::process() into the cognitive cycle.
     for goal in runner.objective_source_registry.discover_all() {
         let already_queued = runner.objective_queue.iter().any(|g| g.title == goal.title);
-        if !already_queued {
-            if runner.objective_queue.enqueue(&goal).is_ok() {
-                tracing::info!("Collected external opportunity: {}", goal.title);
-            }
+        if !already_queued && runner.objective_queue.enqueue(&goal).is_ok() {
+            tracing::info!("Collected external opportunity: {}", goal.title);
         }
     }
 }
@@ -256,7 +254,11 @@ pub fn evaluate_queue(runner: &mut LoopRunner) {
         }
 
         // Boost priority for objectives that match current capability strengths.
-        let caps = runner.capability_registry.list();
+        let caps_guard = match runner.capability_registry.lock() {
+            Ok(g) => g,
+            Err(poisoned) => poisoned.into_inner(),
+        };
+        let caps = caps_guard.list();
         for cap in &caps {
             if obj
                 .required_capabilities
@@ -297,11 +299,14 @@ pub fn select_objective(runner: &mut LoopRunner) -> Option<AgentGoal> {
     let queued_goals: Vec<AgentGoal> = runner.objective_queue.iter().cloned().collect();
     for goal in &queued_goals {
         // Check if we have sufficient capabilities for this goal.
+        let cap_check_guard = match runner.capability_registry.lock() {
+            Ok(g) => g,
+            Err(poisoned) => poisoned.into_inner(),
+        };
         let has_capability = goal.required_capabilities.iter().all(|cap_id| {
             let cap_id_obj =
                 crate::scheduler::cooboploop::capability::CapabilityId::from_string(cap_id);
-            runner
-                .capability_registry
+            cap_check_guard
                 .get(&cap_id_obj)
                 .is_some_and(|a| a.level >= 0.5)
         });

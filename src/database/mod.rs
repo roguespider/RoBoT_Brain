@@ -4,6 +4,7 @@
 use std::fs;
 use std::path::Path;
 
+pub mod maintenance;
 pub mod migrations;
 pub mod models;
 pub mod queries;
@@ -143,38 +144,3 @@ pub fn restore_database(source: &str, target: &str) -> Result<(), DatabaseError>
     Ok(())
 }
 
-/// Actively reference storage functions to eliminate dead-code warnings.
-pub fn reference_storage_apis() {
-    // Reference all StorageLayer variants to prevent dead-code warnings
-    let working_layer = StorageLayer::Working;
-    let session_layer = StorageLayer::Session;
-    let experience_layer = StorageLayer::Experience;
-    let semantic_layer = StorageLayer::Semantic;
-    let skill_layer = StorageLayer::Skill;
-    let graph_layer = StorageLayer::Graph;
-    let archive_layer = StorageLayer::Archive;
-    let operational_layer = StorageLayer::Operational;
-    // Verify Display trait works for all variants
-    let displays = [
-        format!("{}", working_layer),
-        format!("{}", session_layer),
-        format!("{}", experience_layer),
-        format!("{}", semantic_layer),
-        format!("{}", skill_layer),
-        format!("{}", graph_layer),
-        format!("{}", archive_layer),
-        format!("{}", operational_layer),
-    ];
-    for display_str in &displays {
-        tracing::debug!("StorageLayer display: {display_str}");
-    }
-    // backup_database and restore_database require actual files to test;
-    // the function references prevent dead-code warnings
-    let backup_fn_ref = backup_database;
-    let restore_fn_ref = restore_database;
-    tracing::debug!("backup_fn={:?}", std::any::type_name_of_val(&backup_fn_ref));
-    tracing::debug!(
-        "restore_fn={:?}",
-        std::any::type_name_of_val(&restore_fn_ref)
-    );
-}

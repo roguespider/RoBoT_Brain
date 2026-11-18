@@ -44,25 +44,3 @@ pub fn update_confidence(
     Ok(())
 }
 
-/// Actively reference learning confidence functions to prevent dead-code warnings.
-/// Per Architecture §10.5: confidence updates and decay are core learning capabilities.
-pub fn reference_confidence_functions() {
-    let result = update_confidence("test-item", 0.8);
-    if result.is_ok() {
-        tracing::info!("Confidence update reference succeeded");
-    }
-    let decayed = decay_confidence("test-item", 24.0, 0.1);
-    tracing::info!("Confidence decay reference: result={:.4}", decayed);
-    let conn = match rusqlite::Connection::open_in_memory() {
-        Ok(c) => c,
-        Err(e) => {
-            tracing::warn!("Failed to open in-memory DB for reference: {e}");
-            return;
-        }
-    };
-    let stale_result = get_stale_items(&conn, 0.3, 168);
-    match stale_result {
-        Ok(items) => tracing::info!("Stale items reference: found {} item(s)", items.len()),
-        Err(e) => tracing::warn!("Stale items reference error: {e}"),
-    }
-}

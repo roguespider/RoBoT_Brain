@@ -17,6 +17,7 @@ use crate::memory::types::{MemoryItem, MemoryLayer, MemoryStatus, MemoryType};
 ///
 /// Curated knowledge retained after evaluation.
 /// Characteristics: Indexed, connected, confidence weighted, relationship aware.
+#[derive(Clone)]
 pub struct PermanentMemory {
     cache: Arc<RwLock<HashMap<Uuid, MemoryItem>>>,
     type_index: Arc<RwLock<HashMap<MemoryType, Vec<Uuid>>>>,
@@ -53,7 +54,7 @@ impl PermanentMemory {
     pub async fn store(&self, item: MemoryItem) -> Uuid {
         let id = item.id;
         let mut item = item;
-        item.layer = MemoryLayer::Permanent;
+        item.layer = MemoryLayer::LongTerm;
 
         let mut cache = self.cache.write().await;
         cache.insert(id, item.clone());
@@ -349,9 +350,54 @@ impl PermanentMemory {
             return Err(crate::memory::types::MemoryError::InsufficientConfidence);
         }
         let mut promoted = item;
-        promoted.layer = MemoryLayer::Permanent;
+        promoted.layer = crate::memory::types::MemoryLayer::LongTerm;
         let id = self.store(promoted).await;
         Ok(id.to_string())
+    }
+
+    /// Get all memory IDs that are related to a given ID through the graph index.
+    ///
+    /// This follows both forward and reverse edges: if A is related to B, then
+    /// `get_related_ids(B)` returns A (in addition to B's outgoing links).
+    pub async fn get_related_ids(&self, id: &Uuid) -> Vec<Uuid> {
+        let graph = self.graph_index.read().await;
+
+        // Direct outgoing edges
+        let outgoing = graph.get(id).cloned().unwrap_or_default();
+
+        // Reverse edges: find all keys that point to this ID
+        let mut reverse = Vec::new();
+        for (source_id, targets) in graph.iter() {
+            if targets.contains(id) && source_id != id {
+                reverse.push(*source_id);
+            }
+        }
+
+        // Merge and deduplicate
+        let mut all: Vec<Uuid> = outgoing.into_iter().chain(reverse).collect();
+        all.sort();
+        all.dedup();
+        all
+    }
+
+    /// Get all active (non-archived) permanent memory items.
+    pub async fn get_all_active(&self) -> Vec<MemoryItem> {
+        let cache = self.cache.read().await;
+        cache
+            .values()
+            .filter(|item| item.status == MemoryStatus::Active)
+            .cloned()
+            .collect()
+    }
+
+    /// Get a count of all active permanent memory items.
+    pub async fn active_count(&self) -> usize {
+        self.cache
+            .read()
+            .await
+            .values()
+            .filter(|item| item.status == MemoryStatus::Active)
+            .count()
     }
 }
 

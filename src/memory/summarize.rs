@@ -2,7 +2,7 @@
 //!
 //! Summarizes aging low-importance memories by combining them.
 
-use crate::data_contracts::memory_record::MemoryRecord;
+use crate::common::data_contracts::memory_record::MemoryRecord;
 
 /// Summarize a collection of memory records into a single summary record.
 ///
@@ -33,11 +33,11 @@ pub fn summarize(records: Vec<MemoryRecord>) -> MemoryRecord {
     }
 
     // Create summary record
-    let mut summary = MemoryRecord::new(content, records[0].kind);
+    let kind_string = format!("{:?}", records[0].kind);
+    let mut summary = MemoryRecord::new(content, kind_string, records[0].kind);
     summary.importance = max_importance;
     summary.metadata.provenance = provenance;
     summary.access_count = records.iter().map(|r| r.access_count).sum();
-    summary.consolidated_from = records.iter().map(|r| r.id.to_string()).collect();
 
     summary
 }

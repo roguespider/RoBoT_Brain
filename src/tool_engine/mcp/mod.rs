@@ -2,6 +2,7 @@
 //! Model Context Protocol integration for exposing tools via MCP.
 
 /// MCP tool server for exposing tools via the Model Context Protocol.
+#[derive(Default)]
 pub struct McpToolServer;
 
 impl McpToolServer {

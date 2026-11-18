@@ -2,6 +2,7 @@ use serde_json::Value;
 
 /// Streaming support for incremental tool output.
 /// Per Architecture §13.27 (Tool Streaming): incremental output for long-running tools.
+#[derive(Default)]
 pub struct ToolStreamer {
     /// Buffer for streaming output.
     buffer: Vec<Value>,

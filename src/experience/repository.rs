@@ -62,8 +62,9 @@ impl MemoryCard {
         Self {
             id: encounter.id,
             content,
+            title: None,
             memory_type: crate::database::models::MemoryType::Encounter,
-            layer: crate::database::models::MemoryLayer::Working,
+            layer: crate::memory::types::MemoryLayer::Working,
             parent_id: None,
             hierarchy_level: crate::database::models::HierarchyLevel::Document,
             order_index: 0,
@@ -113,12 +114,25 @@ impl MemoryCard {
     /// Convert an Experience into a MemoryCard for storage
     /// Per Architecture §07: Experiences are stored with their metadata
     pub fn from_experience(experience: &Experience) -> Self {
-        // Include key experience metadata in content
+        // The experience contract fields (Architecture §5.7) are stored in a
+        // stable, parseable layout so they survive a round-trip through
+        // storage:
+        //   line 1: "Experience: {title}"
+        //   line 2: {description}
+        //   line 3: "(outcome: ..., type: ..., committed: ..., archived: ..., evidence_count: ...)"
+        // A free-form outcome is stored verbatim, so the caller's own words
+        // survive the round-trip.
+        let outcome_label = experience
+            .outcome
+            .message
+            .clone()
+            .unwrap_or_else(|| format!("{:?}", experience.outcome.kind));
         let content = format!(
-            "Experience: {} - {} (outcome: {:?}, committed: {}, archived: {}, evidence_count: {})",
+            "Experience: {}\n{}\n(outcome: {}, type: {:?}, committed: {}, archived: {}, evidence_count: {})",
             experience.title,
             experience.description,
-            experience.outcome.kind,
+            outcome_label,
+            experience.experience_type,
             experience.committed,
             experience.archived,
             experience.evidence_count
@@ -127,8 +141,9 @@ impl MemoryCard {
         Self {
             id: experience.id,
             content,
+            title: Some(experience.title.clone()),
             memory_type: crate::database::models::MemoryType::Experience,
-            layer: crate::database::models::MemoryLayer::Working,
+            layer: crate::memory::types::MemoryLayer::Working,
             parent_id: None,
             hierarchy_level: crate::database::models::HierarchyLevel::Document,
             order_index: 0,

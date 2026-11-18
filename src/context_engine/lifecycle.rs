@@ -2,9 +2,10 @@
 //! Manages context lifecycle states and transitions.
 
 /// Context lifecycle state.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub enum ContextLifecycleState {
     /// Context is being assembled.
+    #[default]
     Assembling,
     /// Context is ready for use.
     Ready,
@@ -14,13 +15,8 @@ pub enum ContextLifecycleState {
     Archived,
 }
 
-impl Default for ContextLifecycleState {
-    fn default() -> Self {
-        Self::Assembling
-    }
-}
-
 /// Context lifecycle manager.
+#[derive(Default)]
 pub struct ContextLifecycle {
     state: ContextLifecycleState,
 }

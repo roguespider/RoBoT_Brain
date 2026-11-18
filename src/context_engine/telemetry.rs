@@ -13,6 +13,7 @@ pub enum ContextTelemetryEvent {
 }
 
 /// Context telemetry emitter.
+#[derive(Default)]
 pub struct ContextTelemetry;
 
 impl ContextTelemetry {

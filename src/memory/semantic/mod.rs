@@ -1,5 +1,4 @@
 //! Semantic Memory — Concept and fact storage (Architecture Chapter 8 — Memory Engine upgrade).
-#![allow(unused)]
 //!
 //! Per Architecture §8.4 (Semantic Memory): persistent concepts, entities,
 //! relationships, and facts. Separate from episodic (experience) and procedural (skill) memory.
@@ -100,19 +99,4 @@ impl SemanticMemoryStore {
     pub fn all(&self) -> Vec<&SemanticRecord> {
         self.records.values().collect()
     }
-}
-
-/// Active reference to semantic memory contracts.
-pub fn reference_semantic_memory() {
-    let mut store = SemanticMemoryStore::new();
-    let record = SemanticRecord::new(
-        "concept-1",
-        "Intelligence",
-        "Emerges from cooperation of cognitive systems",
-    );
-    store.add(record);
-    tracing::debug!(
-        record_count = store.all().len(),
-        "Semantic memory referenced"
-    );
 }

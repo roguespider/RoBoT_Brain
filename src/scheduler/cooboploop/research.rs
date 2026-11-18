@@ -4,8 +4,8 @@
 // Per CoObOpLoop.md §11: research SHALL be a first-class objective that
 // produces persistent knowledge/experience via the ResearchPipeline.
 
-use std::sync::Arc;
-use tokio::sync::Mutex;
+use std::sync::{Arc, Mutex};
+use tokio::sync::Mutex as TokioMutex;
 
 use crate::agent::decision::{CascadeDeps, ResearchCascade};
 use crate::experience::hypothesis::HypothesisEngine;
@@ -15,6 +15,7 @@ use crate::knowledge::store::KnowledgeStore;
 use crate::knowledge::world_model::store::WorldModel;
 use crate::memory::permanent::PermanentMemory;
 use crate::planning::engine::types::Plan;
+use crate::scheduler::cooboploop::capability::CapabilityRegistry;
 
 /// Trigger for research (§11 / T8.1).
 #[derive(Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize, Debug)]
@@ -57,13 +58,13 @@ pub struct ResearchManager {
     /// Tokio runtime handle for spawning async research tasks.
     tokio_handle: Option<tokio::runtime::Handle>,
     /// 9-tier confidence cascade dependencies (research_engine.md §2).
-    /// Note: CapabilityRegistry is excluded because it contains rusqlite::Connection
-    /// which is not Sync (RefCell interior), so it cannot be stored behind Arc.
     knowledge_store: Option<Arc<KnowledgeStore>>,
     permanent_memory: Option<Arc<PermanentMemory>>,
     world_model: Option<Arc<WorldModel>>,
     hypothesis_engine: Option<Arc<HypothesisEngine>>,
-    reflection_engine: Option<Arc<Mutex<ReflectionEngine>>>,
+    reflection_engine: Option<Arc<TokioMutex<ReflectionEngine>>>,
+    /// Capability registry for tier 4 skills check.
+    capability_registry: Option<Arc<Mutex<CapabilityRegistry>>>,
     current_plan: Option<Plan>,
     latest_experience: Option<Experience>,
 }
@@ -81,6 +82,7 @@ impl ResearchManager {
             world_model: None,
             hypothesis_engine: None,
             reflection_engine: None,
+            capability_registry: None,
             current_plan: None,
             latest_experience: None,
         }
@@ -169,8 +171,13 @@ impl ResearchManager {
         self.hypothesis_engine = Some(engine);
     }
 
-    pub fn set_reflection_engine(&mut self, engine: Arc<Mutex<ReflectionEngine>>) {
+    pub fn set_reflection_engine(&mut self, engine: Arc<TokioMutex<ReflectionEngine>>) {
         self.reflection_engine = Some(engine);
+    }
+
+    /// Set capability registry for tier 4 skills check (§2 / Tier 4).
+    pub fn set_capability_registry(&mut self, registry: Arc<Mutex<CapabilityRegistry>>) {
+        self.capability_registry = Some(registry);
     }
 
     pub fn set_current_plan(&mut self, plan: Option<Plan>) {
@@ -225,19 +232,19 @@ impl ResearchManager {
             let world_model = self.world_model.clone();
             let hypothesis_engine = self.hypothesis_engine.clone();
             let reflection_engine = self.reflection_engine.clone();
+            let capability_registry = self.capability_registry.clone();
             let current_plan = self.current_plan.clone();
             let latest_experience = self.latest_experience.clone();
 
             handle.spawn(async move {
                 // 9-tier confidence cascade gate (research_engine.md §2).
                 // Research only fires when all tiers 1-8 fail.
-                // CapabilityRegistry (tier 4) is not available because it is
-                // not Sync (rusqlite::Connection interior RefCell), so tier 4
-                // is skipped (check_skills returns false when registry is None).
+                // Tier 4 (Skills) checks the capability registry when configured.
                 let should_research = match (
                     knowledge_store.as_deref(),
                     latest_experience.as_ref(),
                     reflection_engine.as_deref(),
+                    capability_registry.as_deref(),
                     permanent_memory.as_deref(),
                     world_model.as_deref(),
                     hypothesis_engine.as_deref(),
@@ -246,11 +253,13 @@ impl ResearchManager {
                         Some(ks),
                         Some(le),
                         Some(re),
+                        Some(cr),
                         Some(pm),
                         Some(wm),
                         Some(he),
                     ) => {
                         let deps = CascadeDeps {
+                            capability_registry: Some(cr),
                             knowledge_store: ks,
                             latest_experience: Some(le),
                             reflection_engine: re,

@@ -2,6 +2,7 @@
 //! Retrieves context from memory, experience, and knowledge sources.
 
 /// Context retrieval source.
+#[derive(Default)]
 pub struct ContextRetrieval;
 
 impl ContextRetrieval {

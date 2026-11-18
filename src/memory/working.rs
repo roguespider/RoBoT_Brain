@@ -14,6 +14,7 @@ use super::types::{MemoryItem, MemoryLayer, MemoryStatus};
 use crate::database::queries;
 
 /// Working memory - Per Architecture §6.3
+#[derive(Clone)]
 pub struct WorkingMemory {
     items: Arc<RwLock<HashMap<Uuid, MemoryItem>>>,
     max_items: usize,
@@ -106,7 +107,10 @@ impl WorkingMemory {
     }
 
     /// Load Working layer memories from SQLite into the cache
-    pub async fn load_from_database(&self, db: &Arc<crate::database::sqlite::SqliteDatabase>) -> Result<usize> {
+    pub async fn load_from_database(
+        &self,
+        db: &Arc<crate::database::sqlite::SqliteDatabase>,
+    ) -> Result<usize> {
         let conn = db.connection()?;
         let cards = queries::list_memories_by_layer(&conn, "working", self.max_items)?;
 
@@ -123,7 +127,10 @@ impl WorkingMemory {
     }
 
     /// Checkpoint all cached items to SQLite
-    pub async fn checkpoint_to_database(&self, db: &Arc<crate::database::sqlite::SqliteDatabase>) -> Result<usize> {
+    pub async fn checkpoint_to_database(
+        &self,
+        db: &Arc<crate::database::sqlite::SqliteDatabase>,
+    ) -> Result<usize> {
         let items: Vec<MemoryItem> = {
             let items = self.items.read().await;
             items.values().cloned().collect()
@@ -138,7 +145,10 @@ impl WorkingMemory {
             count += 1;
         }
 
-        tracing::debug!("Checkpointed {} items from Working memory cache to database", count);
+        tracing::debug!(
+            "Checkpointed {} items from Working memory cache to database",
+            count
+        );
         Ok(count)
     }
 }

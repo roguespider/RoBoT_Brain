@@ -4,6 +4,7 @@ test_all_params.py — Every tool from all_tools_list.txt with parameter testing
 Tests robot_brain.exe as MCP: all 206 registered tools with full/default params.
 """
 
+import logging
 import sys
 from pathlib import Path
 
@@ -12,8 +13,6 @@ import pytest
 _test_dir = Path(__file__).resolve().parent
 if str(_test_dir) not in sys.path:
     sys.path.insert(0, str(_test_dir))
-
-from mcp_client import RobotBrainClient
 
 FULL_PARAM_DEFAULTS = {
     "abandon_exploration": {"exploration_id": "param-id"},
@@ -459,4 +458,4 @@ async def test_all_206_tools_with_params(client):
     )
     # Print failures for triage (not gate-failing — master gate handles red/green)
     for name, err in failed:
-        print(f"[FAIL] {name}: {err}")
+        logging.error("[FAIL] %s: %s", name, err)

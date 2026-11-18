@@ -29,9 +29,10 @@ pub fn insert_memory(conn: &Connection, memory: &MemoryCard) -> Result<()> {
             confidence,
             importance,
             created_at,
-            updated_at
+            updated_at,
+            title
         )
-        VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15)
+        VALUES (?1,?2,?3,?4,?5,?6,?7,?8,?9,?10,?11,?12,?13,?14,?15,?16)
         ",
         params![
             memory.id.to_string(),
@@ -48,7 +49,8 @@ pub fn insert_memory(conn: &Connection, memory: &MemoryCard) -> Result<()> {
             memory.confidence,
             memory.importance,
             memory.created_at.to_rfc3339(),
-            memory.updated_at.to_rfc3339()
+            memory.updated_at.to_rfc3339(),
+            memory.title
         ],
     )?;
 
@@ -74,7 +76,8 @@ pub fn get_memory(conn: &Connection, id: Uuid) -> Result<Option<MemoryCard>> {
             confidence,
             importance,
             created_at,
-            updated_at
+            updated_at,
+            COALESCE(title, '') as title
 
         FROM memories
 
@@ -111,7 +114,8 @@ pub fn search_memory(conn: &Connection, text: &str, limit: usize) -> Result<Vec<
             confidence,
             importance,
             created_at,
-            updated_at
+            updated_at,
+            COALESCE(title, '') as title
         FROM memories
         WHERE content LIKE ?1
         ORDER BY importance DESC, confidence DESC
@@ -145,7 +149,7 @@ pub fn list_memories(
                 COALESCE(parent_id, '') as parent_id, COALESCE(hierarchy_level, 'document') as hierarchy_level,
                 COALESCE(order_index, 0) as order_index, COALESCE(path, '') as path, file_source,
                 COALESCE(access_count, 0) as access_count, last_accessed, confidence, importance,
-                created_at, updated_at
+                created_at, updated_at, COALESCE(title, '') as title
             FROM memories
             WHERE memory_type = ?1
             ORDER BY importance DESC, created_at DESC
@@ -160,7 +164,7 @@ pub fn list_memories(
                 COALESCE(parent_id, '') as parent_id, COALESCE(hierarchy_level, 'document') as hierarchy_level,
                 COALESCE(order_index, 0) as order_index, COALESCE(path, '') as path, file_source,
                 COALESCE(access_count, 0) as access_count, last_accessed, confidence, importance,
-                created_at, updated_at
+                created_at, updated_at, COALESCE(title, '') as title
             FROM memories
             ORDER BY importance DESC, created_at DESC
             LIMIT ?1
@@ -201,7 +205,7 @@ pub fn list_memories_by_layer(
             COALESCE(parent_id, '') as parent_id, COALESCE(hierarchy_level, 'document') as hierarchy_level,
             COALESCE(order_index, 0) as order_index, COALESCE(path, '') as path, file_source,
             COALESCE(access_count, 0) as access_count, last_accessed, confidence, importance,
-            created_at, updated_at
+            created_at, updated_at, COALESCE(title, '') as title
         FROM memories
         WHERE layer = ?1
         ORDER BY importance DESC, created_at DESC

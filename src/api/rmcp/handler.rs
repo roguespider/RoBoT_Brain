@@ -1,0 +1,67 @@
+// src/bridge/rmcp/handler.rs
+// RMCP stdio server handler
+// Supports MCP Protocol 2025-03-26
+
+use std::sync::Arc;
+
+use anyhow::Result;
+use rmcp::serve_server;
+
+use crate::api::mcp::McpContext;
+use crate::api::rmcp::types::McpServerHandler;
+
+/// Create a new RMCP server with stdio transport
+pub async fn run_stdio_server(name: &str, version: &str, context: Arc<McpContext>) -> Result<()> {
+    // Initialize stderr logging via tracing-subscriber (replaces deprecated MCP logging)
+    let env_filter = tracing_subscriber::EnvFilter::try_from_default_env()
+        .unwrap_or_else(|_| tracing_subscriber::EnvFilter::new("info"));
+    let subscriber = tracing_subscriber::fmt().with_env_filter(env_filter);
+    subscriber.try_init().unwrap_or_else(|e| {
+        tracing::warn!("Failed to initialize tracing subscriber: {e}");
+    });
+
+    eprintln!("[RoBoT] Starting MCP server '{}' v{}", name, version);
+    eprintln!("[RoBoT] MCP Protocol: 2025-03-26");
+    tracing::info!(
+        "Starting RMCP server '{}' v{} with stdio transport",
+        name,
+        version
+    );
+    tracing::info!("MCP Protocol: 2025-03-26 (Streamable HTTP, Tool Annotations)");
+
+    let mut handler = McpServerHandler::new(context, name.to_string(), version.to_string());
+    handler.session_id = handler.new_session();
+
+    // Initialize all tool handlers with graceful degradation
+    handler.initialize_handlers();
+
+    let total_tools = handler.total_tools();
+    let healthy = handler.is_healthy();
+
+    eprintln!(
+        "[RoBoT] Tool handlers initialized: {} tools available, healthy: {}",
+        total_tools, healthy
+    );
+    tracing::info!(
+        "Tool handlers initialized: {} tools available, healthy: {}",
+        total_tools,
+        healthy
+    );
+
+    // Log any handler initialization errors
+    if !handler.handler_errors.is_empty() {
+        for err in &handler.handler_errors {
+            tracing::warn!("Handler init error [{}]: {}", err.category, err.message);
+        }
+    }
+
+    let (stdin, stdout) = (tokio::io::stdin(), tokio::io::stdout());
+
+    eprintln!("[RoBoT] Server ready, listening on stdio...");
+    tracing::info!("Server ready, listening on stdio...");
+
+    let running = serve_server(handler, (stdin, stdout)).await?;
+
+    tracing::info!("Server stopped: {:?}", running.waiting().await);
+    Ok(())
+}

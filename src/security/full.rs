@@ -51,7 +51,8 @@ impl IdentityRecord {
         }
     }
 
-    /// Verify identity (simulated verification).
+    /// Verify identity: checks that actor and session identifiers are populated.
+    /// Per Architecture §25.5 (Identity System): every actor must have valid identity.
     pub fn verify(&self) -> bool {
         !self.actor_id.is_empty() && !self.session_id.is_empty()
     }
@@ -105,6 +106,67 @@ pub struct CapabilityGrant {
     pub granted_at: i64,
     /// Whether grant is active.
     pub active: bool,
+}
+
+/// Type alias for the capability store (Architecture §25.6).
+pub type CapabilityGrantStore = ActorCapabilities;
+
+/// Tracks granted capabilities for all actors.
+/// Per Architecture §25.6 (Permission Architecture) and §25.7 (Capability-Based Security).
+#[derive(Debug, Clone, Default)]
+pub struct ActorCapabilities {
+    /// actor_id -> set of granted capabilities.
+    grants: std::collections::HashMap<String, Vec<Capability>>,
+}
+
+impl ActorCapabilities {
+    /// Create a new empty capability store.
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Grant a capability to an actor.
+    /// Per Architecture §25.6 (Permission Architecture).
+    pub fn grant(&mut self, actor_id: &str, capability: Capability) {
+        self.grants
+            .entry(actor_id.to_string())
+            .or_default()
+            .push(capability);
+    }
+
+    /// Alias for `grant` — used by external callers expecting `add_grant`.
+    /// Takes actor_id + full `CapabilityGrant` record (Architecture §25.7).
+    pub fn add_grant(&mut self, actor_id: &str, grant: CapabilityGrant) {
+        if grant.active {
+            self.grants
+                .entry(actor_id.to_string())
+                .or_default()
+                .push(grant.capability);
+        }
+    }
+
+    /// Revoke a capability from an actor.
+    pub fn revoke(&mut self, actor_id: &str, capability: &Capability) {
+        if let Some(caps) = self.grants.get_mut(actor_id) {
+            caps.retain(|c| c != capability);
+        }
+    }
+
+    /// Check if an actor has a specific capability.
+    pub fn has(&self, actor_id: &str, capability: &Capability) -> bool {
+        self.grants
+            .get(actor_id)
+            .map(|caps| caps.contains(capability))
+            .unwrap_or(false)
+    }
+
+    /// Get all capabilities for an actor.
+    pub fn get_all(&self, actor_id: &str) -> Vec<&Capability> {
+        self.grants
+            .get(actor_id)
+            .map(|caps| caps.iter().collect())
+            .unwrap_or_default()
+    }
 }
 
 /// Memory protection rules.
@@ -229,15 +291,21 @@ pub fn evaluate_trust(actor_id: &str, evidence: &[TrustEvidence]) -> f32 {
     score
 }
 
+/// Minimum trust score for executing sensitive operations.
+const MIN_TRUST_SCORE: f32 = 0.3;
+
 /// Security enforcement: check capability before execution.
 /// Per Architecture §25.11 (Execution Security) and §25.28 (Safety Enforcement).
+/// Checks identity, verifies capability grant, and validates trust score.
 pub fn enforce_security(
     actor_id: &str,
     capability: Capability,
     target: &str,
     trust_score: f32,
+    capabilities: &ActorCapabilities,
 ) -> bool {
-    // Check identity
+    // Step 1: Verify identity is valid (non-empty identifiers).
+    // Per Architecture §25.5 (Identity System), every actor must have a valid identity.
     let identity = IdentityRecord::new(actor_id, "agent", "security-check");
     if !identity.verify() {
         tracing::warn!(
@@ -246,9 +314,35 @@ pub fn enforce_security(
         );
         return false;
     }
-    // Check capability (simulated: all capabilities allowed for verified actors)
-    // In production, this checks CapabilityGrant store
-    tracing::debug!(actor = actor_id, capability = ?capability, target = target, trust = trust_score, "Security enforcement passed");
+    // Step 2: Check capability grant.
+    // Per Architecture §25.7 (Capability-Based Security): specific capability -> specific action.
+    if !capabilities.has(actor_id, &capability) {
+        tracing::warn!(
+            actor = actor_id,
+            capability = %capability.label(),
+            target = target,
+            "Security enforcement: capability not granted"
+        );
+        return false;
+    }
+    // Step 3: Validate trust score meets minimum threshold.
+    // Per Architecture §25.3.4 (Action Confidence): high-risk actions require high trust.
+    if trust_score < MIN_TRUST_SCORE {
+        tracing::warn!(
+            actor = actor_id,
+            trust_score,
+            min_trust = MIN_TRUST_SCORE,
+            "Security enforcement: trust score below minimum"
+        );
+        return false;
+    }
+    tracing::debug!(
+        actor = actor_id,
+        capability = %capability.label(),
+        target = target,
+        trust = trust_score,
+        "Security enforcement passed"
+    );
     true
 }
 
@@ -304,6 +398,64 @@ impl ReputationScore {
     }
 }
 
+/// Persist an audit entry to the security_audits database table.
+/// Per Architecture §25.14 (Audit System): audit records SHALL be durable and queryable.
+pub fn persist_audit_entry(entry: &SecurityAuditEntry) -> Result<(), String> {
+    // Try to use the real database; fall back to logging if unavailable.
+    match crate::database::sqlite::SqliteDatabase::initialize() {
+        Ok(db) => {
+            let conn = db
+                .connection()
+                .map_err(|e| format!("Failed to open DB connection: {e}"))?;
+            conn.execute(
+                r#"
+                INSERT OR REPLACE INTO security_audits (
+                    audit_id, actor, action, target,
+                    timestamp, success, confidence_change,
+                    reason, correlation_id, capability_used
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                "#,
+                rusqlite::params![
+                    entry.audit_id,
+                    entry.actor,
+                    entry.action,
+                    entry.target,
+                    entry.timestamp,
+                    entry.success,
+                    entry.confidence_change,
+                    entry.reason,
+                    entry.correlation_id,
+                    entry.capability,
+                ],
+            )
+            .map_err(|e| format!("Failed to persist audit entry: {e}"))?;
+            tracing::debug!(
+                audit_id = %entry.audit_id,
+                actor = %entry.actor,
+                "Audit entry persisted to database"
+            );
+            Ok(())
+        }
+        Err(e) => {
+            // Graceful degradation: log the audit entry but don't fail.
+            tracing::warn!(
+                audit_id = %entry.audit_id,
+                db_error = %e,
+                "Database unavailable for audit persistence; logged only"
+            );
+            tracing::info!(
+                audit_id = %entry.audit_id,
+                actor = %entry.actor,
+                action = %entry.action,
+                target = %entry.target,
+                success = entry.success,
+                "Audit entry (logged only, DB unavailable)"
+            );
+            Ok(())
+        }
+    }
+}
+
 /// Security through explainability: every security decision must be explainable.
 /// Per Architecture §25.20 (Security Through Explainability).
 pub fn explain_security_decision(actor: &str, action: &str, result: bool, reason: &str) -> String {
@@ -311,55 +463,4 @@ pub fn explain_security_decision(actor: &str, action: &str, result: bool, reason
         "Security decision: actor={}, action={}, result={}, reason={}",
         actor, action, result, reason
     )
-}
-
-/// Active reference to security contracts.
-pub fn reference_security_contracts_full() {
-    // Identity
-    let identity = IdentityRecord::new("test-actor", "agent", "test-session");
-    tracing::debug!(actor_id = %identity.actor_id, verified = identity.verify(), "Identity verified");
-
-    // Capability
-    let cap = Capability::ReadMemory;
-    tracing::debug!(capability = %cap.label(), "Capability referenced");
-
-    // Memory protection
-    let rule = MemoryProtectionRule::new("working", Capability::ReadMemory, 0.5);
-    tracing::debug!(layer = %rule.layer, min_trust = rule.min_trust_score, "Memory protection rule referenced");
-
-    // Audit
-    let audit = SecurityAuditEntry::new("actor", "action", "target", true, "corr-1")
-        .with_capability(Capability::ReadMemory)
-        .with_confidence_change(0.1)
-        .with_reason("security check");
-    tracing::debug!(audit_id = %audit.audit_id, "Security audit referenced");
-
-    // Trust evaluation
-    let evidence = vec![TrustEvidence {
-        evidence_type: "successful_action".to_string(),
-        weight: 0.8,
-        timestamp: 1000,
-    }];
-    let trust = evaluate_trust("actor", &evidence);
-    tracing::debug!(trust_score = trust, "Trust evaluation referenced");
-
-    // Security enforcement
-    let enforced = enforce_security("actor", Capability::ReadMemory, "memory", trust);
-    tracing::debug!(enforced = enforced, "Security enforcement referenced");
-
-    // Rollback
-    rollback_to_safe_state("actor", "memory");
-
-    // Trust decay
-    let decayed = apply_trust_decay(0.8, 0.1);
-    tracing::debug!(decayed_trust = decayed, "Trust decay referenced");
-
-    // Reputation
-    let mut rep = ReputationScore::new("tool-1", 0.9);
-    rep.update(0.95);
-    tracing::debug!(reputation = rep.value, "Reputation referenced");
-
-    // Explainability
-    let explanation = explain_security_decision("actor", "read_memory", true, "authorized");
-    tracing::debug!(explanation = %explanation, "Security explainability referenced");
 }

@@ -56,11 +56,15 @@ impl LoopRunner {
             let learning_update =
                 crate::scheduler::cooboploop::learning_pipeline::LearningPipeline::process(exp);
             // Apply capability updates to capability_registry.
+            let mut cap_guard = match self.capability_registry.lock() {
+                Ok(g) => g,
+                Err(poisoned) => poisoned.into_inner(),
+            };
             for cap_update in &learning_update.capability_updates {
                 let cap_id = crate::scheduler::cooboploop::capability::CapabilityId::from_string(
                     &cap_update.capability_id,
                 );
-                let current = self.capability_registry.get(&cap_id).unwrap_or(
+                let current = cap_guard.get(&cap_id).unwrap_or(
                     crate::scheduler::cooboploop::capability::CapabilityAssessment {
                         id: cap_id.clone(),
                         name: cap_update.capability_id.clone(),
@@ -70,7 +74,7 @@ impl LoopRunner {
                     },
                 );
                 let new_level = (current.level + cap_update.level_delta).clamp(0.0, 1.0);
-                self.capability_registry.update(
+                cap_guard.update(
                     crate::scheduler::cooboploop::capability::CapabilityAssessment {
                         id: cap_id.clone(),
                         name: cap_update.capability_id.clone(),
@@ -290,8 +294,11 @@ impl LoopRunner {
                         tracing::warn!("Failed to persist hardware profile: {e}");
                     }
                 }
-                self.capability_registry
-                    .update_from_hardware_profile(&profile);
+                let mut hw_guard = match self.capability_registry.lock() {
+                    Ok(g) => g,
+                    Err(poisoned) => poisoned.into_inner(),
+                };
+                hw_guard.update_from_hardware_profile(&profile);
                 // Generate hardware_adaptation objectives when inadequate.
                 if profile.cpu_cores < 4 || profile.memory_available_mb < 2048 {
                     let objective = AgentGoal {
@@ -353,8 +360,13 @@ impl LoopRunner {
                 Err(e) => tracing::debug!("Research dispatch: {e}"),
             }
         }
-        let capabilities = self.capability_registry.list();
-        tracing::debug!("Capabilities: {}", capabilities.len());
+        {
+            let list_guard = match self.capability_registry.lock() {
+                Ok(g) => g,
+                Err(poisoned) => poisoned.into_inner(),
+            };
+            tracing::debug!("Capabilities: {}", list_guard.list().len());
+        }
         if let Ok(strategic_guard) = self.strategic_registry.lock() {
             let strategic_active = strategic_guard.list().iter().any(|o| o.status == "active");
             tracing::debug!("Strategic active: {strategic_active}");

@@ -58,14 +58,12 @@ impl ToolValidator {
         }
 
         // Step 3: If strict mode, validate against input schema
-        if self.strict {
-            if let Some(schema) = contract.input_schema.get("properties") {
-                if let Value::Object(props) = schema {
-                    for (key, value) in props {
-                        let prop_key = key.as_str();
-                        tracing::debug!(property_key = %prop_key, property_value = ?value, "Schema property validated");
-                    }
-                }
+        if let (true, Some(Value::Object(props))) =
+            (self.strict, contract.input_schema.get("properties"))
+        {
+            for (key, value) in props {
+                let prop_key = key.as_str();
+                tracing::debug!(property_key = %prop_key, property_value = ?value, "Schema property validated");
             }
         }
 

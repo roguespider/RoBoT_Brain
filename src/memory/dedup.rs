@@ -3,8 +3,9 @@
 //! Handles merging duplicate memory records before promotion.
 
 use std::collections::hash_map::DefaultHasher;
+use std::hash::{Hash, Hasher};
 
-use crate::data_contracts::memory_record::MemoryRecord;
+use crate::common::data_contracts::memory_record::MemoryRecord;
 
 /// Merge duplicate records by grouping by content hash and keeping the highest confidence record.
 pub fn merge_duplicates(records: Vec<MemoryRecord>) -> Vec<MemoryRecord> {
@@ -14,12 +15,6 @@ pub fn merge_duplicates(records: Vec<MemoryRecord>) -> Vec<MemoryRecord> {
     let mut merged: Vec<MemoryRecord> = Vec::new();
 
     for record in records {
-        // Skip anchor records - they are preserved unchanged (T2-44)
-        if record.is_anchor {
-            merged.push(record);
-            continue;
-        }
-
         let hash = content_hash(&record.content);
         groups.entry(hash).or_default().push(record);
     }

@@ -94,7 +94,8 @@ pub struct LoopRunner {
     pub(crate) idle_state: IdleState,
     pub(crate) self_improvement_pipeline: Mutex<SelfImprovementPipeline>,
     pub(crate) research_manager: Mutex<ResearchManager>,
-    pub(crate) capability_registry: crate::scheduler::cooboploop::capability::CapabilityRegistry,
+    pub(crate) capability_registry:
+        Arc<Mutex<crate::scheduler::cooboploop::capability::CapabilityRegistry>>,
     pub(crate) objective_source_registry: ObjectiveSourceRegistry,
     pub experience_coordinator: Option<Arc<ExperienceCoordinator>>,
     pub objective_queue: queue::ObjectiveQueue,
@@ -145,6 +146,11 @@ impl LoopRunner {
             config.reevaluation_interval_secs
         );
         let coordinator = Self::default_experience_coordinator();
+        let mut capability_registry = CapabilityRegistry::new();
+        super::super::capability::seed_default_capabilities(&mut capability_registry);
+        let capability_registry_arc = Arc::new(Mutex::new(capability_registry));
+        let mut research_manager = ResearchManager::new();
+        research_manager.set_capability_registry(Arc::clone(&capability_registry_arc));
         let mut instance = Self {
             current_stage: LoopStage::ObserveState,
             cycle_count: 0,
@@ -168,12 +174,8 @@ impl LoopRunner {
             post_task_evaluation: PostTaskEvaluation::new(),
             idle_state: IdleState::new(60),
             self_improvement_pipeline: Mutex::new(SelfImprovementPipeline::new()),
-            research_manager: Mutex::new(ResearchManager::new()),
-            capability_registry: {
-                let mut reg = CapabilityRegistry::new();
-                super::super::capability::seed_default_capabilities(&mut reg);
-                reg
-            },
+            research_manager: Mutex::new(research_manager),
+            capability_registry: capability_registry_arc,
             objective_source_registry: ObjectiveSourceRegistry::init(),
             strategic_registry: Arc::new(Mutex::new(StrategicObjectiveRegistry::new())),
             reflection_engine: Arc::new(Mutex::new(ReflectionEngine::new())),

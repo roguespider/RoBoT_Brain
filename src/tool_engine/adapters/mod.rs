@@ -2,6 +2,7 @@
 //! Adapters for integrating external tool systems.
 
 /// Tool adapter for external system integration.
+#[derive(Default)]
 pub struct ToolAdapter;
 
 impl ToolAdapter {

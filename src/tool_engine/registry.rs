@@ -469,13 +469,13 @@ pub fn register_tool(contract: ToolContract) -> Result<ToolId, ToolError> {
 /// Run an execution function in isolation.
 pub fn run_isolated<
     F: FnOnce() -> Result<
-        crate::skills::registry::result::ExecutionResult,
+        crate::execution::skills::result::ExecutionResult,
         crate::execution::ExecutionError,
     >,
 >(
     ctx: &crate::execution::IsolationContext,
     f: F,
-) -> Result<crate::skills::registry::result::ExecutionResult, crate::execution::ExecutionError> {
+) -> Result<crate::execution::skills::result::ExecutionResult, crate::execution::ExecutionError> {
     tracing::debug!(
         timeout_ms = ctx.timeout_ms,
         "Invoking tool with authorization"

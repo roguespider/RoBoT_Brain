@@ -1,6 +1,7 @@
 pub mod full;
 
 use full::{ActorCapabilities, Capability};
+use rusqlite::OptionalExtension;
 
 /// Security error types.
 #[derive(Debug, Clone, PartialEq, Eq)]

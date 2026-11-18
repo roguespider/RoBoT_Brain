@@ -2,6 +2,7 @@
 //! Assembles context from raw inputs into structured form.
 
 /// Context assembler.
+#[derive(Default)]
 pub struct ContextAssembler;
 
 impl ContextAssembler {

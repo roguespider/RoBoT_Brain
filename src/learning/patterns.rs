@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 /// Group experiences by their context signature.
 pub fn group_by_context_signature(
-    experiences: &[crate::data_contracts::experience_record::ExperienceRecord],
+    experiences: &[crate::common::data_contracts::experience_record::ExperienceRecord],
 ) -> std::collections::HashMap<String, Vec<String>> {
     let mut groups: std::collections::HashMap<String, Vec<String>> =
         std::collections::HashMap::new();
@@ -50,7 +50,7 @@ pub fn get_patterns(
 
 /// Detect patterns from grouped experiences.
 pub fn detect_patterns(
-    experiences: &[crate::data_contracts::experience_record::ExperienceRecord],
+    experiences: &[crate::common::data_contracts::experience_record::ExperienceRecord],
     min_frequency: u32,
 ) -> Vec<Pattern> {
     let groups = group_by_context_signature(experiences);

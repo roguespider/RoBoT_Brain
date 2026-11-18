@@ -5,7 +5,9 @@ use chrono::{DateTime, Utc};
 use rusqlite::Row;
 use uuid::Uuid;
 
-use crate::database::models::{HierarchyLevel, MemoryCard, MemoryLayer, MemoryType};
+use crate::database::models::{HierarchyLevel, MemoryCard, MemoryType};
+
+use crate::memory::types::MemoryLayer;
 
 /// Parse hierarchy level string to enum
 pub fn parse_hierarchy_level(s: &str) -> HierarchyLevel {
@@ -37,8 +39,16 @@ pub fn parse_memory_type(value: &str) -> MemoryType {
 /// Parse memory layer string to enum
 pub fn parse_memory_layer(value: &str) -> MemoryLayer {
     match value {
-        "permanent" => MemoryLayer::Permanent,
-        _ => MemoryLayer::Working,
+        "working" => MemoryLayer::Working,
+        "permanent" | "long_term" => MemoryLayer::LongTerm,
+        "short_term" => MemoryLayer::ShortTerm,
+        "semantic" => MemoryLayer::Semantic,
+        "episodic" => MemoryLayer::Episodic,
+        "procedural" => MemoryLayer::Procedural,
+        "graph" => MemoryLayer::Graph,
+        "index" => MemoryLayer::Index,
+        "archive" => MemoryLayer::Archive,
+        _ => MemoryLayer::Working, // default for unknown values
     }
 }
 
@@ -91,5 +101,9 @@ pub fn map_row_to_memory_card(row: &Row) -> rusqlite::Result<MemoryCard> {
         importance: row.get(12)?,
         created_at: parse_time(&row.get::<_, String>(13)?),
         updated_at: parse_time(&row.get::<_, String>(14)?),
+        title: {
+            let title: String = row.get(15)?;
+            if title.is_empty() { None } else { Some(title) }
+        },
     })
 }

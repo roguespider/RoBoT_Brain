@@ -9,8 +9,8 @@ NO source code access — only the compiled binary is tested.
 import asyncio
 import asyncio.subprocess
 import json
+import logging
 from pathlib import Path
-from typing import cast
 
 
 class RobotBrainClient:
@@ -83,7 +83,7 @@ class RobotBrainClient:
             self._process.terminate()
             try:
                 await asyncio.wait_for(self._process.wait(), timeout=5.0)
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 self._process.kill()
 
     async def get_workflow(self, purpose: str = "general") -> dict:
@@ -128,9 +128,11 @@ class RobotBrainClient:
         process = self._process
         if process is None:
             raise RuntimeError("Process not started")
-        process = cast(asyncio.subprocess.Process, process)
-        process.stdin.write((request + "\n").encode())  # type: ignore
-        await process.stdin.drain()  # type: ignore
+        stdin = process.stdin
+        if stdin is None:
+            raise RuntimeError("Process stdin not available")
+        stdin.write((request + "\n").encode())
+        await stdin.drain()
 
     async def _send_notification(self, method: str, params: dict) -> None:
         """Send a notification (no response expected)."""
@@ -144,18 +146,22 @@ class RobotBrainClient:
         process = self._process
         if process is None:
             raise RuntimeError("Process not started")
-        process = cast(asyncio.subprocess.Process, process)
-        process.stdin.write((notification + "\n").encode())  # type: ignore
-        await process.stdin.drain()  # type: ignore
+        stdin = process.stdin
+        if stdin is None:
+            raise RuntimeError("Process stdin not available")
+        stdin.write((notification + "\n").encode())
+        await stdin.drain()
 
     async def _read_response_line(self) -> str:
         """Read one line from stdout that looks like a JSON-RPC response."""
         process = self._process
         if process is None:
             raise RuntimeError("Process not started")
-        process = cast(asyncio.subprocess.Process, process)
+        stdout = process.stdout
+        if stdout is None:
+            raise RuntimeError("Process stdout not available")
         for _ in range(100):  # Safety limit
-            line = await process.stdout.readline()  # type: ignore
+            line = await stdout.readline()
             line_str = line.decode().strip()
             if line_str and line_str.startswith("{") and "jsonrpc" in line_str:
                 return line_str
@@ -182,5 +188,7 @@ class RobotBrainClient:
                 try:
                     return json.loads(text)
                 except json.JSONDecodeError:
-                    pass
+                    logging.debug(
+                        f"Failed to parse JSON from MCP response: {text[:200]}"
+                    )
         return result

@@ -12,8 +12,8 @@ use super::context::ExperienceContext;
 use super::maturity::KnowledgeMaturity;
 use super::outcome::ExperienceOutcome;
 
-use crate::data_contracts::memory_record::{MemoryKind, MemoryRecord};
-use crate::data_contracts::metadata::Metadata;
+use crate::common::data_contracts::memory_record::{MemoryKind, MemoryRecord};
+use crate::common::data_contracts::metadata::Metadata;
 
 /// Categories of experiences.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -219,8 +219,8 @@ impl Experience {
     }
 
     /// Returns a PostTaskEvaluation by analyzing this experience's outcome and metadata.
-    pub fn evaluate_post_task(&self) -> crate::cooboploop::post_task::PostTaskEvaluation {
-        use crate::cooboploop::post_task::PostTaskEvaluation;
+    pub fn evaluate_post_task(&self) -> crate::scheduler::cooboploop::post_task::PostTaskEvaluation {
+        use crate::scheduler::cooboploop::post_task::PostTaskEvaluation;
         let mut eval = PostTaskEvaluation::new();
         eval.set_did_succeed(self.outcome.kind == OutcomeKind::Success);
         eval.set_verification_confirmed(self.outcome.kind == OutcomeKind::Success);

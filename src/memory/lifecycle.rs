@@ -1,5 +1,5 @@
-use crate::data_contracts::memory_record::MemoryKind;
-use crate::data_contracts::memory_record::MemoryRecord;
+use crate::common::data_contracts::memory_record::MemoryKind;
+use crate::common::data_contracts::memory_record::MemoryRecord;
 use serde::{Deserialize, Serialize};
 
 /// Memory lifecycle states - Per Architecture §8.4
@@ -42,13 +42,13 @@ impl std::fmt::Display for MemoryLifecycle {
 /// - Accepted → Permanent
 /// - Any state → Archived
 pub fn can_promote(from: MemoryLifecycle, to: MemoryLifecycle) -> bool {
-    match (from, to) {
-        (MemoryLifecycle::Working, MemoryLifecycle::Candidate) => true,
-        (MemoryLifecycle::Candidate, MemoryLifecycle::Accepted) => true,
-        (MemoryLifecycle::Accepted, MemoryLifecycle::Permanent) => true,
-        (_, MemoryLifecycle::Archived) => true,
-        _ => false,
-    }
+    matches!(
+        (from, to),
+        (MemoryLifecycle::Working, MemoryLifecycle::Candidate)
+            | (MemoryLifecycle::Candidate, MemoryLifecycle::Accepted)
+            | (MemoryLifecycle::Accepted, MemoryLifecycle::Permanent)
+            | (_, MemoryLifecycle::Archived)
+    )
 }
 
 /// Returns true only for the Archived terminal state.
@@ -57,16 +57,6 @@ pub fn is_terminal(s: MemoryLifecycle) -> bool {
 }
 
 /// Active reference to memory lifecycle contracts.
-pub fn reference_memory_lifecycle_contracts() {
-    // Wire can_promote
-    let can_result = can_promote(MemoryLifecycle::Working, MemoryLifecycle::Candidate);
-    tracing::info!(can_promote = can_result, "can_promote actively referenced");
-
-    // Wire is_terminal
-    let is_term = is_terminal(MemoryLifecycle::Archived);
-    tracing::info!(is_terminal = is_term, "is_terminal actively referenced");
-}
-
 /// Promotion gate for memory lifecycle transitions.
 ///
 /// This struct defines the thresholds that must be met for a memory to be promoted

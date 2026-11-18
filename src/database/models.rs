@@ -1,9 +1,10 @@
 // src/database/models.rs
 
-
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
+
+use crate::memory::types::MemoryLayer;
 
 // ==========================================================
 // HYPOTHESIS ENGINE TYPES
@@ -204,6 +205,7 @@ pub enum MemoryType {
     Event,
     Encounter,
     Experience,
+    Concept,
 }
 
 impl std::fmt::Display for MemoryType {
@@ -219,31 +221,7 @@ impl std::fmt::Display for MemoryType {
             MemoryType::Event => "event",
             MemoryType::Encounter => "encounter",
             MemoryType::Experience => "experience",
-        };
-        write!(f, "{}", s)
-    }
-}
-
-// ==========================================================
-// MEMORY LAYER (STM vs LTM)
-// ==========================================================
-
-/// Memory layer per Architecture §6.3
-/// - Working: Short-term, volatile, context-focused
-/// - Permanent: Long-term, curated, indexed
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Default)]
-pub enum MemoryLayer {
-    /// Short-term memory - temporary, high volatility
-    #[default]
-    Working,
-    /// Long-term memory - curated, persistent, indexed
-    Permanent,
-}
-impl std::fmt::Display for MemoryLayer {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let s = match self {
-            MemoryLayer::Working => "working",
-            MemoryLayer::Permanent => "permanent",
+            MemoryType::Concept => "concept",
         };
         write!(f, "{}", s)
     }
@@ -291,17 +269,20 @@ pub struct MemoryCard {
 
     pub content: String,
 
+    /// Optional title (MemoryRecord contract, Architecture §5.6).
+    pub title: Option<String>,
+
     pub memory_type: MemoryType,
 
     // Memory layer - per Architecture §6.3
     pub layer: MemoryLayer,
 
     // Hierarchy fields for hierarchical storage
-    pub parent_id: Option<Uuid>,           // None for root document
-    pub hierarchy_level: HierarchyLevel,   // document, section, paragraph, sentence
-    pub order_index: usize,               // Position within parent
-    pub path: String,                     // e.g., "readme.md/section[0]/paragraph[2]"
-    pub file_source: Option<String>,       // Original file path
+    pub parent_id: Option<Uuid>,         // None for root document
+    pub hierarchy_level: HierarchyLevel, // document, section, paragraph, sentence
+    pub order_index: usize,              // Position within parent
+    pub path: String,                    // e.g., "readme.md/section[0]/paragraph[2]"
+    pub file_source: Option<String>,     // Original file path
 
     // Access tracking for consolidation
     pub access_count: u32,
@@ -324,6 +305,8 @@ impl MemoryCard {
             id: Uuid::new_v4(),
 
             content,
+
+            title: None,
 
             memory_type,
 
@@ -366,6 +349,7 @@ impl MemoryCard {
         Self {
             id: Uuid::new_v4(),
             content,
+            title: None,
             memory_type,
             layer: MemoryLayer::Working,
             parent_id,
@@ -388,8 +372,7 @@ impl MemoryCard {
 // ==========================================================
 
 /// Relationship type between memories
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash)]
-#[derive(Default)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq, Hash, Default)]
 pub enum MemoryRelationshipType {
     /// General related relationship
     #[default]
@@ -434,7 +417,11 @@ pub struct MemoryRelationship {
 
 impl MemoryRelationship {
     /// Create a new memory relationship
-    pub fn new(memory_id: Uuid, related_id: Uuid, relationship_type: MemoryRelationshipType) -> Self {
+    pub fn new(
+        memory_id: Uuid,
+        related_id: Uuid,
+        relationship_type: MemoryRelationshipType,
+    ) -> Self {
         Self {
             id: Uuid::new_v4(),
             memory_id,
@@ -478,7 +465,8 @@ impl MemoryEmbedding {
             return 0.0;
         }
 
-        let dot_product: f32 = self.embedding
+        let dot_product: f32 = self
+            .embedding
             .iter()
             .zip(other.embedding.iter())
             .map(|(a, b)| a * b)
@@ -499,4 +487,3 @@ impl MemoryEmbedding {
         self.embedding.len()
     }
 }
-

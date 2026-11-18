@@ -26,10 +26,7 @@ impl<'a> GeneralizationMethods<'a> {
     /// Generalize from a set of experiences to create broader patterns
     ///
     /// Per Architecture §9: "Generalization extracts common patterns from specific instances"
-    pub async fn generalize(
-        &self,
-        experience_ids: Vec<Uuid>,
-    ) -> Result<GeneralizationResult> {
+    pub async fn generalize(&self, experience_ids: Vec<Uuid>) -> Result<GeneralizationResult> {
         let mut result = GeneralizationResult::default();
 
         tracing::debug!("Generalizing from {} experience IDs", experience_ids.len());
@@ -60,7 +57,7 @@ impl<'a> GeneralizationMethods<'a> {
                     pattern.confidence,
                     Uuid::new_v4(),
                 );
-                let new_id = self.knowledge_store.add(generalized_knowledge).await;
+                let new_id = self.knowledge_store.add(generalized_knowledge);
                 tracing::debug!(
                     "Promoted pattern to knowledge {} (confidence {:.2})",
                     new_id,
@@ -103,12 +100,7 @@ impl<'a> GeneralizationMethods<'a> {
                 // Count successful vs failed
                 let success_count = exps
                     .iter()
-                    .filter(|e| {
-                        matches!(
-                            e.outcome.kind,
-                            OutcomeKind::Success
-                        )
-                    })
+                    .filter(|e| matches!(e.outcome.kind, OutcomeKind::Success))
                     .count();
 
                 let confidence = success_count as f32 / exps.len() as f32;
@@ -132,7 +124,10 @@ impl<'a> GeneralizationMethods<'a> {
         let mut by_time: Vec<&Experience> = experiences.iter().collect();
         by_time.sort_by_key(|a| a.timestamp);
         if by_time.len() >= 3 {
-            let first_ts = by_time.first().map(|f| f.timestamp.timestamp()).unwrap_or(0);
+            let first_ts = by_time
+                .first()
+                .map(|f| f.timestamp.timestamp())
+                .unwrap_or(0);
             let last_ts = by_time.last().map(|l| l.timestamp.timestamp()).unwrap_or(0);
             let span = last_ts - first_ts;
             if span > 0 {
@@ -198,7 +193,7 @@ impl<'a> GeneralizationMethods<'a> {
 
         // Get source knowledge
         for knowledge_id in &knowledge_ids {
-            if let Some(knowledge) = self.knowledge_store.get(*knowledge_id).await {
+            if let Some(knowledge) = self.knowledge_store.get(*knowledge_id) {
                 // Adapt knowledge for target domain
                 let adapted = self
                     .adapt_knowledge_for_domain(&knowledge, target_domain)
@@ -208,7 +203,7 @@ impl<'a> GeneralizationMethods<'a> {
                     // Lower confidence for transferred knowledge (needs validation)
                     adapted_knowledge.confidence.adjust_source_reliability(-0.2);
 
-                    let new_id = self.knowledge_store.add(adapted_knowledge).await;
+                    let new_id = self.knowledge_store.add(adapted_knowledge);
                     result.new_knowledge_ids.push(new_id);
                     result.transferred_count += 1;
                     result.adapted_count += 1;

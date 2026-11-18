@@ -14,6 +14,12 @@ pub struct ContextEngine {
     retrieval: ContextRetrieval,
 }
 
+impl Default for ContextEngine {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl ContextEngine {
     /// Create a new context engine.
     pub fn new() -> Self {
@@ -29,8 +35,7 @@ impl ContextEngine {
     pub fn assemble_context(&self, request: &ContextRequest) -> Context {
         let assembled = self.assembler.assemble(request);
         let retrieved = self.retrieval.retrieve(&assembled);
-        let context = self.lifecycle.finalize(retrieved);
-        context
+        self.lifecycle.finalize(retrieved)
     }
 }
 

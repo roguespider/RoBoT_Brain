@@ -166,6 +166,46 @@ impl WorldModel {
     pub async fn relationship_count(&self) -> usize {
         self.relationships.read().await.len()
     }
+
+    /// Reasoning query (§14): find a path from `source` to `target` through
+    /// relationships. Returns the sequence of entity ids forming the path.
+    pub async fn find_path(&self, source: Uuid, target: Uuid) -> Option<Vec<Uuid>> {
+        let rels = self.relationships.read().await;
+        // Build adjacency list.
+        let mut adj: HashMap<Uuid, Vec<Uuid>> = HashMap::new();
+        for r in rels.iter() {
+            adj.entry(r.source).or_default().push(r.target);
+            adj.entry(r.target).or_default().push(r.source);
+        }
+        drop(rels);
+        // BFS.
+        let mut visited = std::collections::HashSet::new();
+        let mut queue = std::collections::VecDeque::new();
+        let mut parent: HashMap<Uuid, Uuid> = HashMap::new();
+        visited.insert(source);
+        queue.push_back(source);
+        while let Some(current) = queue.pop_front() {
+            if current == target {
+                // Reconstruct path.
+                let mut path = Vec::new();
+                let mut cur = target;
+                while cur != source {
+                    path.push(cur);
+                    cur = parent[&cur];
+                }
+                path.push(source);
+                path.reverse();
+                return Some(path);
+            }
+            for next in adj.get(&current).into_iter().flatten() {
+                if visited.insert(*next) {
+                    parent.insert(*next, current);
+                    queue.push_back(*next);
+                }
+            }
+        }
+        None
+    }
 }
 
 impl Default for WorldModel {

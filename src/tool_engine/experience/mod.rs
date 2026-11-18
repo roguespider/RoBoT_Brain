@@ -34,7 +34,7 @@ pub async fn execute_record_experience(
     input: RecordExperienceInput,
     coordinator: &std::sync::Arc<crate::experience::coordinator::ExperienceCoordinator>,
     db: &std::sync::Arc<crate::database::sqlite::SqliteDatabase>,
-) -> Result<crate::bridge::tools::ToolOutput, anyhow::Error> {
+) -> Result<crate::api::bridge::tools::ToolOutput, anyhow::Error> {
     // Create experience record
     let experience = crate::experience::types::experience::Experience::new(
         input.title.clone(),
@@ -58,7 +58,7 @@ pub async fn execute_record_experience(
     let conn = db.connection()?;
     crate::database::queries::insert_memory(&conn, &card)?;
 
-    Ok(crate::bridge::tools::ToolOutput::success(
+    Ok(crate::api::bridge::tools::ToolOutput::success(
         serde_json::json!({
             "status": "recorded",
             "experience_id": experience.id.to_string(),

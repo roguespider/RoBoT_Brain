@@ -3,10 +3,14 @@
 .delta/
 # Block heavy, unstable Rust build folders and ghost files
 target/*
-
+.agents/scripts/test_suite2.1/__pycache__
+*pycache*
 # Cargo.lock — robot_brain is a binary crate; test_suite is a separate
 # independent binary crate. Neither lock file should be committed.
 Cargo.lock
+
+# user project folder not for public
+.agents/LLModel
 
 # Agent documentation and scripts - NEVER commit
 AGENTS.md
@@ -18,7 +22,12 @@ AGENTS.md
 .agents/TEST_SUITE_NOTES.md
 .agents/PLAN.md
 .agents/LARGE_FILE_REFACTOR.md
-.agents/context_save.md
-.agents/CHANGELOG.md
+
 .agents/skills/robot-brain/skill.md
 .agents/scripts/test_output.txt
+
+# Agent bulletin board - coordination state is local, the tool is tracked
+.agents/bulletin/*
+.agents/.workers/
+.agents/workers/
+nul

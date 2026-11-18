@@ -6,7 +6,7 @@ Verifies the full pipeline:
 2. ingest the transcribed text result
 """
 
-import asyncio
+import logging
 import tempfile
 from pathlib import Path
 
@@ -31,7 +31,7 @@ async def test_audio_transcribe_ingest_pipeline(client):
     assert result.get("success") is True, f"Transcription failed: {result}"
     text = result.get("text", "")
     assert len(text) > 0, "Transcription produced empty text"
-    print(f"Transcribed text length: {len(text)} chars")
+    logging.debug("Transcribed text length: %d chars", len(text))
 
     # 3. Write transcribed text to a temp file for ingestion
     with tempfile.NamedTemporaryFile(
@@ -49,4 +49,4 @@ async def test_audio_transcribe_ingest_pipeline(client):
         },
     )
     assert ingest_result.get("success") is not False, f"Ingest failed: {ingest_result}"
-    print(f"Ingest result: {ingest_result}")
+    logging.debug("Ingest result: %s", ingest_result)

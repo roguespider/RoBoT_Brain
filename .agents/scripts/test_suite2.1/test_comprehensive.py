@@ -148,7 +148,7 @@ class TestMemoryMCP:
     @pytest.mark.asyncio
     async def test_get_memory(self, client):
         # Create then retrieve
-        store = await client.call_tool(
+        await client.call_tool(
             "store_memory",
             {"content": "retrieve me", "memory_type": "fact"},
         )
@@ -723,12 +723,12 @@ class TestPersonalityMCP:
 
 
 # ------------------------------------------------------------------
-# MCP — Planning / Planner (all planner tools)
+# MCP — Planning Engine (all planning tools)
 # ------------------------------------------------------------------
 
 
-class TestPlannerMCP:
-    """Every planner-related MCP tool."""
+class TestPlanningMCP:
+    """Every planning-related MCP tool."""
 
     @pytest.mark.asyncio
     async def test_create_plan(self, client):

@@ -166,6 +166,13 @@ if exist "%TS_DIR%\.pytest_cache" (
     rmdir /s /q "%TS_DIR%\.pytest_cache"
     echo [CLEAN] .pytest_cache
 )
+REM Clean orphan .txt output files (only test_output.txt at repo root is valid)
+for %%f in ("%TS_DIR%\*.txt") do (
+    if exist "%%f" (
+        del "%%f"
+        echo [CLEAN] %%~nxf
+    )
+)
 echo [INFO] Cleaning robot_brain (Cargo.toml location: %REPO_ROOT%\Cargo.toml)...n
 REM Clean robot_brain using cargo clean (proper Cargo cleanup)
 if exist "%REPO_ROOT%\Cargo.toml" (

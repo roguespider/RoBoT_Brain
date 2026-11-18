@@ -39,6 +39,34 @@ pub fn insert_observation(conn: &Connection, observation: &Observation) -> Resul
     Ok(())
 }
 
+/// Get a single observation by ID
+pub fn get_observation(conn: &Connection, id: Uuid) -> Result<Option<Observation>> {
+    let mut stmt = conn.prepare(
+        "SELECT id, content, context, observation_type, related_experiences, triggered_hypothesis, created_at
+         FROM observations WHERE id = ?1"
+    )?;
+
+    let mut rows = stmt.query([id.to_string()])?;
+    let Some(row) = rows.next()? else {
+        return Ok(None);
+    };
+
+    let id_str: String = row.get(0)?;
+    let related_json: String = row.get(4)?;
+    let triggered_str: Option<String> = row.get(5)?;
+
+    Ok(Some(Observation {
+        id: Uuid::parse_str(&id_str)
+            .map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
+        content: row.get(1)?,
+        context: row.get(2)?,
+        observation_type: row.get(3)?,
+        related_experiences: serde_json::from_str(&related_json).unwrap_or_default(),
+        triggered_hypothesis: triggered_str.and_then(|s| Uuid::parse_str(&s).ok()),
+        created_at: parse_time(&row.get::<_, String>(6)?),
+    }))
+}
+
 /// List recent observations
 pub fn list_observations(conn: &Connection, limit: usize) -> Result<Vec<Observation>> {
     let mut stmt = conn.prepare(
@@ -51,7 +79,8 @@ pub fn list_observations(conn: &Connection, limit: usize) -> Result<Vec<Observat
         let related_json: String = row.get(4)?;
         let triggered_str: Option<String> = row.get(5)?;
         Ok(Observation {
-            id: Uuid::parse_str(&id_str).map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
+            id: Uuid::parse_str(&id_str)
+                .map_err(|e| rusqlite::Error::InvalidParameterName(e.to_string()))?,
             content: row.get(1)?,
             context: row.get(2)?,
             observation_type: row.get(3)?,

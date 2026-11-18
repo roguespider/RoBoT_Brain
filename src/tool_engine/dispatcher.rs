@@ -55,10 +55,10 @@ impl<'a> ToolDispatcher<'a> {
         }
 
         // Step 3: Validate parameters against contract
-        self.validate_parameters(&contract, &params)?;
+        self.validate_parameters(contract, &params)?;
 
         // Step 4: Route to appropriate executor based on tool category
-        self.execute_tool(&contract, &params).await
+        self.execute_tool(contract, &params).await
     }
 
     /// Validate tool parameters against the contract.

@@ -44,7 +44,15 @@ impl ToolMetrics {
             error_counts: HashMap::new(),
         }
     }
+}
 
+impl Default for ToolMetrics {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+impl ToolMetrics {
     /// Record a tool execution.
     pub fn record_execution(&mut self, tool_name: &str, duration: Duration, success: bool) {
         self.execution_counts
@@ -118,7 +126,7 @@ impl ToolMetrics {
     /// Get all tool metrics.
     pub fn get_all_metrics(&self) -> HashMap<String, ToolMetricSummary> {
         let mut result = HashMap::new();
-        for (tool_name, _) in &self.execution_counts {
+        for tool_name in self.execution_counts.keys() {
             result.insert(
                 tool_name.clone(),
                 ToolMetricSummary {
@@ -216,6 +224,12 @@ impl ToolHealthMonitor {
     /// Update metrics with new execution data.
     pub fn record_execution(&mut self, tool_name: &str, duration: Duration, success: bool) {
         self.metrics.record_execution(tool_name, duration, success);
+    }
+}
+
+impl Default for ToolHealthMonitor {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

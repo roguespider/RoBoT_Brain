@@ -140,6 +140,9 @@ pub struct ExecutionScheduler {
     pub budget: ResourceBudget,
     /// Total resource usage.
     pub total_resources: JobResources,
+    /// Database connection for durable checkpoint persistence.
+    /// Per Architecture §12.24: checkpoints SHALL be durable.
+    pub database: Option<std::sync::Arc<crate::database::sqlite::SqliteDatabase>>,
 }
 
 impl ExecutionScheduler {
@@ -152,6 +155,7 @@ impl ExecutionScheduler {
             max_concurrency,
             budget: ResourceBudget::default(),
             total_resources: JobResources::default(),
+            database: None,
         }
     }
 
@@ -381,14 +385,15 @@ impl ExecutionScheduler {
                 timestamp: chrono::Utc::now().timestamp(),
             };
             // Persist checkpoint for durability (Architecture Chapter 12.24)
-            let persisted = persist_checkpoint(&checkpoint);
+            let db_ref = self.database.as_ref().map(|arc| arc.as_ref());
+            let persisted = persist_checkpoint(db_ref, &checkpoint);
             job.checkpoint =
                 Some(serde_json::to_value(&checkpoint).unwrap_or(serde_json::Value::Null));
             job.state = JobState::Checkpointed;
             tracing::debug!(
                 job_id = %job_id,
-                persisted = persisted,
-                "Checkpoint created and persisted"
+                "Checkpoint created and persisted={}",
+                persisted
             );
         }
     }
@@ -412,62 +417,93 @@ impl ExecutionScheduler {
     }
 }
 
-/// Active reference to scheduler types to prevent dead-code warnings.
-pub fn reference_scheduler_types() {
-    let budget = ResourceBudget {
-        max_cpu_ms: 30_000,
-        max_memory_bytes: 536_870_912,
-        max_io_ops: 5_000,
-        max_network_requests: 50,
-    };
-    let state = JobState::Ready;
-    let checkpoint = JobCheckpoint {
-        job_id: "job-1".to_string(),
-        step_index: 0,
-        partial_results: vec![serde_json::json!({"key": "value"})],
-        timestamp: chrono::Utc::now().timestamp(),
-    };
-    let resources = JobResources {
-        cpu_ms: 100,
-        memory_bytes: 4096,
-        io_ops: 5,
-        network_requests: 1,
-    };
-
-    tracing::info!(
-        "Scheduler types referenced: budget={:?} state={:?} checkpoint={:?} resources={:?}",
-        budget,
-        state,
-        checkpoint,
-        resources
-    );
-    // Reference checkpoint/reproducibility/idempotency types
-    reference_scheduler_checkpoint_types();
-}
-
-/// Persist a checkpoint to the database (simulated persistence path).
+/// Persist a checkpoint to the database.
 /// Per Architecture Chapter 12.24 (Checkpointing): checkpoints must be durable
 /// and recoverable for long-running jobs.
-pub fn persist_checkpoint(checkpoint: &JobCheckpoint) -> bool {
-    tracing::debug!(
-        job_id = %checkpoint.job_id,
-        step_index = checkpoint.step_index,
-        partial_results_len = checkpoint.partial_results.len(),
-        timestamp = checkpoint.timestamp,
-        "Checkpoint persisted to database"
-    );
-    true
+pub fn persist_checkpoint(
+    db: Option<&crate::database::sqlite::SqliteDatabase>,
+    checkpoint: &JobCheckpoint,
+) -> bool {
+    if let Some(db) = db {
+        let result = (|| -> std::result::Result<(), String> {
+            let conn = db.connection().map_err(|e| e.to_string())?;
+            let partial_results =
+                serde_json::to_string(&checkpoint.partial_results).unwrap_or_default();
+            conn.execute(
+                "INSERT OR REPLACE INTO job_checkpoints (job_id, step_index, partial_results, timestamp) VALUES (?1, ?2, ?3, ?4)",
+                rusqlite::params![
+                    checkpoint.job_id,
+                    checkpoint.step_index as i64,
+                    partial_results,
+                    checkpoint.timestamp,
+                ],
+            ).map_err(|e| e.to_string())?;
+            Ok(())
+        })();
+        match result {
+            Ok(()) => {
+                tracing::debug!(
+                    job_id = %checkpoint.job_id,
+                    step_index = checkpoint.step_index,
+                    "Checkpoint persisted to database"
+                );
+                true
+            }
+            Err(e) => {
+                tracing::warn!("Failed to persist checkpoint: {e}");
+                false
+            }
+        }
+    } else {
+        tracing::debug!(
+            job_id = %checkpoint.job_id,
+            step_index = checkpoint.step_index,
+            "Checkpoint stored in-memory (no DB available)"
+        );
+        true
+    }
 }
 
-/// Load a checkpoint from the database (simulated recovery path).
+/// Load a checkpoint from the database.
 /// Per Architecture Chapter 12.24: recovery uses persisted checkpoints.
-pub fn load_checkpoint(job_id: &str) -> Option<JobCheckpoint> {
-    tracing::debug!(job_id = %job_id, "Checkpoint loaded from database");
+pub fn load_checkpoint(
+    db: Option<&crate::database::sqlite::SqliteDatabase>,
+    job_id: &str,
+) -> Option<JobCheckpoint> {
+    let db = db?;
+    let conn = match db.connection() {
+        Ok(c) => c,
+        Err(e) => {
+            tracing::warn!("Failed to get DB connection for checkpoint load: {e}");
+            return None;
+        }
+    };
+    let row = match conn.query_row(
+        "SELECT step_index, partial_results, timestamp FROM job_checkpoints WHERE job_id = ?1",
+        [job_id],
+        |row| {
+            Ok((
+                row.get::<_, i64>(0)?,
+                row.get::<_, String>(1)?,
+                row.get::<_, i64>(2)?,
+            ))
+        },
+    ) {
+        Ok(r) => r,
+        Err(rusqlite::Error::QueryReturnedNoRows) => return None,
+        Err(e) => {
+            tracing::warn!("Failed to query checkpoint: {e}");
+            return None;
+        }
+    };
+    let (step_index, partial_results_json, timestamp) = row;
+    let partial_results: Vec<serde_json::Value> =
+        serde_json::from_str(&partial_results_json).unwrap_or_default();
     Some(JobCheckpoint {
         job_id: job_id.to_string(),
-        step_index: 0,
-        partial_results: vec![serde_json::json!({"recovered": true})],
-        timestamp: chrono::Utc::now().timestamp(),
+        step_index: step_index as usize,
+        partial_results,
+        timestamp,
     })
 }
 
@@ -525,36 +561,4 @@ pub enum IdempotencyKey {
 pub fn check_idempotency(key: &IdempotencyKey, previous_result: Option<&str>) -> bool {
     tracing::debug!(key = ?key, previous_result = ?previous_result, "Idempotency check");
     previous_result.is_some()
-}
-
-/// Active reference to scheduler checkpoint/reproducibility/idempotency types.
-pub fn reference_scheduler_checkpoint_types() {
-    let checkpoint = JobCheckpoint {
-        job_id: "job-checkpoint-1".to_string(),
-        step_index: 3,
-        partial_results: vec![serde_json::json!({"step": 3, "status": "in_progress"})],
-        timestamp: chrono::Utc::now().timestamp(),
-    };
-    persist_checkpoint(&checkpoint);
-    let loaded = load_checkpoint("job-checkpoint-1");
-    tracing::debug!(
-        loaded_exists = loaded.is_some(),
-        "Checkpoint persistence referenced"
-    );
-
-    let log = ReproducibilityLog::new("exec-1", serde_json::json!({"action": "test"}));
-    log.log();
-
-    // Test both idempotency key variants
-    let param_key = IdempotencyKey::ParameterBased("param-key".to_string());
-    let idempotent = check_idempotency(&param_key, Some("previous_result"));
-    tracing::debug!(idempotent = idempotent, "Parameter-based idempotency check");
-
-    let request_key = IdempotencyKey::RequestBased("request-id-1".to_string());
-    let request_check = check_idempotency(&request_key, Some("cached_result"));
-    tracing::debug!(
-        request_key = ?request_key,
-        is_idempotent = request_check,
-        "Request-based idempotency check"
-    );
 }

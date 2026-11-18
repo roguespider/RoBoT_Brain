@@ -2,7 +2,7 @@
 """Test ingest tool to discover supported file types."""
 
 import asyncio
-from pathlib import Path
+import logging
 
 from mcp_client import RobotBrainClient
 
@@ -15,12 +15,12 @@ async def main():
     tools = await client.list_tools()
     for t in tools:
         if t["name"] == "ingest_files":
-            print("Tool: ingest_files")
-            print(f"Description: {t.get('description', '')[:1000]}")
-            print(f"\nInput Schema:")
+            logging.info("Tool: ingest_files")
+            logging.info("Description: %s", t.get("description", "")[:1000])
+            logging.info("\nInput Schema:")
             import json
 
-            print(json.dumps(t.get("inputSchema", {}), indent=2))
+            logging.info(json.dumps(t.get("inputSchema", {}), indent=2))
             break
 
     await client.stop()

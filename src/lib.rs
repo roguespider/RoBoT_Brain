@@ -38,4 +38,5 @@ pub mod deployment;
 
 pub mod execution;
 pub mod navigation;
+pub mod pipeline;
 pub mod tracing;

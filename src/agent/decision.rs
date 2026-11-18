@@ -4,6 +4,7 @@
 //! WorldModel -> Hypotheses. If any tier can answer the query, research is
 //! skipped. Research is the last resort.
 
+use std::sync::Mutex as StdMutex;
 use tokio::sync::Mutex;
 
 use crate::experience::hypothesis::HypothesisEngine;
@@ -19,6 +20,7 @@ use crate::scheduler::cooboploop::capability::CapabilityRegistry;
 /// Groups all tier 1-8 dependencies into a single parameter to avoid
 /// the clippy::too_many_arguments lint (limit is 7).
 pub struct CascadeDeps<'a> {
+    pub capability_registry: Option<&'a StdMutex<CapabilityRegistry>>,
     pub knowledge_store: &'a KnowledgeStore,
     pub latest_experience: Option<&'a Experience>,
     pub reflection_engine: &'a Mutex<crate::experience::reflection::engine::ReflectionEngine>,
@@ -60,9 +62,7 @@ impl ResearchCascade {
         }
 
         // Tier 4: Skills — check if a relevant capability exists with sufficient level.
-        // CapabilityRegistry is not Sync (rusqlite::Connection interior RefCell),
-        // so tier 4 is always skipped (check_skills returns false when registry is None).
-        if Self::check_skills(None, topic) {
+        if Self::check_skills(deps.capability_registry, topic) {
             tracing::debug!("Cascade tier 4 (Skills) passed for topic: {topic}");
             return false;
         }
@@ -140,12 +140,15 @@ impl ResearchCascade {
     /// Checks the capability registry for a capability matching the topic
     /// with level >= 0.7. Returns `true` if such a capability exists.
     /// If no registry is provided, returns `false` (skill check does not pass).
-    fn check_skills(registry: Option<&CapabilityRegistry>, topic: &str) -> bool {
+    fn check_skills(registry: Option<&StdMutex<CapabilityRegistry>>, topic: &str) -> bool {
         let Some(registry) = registry else {
             return false;
         };
+        let Ok(guard) = registry.lock() else {
+            return false;
+        };
         let topic_lower = topic.to_lowercase();
-        for cap in registry.list() {
+        for cap in guard.list() {
             if cap.level >= 0.7
                 && (cap.name.to_lowercase().contains(&topic_lower)
                     || topic_lower.contains(&cap.name.to_lowercase()))

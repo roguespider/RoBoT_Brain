@@ -3,7 +3,7 @@
 # .agents/scripts/make.sh — unified build/test/verify gate runner.
 #
 # Subcommands:
-#   gate    — full verify gate (build + Python tests + quality wall)
+#   gate      Run the verify gate (Python analysis + tests + quality wall; build via test_suite_run.bat 4)
 #   session — session-start enforcement (read docs → gate → connect → pick task)
 #   clean   — clean test_suite2.1 build artifacts + rebuild
 #   help    — show this help message
@@ -51,6 +51,11 @@ clean() {
     rm -f "$TS_DIR/test_suite_report.json"
     rm -f "$TS_DIR/python_test_output.txt"
     rm -f "$TS_DIR/analysis_output.txt"
+    rm -f "$TS_DIR/tool_probe_output.txt"
+    rm -f "$TS_DIR/test_tool_probe_report.json"
+    rm -f "$TS_DIR/test_tool_probe_output.txt"
+    # Clean all orphan .txt files in test_suite2.1 (only source .txt files remain: requirements*)
+    find "$TS_DIR" -maxdepth 1 -name '*.txt' -not -name 'requirements*.txt' -delete 2>/dev/null || true
     rm -f "$REPO_ROOT/.agents/scripts/tool_coverage_report.json"
 
     # Clean main project target/ (cargo clean)
@@ -89,35 +94,50 @@ run_gate() {
     rm -f "$REPO_ROOT/.agents/scripts/make_gate_output.txt"
     touch "$OUTPUT_FILE"
 
-    # ---- 0. Build robot_brain ----
-    step "BUILD — Ensure robot_brain binary exists"
-    if [ ! -f "target/release/robot_brain" ] && [ ! -f "target/release/robot_brain.exe" ]; then
-        info "Building robot_brain..."
-        cargo build --release -p robot_brain || fail "robot_brain build failed"
-        ok "robot_brain built"
-    else
-        info "robot_brain binary exists — skipping"
-    fi
-
-    # ---- 1. Run Python analysis (code_analyzer + lint + registry) ----
+    # ---- 0. Run Python analysis FIRST (fast fail) ----
+    # If code analysis finds issues, fail fast — no point continuing.
     step "ANALYSIS — Python code analysis, lint, registry"
     (
         cd "$TS_DIR"
-        python main.py 2>&1 | tee -a "$OUTPUT_FILE" || true
+        python main.py 2>&1 | tee -a "$OUTPUT_FILE"
     )
-
-    # ---- 2. Run Python tests ----
-    step "RUN — Python functional tests"
-    if [ -f "$TS_DIR/test_runner.sh" ]; then
-        if ! "$TS_DIR/test_runner.sh" 2>&1; then
-            fail "test_suite2.1 functional tests FAILED"
-        fi
-        ok "test_suite2.1 functional tests passed"
-    else
-        info "test_suite2.1 Python not yet implemented — skipping"
+    local MAIN_EXIT=$?
+    if [ "$MAIN_EXIT" != "0" ]; then
+        fail "ANALYSIS RED (main.py exit=$MAIN_EXIT)"
     fi
 
-    # ---- 3. Quality wall ----
+    # Check analysis results before proceeding
+    local CODE_ISSUES LINT_ISSUES
+    CODE_ISSUES=$(grep -oP 'Code issues:\s+\K\d+' "$OUTPUT_FILE" 2>/dev/null | head -1 || echo 0)
+    CODE_ISSUES=${CODE_ISSUES:-0}
+    LINT_ISSUES=$(grep -oP 'Lint issues:\s+\K\d+' "$OUTPUT_FILE" 2>/dev/null | head -1 || echo 0)
+    LINT_ISSUES=${LINT_ISSUES:-0}
+    if [ "$CODE_ISSUES" != "0" ] || [ "$LINT_ISSUES" != "0" ]; then
+        fail "ANALYSIS RED (issues=$CODE_ISSUES lint=$LINT_ISSUES)"
+    fi
+
+    # ---- 1. Run Python functional tests (pytest) ----
+    step "RUN — Python functional tests"
+    local PY_TEST_OUTPUT="$TS_DIR/python_test_output.txt"
+    if [ -f "$TS_DIR/conftest.py" ] && [ -d "$TS_DIR" ]; then
+        pushd "$TS_DIR" > /dev/null
+        # Run pytest, write to dedicated output file AND main output
+        python -m pytest -v -c pytest.ini . > "$PY_TEST_OUTPUT" 2>&1 || true
+        cat "$PY_TEST_OUTPUT" >> "$OUTPUT_FILE"
+        # Check for failures in pytest output
+        if grep -qE '[0-9]+ failed' "$PY_TEST_OUTPUT"; then
+            local FAIL_COUNT
+            FAIL_COUNT=$(grep -oP '[0-9]+(?= failed)' "$PY_TEST_OUTPUT" | tail -1 || echo 0)
+            popd > /dev/null
+            fail "test_suite2.1 pytest FAILED (failed=$FAIL_COUNT)"
+        fi
+        popd > /dev/null
+        ok "test_suite2.1 pytest passed"
+    else
+        info "test_suite2.1 conftest.py not found — skipping functional tests"
+    fi
+
+    # ---- 2. Quality wall ---
     step "CHECK — Quality wall"
     local PASS=0 TOTAL=0 FAIL=0 WARN=0 ISSUES=0 UNTESTED=0
 
@@ -149,15 +169,23 @@ run_gate() {
     # Extract untested tools count
     UNTESTED=$(grep -oP 'Untested:\s+\K\d+' "$OUTPUT_FILE" 2>/dev/null | tail -1 || echo 0)
     UNTESTED=${UNTESTED:-0}
-    info "Parsed: passed=$PASS total=$TOTAL failed=$FAIL warnings=$WARN issues=$ISSUES untested=$UNTESTED"
+    PY_COMPILE_ISSUES=$(grep -oP 'Python Compile Issues:\s+\K\d+' "$OUTPUT_FILE" 2>/dev/null | head -1 || echo 0)
+    PY_COMPILE_ISSUES=${PY_COMPILE_ISSUES:-0}
+    PY_LINT_ISSUES=$(grep -oP 'Python Lint Issues:\s+\K\d+' "$OUTPUT_FILE" 2>/dev/null | head -1 || echo 0)
+    PY_LINT_ISSUES=${PY_LINT_ISSUES:-0}
+    PY_QUALITY_ISSUES=$(grep -oP 'Python Quality Issues:\s+\K\d+' "$OUTPUT_FILE" 2>/dev/null | head -1 || echo 0)
+    PY_QUALITY_ISSUES=${PY_QUALITY_ISSUES:-0}
+    LARGE_FILE_ISSUES=$(grep -oP 'Large File Issues:\s+\K\d+' "$OUTPUT_FILE" 2>/dev/null | head -1 || echo 0)
+    LARGE_FILE_ISSUES=${LARGE_FILE_ISSUES:-0}
+    info "Parsed: passed=$PASS total=$TOTAL failed=$FAIL warnings=$WARN issues=$ISSUES untested=$UNTESTED py_compile=$PY_COMPILE_ISSUES py_lint=$PY_LINT_ISSUES py_quality=$PY_QUALITY_ISSUES large_files=$LARGE_FILE_ISSUES"
 
     if [ "$FAIL" != "0" ]; then
         fail "test_suite2.1 has failing tests (passed=$PASS/$TOTAL, failed=$FAIL)"
     fi
-    if [ "$WARN" != "0" ] || [ "$ISSUES" != "0" ] || [ "$UNTESTED" != "0" ]; then
-        fail "quality wall violated: warnings=$WARN issues=$ISSUES untested=$UNTESTED"
+    if [ "$WARN" != "0" ] || [ "$ISSUES" != "0" ] || [ "$UNTESTED" != "0" ] || [ "$PY_COMPILE_ISSUES" != "0" ] || [ "$PY_LINT_ISSUES" != "0" ] || [ "$PY_QUALITY_ISSUES" != "0" ] || [ "$LARGE_FILE_ISSUES" != "0" ]; then
+        fail "quality wall violated: warnings=$WARN issues=$ISSUES untested=$UNTESTED py_compile=$PY_COMPILE_ISSUES py_lint=$PY_LINT_ISSUES py_quality=$PY_QUALITY_ISSUES large_files=$LARGE_FILE_ISSUES"
     fi
-    ok "test_suite2.1 (passed=$PASS/$TOTAL, warnings=$WARN issues=$ISSUES untested=$UNTESTED)"
+    ok "test_suite2.1 (passed=$PASS/$TOTAL, warnings=$WARN issues=$ISSUES untested=$UNTESTED py_compile=$PY_COMPILE_ISSUES py_lint=$PY_LINT_ISSUES py_quality=$PY_QUALITY_ISSUES large_files=$LARGE_FILE_ISSUES)"
 
     # ---- 4. Report ----
     step "DONE"

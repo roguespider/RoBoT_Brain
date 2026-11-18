@@ -1,5 +1,5 @@
-use crate::skills::registry::executor::SkillExecutor;
-use crate::skills::registry::{ExecutionContext, SkillRegistry};
+use crate::execution::skills::executor::SkillExecutor;
+use crate::execution::skills::{ExecutionContext, SkillRegistry};
 use crate::tool_engine::permissions::PermissionChecker;
 use crate::tool_engine::registry::{ToolContract, ToolError};
 use crate::tool_engine::validator::ToolValidator;
@@ -167,9 +167,42 @@ impl ToolExecutor {
         contract: &ToolContract,
         params: &Value,
     ) -> Result<Value, ToolError> {
-        // Delegate to skills system
+        // Delegate to skills system (without full subsystem wiring for this tool path)
         let skills_registry = Arc::new(SkillRegistry::new());
-        let executor = SkillExecutor::new(skills_registry);
+        let db = match crate::database::sqlite::SqliteDatabase::initialize() {
+            Ok(d) => d,
+            Err(e) => {
+                tracing::error!("Failed to initialize database: {}", e);
+                return Err(ToolError::RegistrationFailed(
+                    "database initialization failed".to_string(),
+                ));
+            }
+        };
+        let db = Arc::new(db);
+        let executor = SkillExecutor::with_subsystems(
+            skills_registry,
+            crate::execution::skills::SubsystemRefs {
+                permanent_memory: Arc::new(crate::memory::PermanentMemory::new_with_db(
+                    0,
+                    db.clone(),
+                )),
+                working_memory: Arc::new(crate::memory::WorkingMemory::new(100)),
+                memory_retrieval: Arc::new(crate::memory::MemoryRetrieval::new(
+                    Arc::new(crate::memory::WorkingMemory::new(100)),
+                    Arc::new(crate::memory::PermanentMemory::new_with_db(0, db.clone())),
+                    db.clone(),
+                )),
+                planner: Arc::new(crate::planning::Planner::new(Arc::new(
+                    crate::experience::metrics::MetricsCollector::default(),
+                ))),
+                database: db.clone(),
+                experience: Arc::new(crate::experience::coordinator::ExperienceCoordinator::new(
+                    crate::experience::scorer::ExperienceScorer,
+                    Arc::new(crate::experience::bus::ExperienceBus::default()),
+                    Arc::new(crate::experience::metrics::MetricsCollector::default()),
+                )),
+            },
+        );
 
         let mut context = ExecutionContext::new(format!("Execute {}", contract.name));
         context = context.with_param("params", params.clone());

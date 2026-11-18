@@ -1,5 +1,6 @@
 """Python replacement for Rust code_analyzer/analyzer.rs — complete version."""
 
+import logging
 import re
 from pathlib import Path
 from typing import Any
@@ -33,6 +34,25 @@ class CodeAnalyzer:
             "unwrap": re.compile(r"\.unwrap\(\)"),
             "expect": re.compile(r"\.expect\("),
         }
+
+    @staticmethod
+    def _is_in_string_literal(line: str, pos: int) -> bool:
+        """Check if position pos is inside a string literal in the given line.
+        Handles both Python (') and Rust (") string literals, including escaped quotes."""
+        in_single = False
+        in_double = False
+        i = 0
+        while i < pos and i < len(line):
+            ch = line[i]
+            if ch == "\\" and i + 1 < len(line):
+                i += 2  # Skip escaped character
+                continue
+            if ch == "'" and not in_double:
+                in_single = not in_single
+            elif ch == '"' and not in_single:
+                in_double = not in_double
+            i += 1
+        return in_single or in_double
 
     def find_rust_files(self) -> list[Path]:
         return list(self.source_path.rglob("*.rs"))
@@ -98,10 +118,8 @@ class CodeAnalyzer:
             # unimplemented!() — skip if inside string literal
             _unimpl_match = self.patterns["unimplemented"].search(line)
             if _unimpl_match is not None:
-                # Skip if the match is inside a quoted string
                 match_pos = _unimpl_match.start()
-                quote_before = line[:match_pos].count('"') % 2 == 1
-                if not quote_before:
+                if not self._is_in_string_literal(line, match_pos):
                     issues.append(
                         Issue(
                             file_path,
@@ -115,16 +133,14 @@ class CodeAnalyzer:
             _todo_match = self.patterns["todo"].search(line)
             if _todo_match is not None:
                 match_pos = _todo_match.start()
-                quote_before = line[:match_pos].count('"') % 2 == 1
-                if not quote_before:
+                if not self._is_in_string_literal(line, match_pos):
                     issues.append(Issue(file_path, i, "Todo", "todo!() macro found"))
 
             # panic!() — skip if inside string literal
             _panic_match = self.patterns["panic"].search(line)
             if _panic_match is not None:
                 match_pos = _panic_match.start()
-                quote_before = line[:match_pos].count('"') % 2 == 1
-                if not quote_before:
+                if not self._is_in_string_literal(line, match_pos):
                     issues.append(Issue(file_path, i, "Panic", "panic!() macro found"))
 
             # underscore prefix — skip if inside string literal
@@ -132,8 +148,7 @@ class CodeAnalyzer:
                 _up_match = self.patterns["underscore_prefix"].search(line)
                 if _up_match is not None:
                     match_pos = _up_match.start()
-                    quote_before = line[:match_pos].count('"') % 2 == 1
-                    if not quote_before:
+                    if not self._is_in_string_literal(line, match_pos):
                         issues.append(
                             Issue(
                                 file_path,
@@ -172,14 +187,12 @@ class CodeAnalyzer:
             _unwrap_match = self.patterns["unwrap"].search(line)
             if _unwrap_match is not None:
                 match_pos = _unwrap_match.start()
-                quote_before = line[:match_pos].count('"') % 2 == 1
-                if not quote_before:
+                if not self._is_in_string_literal(line, match_pos):
                     issues.append(Issue(file_path, i, "Unwrap", ".unwrap() found"))
             _expect_match = self.patterns["expect"].search(line)
             if _expect_match is not None:
                 match_pos = _expect_match.start()
-                quote_before = line[:match_pos].count('"') % 2 == 1
-                if not quote_before:
+                if not self._is_in_string_literal(line, match_pos):
                     issues.append(Issue(file_path, i, "Expect", ".expect() found"))
 
         # Stub functions analysis (simplified)
@@ -195,9 +208,17 @@ class CodeAnalyzer:
     def analyze_stub_functions(self, content: str, file_path: Path) -> list[Issue]:
         issues: list[Issue] = []
         # Look for empty function bodies or skeleton implementations
-        if "fn " in content and "{}" in content:
-            # Simplified check
-            pass
+        for i, line in enumerate(content.splitlines(), start=1):
+            stripped = line.strip()
+            if stripped.startswith("fn ") and "{}" in stripped:
+                issues.append(
+                    Issue(
+                        file_path,
+                        i,
+                        "StubFunction",
+                        "empty function body found",
+                    )
+                )
         return issues
 
     def analyze_unused_imports(self, content: str, file_path: Path) -> list[Issue]:
@@ -212,7 +233,7 @@ class CodeAnalyzer:
                 content = file_path.read_text(encoding="utf-8")
                 issues.extend(self.analyze_file_content(file_path, content))
             except OSError as e:
-                print(f"[WARN] Could not read {file_path}: {e}")
+                logging.debug(f"Could not read {file_path}: {e}")
         return issues
 
     def get_summary(self, issues: list[Issue]) -> dict[str, Any]:

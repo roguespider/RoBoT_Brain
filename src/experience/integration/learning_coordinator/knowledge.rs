@@ -29,7 +29,7 @@ impl<'a> KnowledgeMethods<'a> {
             experience.id,
         );
 
-        let added_id = self.knowledge_store.add(knowledge).await;
+        let added_id = self.knowledge_store.add(knowledge);
 
         // Publish KnowledgeUpdated event
         let event = ExperienceEvent::knowledge_updated(Uuid::new_v4());
@@ -41,7 +41,11 @@ impl<'a> KnowledgeMethods<'a> {
         // Record knowledge promotion metric (Architecture §22 observability).
         self.metrics.increment("knowledge.created").await;
 
-        tracing::debug!("Promoted experience {} to knowledge {}", experience.id, added_id);
+        tracing::debug!(
+            "Promoted experience {} to knowledge {}",
+            experience.id,
+            added_id
+        );
         Ok(())
     }
 
@@ -51,7 +55,7 @@ impl<'a> KnowledgeMethods<'a> {
 
         // Find and consolidate low-confidence knowledge
         let mut consolidated = 0;
-        let knowledge_items = self.knowledge_store.get_all().await;
+        let knowledge_items = self.knowledge_store.get_all();
 
         for knowledge in knowledge_items {
             // If knowledge confidence is below threshold, try to consolidate
