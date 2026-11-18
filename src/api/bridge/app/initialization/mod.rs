@@ -343,6 +343,10 @@ impl App {
 
         tracing::info!("RoBoT initialized successfully");
 
+        // Run autonomous memory promotion and consolidation cycle (Architecture §17).
+        // Wires MemoryHierarchy::promote_record() into production via the memory engine.
+        crate::workers::run_memory_maintenance_cycle(&*memory_engine);
+
         // Goal-driven agent loop + App struct (Architecture §5.7)
         let app = agent_loop::create_app(agent_loop::AgentLoopSystems {
             mcp_context,
