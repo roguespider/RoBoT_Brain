@@ -45,13 +45,24 @@ pub mod youtube;
 use config::ResearchConfig;
 use std::sync::OnceLock;
 
-/// Re-export the evidence packet contract types (R8).
-///
-/// The definitions live in `evidence.rs` per the spec's File Structure table;
-/// they are re-exported here because `crate::research::Source` and friends are
-/// the canonical paths used across the pipeline, memory promotion and the MCP
-/// bridge.
+/// Re-export the evidence packet contract types (R8). The definitions live in
+/// `evidence.rs` per the spec's File Structure table; they are re-exported here
+/// because `crate::research::Source` and friends are the canonical paths used
+/// across the pipeline, memory promotion and the MCP bridge.
 pub use evidence::{Contradiction, Finding, ResearchResult, Source};
+
+/// Re-export the `SearchProvider` trait directly from the module root.
+/// Per the spec's File Structure table, `src/research/mod.rs` exports the
+/// `SearchProvider` trait. It is defined in `provider.rs`; this re-export makes
+/// it reachable as `crate::research::SearchProvider` without importing the
+/// `provider` submodule.
+pub use provider::SearchProvider;
+
+/// Re-export the research engine under the name the spec's File Structure table
+/// uses (research_engine.md). `ResearchPipeline` is the concrete orchestration
+/// type (R5). This alias lets callers refer to it as `crate::research::ResearchEngine`,
+/// matching the module layout the architecture doc specifies.
+pub use pipeline::ResearchPipeline as ResearchEngine;
 
 /// Return the module's research configuration.
 ///

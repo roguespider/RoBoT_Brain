@@ -156,7 +156,7 @@ FULL_REGISTRY = [
         "expected_behavior": "Get workflow enforcement session state",
     },
     # =========================================================================
-    # CoObOpLoop (42 tools)
+    # CoObOpLoop (36 tools)
     # =========================================================================
     {
         "id": "loop_enqueue_goal",

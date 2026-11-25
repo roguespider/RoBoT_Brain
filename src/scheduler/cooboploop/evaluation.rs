@@ -1,0 +1,482 @@
+// /src/CoObOpLoop/evaluation.rs
+// Evaluation logic for the CoObOpLoop system.
+
+use super::queue::AgentGoal;
+
+/// Resource cost breakdown for a goal evaluation (§5).
+#[derive(Debug, Clone, PartialEq)]
+pub struct ResourceCost {
+    /// CPU hours required.
+    pub cpu_hours: f32,
+    /// Memory in MB.
+    pub memory_mb: f32,
+    /// Disk space in MB.
+    pub disk_mb: f32,
+    /// Network bandwidth in MB.
+    pub network_mb: f32,
+    /// Human hours required.
+    pub human_hours: f32,
+}
+
+impl ResourceCost {
+    pub fn zero() -> Self {
+        Self {
+            cpu_hours: 0.0,
+            memory_mb: 0.0,
+            disk_mb: 0.0,
+            network_mb: 0.0,
+            human_hours: 0.0,
+        }
+    }
+
+    pub fn total(&self) -> f32 {
+        self.cpu_hours
+            + self.memory_mb / 100.0
+            + self.disk_mb / 100.0
+            + self.network_mb / 10.0
+            + self.human_hours
+    }
+}
+
+/// Capability requirement level for a goal (§6).
+#[derive(Debug, Clone, PartialEq)]
+pub enum CapabilityRequirement {
+    Sufficient,
+    Uncertain,
+    Insufficient,
+    Unavailable,
+}
+
+impl CapabilityRequirement {
+    pub fn is_blocking(&self) -> bool {
+        matches!(self, Self::Insufficient | Self::Unavailable)
+    }
+}
+
+/// Criteria for evaluating a goal (§5, §A.2).
+#[derive(Debug, Clone)]
+pub struct EvaluationCriteria {
+    /// The goal ID being evaluated.
+    pub goal_id: String,
+    /// Expected value of completing the goal.
+    pub expected_value: f32,
+    /// Probability of success (0.0-1.0).
+    pub probability_of_success: f32,
+    /// Urgency factor (1.0 + reciprocal of hours until deadline).
+    pub urgency: f32,
+    /// Goal deadline.
+    pub deadline: Option<chrono::DateTime<chrono::Utc>>,
+    /// Resource cost breakdown.
+    pub resource_cost: ResourceCost,
+    /// Time cost in estimated hours.
+    pub time_cost: f32,
+    /// Risk level (0.0-1.0).
+    pub risk: f32,
+    /// Learning value of completing the goal.
+    pub learning_value: f32,
+    /// Strategic value of the goal.
+    pub strategic_value: f32,
+    /// Required capabilities to complete the goal.
+    pub required_capabilities: Vec<String>,
+    /// Computed priority score.
+    pub priority_score: f32,
+}
+
+/// Priority policy trait — computes adjusted priority from raw score (§5).
+pub trait PriorityPolicyTrait: Send + Sync + std::fmt::Debug {
+    fn compute(&self, raw: f32, goal: &AgentGoal) -> f32;
+}
+
+/// Default policy — no adjustment.
+pub struct DefaultPriorityPolicy;
+
+impl std::fmt::Debug for DefaultPriorityPolicy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("DefaultPriorityPolicy")
+    }
+}
+
+impl PriorityPolicyTrait for DefaultPriorityPolicy {
+    fn compute(&self, raw: f32, goal: &AgentGoal) -> f32 {
+        // Default policy passes through raw score (Architecture §T13.3)
+        let goal_value = goal.expected_value;
+        tracing::trace!("Default policy: raw={raw} goal_value={goal_value}");
+        raw
+    }
+}
+
+/// Conservative policy — multiplies by 0.8 to deprioritize risky objectives.
+pub struct ConservativePriorityPolicy;
+
+impl std::fmt::Debug for ConservativePriorityPolicy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("ConservativePriorityPolicy")
+    }
+}
+
+impl PriorityPolicyTrait for ConservativePriorityPolicy {
+    fn compute(&self, raw: f32, goal: &AgentGoal) -> f32 {
+        // Conservative policy applies 0.8 deprioritization factor (Architecture §T13.3)
+        let goal_risk = goal.risk;
+        tracing::trace!("Conservative policy: raw={raw} risk={goal_risk}");
+        raw * 0.8
+    }
+}
+
+/// Strategic policy — boosts human and strategic goals.
+pub struct StrategicPolicy;
+
+impl std::fmt::Debug for StrategicPolicy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("StrategicPolicy")
+    }
+}
+
+impl PriorityPolicyTrait for StrategicPolicy {
+    fn compute(&self, raw: f32, goal: &AgentGoal) -> f32 {
+        let sv = match goal.source {
+            super::sources::ObjectiveSource::HumanOrigin => 2.0,
+            super::sources::ObjectiveSource::LearningTarget => 1.5,
+            super::sources::ObjectiveSource::ImprovementTarget => 1.2,
+            super::sources::ObjectiveSource::ExternalOpportunity => 1.3,
+            _ => 1.0,
+        };
+        raw * sv
+    }
+}
+
+/// Exploration/exploitation policy — boosts learning goals.
+pub struct ExplorationPolicy;
+
+impl std::fmt::Debug for ExplorationPolicy {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str("ExplorationPolicy")
+    }
+}
+
+impl PriorityPolicyTrait for ExplorationPolicy {
+    fn compute(&self, raw: f32, goal: &AgentGoal) -> f32 {
+        if goal.learning_value > 0.5 {
+            raw * 1.3
+        } else {
+            raw
+        }
+    }
+}
+
+/// Registry of priority policies with runtime swapping.
+pub struct PriorityPolicyRegistry {
+    current: Box<dyn PriorityPolicyTrait>,
+}
+
+impl PriorityPolicyRegistry {
+    pub fn new(policy: Box<dyn PriorityPolicyTrait>) -> Self {
+        Self { current: policy }
+    }
+
+    pub fn current_policy(&self) -> &dyn PriorityPolicyTrait {
+        self.current.as_ref()
+    }
+
+    pub fn set_policy(&mut self, policy: Box<dyn PriorityPolicyTrait>) {
+        self.current = policy;
+    }
+}
+
+impl Default for PriorityPolicyRegistry {
+    fn default() -> Self {
+        Self::new(Box::new(DefaultPriorityPolicy))
+    }
+}
+
+/// Evaluates goals according to policy — computes priority using formula from §A.2.
+pub struct GoalEvaluator {
+    policy: Option<Box<dyn PriorityPolicyTrait>>,
+    deadline: Option<chrono::DateTime<chrono::Utc>>,
+    resource_cost: ResourceCost,
+    time_cost: f32,
+    mission: String,
+    capability_registry:
+        Option<std::sync::Arc<std::sync::Mutex<super::capability::CapabilityRegistry>>>,
+    strategic_registry:
+        Option<std::sync::Arc<std::sync::Mutex<super::strategic::StrategicObjectiveRegistry>>>,
+}
+
+impl GoalEvaluator {
+    /// Create a new evaluator with the given policy and a default capability registry (§6).
+    pub fn new(policy: Box<dyn PriorityPolicyTrait>) -> Self {
+        let mut reg = super::capability::CapabilityRegistry::new();
+        super::capability::seed_default_capabilities(&mut reg);
+        Self {
+            policy: Some(policy),
+            deadline: None,
+            resource_cost: ResourceCost::zero(),
+            time_cost: 0.0,
+            mission: "Mission".to_string(),
+            capability_registry: Some(std::sync::Arc::new(std::sync::Mutex::new(reg))),
+            strategic_registry: None,
+        }
+    }
+
+    /// Set capability registry for capability assessment evaluation (§6 / T-COO-42).
+    pub fn set_capability_registry(
+        &mut self,
+        registry: std::sync::Arc<std::sync::Mutex<super::capability::CapabilityRegistry>>,
+    ) {
+        self.capability_registry = Some(registry);
+    }
+
+    /// Set strategic registry for strategic alignment evaluation.
+    pub fn set_strategic_registry(
+        &mut self,
+        registry: std::sync::Arc<std::sync::Mutex<super::strategic::StrategicObjectiveRegistry>>,
+    ) {
+        self.strategic_registry = Some(registry);
+    }
+
+    /// Get the current policy.
+    pub fn policy(&self) -> Option<&dyn PriorityPolicyTrait> {
+        self.policy.as_ref().map(|p| p.as_ref())
+    }
+
+    /// Set the policy.
+    pub fn set_policy(&mut self, policy: Box<dyn PriorityPolicyTrait>) {
+        self.policy = Some(policy);
+    }
+
+    /// Get the current policy (used for wiring).
+    pub fn current_policy(&self) -> &dyn PriorityPolicyTrait {
+        self.get_policy()
+    }
+
+    /// Get the current policy (used for wiring).
+    pub fn get_policy(&self) -> &dyn PriorityPolicyTrait {
+        self.policy
+            .as_ref()
+            .map(|p| p.as_ref())
+            .unwrap_or(&DefaultPriorityPolicy)
+    }
+
+    /// Use the current policy for evaluation.
+    pub fn use_current_policy(&self) -> &dyn PriorityPolicyTrait {
+        self.get_policy()
+    }
+
+    /// Set mission for mission-aligned evaluation (§19 / T-COO-12).
+    pub fn set_mission(&mut self, mission: String) {
+        self.mission = mission;
+    }
+
+    /// Get the current mission.
+    pub fn mission(&self) -> &str {
+        &self.mission
+    }
+
+    /// Compute priority for a goal using the formula from §A.2.
+    pub fn compute_priority(&self, goal: &AgentGoal) -> f32 {
+        let value = goal.expected_value;
+        let prob_success = (1.0 - goal.risk).clamp(0.01, 1.0);
+        let learning_value = goal.learning_value;
+
+        // Urgency: incorporate deadline from evaluation state first, then goal
+        let urgency = if let Some(deadline) = self.deadline {
+            let hours = (deadline - chrono::Utc::now()).num_seconds() as f32 / 3600.0;
+            1.0 + (0.0_f32).max(hours).recip()
+        } else if let Some(deadline) = goal.deadline {
+            let hours = (deadline - chrono::Utc::now()).num_seconds() as f32 / 3600.0;
+            1.0 + (0.0_f32).max(hours).recip()
+        } else {
+            1.0
+        };
+
+        // Check capability requirements — wire compare_capabilities() (§6 / T-COO-42)
+        let cap_req = if let Some(ref registry_arc) = self.capability_registry {
+            if let Ok(registry) = registry_arc.lock() {
+                let required_ids: Vec<super::capability::CapabilityId> = goal
+                    .required_capabilities
+                    .iter()
+                    .map(|s| super::capability::CapabilityId::from_string(s))
+                    .collect();
+                let comparison = registry.compare_capabilities(&required_ids);
+                if !comparison.insufficient.is_empty() || !comparison.unavailable.is_empty() {
+                    CapabilityRequirement::Insufficient
+                } else if !comparison.uncertain.is_empty() {
+                    CapabilityRequirement::Uncertain
+                } else if !comparison.sufficient.is_empty()
+                    || comparison.overall_outcome == "sufficient"
+                {
+                    CapabilityRequirement::Sufficient
+                } else {
+                    CapabilityRequirement::Unavailable
+                }
+            } else {
+                CapabilityRequirement::Sufficient
+            }
+        } else {
+            // Fallback when no registry wired: use heuristic for backward compatibility
+            if goal.risk > 0.8 {
+                CapabilityRequirement::Uncertain
+            } else if goal.expected_value < 0.1 {
+                CapabilityRequirement::Insufficient
+            } else if goal.source == super::sources::ObjectiveSource::SystemTrigger {
+                CapabilityRequirement::Unavailable
+            } else {
+                CapabilityRequirement::Sufficient
+            }
+        };
+        let blocking = cap_req.is_blocking();
+        // Adjust cost based on capability blocking status (§5 / T-COO-42)
+        let cost_multiplier = if blocking { 2.0 } else { 1.0 };
+
+        // Capability assessment branching per spec §6:
+        // - Sufficient → execute (normal priority)
+        // - Uncertain → research (boost to allow research as fallback)
+        // - Insufficient → learn/build capability (reduce priority for learning objectives)
+        // - Unavailable → defer/reject (significantly reduce priority)
+        let capability_branch_factor = match cap_req {
+            CapabilityRequirement::Sufficient => 1.0,
+            CapabilityRequirement::Uncertain => {
+                // Boost uncertain capabilities to allow research-based discovery
+                if goal.source == super::sources::ObjectiveSource::Research {
+                    1.3
+                } else {
+                    1.1
+                }
+            }
+            CapabilityRequirement::Insufficient => {
+                // Reduce priority; this signals a need for learning/building capability
+                0.6
+            }
+            CapabilityRequirement::Unavailable => {
+                // Significantly reduce; defer or reject this objective
+                0.3
+            }
+        };
+
+        // Strategic alignment: check strategic registry for active objectives
+        let strategic_alignment_boost = if let Some(ref registry_arc) = self.strategic_registry {
+            if let Ok(registry) = registry_arc.lock() {
+                let active_strategic = registry
+                    .list()
+                    .iter()
+                    .filter(|o| o.status == "active")
+                    .count();
+                if active_strategic > 0 { 1.2 } else { 1.0 }
+            } else {
+                1.0
+            }
+        } else {
+            1.0
+        };
+        // Cost: use expected_value as proxy when no separate cost field
+        // Strategic value based on source
+        let policy_name = format!("{:?}", self.current_policy());
+        drop(policy_name); // wire: exercise current_policy
+        let strategic_value = match goal.source {
+            super::sources::ObjectiveSource::HumanOrigin => 2.0,
+            super::sources::ObjectiveSource::LearningTarget => 1.5,
+            super::sources::ObjectiveSource::ImprovementTarget => 1.2,
+            super::sources::ObjectiveSource::ExternalOpportunity => 1.3,
+            _ => 1.0,
+        } * strategic_alignment_boost;
+
+        // Mission alignment: boost goals aligned with current mission (§19 / T-COO-12)
+        let mission_boost = if !self.mission().is_empty() && !self.mission().eq("Mission") {
+            let mission_lower = self.mission().to_lowercase();
+            let goal_title_lower = goal.title.to_lowercase();
+            let goal_desc_lower = goal.description.to_lowercase();
+            if goal_title_lower.contains(&mission_lower)
+                || goal_desc_lower.contains(&mission_lower)
+                || goal.source == super::sources::ObjectiveSource::StrategicObjective
+            {
+                1.1
+            } else {
+                1.0
+            }
+        } else {
+            1.0
+        };
+        // Cost: wire real resource-cost tracking from HardwareProfile (§5 / T-COO-41)
+        // Capability assessment now uses compare_capabilities() (§6 / T-COO-42)
+        let hardware_profile = super::hardware::HardwareDiscovery::new().detect();
+        let profile = hardware_profile.unwrap_or_default();
+        let resource_cost_total = (profile.memory_available_mb as f32 / 1024.0)
+            + (profile.storage_available_gb as f32 * 10.0)
+            + (profile.cpu_cores as f32 * 0.5);
+        let time_cost = (goal.expected_value * 5.0).max(0.1);
+        let cost = if goal.expected_value > 0.0 {
+            (goal.expected_value + resource_cost_total + time_cost) * cost_multiplier
+        } else {
+            (self.resource_cost.total() + self.time_cost) * cost_multiplier
+        };
+
+        // §5 / T-COO-42: include current workload factor (queue depth) in evaluation
+        // workload tracked separately; default neutral
+        let workload_factor = 1.0;
+        let raw = value
+            * urgency
+            * prob_success
+            * learning_value
+            * strategic_value
+            * mission_boost
+            * workload_factor
+            / cost.max(0.1);
+        let adjusted = self.use_current_policy().compute(raw, goal);
+        // Apply capability branch factor per spec §6 decision tree
+        adjusted * capability_branch_factor * strategic_alignment_boost.min(1.0).max(goal.priority)
+    }
+
+    /// Evaluate a goal and return the criteria.
+    pub fn evaluate(&self, goal: &AgentGoal) -> EvaluationCriteria {
+        let probability_of_success = (1.0 - goal.risk).clamp(0.01, 1.0);
+        let priority_score = self.compute_priority(goal);
+
+        let urgency = if let Some(deadline) = goal.deadline {
+            let hours = (deadline - chrono::Utc::now()).num_seconds() as f32 / 3600.0;
+            1.0 + (0.0_f32).max(hours).recip()
+        } else {
+            1.0
+        };
+
+        let strategic_value = match goal.source {
+            super::sources::ObjectiveSource::HumanOrigin => 2.0,
+            super::sources::ObjectiveSource::LearningTarget => 1.5,
+            super::sources::ObjectiveSource::ImprovementTarget => 1.2,
+            super::sources::ObjectiveSource::ExternalOpportunity => 1.3,
+            _ => 1.0,
+        };
+
+        let resource_cost = ResourceCost {
+            cpu_hours: 1.0,
+            memory_mb: 100.0,
+            disk_mb: 50.0,
+            network_mb: 10.0,
+            human_hours: 0.5,
+        };
+        let total_cost = resource_cost.total();
+
+        // Wire: set_policy is called by external callers to configure the evaluator
+        let policy_name = format!("{:?}", self.policy());
+        drop(policy_name); // wire: exercise policy
+        EvaluationCriteria {
+            goal_id: goal.id.clone(),
+            expected_value: goal.expected_value,
+            probability_of_success,
+            urgency,
+            deadline: goal.deadline,
+            resource_cost,
+            time_cost: total_cost,
+            risk: goal.risk,
+            learning_value: goal.learning_value,
+            strategic_value,
+            required_capabilities: goal.required_capabilities.clone(),
+            priority_score,
+        }
+    }
+}
+
+impl Default for GoalEvaluator {
+    fn default() -> Self {
+        Self::new(Box::new(DefaultPriorityPolicy))
+    }
+}

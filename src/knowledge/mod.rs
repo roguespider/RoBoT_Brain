@@ -18,17 +18,13 @@ pub mod graph_verification;
 pub mod query;
 pub mod store;
 pub mod types;
+pub mod world_model;
 
 pub use query::{KnowledgeQuery, KnowledgeResult, apply_query, rank_items};
 pub use store::KnowledgeStore;
 pub use types::KnowledgeItem;
 
 /// Wire graph verification contracts.
-pub fn reference_graph_verification_contracts() {
-    crate::knowledge::graph_verification::reference_graph_verification();
-    tracing::debug!("Graph verification contracts wired");
-}
-
 /// Promote high-confidence research findings to the knowledge store.
 /// Gate: confidence >= 0.7 (per architecture).
 /// Each Finding becomes a KnowledgeItem with source="research".
@@ -48,7 +44,7 @@ pub async fn promote_research_findings(
                 types::KnowledgeSource::External(format!("research:{}", finding.source_url)),
                 vec!["research".to_string(), "promoted".to_string()],
             );
-            let id = store.add(item).await;
+            let id = store.add(item);
             tracing::info!(
                 knowledge_id = %id,
                 confidence = finding.confidence,

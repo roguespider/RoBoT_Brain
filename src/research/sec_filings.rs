@@ -26,10 +26,10 @@ struct EdgarHits {
 
 #[derive(Debug, Deserialize)]
 struct EdgarHit {
-    #[serde(default)]
-    _id: Option<String>,
-    #[serde(default)]
-    _source: EdgarSource,
+    #[serde(rename = "_id", default)]
+    id: Option<String>,
+    #[serde(rename = "_source", default)]
+    source: EdgarSource,
 }
 
 #[derive(Debug, Deserialize, Default)]
@@ -65,8 +65,11 @@ fn filing_index_url(accession: &str) -> Option<String> {
 
 /// Compose a snippet from the fields EDGAR genuinely returns.
 fn snippet_for(hit: &EdgarHit) -> String {
-    let source = &hit._source;
+    let source = &hit.source;
     let mut parts: Vec<String> = Vec::new();
+    if let Some(hit_id) = &hit.id {
+        parts.push(format!("Hit ID: {hit_id}"));
+    }
     if let Some(names) = source.display_names.as_ref().filter(|n| !n.is_empty()) {
         parts.push(format!("Filer: {}", names.join(", ")));
     }
@@ -119,20 +122,20 @@ impl SecFilingsProvider {
             .into_iter()
             .filter_map(|hit| {
                 let accession = hit
-                    ._source
+                    .source
                     .accession_no
                     .clone()
                     .filter(|a| !a.trim().is_empty())?;
                 // A filing without a resolvable index URL cannot be cited.
                 let url = filing_index_url(&accession)?;
                 let filer = hit
-                    ._source
+                    .source
                     .display_names
                     .clone()
                     .unwrap_or_default()
                     .join(", ");
                 let form = hit
-                    ._source
+                    .source
                     .form
                     .clone()
                     .unwrap_or_else(|| "filing".to_string());
@@ -141,6 +144,7 @@ impl SecFilingsProvider {
                 } else {
                     format!("{filer} - SEC {form} filing")
                 };
+                // Include the EDGAR hit ID in the snippet for provenance tracking
                 // EDGAR returns matches in relevance order without a score, so
                 // the accepted sequence order carries the rank (R5).
                 let relevance = crate::research::sanitize::positional_relevance(accepted, total);

@@ -4,11 +4,11 @@
 use anyhow::Result;
 use std::sync::Arc;
 
+use crate::execution::skills::SkillRegistry;
 use crate::experience::metrics::MetricsCollector;
 use crate::experience::types::Experience;
 use crate::experience::types::outcome::OutcomeKind;
 use crate::knowledge::KnowledgeStore;
-use crate::skills::registry::SkillRegistry;
 
 use super::results::ReinforcementResult;
 
@@ -55,7 +55,10 @@ impl<'a> ReinforcementMethods<'a> {
 
         tracing::info!(
             "Applied reinforcement learning for {}: reward={:.3}, knowledge_updates={}, skill_updates={}",
-            experience.id, reward, knowledge_updates, skill_updates
+            experience.id,
+            reward,
+            knowledge_updates,
+            skill_updates
         );
 
         Ok(result)
@@ -95,21 +98,21 @@ impl<'a> ReinforcementMethods<'a> {
         // Increase confidence for positive reward
         if reward > 0.0 {
             // Find knowledge related to this experience
-            let related_knowledge = self.knowledge_store.search(&experience.description).await;
+            let related_knowledge = self.knowledge_store.search(&experience.description);
 
             for knowledge in related_knowledge {
                 if reward > 0.5 {
                     // High reward: boost confidence
-                    self.knowledge_store.record_success(knowledge.id).await;
+                    self.knowledge_store.record_success(knowledge.id);
                     updates += 1;
                 }
             }
         } else if reward < 0.0 {
             // Decrease confidence for negative reward
-            let related_knowledge = self.knowledge_store.search(&experience.description).await;
+            let related_knowledge = self.knowledge_store.search(&experience.description);
 
             for knowledge in related_knowledge {
-                self.knowledge_store.record_failure(knowledge.id).await;
+                self.knowledge_store.record_failure(knowledge.id);
                 updates += 1;
             }
         }

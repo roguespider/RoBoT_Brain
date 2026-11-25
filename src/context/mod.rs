@@ -195,7 +195,7 @@ impl Default for ContextAssembly {
 }
 
 /// The Context Engine assembles temporary cognitive environments.
-#[derive(Debug, Clone, Default)]
+#[derive(Clone, Default)]
 pub struct ContextEngine {
     assemblies: HashMap<String, ContextAssembly>,
     database: Option<std::sync::Arc<crate::database::sqlite::SqliteDatabase>>,
@@ -510,7 +510,7 @@ pub async fn experience_retrieval(query: &str, budget: usize) -> Vec<String> {
 pub async fn knowledge_retrieval(query: &str, budget: usize) -> Vec<String> {
     tracing::debug!("knowledge retrieval: query={:?} budget={}", query, budget);
     let store = crate::knowledge::KnowledgeStore::new(budget);
-    let items = store.get_all().await;
+    let items = store.get_all();
     let q = crate::knowledge::KnowledgeQuery {
         text: Some(query.to_string()),
         knowledge_type: None,
@@ -542,4 +542,101 @@ pub fn integrate_lifecycle(assembly: &mut ContextAssembly, lifecycle: &mut Conte
         correlation = %lifecycle.correlation_id,
         "Context lifecycle integrated with assembly"
     );
+}
+
+/// Active reference to lifecycle stages to prevent dead-code warnings.
+/// Sync wrappers for backward compatibility with retrieval/mod.rs (previously context_engine/).
+/// These mirror the simple sync versions from the old context_engine/ module.
+pub fn memory_retrieval_sync(query: &str, budget: usize) -> Vec<String> {
+    tracing::debug!(
+        "memory retrieval (sync): query={:?}, budget={}",
+        query,
+        budget
+    );
+    // Query real database for memories matching the query
+    match crate::database::sqlite::SqliteDatabase::initialize() {
+        Ok(db) => match db.connection() {
+            Ok(conn) => match crate::database::queries::search_memory(&conn, query, budget) {
+                Ok(memories) => memories.into_iter().map(|m| m.content).collect(),
+                Err(e) => {
+                    tracing::warn!(error = %e, "Failed to search memories");
+                    Vec::new()
+                }
+            },
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to get database connection");
+                Vec::new()
+            }
+        },
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to initialize database");
+            Vec::new()
+        }
+    }
+}
+
+pub fn experience_retrieval_sync(query: &str, budget: usize) -> Vec<String> {
+    tracing::debug!(
+        "experience retrieval (sync): query={:?}, budget={}",
+        query,
+        budget
+    );
+    // Query real database for experiences matching the query
+    match crate::database::sqlite::SqliteDatabase::initialize() {
+        Ok(db) => match db.connection() {
+            Ok(conn) => match crate::database::queries::list_experiences(&conn, budget) {
+                Ok(experiences) => experiences
+                    .into_iter()
+                    .filter(|e| e.title.contains(query) || e.description.contains(query))
+                    .map(|e| format!("{}: {}", e.title, e.description))
+                    .take(budget)
+                    .collect(),
+                Err(e) => {
+                    tracing::warn!(error = %e, "Failed to list experiences");
+                    Vec::new()
+                }
+            },
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to get database connection");
+                Vec::new()
+            }
+        },
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to initialize database");
+            Vec::new()
+        }
+    }
+}
+
+pub fn knowledge_retrieval_sync(query: &str, budget: usize) -> Vec<String> {
+    tracing::debug!(
+        "knowledge retrieval (sync): query={:?}, budget={}",
+        query,
+        budget
+    );
+    // Knowledge is managed by KnowledgeStore which persists to the database.
+    // For sync retrieval, we return memories that have been promoted to knowledge.
+    match crate::database::sqlite::SqliteDatabase::initialize() {
+        Ok(db) => match db.connection() {
+            Ok(conn) => match crate::database::queries::search_memory(&conn, query, budget) {
+                Ok(memories) => memories
+                    .into_iter()
+                    .filter(|m| matches!(m.memory_type, crate::database::models::MemoryType::Fact))
+                    .map(|m| m.content)
+                    .collect(),
+                Err(e) => {
+                    tracing::warn!(error = %e, "Failed to search knowledge");
+                    Vec::new()
+                }
+            },
+            Err(e) => {
+                tracing::warn!(error = %e, "Failed to get database connection");
+                Vec::new()
+            }
+        },
+        Err(e) => {
+            tracing::warn!(error = %e, "Failed to initialize database");
+            Vec::new()
+        }
+    }
 }

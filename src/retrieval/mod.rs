@@ -5,6 +5,29 @@
 //! Memory Hierarchy, Context Lifecycle, Planning Engine, Learning Engine,
 //! Experience Engine, and Tool Engine.
 
+mod types;
+pub use types::RetrievalSource;
+
+pub mod analyzer;
+pub mod cache;
+pub mod confidence;
+pub mod context_builder;
+pub mod contradictions;
+pub mod coordinator;
+pub mod expansion;
+pub mod experience;
+pub mod feedback;
+pub mod filtering;
+pub mod graph;
+pub mod query;
+pub mod ranking;
+pub mod reranker;
+pub mod semantic;
+pub mod skills;
+pub mod symbolic;
+pub mod telemetry;
+pub mod vector;
+
 /// Retrieval stages per Architecture §16.4.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RetrievalStage {
@@ -180,7 +203,7 @@ impl RetrievalPipeline {
         let mut candidates = Vec::new();
 
         // Memory retrieval integration (via context engine)
-        let mem_items = crate::context_engine::memory_retrieval(query, budget);
+        let mem_items = crate::context::memory_retrieval_sync(query, budget);
         for item in mem_items {
             candidates.push(RetrievalCandidate {
                 source: "memory".to_string(),
@@ -194,7 +217,7 @@ impl RetrievalPipeline {
         }
 
         // Knowledge graph integration (via context engine + graph traversal + database)
-        let knowledge_items = crate::context_engine::knowledge_retrieval(query, budget);
+        let knowledge_items = crate::context::knowledge_retrieval_sync(query, budget);
         // Also attempt real graph traversal from database
         if let Ok(db) = crate::database::sqlite::SqliteDatabase::initialize() {
             let conn_result = db.connection();
@@ -248,7 +271,7 @@ impl RetrievalPipeline {
         }
 
         // Experience integration (via context engine)
-        let exp_items = crate::context_engine::experience_retrieval(query, budget);
+        let exp_items = crate::context::experience_retrieval_sync(query, budget);
         for item in exp_items {
             candidates.push(RetrievalCandidate {
                 source: "experience".to_string(),
@@ -661,47 +684,113 @@ impl RetrievalPipeline {
     }
 }
 
-/// Active reference to retrieval pipeline contracts.
-pub fn reference_retrieval_contracts() {
-    // Query understanding
-    let understood = RetrievalPipeline::understand_query("test query");
-    tracing::debug!(?understood, "query understanding wire reference");
+// Active reference to retrieval pipeline contracts.
+// ============================================================
+// Merged from retrieval_pipeline/ — types for source-based retrieval
+// These complement the candidate-based retrieval above.
+// ============================================================
 
-    // Query expansion
-    let expanded = RetrievalPipeline::expand_query("test query");
-    tracing::debug!(?expanded, "query expansion wire reference");
+/// A retrieval query with expanded terms.
+#[derive(Debug, Clone, PartialEq)]
+pub struct RetrievalQuery {
+    /// Original query string.
+    pub original: String,
+    /// Expanded query terms.
+    pub expanded: Vec<String>,
+    /// Source filters.
+    pub sources: Vec<RetrievalSource>,
+    /// Maximum results.
+    pub limit: usize,
+    /// Confidence threshold for filtering.
+    pub confidence_threshold: f32,
+}
 
-    // Hybrid retrieval
-    let candidates = RetrievalPipeline::hybrid_retrieve("test query", 50);
-    tracing::debug!(
-        candidates = candidates.len(),
-        "hybrid retrieval wire reference"
-    );
+impl RetrievalQuery {
+    /// Create a new retrieval query.
+    pub fn new(query: &str) -> Self {
+        Self {
+            original: query.to_string(),
+            expanded: Vec::new(),
+            sources: vec![
+                RetrievalSource::SemanticMemory,
+                RetrievalSource::EpisodicMemory,
+                RetrievalSource::ExperienceMemory,
+            ],
+            limit: 10,
+            confidence_threshold: 0.5,
+        }
+    }
 
-    // Ranking engine
-    let ranked = RetrievalPipeline::rank_candidates(&candidates);
-    tracing::debug!(ranked = ranked.len(), "ranking wire reference");
+    /// Add expanded terms.
+    pub fn with_expanded(mut self, terms: Vec<String>) -> Self {
+        self.expanded = terms;
+        self
+    }
 
-    // Filtering
-    let filtered = RetrievalPipeline::filter_candidates(ranked, 25, 0.5);
-    tracing::debug!(filtered = filtered.len(), "filtering wire reference");
+    /// Set source filters.
+    pub fn with_sources(mut self, sources: Vec<RetrievalSource>) -> Self {
+        self.sources = sources;
+        self
+    }
 
-    // Pipeline execute
-    let pipeline = RetrievalPipeline::new()
-        .add_stage(RetrievalStage::QueryUnderstanding)
-        .add_stage(RetrievalStage::CandidateGeneration)
-        .add_stage(RetrievalStage::Ranking)
-        .add_stage(RetrievalStage::Filtering);
+    /// Set result limit.
+    pub fn with_limit(mut self, limit: usize) -> Self {
+        self.limit = limit;
+        self
+    }
 
-    let request = RetrievalRequest::new("test query")
-        .with_type("memory")
-        .with_budget(50)
-        .with_min_confidence(0.7);
+    /// Set confidence threshold.
+    pub fn with_confidence_threshold(mut self, threshold: f32) -> Self {
+        self.confidence_threshold = threshold;
+        self
+    }
+}
 
+/// A retrieval result with ranking score (from retrieval_pipeline/ merge).
+#[derive(Debug, Clone, PartialEq)]
+pub struct RetrievalPipelineResult {
+    /// Source of the result.
+    pub source: RetrievalSource,
+    /// Content of the result.
+    pub content: String,
+    /// Relevance score (0.0 to 1.0).
+    pub score: f32,
+    /// Confidence score.
+    pub confidence: f32,
+    /// Source identifier.
+    pub source_id: String,
+}
+
+/// Hybrid retrieval with source filtering.
+pub fn hybrid_retrieve_with_sources(
+    query: &str,
+    sources: Vec<RetrievalSource>,
+    limit: usize,
+) -> Vec<RetrievalPipelineResult> {
+    let pipeline = RetrievalPipeline::new();
+    let expanded = expansion::expand_query_simple(query);
+    let retrieval_query = RetrievalQuery::new(query)
+        .with_expanded(expanded)
+        .with_sources(sources)
+        .with_limit(limit);
+    // Convert query to RetrievalRequest and execute
+    let request = RetrievalRequest {
+        query: query.to_string(),
+        required_types: Vec::new(),
+        budget: limit,
+        min_confidence: retrieval_query.confidence_threshold,
+    };
     let result = pipeline.execute(&request);
-    tracing::info!(
-        success = result.success,
-        candidates = result.candidates.len(),
-        "Retrieval pipeline contracts actively referenced"
-    );
+    // Convert candidates to RetrievalPipelineResult
+    result
+        .candidates
+        .into_iter()
+        .map(|c| RetrievalPipelineResult {
+            source: RetrievalSource::SemanticMemory, // Placeholder
+            content: c.content,
+            score: c.relevance,
+            confidence: c.confidence,
+            source_id: c.source,
+        })
+        .collect()
 }

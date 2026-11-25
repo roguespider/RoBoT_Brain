@@ -2,109 +2,34 @@
 //!
 //! Background workers provide non-blocking intelligence for long-running,
 //! resource-intensive, and asynchronous operations.
+//!
+//! MaintenanceWorker is implemented in the `maintenance_worker` submodule with
+//! real autonomous maintenance tasks: compaction, aging, checkpointing,
+//! and pattern learning (Architecture §23.6.5).
 
-/// Worker supervisor manages all background activity.
-#[derive(Debug, Clone, Default)]
-pub struct WorkerSupervisor {
-    /// Active workers by name.
-    pub workers: std::collections::HashMap<String, WorkerStatus>,
-}
+pub mod experience_worker;
+pub mod knowledge_worker;
+pub mod learning_worker;
+pub mod maintenance_worker;
+pub mod memory_worker;
+pub mod queue;
+pub mod scheduler;
+pub mod supervisor;
 
-/// Status of a background worker.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum WorkerStatus {
-    /// Worker is running.
-    Running,
-    /// Worker is idle.
-    Idle,
-    /// Worker is processing a task.
-    Processing,
-    /// Worker has failed.
-    Failed,
-    /// Worker is being restarted.
-    Restarting,
-}
+// Re-export worker types from submodules
+pub use experience_worker::ExperienceWorker;
+pub use knowledge_worker::KnowledgeGraphWorker;
+pub use learning_worker::LearningWorker;
+pub use maintenance_worker::{
+    MaintenanceResult, MaintenanceScheduler, MaintenanceStats, MaintenanceTaskType,
+};
+pub use memory_worker::MemoryWorker;
+pub use queue::BackgroundTask;
+pub use scheduler::{SchedulingMode, WorkerPriority, WorkerTask, recover_worker, schedule_task};
+pub use supervisor::{WorkerStatus, WorkerSupervisor};
 
-/// A queued background task.
-#[derive(Debug, Clone, PartialEq)]
-pub struct BackgroundTask {
-    /// Task identifier.
-    pub id: String,
-    /// Type of task.
-    pub task_type: String,
-    /// Priority level.
-    pub priority: String,
-    /// Status.
-    pub status: String,
-    /// Payload data.
-    pub payload: serde_json::Value,
-    /// Created timestamp.
-    pub created_at: i64,
-}
-
-impl BackgroundTask {
-    /// Create a new background task.
-    pub fn new(
-        id: impl Into<String>,
-        task_type: impl Into<String>,
-        priority: impl Into<String>,
-        payload: serde_json::Value,
-    ) -> Self {
-        Self {
-            id: id.into(),
-            task_type: task_type.into(),
-            priority: priority.into(),
-            status: "pending".to_string(),
-            payload,
-            created_at: chrono::Utc::now().timestamp(),
-        }
-    }
-}
-
-/// Memory worker handles memory-related background tasks.
-#[derive(Debug, Clone, Default)]
-pub struct MemoryWorker {
-    /// Whether the worker is enabled.
-    pub enabled: bool,
-    /// Current priority.
-    pub priority: String,
-}
-
-/// Learning worker handles learning-related background tasks.
-#[derive(Debug, Clone, Default)]
-pub struct LearningWorker {
-    /// Whether the worker is enabled.
-    pub enabled: bool,
-    /// Current priority.
-    pub priority: String,
-}
-
-/// Experience worker handles experience-related background tasks.
-#[derive(Debug, Clone, Default)]
-pub struct ExperienceWorker {
-    /// Whether the worker is enabled.
-    pub enabled: bool,
-    /// Current priority.
-    pub priority: String,
-}
-
-/// Knowledge graph worker handles graph-related background tasks.
-#[derive(Debug, Clone, Default)]
-pub struct KnowledgeGraphWorker {
-    /// Whether the worker is enabled.
-    pub enabled: bool,
-    /// Current priority.
-    pub priority: String,
-}
-
-/// Maintenance worker handles system maintenance tasks.
-#[derive(Debug, Clone, Default)]
-pub struct MaintenanceWorker {
-    /// Whether the worker is enabled.
-    pub enabled: bool,
-    /// Current priority.
-    pub priority: String,
-}
+use crate::database::sqlite::SqliteDatabase;
+use crate::scheduler::WorkerType;
 
 /// The background worker system manages asynchronous cognitive tasks.
 #[derive(Debug, Clone, Default)]
@@ -119,8 +44,8 @@ pub struct BackgroundWorkerSystem {
     pub experience_worker: ExperienceWorker,
     /// Knowledge graph worker.
     pub knowledge_graph_worker: KnowledgeGraphWorker,
-    /// Maintenance worker.
-    pub maintenance_worker: MaintenanceWorker,
+    /// Maintenance scheduler — runs autonomous maintenance tasks (Architecture §23.6.5).
+    pub maintenance_scheduler: MaintenanceScheduler,
     /// Task queue.
     pub task_queue: Vec<BackgroundTask>,
 }
@@ -146,10 +71,7 @@ impl BackgroundWorkerSystem {
                 enabled: true,
                 priority: "low".to_string(),
             },
-            maintenance_worker: MaintenanceWorker {
-                enabled: true,
-                priority: "low".to_string(),
-            },
+            maintenance_scheduler: MaintenanceScheduler::new(),
             task_queue: Vec::new(),
         }
     }
@@ -172,103 +94,193 @@ impl BackgroundWorkerSystem {
         Some(self.task_queue.remove(0))
     }
 
-    /// Start all enabled workers.
-    pub fn start_workers(&mut self) {
+    /// Start all enabled workers by submitting initial tasks to the supervisor.
+    /// Per Architecture §23.7: workers SHALL be started during bootstrap.
+    pub fn start_workers(&mut self, db: &SqliteDatabase) {
         if self.memory_worker.enabled {
-            self.supervisor
-                .workers
-                .insert("memory".to_string(), WorkerStatus::Running);
+            let task = WorkerTask::new(
+                "memory-worker-001",
+                WorkerType::MemoryWorker,
+                serde_json::json!({"action": "start"}),
+                WorkerPriority::Immediate,
+            );
+            let submitted = schedule_task(
+                &mut self.supervisor,
+                task,
+                crate::scheduler::SchedulingMode::Immediate,
+            );
+            if submitted {
+                tracing::info!("Worker: memory scheduled");
+            } else {
+                tracing::warn!("Worker: memory scheduling failed (capacity full)");
+            }
         }
         if self.learning_worker.enabled {
-            self.supervisor
-                .workers
-                .insert("learning".to_string(), WorkerStatus::Running);
+            let task = WorkerTask::new(
+                "learning-worker-001",
+                WorkerType::LearningWorker,
+                serde_json::json!({"action": "start"}),
+                WorkerPriority::Normal,
+            );
+            let submitted = schedule_task(
+                &mut self.supervisor,
+                task,
+                crate::scheduler::SchedulingMode::Immediate,
+            );
+            if submitted {
+                tracing::info!("Worker: learning scheduled");
+            } else {
+                tracing::warn!("Worker: learning scheduling failed (capacity full)");
+            }
         }
         if self.experience_worker.enabled {
-            self.supervisor
-                .workers
-                .insert("experience".to_string(), WorkerStatus::Running);
+            let task = WorkerTask::new(
+                "experience-worker-001",
+                WorkerType::ExperienceWorker,
+                serde_json::json!({"action": "start"}),
+                WorkerPriority::Normal,
+            );
+            let submitted = schedule_task(
+                &mut self.supervisor,
+                task,
+                crate::scheduler::SchedulingMode::Immediate,
+            );
+            if submitted {
+                tracing::info!("Worker: experience scheduled");
+            } else {
+                tracing::warn!("Worker: experience scheduling failed (capacity full)");
+            }
         }
         if self.knowledge_graph_worker.enabled {
-            self.supervisor
-                .workers
-                .insert("knowledge_graph".to_string(), WorkerStatus::Running);
+            let task = WorkerTask::new(
+                "kg-worker-001",
+                crate::scheduler::WorkerType::KnowledgeGraphWorker,
+                serde_json::json!({"action": "start"}),
+                WorkerPriority::Normal,
+            );
+            let submitted = schedule_task(
+                &mut self.supervisor,
+                task,
+                crate::scheduler::SchedulingMode::Immediate,
+            );
+            if submitted {
+                tracing::info!("Worker: knowledge graph scheduled");
+            } else {
+                tracing::warn!("Worker: knowledge graph scheduling failed (capacity full)");
+            }
         }
-        if self.maintenance_worker.enabled {
-            self.supervisor
-                .workers
-                .insert("maintenance".to_string(), WorkerStatus::Running);
+        if self.maintenance_scheduler.worker().enabled {
+            let task = WorkerTask::new(
+                "maintenance-worker-001",
+                crate::scheduler::WorkerType::MaintenanceWorker,
+                serde_json::json!({"action": "start"}),
+                WorkerPriority::Low,
+            );
+            let submitted = schedule_task(
+                &mut self.supervisor,
+                task,
+                crate::scheduler::SchedulingMode::Immediate,
+            );
+            if submitted {
+                tracing::info!("Worker: maintenance scheduled");
+            } else {
+                tracing::warn!("Worker: maintenance scheduling failed (capacity full)");
+            }
+        }
+
+        let results = self.process_tasks(db);
+        for (task_id, success) in &results {
+            tracing::info!(task_id, success, "Worker task executed");
         }
     }
 
-    /// Stop all workers.
+    /// Process pending tasks from the supervisor and run scheduled maintenance.
+    /// Per Architecture §23.7: workers execute tasks asynchronously with DB-backed results.
+    pub fn process_tasks(&mut self, db: &SqliteDatabase) -> Vec<(String, bool)> {
+        let results = self.supervisor.execute_pending();
+
+        let maintenance_results = self.maintenance_scheduler.run_maintenance(db);
+        match maintenance_results {
+            Ok(results) => {
+                for result in &results {
+                    tracing::info!(
+                        task = %result.task_type,
+                        success = result.success,
+                        records = result.records_affected,
+                        duration_ms = result.duration_ms,
+                        "Maintenance task executed"
+                    );
+                }
+            }
+            Err(e) => {
+                tracing::error!("Maintenance failed: {}", e);
+            }
+        }
+
+        results
+    }
+
+    /// Stop all workers by clearing pending tasks.
     pub fn stop_workers(&mut self) {
-        self.supervisor.workers.clear();
+        self.supervisor.clear_tasks();
     }
 
     /// Check health of all workers.
     pub fn check_health(&self) -> std::collections::HashMap<String, WorkerStatus> {
-        self.supervisor.workers.clone()
+        let mut health = std::collections::HashMap::new();
+        for task in self.supervisor.pending_tasks() {
+            health.insert(task.task_id.clone(), WorkerStatus::Idle);
+        }
+        for task in self.supervisor.running_tasks() {
+            health.insert(task.task_id.clone(), WorkerStatus::Running);
+        }
+        health
+    }
+
+    /// Run autonomous memory promotion and consolidation cycle.
+    /// Per Architecture §17: memory promotion and consolidation SHALL run autonomously.
+    /// This wires MemoryHierarchy::promote_record() (via MemoryEngine::restructure)
+    /// into the background worker system so promotion runs without external input.
+    pub fn run_memory_maintenance(&self, engine: &crate::memory::MemoryEngine) {
+        // Run full restructuring: promote high-confidence records, compress similar
+        // memories, apply forgetting policy.
+        let promoted = engine.restructure();
+        tracing::info!(
+            promoted_count = promoted,
+            "Memory promotion cycle completed"
+        );
+
+        // Apply confidence decay.
+        engine.decay_confidence(0.01);
+
+        // Apply additional forgetting policy.
+        let forgotten = engine.apply_forgetting();
+        tracing::info!(
+            forgotten_count = forgotten.len(),
+            "Memory forgetting cycle completed"
+        );
+
+        tracing::info!("Autonomous memory promotion and consolidation cycle finished");
     }
 }
 
-/// Active reference to background worker contracts.
-pub fn reference_background_worker_contracts() {
-    let mut system = BackgroundWorkerSystem::new();
-
-    // Enqueue a task
-    let task = BackgroundTask::new("test-1", "memory", "normal", serde_json::json!({}));
-    let task_id = task.id.clone();
-    system.enqueue_task(task);
-
-    // Check health before starting
-    let health_before = system.check_health();
-    tracing::debug!(
-        workers_before = health_before.len(),
-        pending_before = system.pending_tasks(),
-        "health check before start"
-    );
-
-    system.start_workers();
-
-    // Enqueue more tasks after start
-    system.enqueue_task(BackgroundTask::new(
-        "test-2",
-        "learning",
-        "normal",
-        serde_json::json!({}),
-    ));
-    system.enqueue_task(BackgroundTask::new(
-        "test-3",
-        "experience",
-        "normal",
-        serde_json::json!({}),
-    ));
-
+/// Run autonomous memory promotion and consolidation cycle.
+/// Per Architecture §17: memory promotion and consolidation SHALL run autonomously.
+/// Standalone entry point for callers that do not have a BackgroundWorkerSystem.
+pub fn run_memory_maintenance_cycle(engine: &crate::memory::MemoryEngine) {
+    let promoted = engine.restructure();
     tracing::info!(
-        task_id = ?task_id,
-        workers = ?system.supervisor.workers.len(),
-        pending = system.pending_tasks(),
-        "Background worker contracts actively referenced"
+        promoted_count = promoted,
+        "Memory promotion cycle completed"
     );
 
-    // Process next task
-    if let Some(processed) = system.process_next() {
-        tracing::debug!(
-            processed_id = ?processed.id,
-            "processed next task from queue"
-        );
-    }
+    engine.decay_confidence(0.01);
 
-    // Check health after processing
-    let health_after = system.check_health();
-    tracing::debug!(
-        workers_after = health_after.len(),
-        pending_after = system.pending_tasks(),
-        "health check after processing"
+    let forgotten = engine.apply_forgetting();
+    tracing::info!(
+        forgotten_count = forgotten.len(),
+        "Memory forgetting cycle completed"
     );
 
-    // Stop workers
-    system.stop_workers();
-    tracing::debug!("workers stopped");
+    tracing::info!("Autonomous memory promotion and consolidation cycle finished");
 }

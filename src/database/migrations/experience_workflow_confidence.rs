@@ -78,13 +78,3 @@ fn migration_017_confidence_history(conn: &Connection) -> Result<()> {
     Ok(())
 }
 
-/// Active reference to prevent dead-code warnings.
-pub fn reference_migration() {
-    // Verify the module compiles and is wired
-    let run_fn = run;
-    tracing::debug!(
-        migration_fn = "experience_workflow_confidence",
-        "Migration function referenced via {:?}",
-        std::any::type_name_of_val(&run_fn)
-    );
-}

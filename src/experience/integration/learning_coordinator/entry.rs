@@ -20,16 +20,27 @@ pub struct EntryMethods<'a> {
     pub hypothesis_engine: &'a Arc<crate::experience::hypothesis::HypothesisEngine>,
     pub reflection_engine: &'a Arc<crate::experience::reflection::ReflectionEngine>,
     pub knowledge_store: &'a Arc<crate::knowledge::KnowledgeStore>,
-    pub reputations: &'a Arc<tokio::sync::RwLock<std::collections::HashMap<String, crate::experience::reputation::score::Reputation>>>,
-    pub explorations: &'a Arc<tokio::sync::RwLock<std::collections::HashMap<String, crate::experience::exploration::Exploration>>>,
+    pub reputations: &'a Arc<
+        tokio::sync::RwLock<
+            std::collections::HashMap<String, crate::experience::reputation::score::Reputation>,
+        >,
+    >,
+    pub explorations: &'a Arc<
+        tokio::sync::RwLock<
+            std::collections::HashMap<String, crate::experience::exploration::Exploration>,
+        >,
+    >,
     pub metrics: &'a Arc<crate::experience::metrics::MetricsCollector>,
     pub bus: &'a Arc<crate::experience::bus::ExperienceBus>,
-    pub skill_registry: &'a Option<Arc<crate::skills::registry::SkillRegistry>>,
+    pub skill_registry: &'a Option<Arc<crate::execution::skills::SkillRegistry>>,
 }
 
 impl<'a> EntryMethods<'a> {
     /// Process an experience through the full learning pipeline
-    pub async fn process_experience(&self, experience: &Experience) -> Result<LearningResult, anyhow::Error> {
+    pub async fn process_experience(
+        &self,
+        experience: &Experience,
+    ) -> Result<LearningResult, anyhow::Error> {
         let hypothesis_methods = HypothesisMethods {
             config: self.config,
             hypothesis_engine: self.hypothesis_engine,
@@ -48,9 +59,12 @@ impl<'a> EntryMethods<'a> {
         self.metrics.increment("learning.experiences.scored").await;
 
         // Step 2: Generate reflection (if threshold met)
-        let reflection_id = if self.config.auto_reflect && score >= self.config.reflection_threshold {
+        let reflection_id = if self.config.auto_reflect && score >= self.config.reflection_threshold
+        {
             if let Ok(reflection) = hypothesis_methods.generate_reflection(experience).await {
-                self.metrics.increment("learning.reflections.generated").await;
+                self.metrics
+                    .increment("learning.reflections.generated")
+                    .await;
                 Some(reflection.id)
             } else {
                 None
@@ -62,7 +76,9 @@ impl<'a> EntryMethods<'a> {
         // Step 3: Generate hypotheses (if enabled)
         let hypothesis_ids = if self.config.auto_hypothesize {
             if let Ok(ids) = hypothesis_methods.generate_hypotheses(experience).await {
-                self.metrics.increment("learning.hypotheses.generated").await;
+                self.metrics
+                    .increment("learning.hypotheses.generated")
+                    .await;
                 ids
             } else {
                 Vec::new()
@@ -81,7 +97,10 @@ impl<'a> EntryMethods<'a> {
     }
 
     /// Process an experience through the full learning pipeline (extended version)
-    pub async fn process_experience_full(&self, experience: &Experience) -> Result<LearningResult, anyhow::Error> {
+    pub async fn process_experience_full(
+        &self,
+        experience: &Experience,
+    ) -> Result<LearningResult, anyhow::Error> {
         let hypothesis_methods = HypothesisMethods {
             config: self.config,
             hypothesis_engine: self.hypothesis_engine,
@@ -117,18 +136,25 @@ impl<'a> EntryMethods<'a> {
         self.metrics.increment("learning.experiences.scored").await;
 
         // Step 2: Generate reflection (if threshold met)
-        if self.config.auto_reflect && score >= self.config.reflection_threshold
-            && let Ok(reflection) = hypothesis_methods.generate_reflection(experience).await {
-                result.reflection_id = Some(reflection.id);
-                self.metrics.increment("learning.reflections.generated").await;
-            }
+        if self.config.auto_reflect
+            && score >= self.config.reflection_threshold
+            && let Ok(reflection) = hypothesis_methods.generate_reflection(experience).await
+        {
+            result.reflection_id = Some(reflection.id);
+            self.metrics
+                .increment("learning.reflections.generated")
+                .await;
+        }
 
         // Step 3: Generate hypotheses (if enabled)
         if self.config.auto_hypothesize
-            && let Ok(ids) = hypothesis_methods.generate_hypotheses(experience).await {
-                result.hypothesis_ids = ids;
-                self.metrics.increment("learning.hypotheses.generated").await;
-            }
+            && let Ok(ids) = hypothesis_methods.generate_hypotheses(experience).await
+        {
+            result.hypothesis_ids = ids;
+            self.metrics
+                .increment("learning.hypotheses.generated")
+                .await;
+        }
 
         // Step 4: Update knowledge from high-value experiences
         if score >= 0.8 {
@@ -175,13 +201,18 @@ impl<'a> EntryMethods<'a> {
     /// validated when its accumulated evidence (graph node weight + supporting
     /// edges) exceeds the configured confidence threshold. Validated
     /// hypotheses may be promoted to the knowledge store.
-    pub async fn validate_hypothesis(&self, hypothesis_id: &str) -> Result<ValidationResult, anyhow::Error> {
+    pub async fn validate_hypothesis(
+        &self,
+        hypothesis_id: &str,
+    ) -> Result<ValidationResult, anyhow::Error> {
         use crate::experience::hypothesis::core::hypothesis::HypothesisId;
         use crate::experience::hypothesis::support::graph::HypothesisRelationship;
 
         let graph = self.hypothesis_engine.get_graph();
         let (exists, weight, supporting, contradicting) = {
-            let g = graph.lock().map_err(|e| anyhow::anyhow!("graph lock poisoned: {}", e))?;
+            let g = graph
+                .lock()
+                .map_err(|e| anyhow::anyhow!("graph lock poisoned: {}", e))?;
             let id = HypothesisId(hypothesis_id.to_string());
             match g.get_node(&id) {
                 Some(node) => {
@@ -219,7 +250,9 @@ impl<'a> EntryMethods<'a> {
                 hypothesis_id,
                 confidence
             );
-            self.metrics.increment("learning.hypotheses.validated").await;
+            self.metrics
+                .increment("learning.hypotheses.validated")
+                .await;
             true
         } else {
             tracing::debug!(
@@ -255,7 +288,8 @@ impl<'a> EntryMethods<'a> {
             bus: self.bus,
         };
 
-        let exploration_manager = ExplorationManager::new(self.explorations.clone(), self.bus.clone());
+        let exploration_manager =
+            ExplorationManager::new(self.explorations.clone(), self.bus.clone());
         let reputation_manager = ReputationManager::new(self.reputations.clone(), self.bus.clone());
 
         let mut stats = MaintenanceStats::default();
@@ -291,9 +325,14 @@ impl<'a> EntryMethods<'a> {
             .iter()
             .next()
             .map(|(k, v)| (k.clone(), v.score))
-            && let Some(score) = reputation_manager.get_reputation(&probe_source).await {
-                tracing::info!("Maintenance reputation probe: {} score={}", probe_source, score);
-            }
+            && let Some(score) = reputation_manager.get_reputation(&probe_source).await
+        {
+            tracing::info!(
+                "Maintenance reputation probe: {} score={}",
+                probe_source,
+                score
+            );
+        }
 
         // 5. Generalize from recent experiences and transfer knowledge across
         // domains (Architecture §9: generalization + transfer learning).
@@ -313,9 +352,7 @@ impl<'a> EntryMethods<'a> {
             .collect();
 
         if !experience_ids.is_empty() {
-            let gen_result = generalization_methods
-                .generalize(experience_ids)
-                .await?;
+            let gen_result = generalization_methods.generalize(experience_ids).await?;
             stats.knowledge_consolidated += gen_result.generalized_knowledge_count;
             tracing::info!(
                 "Generalization produced {} patterns, {} new knowledge items",
@@ -324,7 +361,8 @@ impl<'a> EntryMethods<'a> {
             );
 
             // Transfer the newly generalized knowledge to a sibling domain.
-            let knowledge_ids: Vec<Uuid> = gen_result.patterns.iter().map(|_| Uuid::new_v4()).collect();
+            let knowledge_ids: Vec<Uuid> =
+                gen_result.patterns.iter().map(|_| Uuid::new_v4()).collect();
             let transfer_result = generalization_methods
                 .transfer_knowledge("default", "general", knowledge_ids)
                 .await?;

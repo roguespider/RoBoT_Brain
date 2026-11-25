@@ -228,7 +228,7 @@ impl FormatCitationsProvider {
                 };
                 let mut parts = vec![format!("{author_text}. \"{title}.\"")];
                 if let Some(container) = container.as_deref() {
-                    parts.push(format!("{container}"));
+                    parts.push(container.to_string());
                 }
                 if let Some(publisher) = work.publisher.as_deref().filter(|p| !p.is_empty()) {
                     parts.push(publisher.to_string());
@@ -245,7 +245,7 @@ impl FormatCitationsProvider {
                 };
                 let mut parts = vec![format!("{author_text}. \"{title}.\"")];
                 if let Some(container) = container.as_deref() {
-                    parts.push(format!("{container}"));
+                    parts.push(container.to_string());
                 }
                 parts.push(year_str.clone());
                 parts.push(format!("https://doi.org/{}", doi.trim()));

@@ -335,3 +335,4 @@ pub fn tool_lifecycle(
     let request = ToolInvocationRequest::new(tool_id, caller, params);
     execute_tool_pipeline(&request)
 }
+

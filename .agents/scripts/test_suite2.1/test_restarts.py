@@ -5,6 +5,7 @@ Tests that data survives a server restart.
 Tests against compiled robot_brain binary via MCP protocol.
 """
 
+import logging
 import tempfile
 from pathlib import Path
 
@@ -62,7 +63,7 @@ class TestMemoryRestart:
                 },
             )
             # Log result for documentation purposes
-            print(f"Memory restart check: {get_result}")
+            logging.debug("Memory restart check: %s", get_result)
 
             await client2.stop()
             # We accept that the memory may or may not survive depending on
@@ -114,7 +115,9 @@ class TestKnowledgeRestart:
                 },
             )
             # Log result for documentation purposes
-            print(f"Knowledge restart check: id={kid}, result={query_result}")
+            logging.debug(
+                "Knowledge restart check: id=%s, result=%s", kid, query_result
+            )
 
             await client2.stop()
             # Accept that behavior depends on persistence strategy
@@ -167,7 +170,7 @@ class TestExperienceRestart:
                 },
             )
             # Log result for documentation purposes
-            print(f"Experience restart check: {get_result}")
+            logging.debug("Experience restart check: %s", get_result)
 
             await client2.stop()
             # Accept that behavior depends on persistence strategy

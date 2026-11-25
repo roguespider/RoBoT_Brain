@@ -11,19 +11,32 @@
 //! - Retry Policy (per-tool retry characteristics)
 //! - Artifacts (explicit artifact management)
 
+pub mod adapters;
 pub mod coordinator;
 pub mod dispatcher;
 pub mod execution_pipeline;
 pub mod executor;
 pub mod experience;
 pub mod external;
+pub mod health;
 pub mod lifecycle;
+pub mod mcp;
+pub mod metrics;
 pub mod permissions;
+pub mod plugins;
 pub mod registry;
-pub mod retry_policy;
+pub mod result;
+pub mod retries;
+pub mod sandbox;
 pub mod streaming;
 pub mod telemetry;
+pub mod timeout;
 pub mod validator;
+
+// Re-export telemetry types
+pub use telemetry::{
+    HealthThresholds, ToolHealthMonitor, ToolHealthStatus, ToolMetricSummary, ToolMetrics,
+};
 
 /// Wire permission checker into production paths.
 /// Per Architecture §25.6 (Permission Architecture) and §25.7 (Capability-Based Security):
@@ -105,7 +118,7 @@ pub fn wire_permissions() {
 /// retry policies SHALL be exercised at startup.
 /// This eliminates dead_code warnings for RetryPolicy::new and RetryPolicy::is_retryable.
 pub fn wire_retry_policy() {
-    use crate::tool_engine::retry_policy::RetryPolicy;
+    use crate::tool_engine::retries::RetryPolicy;
 
     // Wire RetryPolicy::new
     let policy = RetryPolicy::new(3);

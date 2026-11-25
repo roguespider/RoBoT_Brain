@@ -9,11 +9,10 @@ Tests:
 - Search system
 - All 200+ tools
 
-Output: test_tool_probe_report.json + human-readable test_tool_probe_output.txt
+Output: Results integrated into test_output.txt by main.py
 """
 
-import asyncio
-import json
+import logging
 import sys
 import time
 from pathlib import Path
@@ -22,6 +21,20 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from mcp_client import RobotBrainClient
+
+logger = logging.getLogger(__name__)
+
+
+async def _safe_call_tool(client, tool_name, params):
+    """Call a tool safely, catching OSError and returning (success, result_or_error).
+
+    Only catches OSError (connection/IO errors). Other exceptions propagate.
+    """
+    try:
+        result = await client.call_tool(tool_name, params)
+        return True, result
+    except OSError as e:
+        return False, f"OSError: {e}"
 
 
 def get_tool_defaults(tool_name: str) -> dict:
@@ -96,32 +109,36 @@ def get_tool_defaults(tool_name: str) -> dict:
             "uncertainty": 0.2,
         },
     }
-    return defaults.get(tool_name, {})
+    result = defaults.get(tool_name, {})
+    return result if isinstance(result, dict) else {}
 
 
 async def probe_all_tools() -> dict:
-    """Probe all tools and return results."""
-    print("[INFO] Starting comprehensive tool probe...")
-    print("[INFO] Connecting to robot_brain...")
+    """Probe all tools and return results.
+
+    HALTS on first tool failure — a failing tool means the binary is unusable.
+    """
+    logger.info("[INFO] Starting comprehensive tool probe...")
+    logger.info("[INFO] Connecting to robot_brain...")
 
     # Connect
     client = await RobotBrainClient.connect()
-    print("[OK] Connected to robot_brain")
+    logger.info("[OK] Connected to robot_brain")
 
     # Initialize workflow gate
-    print("[INFO] Initializing workflow gate...")
+    logger.info("[INFO] Initializing workflow gate...")
     await client.get_workflow("general")
     await client.search_memory_first("test")
-    print("[OK] Workflow gate initialized")
+    logger.info("[OK] Workflow gate initialized")
 
     # List all tools
-    print("[INFO] Listing all tools...")
+    logger.info("[INFO] Listing all tools...")
     tools = await client.list_tools()
     tool_names = [t["name"] for t in tools]
-    print(f"[INFO] Found {len(tool_names)} tools")
+    logger.info("[INFO] Found %d tools", len(tool_names))
 
-    # Probe each tool
-    results = {
+    # Probe each tool — HALT on first failure
+    results: dict = {
         "total_tools": len(tool_names),
         "working": [],
         "failed": [],
@@ -129,16 +146,17 @@ async def probe_all_tools() -> dict:
         "by_category": {},
     }
 
-    print("\n[INFO] Probing each tool...\n")
+    logger.info("\n[INFO] Probing each tool...\n")
 
     for tool_name in tool_names:
         defaults = get_tool_defaults(tool_name)
 
-        try:
-            start = time.time()
-            result = await client.call_tool(tool_name, defaults)
-            elapsed = time.time() - start
+        start = time.time()
+        success, result_or_error = await _safe_call_tool(client, tool_name, defaults)
+        elapsed = time.time() - start
 
+        if success:
+            result = result_or_error
             results["working"].append(
                 {
                     "name": tool_name,
@@ -150,10 +168,9 @@ async def probe_all_tools() -> dict:
                 }
             )
             status = f"[OK] {tool_name} ({elapsed * 1000:.0f}ms)"
-            print(status)
-
-        except Exception as e:
-            error_msg = str(e)[:200]
+            logger.info(status)
+        else:
+            error_msg = str(result_or_error)[:200]
             results["failed"].append(
                 {
                     "name": tool_name,
@@ -161,7 +178,14 @@ async def probe_all_tools() -> dict:
                 }
             )
             status = f"[FAIL] {tool_name}: {error_msg[:100]}"
-            print(status)
+            logger.info(status)
+            await client.stop()
+            # HALT: binary is unusable, must fix the failing tool
+            logger.error(
+                "[HALT] Tool '%s' failed — binary is unusable. Fix before continuing.",
+                tool_name,
+            )
+            raise RuntimeError(f"Tool probe HALT: {tool_name} failed with: {error_msg}")
 
     await client.stop()
 
@@ -177,8 +201,8 @@ async def probe_all_tools() -> dict:
 
 async def test_ingest_system(client: RobotBrainClient) -> dict:
     """Test ingest system with all supported file types."""
-    print("\n[INFO] Testing ingest system...")
-    results = {
+    logger.info("\n[INFO] Testing ingest system...")
+    results: dict = {
         "tested": [],
         "working": [],
         "failed": [],
@@ -190,7 +214,9 @@ async def test_ingest_system(client: RobotBrainClient) -> dict:
 
     # Supported file types from file_collector.rs:
     # TEXT: txt, md, rst, csv, log, xml, html, htm
-    # CODE: rs, toml, yaml, yml, env, gitignore, dockerfile, py, js, ts, java, c, cpp, h, hpp, go, rb, php, sql, sh, bash, zsh, ps1, bat, cmd
+    # CODE: rs, toml, yaml, yml, env, gitignore, dockerfile,
+    # py, js, ts, java, c, cpp, h, hpp, go, rb, php, sql,
+    # sh, bash, zsh, ps1, bat, cmd
     # CONFIG: css, scss, sass, less, json, jsonl, properties, conf, cfg, ini, lock
     # SUBTITLES: srt, vtt, ass
     # ARCHIVE: zip, tar, gz, tgz, tar.gz, bz2, xz, 7z, rar
@@ -225,11 +251,11 @@ async def test_ingest_system(client: RobotBrainClient) -> dict:
             )
             results["working"].append({"type": ext, "file": filename})
             results["tested"].append(f"{ext} file ingest")
-            print(f"[OK] {ext} file ingest")
-        except Exception as e:
+            logger.info("[OK] %s file ingest", ext)
+        except OSError as e:
             results["failed"].append({"type": ext, "error": str(e)[:100]})
             results["tested"].append(f"{ext} file ingest (FAILED)")
-            print(f"[FAIL] {ext} file ingest: {e}")
+            logger.info("[FAIL] %s file ingest: %s", ext, e)
 
     # --- CODE FILES ---
     code_files = [
@@ -256,11 +282,11 @@ async def test_ingest_system(client: RobotBrainClient) -> dict:
             )
             results["working"].append({"type": ext, "file": filename})
             results["tested"].append(f"{ext} code ingest")
-            print(f"[OK] {ext} code ingest")
-        except Exception as e:
+            logger.info("[OK] %s code ingest", ext)
+        except OSError as e:
             results["failed"].append({"type": ext, "error": str(e)[:100]})
             results["tested"].append(f"{ext} code ingest (FAILED)")
-            print(f"[FAIL] {ext} code ingest: {e}")
+            logger.info("[FAIL] %s code ingest: %s", ext, e)
 
     # --- SCRIPT FILES ---
     script_files = [
@@ -285,11 +311,11 @@ async def test_ingest_system(client: RobotBrainClient) -> dict:
             )
             results["working"].append({"type": ext, "file": filename})
             results["tested"].append(f"{ext} script ingest")
-            print(f"[OK] {ext} script ingest")
-        except Exception as e:
+            logger.info("[OK] %s script ingest", ext)
+        except OSError as e:
             results["failed"].append({"type": ext, "error": str(e)[:100]})
             results["tested"].append(f"{ext} script ingest (FAILED)")
-            print(f"[FAIL] {ext} script ingest: {e}")
+            logger.info("[FAIL] %s script ingest: %s", ext, e)
 
     # --- CONFIG FILES ---
     config_files = [
@@ -315,11 +341,11 @@ async def test_ingest_system(client: RobotBrainClient) -> dict:
             )
             results["working"].append({"type": ext, "file": filename})
             results["tested"].append(f"{ext} config ingest")
-            print(f"[OK] {ext} config ingest")
-        except Exception as e:
+            logger.info("[OK] %s config ingest", ext)
+        except OSError as e:
             results["failed"].append({"type": ext, "error": str(e)[:100]})
             results["tested"].append(f"{ext} config ingest (FAILED)")
-            print(f"[FAIL] {ext} config ingest: {e}")
+            logger.info("[FAIL] %s config ingest: %s", ext, e)
 
     # --- SUBTITLE FILES ---
     subtitle_files = [
@@ -342,29 +368,32 @@ async def test_ingest_system(client: RobotBrainClient) -> dict:
             )
             results["working"].append({"type": ext, "file": filename})
             results["tested"].append(f"{ext} subtitle ingest")
-            print(f"[OK] {ext} subtitle ingest")
-        except Exception as e:
+            logger.info("[OK] %s subtitle ingest", ext)
+        except OSError as e:
             results["failed"].append({"type": ext, "error": str(e)[:100]})
             results["tested"].append(f"{ext} subtitle ingest (FAILED)")
-            print(f"[FAIL] {ext} subtitle ingest: {e}")
+            logger.info("[FAIL] %s subtitle ingest: %s", ext, e)
 
     # --- IMAGE FILES (metadata only) ---
     # Create minimal valid files for each image type
-    image_files = [
+    image_files: list[tuple[str, bytes | str]] = [
         ("test.png", b"\x89PNG\r\n\x1a\n" + b"\x00" * 100),  # PNG header
         ("test.jpg", b"\xff\xd8\xff\xe0" + b"\x00" * 100),  # JPEG header
         (
             "test.svg",
-            '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><rect width="50" height="50"/></svg>',
+            (
+                '<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100">'
+                '<rect width="50" height="50"/></svg>'
+            ),
         ),
     ]
 
-    for filename, content in image_files:
+    for filename, file_content in image_files:
         file_path = test_dir / filename
-        if isinstance(content, bytes):
-            file_path.write_bytes(content)
+        if isinstance(file_content, bytes):
+            file_path.write_bytes(file_content)
         else:
-            file_path.write_text(content, encoding="utf-8")
+            file_path.write_text(str(file_content), encoding="utf-8")
         ext = filename.split(".")[-1].upper()
 
         try:
@@ -380,11 +409,11 @@ async def test_ingest_system(client: RobotBrainClient) -> dict:
                 {"type": ext, "file": filename, "note": "metadata"}
             )
             results["tested"].append(f"{ext} image ingest (metadata)")
-            print(f"[OK] {ext} image ingest (metadata)")
-        except Exception as e:
+            logger.info("[OK] %s image ingest (metadata)", ext)
+        except OSError as e:
             results["failed"].append({"type": ext, "error": str(e)[:100]})
             results["tested"].append(f"{ext} image ingest (FAILED)")
-            print(f"[FAIL] {ext} image ingest: {e}")
+            logger.error("[FAIL] %s image ingest: %s", ext, e)
 
     # Cleanup
     for f in test_dir.iterdir():
@@ -392,19 +421,19 @@ async def test_ingest_system(client: RobotBrainClient) -> dict:
             try:
                 f.unlink()
             except FileNotFoundError:
-                pass
+                logger.debug("File not found during cleanup: %s", f)
     try:
         test_dir.rmdir()
     except OSError:
-        pass
+        logger.debug("Failed to remove test directory: %s", test_dir)
 
     return results
 
 
 async def test_search_system(client: RobotBrainClient) -> dict:
     """Test search system."""
-    print("\n[INFO] Testing search system...")
-    results = {
+    logger.info("\n[INFO] Testing search system...")
+    results: dict = {
         "tested": [],
         "working": [],
         "failed": [],
@@ -412,18 +441,18 @@ async def test_search_system(client: RobotBrainClient) -> dict:
 
     # Test search_memory
     try:
-        result = await client.call_tool("search_memory", {"query": "test"})
+        await client.call_tool("search_memory", {"query": "test"})
         results["working"].append({"tool": "search_memory"})
         results["tested"].append("search_memory")
-        print("[OK] search_memory")
-    except Exception as e:
+        logger.info("[OK] search_memory")
+    except OSError as e:
         results["failed"].append({"tool": "search_memory", "error": str(e)[:100]})
         results["tested"].append("search_memory (FAILED)")
-        print(f"[FAIL] search_memory: {e}")
+        logger.info("[FAIL] search_memory: %s", e)
 
     # Test global_search
     try:
-        result = await client.call_tool(
+        await client.call_tool(
             "global_search",
             {
                 "query": "test",
@@ -432,15 +461,15 @@ async def test_search_system(client: RobotBrainClient) -> dict:
         )
         results["working"].append({"tool": "global_search"})
         results["tested"].append("global_search")
-        print("[OK] global_search")
-    except Exception as e:
+        logger.info("[OK] global_search")
+    except OSError as e:
         results["failed"].append({"tool": "global_search", "error": str(e)[:100]})
         results["tested"].append("global_search (FAILED)")
-        print(f"[FAIL] global_search: {e}")
+        logger.info("[FAIL] global_search: %s", e)
 
     # Test ranked_search
     try:
-        result = await client.call_tool(
+        await client.call_tool(
             "ranked_search",
             {
                 "query": "test",
@@ -449,15 +478,15 @@ async def test_search_system(client: RobotBrainClient) -> dict:
         )
         results["working"].append({"tool": "ranked_search"})
         results["tested"].append("ranked_search")
-        print("[OK] ranked_search")
-    except Exception as e:
+        logger.info("[OK] ranked_search")
+    except OSError as e:
         results["failed"].append({"tool": "ranked_search", "error": str(e)[:100]})
         results["tested"].append("ranked_search (FAILED)")
-        print(f"[FAIL] ranked_search: {e}")
+        logger.info("[FAIL] ranked_search: %s", e)
 
     # Test search_similar (requires embedding)
     try:
-        result = await client.call_tool(
+        await client.call_tool(
             "search_similar",
             {
                 "query": "test",
@@ -465,19 +494,19 @@ async def test_search_system(client: RobotBrainClient) -> dict:
         )
         results["working"].append({"tool": "search_similar"})
         results["tested"].append("search_similar")
-        print("[OK] search_similar")
-    except Exception as e:
+        logger.info("[OK] search_similar")
+    except OSError as e:
         results["failed"].append({"tool": "search_similar", "error": str(e)[:100]})
         results["tested"].append("search_similar (FAILED)")
-        print(f"[FAIL] search_similar: {e}")
+        logger.info("[FAIL] search_similar: %s", e)
 
     return results
 
 
 async def test_mcp_acp_connection(client: RobotBrainClient) -> dict:
     """Test MCP/ACP connection."""
-    print("\n[INFO] Testing MCP/ACP connection...")
-    results = {
+    logger.info("\n[INFO] Testing MCP/ACP connection...")
+    results: dict = {
         "tested": [],
         "working": [],
         "failed": [],
@@ -485,128 +514,39 @@ async def test_mcp_acp_connection(client: RobotBrainClient) -> dict:
 
     # Test list_acp_agents
     try:
-        result = await client.call_tool("list_acp_agents", {})
+        await client.call_tool("list_acp_agents", {})
         results["working"].append({"tool": "list_acp_agents"})
         results["tested"].append("ACP list_agents")
-        print("[OK] ACP list_acp_agents")
-    except Exception as e:
+        logger.info("[OK] ACP list_acp_agents")
+    except OSError as e:
         results["failed"].append({"tool": "list_acp_agents", "error": str(e)[:100]})
         results["tested"].append("ACP list_acp_agents (FAILED)")
-        print(f"[FAIL] ACP list_acp_agents: {e}")
+        logger.info("[FAIL] ACP list_acp_agents: %s", e)
 
     # Test acp_registry
     try:
-        result = await client.call_tool("acp_registry", {})
+        await client.call_tool("acp_registry", {})
         results["working"].append({"tool": "acp_registry"})
         results["tested"].append("ACP registry")
-        print("[OK] ACP registry")
-    except Exception as e:
+        logger.info("[OK] ACP registry")
+    except OSError as e:
         results["failed"].append({"tool": "acp_registry", "error": str(e)[:100]})
         results["tested"].append("ACP registry (FAILED)")
-        print(f"[FAIL] ACP registry: {e}")
+        logger.info("[FAIL] ACP registry: %s", e)
 
     # Test acp_router
     try:
-        result = await client.call_tool("acp_router", {})
+        await client.call_tool("acp_router", {})
         results["working"].append({"tool": "acp_router"})
         results["tested"].append("ACP router")
-        print("[OK] ACP router")
-    except Exception as e:
+        logger.info("[OK] ACP router")
+    except OSError as e:
         results["failed"].append({"tool": "acp_router", "error": str(e)[:100]})
         results["tested"].append("ACP router (FAILED)")
-        print(f"[FAIL] ACP router: {e}")
+        logger.info("[FAIL] ACP router: %s", e)
 
     return results
 
 
 async def main():
     """Run comprehensive tool probe."""
-    print("=" * 70)
-    print("  COMPREHENSIVE TOOL PROBE — Testing ALL tools")
-    print("=" * 70)
-
-    # Connect and probe
-    client = await RobotBrainClient.connect()
-    await client.get_workflow("general")
-    await client.search_memory_first("test")
-
-    # Run all tests
-    tool_results = await probe_all_tools()
-    ingest_results = await test_ingest_system(client)
-    search_results = await test_search_system(client)
-    mcp_acp_results = await test_mcp_acp_connection(client)
-
-    # Compile full report
-    report = {
-        "title": "RoBoT Brain Comprehensive Tool Probe",
-        "timestamp": time.strftime("%Y-%m-%d %H:%M:%S"),
-        "tool_probe": tool_results,
-        "ingest_system": ingest_results,
-        "search_system": search_results,
-        "mcp_acp_connection": mcp_acp_results,
-    }
-
-    # Write JSON report
-    report_path = Path(__file__).resolve().parent / "test_tool_probe_report.json"
-    with open(report_path, "w", encoding="utf-8") as f:
-        json.dump(report, f, indent=2)
-    print(f"\n[INFO] JSON report written to: {report_path}")
-
-    # Write human-readable report
-    output_path = Path(__file__).resolve().parent / "test_tool_probe_output.txt"
-    with open(output_path, "w", encoding="utf-8") as f:
-        f.write("=" * 70 + "\n")
-        f.write("  RoBoT Brain Comprehensive Tool Probe — Human Readable Report\n")
-        f.write("=" * 70 + "\n\n")
-
-        f.write(f"Total tools discovered: {tool_results['total_tools']}\n")
-        f.write(f"Working: {len(tool_results['working'])}\n")
-        f.write(f"Failed: {len(tool_results['failed'])}\n")
-        f.write(f"Success rate: {tool_results['summary']['success_rate']}\n\n")
-
-        f.write("--- WORKING TOOLS ---\n")
-        for tool in tool_results["working"]:
-            f.write(f"  [OK] {tool['name']} ({tool['time_ms']}ms)\n")
-
-        f.write("\n--- FAILED TOOLS ---\n")
-        for tool in tool_results["failed"]:
-            f.write(f"  [FAIL] {tool['name']}: {tool['error'][:100]}\n")
-
-        f.write("\n--- INGEST SYSTEM ---\n")
-        f.write(f"Tested: {len(ingest_results['tested'])}\n")
-        f.write(f"Working: {len(ingest_results['working'])}\n")
-        f.write(f"Failed: {len(ingest_results['failed'])}\n")
-        for test in ingest_results["tested"]:
-            f.write(f"  - {test}\n")
-
-        f.write("\n--- SEARCH SYSTEM ---\n")
-        f.write(f"Tested: {len(search_results['tested'])}\n")
-        f.write(f"Working: {len(search_results['working'])}\n")
-        f.write(f"Failed: {len(search_results['failed'])}\n")
-        for test in search_results["tested"]:
-            f.write(f"  - {test}\n")
-
-        f.write("\n--- MCP/ACP CONNECTION ---\n")
-        f.write(f"Tested: {len(mcp_acp_results['tested'])}\n")
-        f.write(f"Working: {len(mcp_acp_results['working'])}\n")
-        f.write(f"Failed: {len(mcp_acp_results['failed'])}\n")
-        for test in mcp_acp_results["tested"]:
-            f.write(f"  - {test}\n")
-
-        f.write("\n" + "=" * 70 + "\n")
-        f.write("  End of Report\n")
-        f.write("=" * 70 + "\n")
-
-    print(f"[INFO] Human-readable report written to: {output_path}")
-    print(f"\n[INFO] Summary:")
-    print(f"  Working: {len(tool_results['working'])}/{tool_results['total_tools']}")
-    print(f"  Failed: {len(tool_results['failed'])}/{tool_results['total_tools']}")
-    print(f"  Success rate: {tool_results['summary']['success_rate']}")
-
-    await client.stop()
-
-    return report
-
-
-if __name__ == "__main__":
-    report = asyncio.run(main())

@@ -50,11 +50,27 @@ impl DuckDuckGoProvider {
     /// (provenance) and must not reach the evidence packet.
     fn parse_results(html: &str) -> Vec<SearchResult> {
         let document = Html::parse_document(html);
-        let result_selector =
-            Selector::parse("div.result, div.web-result").expect("static result selector");
-        let link_selector = Selector::parse("a.result__a").expect("static result link selector");
-        let snippet_selector =
-            Selector::parse(".result__snippet").expect("static result snippet selector");
+        let result_selector = match Selector::parse("div.result, div.web-result") {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::error!("Failed to parse result selector: {}", e);
+                return Vec::new();
+            }
+        };
+        let link_selector = match Selector::parse("a.result__a") {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::error!("Failed to parse link selector: {}", e);
+                return Vec::new();
+            }
+        };
+        let snippet_selector = match Selector::parse(".result__snippet") {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::error!("Failed to parse snippet selector: {}", e);
+                return Vec::new();
+            }
+        };
 
         let mut results = Vec::new();
         for element in document.select(&result_selector) {

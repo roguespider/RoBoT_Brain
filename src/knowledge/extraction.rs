@@ -188,16 +188,3 @@ pub fn detect_entities(input: &ExtractionInput) -> Vec<DetectedEntity> {
     entities
 }
 
-/// Active reference to knowledge extraction contracts.
-pub fn reference_extraction_contracts() {
-    // Wire run_extraction
-    if let Ok(conn) = rusqlite::Connection::open_in_memory() {
-        let result = run_extraction(&conn, "Hello World test", "test_source");
-        tracing::info!(
-            extraction_ok = result.is_ok(),
-            "run_extraction actively referenced"
-        );
-    } else {
-        tracing::warn!("Skipping run_extraction: no in-memory connection");
-    }
-}

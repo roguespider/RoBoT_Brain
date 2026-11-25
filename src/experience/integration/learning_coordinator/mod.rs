@@ -27,6 +27,7 @@ use anyhow::Result;
 use std::sync::Arc;
 
 use crate::database::sqlite::SqliteDatabase;
+use crate::execution::skills::SkillRegistry;
 use crate::experience::bus::ExperienceBus;
 use crate::experience::exploration::Exploration;
 use crate::experience::hypothesis::HypothesisEngine;
@@ -35,7 +36,6 @@ use crate::experience::reflection::ReflectionEngine;
 use crate::experience::reputation::score::Reputation;
 use crate::experience::types::Experience;
 use crate::knowledge::KnowledgeStore;
-use crate::skills::registry::SkillRegistry;
 
 /// Learning Coordinator - Main orchestrator for the learning pipeline
 ///

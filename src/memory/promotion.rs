@@ -3,7 +3,7 @@
 //! Handles promotion of memories from working memory to long-term memory
 //! using the promotion gate.
 
-use crate::data_contracts::memory_record::MemoryRecord;
+use crate::common::data_contracts::memory_record::MemoryRecord;
 use crate::memory::lifecycle::PromotionGate;
 
 /// Trait for working memory (temporary, volatile storage)
@@ -65,7 +65,7 @@ pub fn promote_to_long_term(
         if let Some(next_state) = gate.evaluate(&record) {
             // Update the record's lifecycle state
             record.kind =
-                crate::data_contracts::memory_record::MemoryKind::from_lifecycle(next_state);
+                crate::common::data_contracts::memory_record::MemoryKind::from_lifecycle(next_state);
 
             // Store in long-term memory
             if lt.store(record).is_ok() {
@@ -77,11 +77,3 @@ pub fn promote_to_long_term(
     promoted
 }
 
-/// Active reference to memory promotion contracts.
-pub fn reference_memory_promotion_contracts() {
-    // We can't fully test promote_to_long_term without real implementations,
-    // but we can reference the function
-    let promote_fn = promote_to_long_term;
-    let promote_fn_name = std::any::type_name_of_val(&promote_fn);
-    tracing::info!(promote_fn_name, "promote_to_long_term actively referenced");
-}

@@ -4,13 +4,23 @@
 use serde::{Deserialize, Serialize};
 
 /// Overall outcome kind.
+///
+/// The wire format is the PascalCase enum variant (`Success`, `Failure`, ...)
+/// documented for the `record_experience` tool. The lowercase spellings are
+/// accepted as aliases so clients that send `success` keep working.
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, schemars::JsonSchema)]
 pub enum OutcomeKind {
+    #[serde(alias = "success")]
     Success,
+    #[serde(alias = "failure")]
     Failure,
+    #[serde(alias = "partial")]
     Partial,
+    #[serde(alias = "timeout")]
     Timeout,
+    #[serde(alias = "interrupted")]
     Interrupted,
+    #[serde(alias = "unknown")]
     Unknown,
 }
 

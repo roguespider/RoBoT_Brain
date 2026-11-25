@@ -1,0 +1,577 @@
+//! Skill execute function implementations.
+//! Per Architecture §15: Skill::execute(&context).
+
+use crate::api::bridge::tools::ToolOutput;
+use crate::api::mcp::McpContext;
+use crate::execution::skills::{
+    ExecutionContext, Skill, SkillCategory, SkillMetadata, SkillSource,
+};
+use anyhow::Result;
+use std::collections::HashSet;
+use uuid::Uuid;
+
+use super::inputs::*;
+
+pub async fn execute_register_skill(input: RegisterSkillInput, context: &McpContext) -> ToolOutput {
+    let category = parse_category(&input.category);
+
+    let skill = Skill::new(SkillMetadata {
+        name: input.name,
+        description: input.description,
+        category,
+        version: input.version.unwrap_or_else(|| "1.0.0".to_string()),
+        author: input.author,
+        tags: input.tags.unwrap_or_default(),
+        examples: input.examples.unwrap_or_default(),
+    });
+
+    let skill_id = match context.skills.register(skill).await {
+        Ok(id) => id,
+        Err(e) => return ToolOutput::error(format!("Failed to register skill: {}", e)),
+    };
+
+    ToolOutput::success(serde_json::json!({
+        "status": "registered",
+        "id": skill_id,
+        "skill_id": skill_id,
+        "message": "Skill registered successfully"
+    }))
+}
+
+/// Execute discover_skill tool - create skill from experience
+pub async fn execute_discover_skill(
+    input: DiscoverSkillInput,
+    context: &McpContext,
+) -> Result<ToolOutput> {
+    let experience_id = input
+        .source_experience_id
+        .parse::<Uuid>()
+        .map_err(|e| anyhow::anyhow!("Invalid experience ID: {}", e))?;
+
+    let skill = Skill::discovered(
+        input.name,
+        input.description,
+        parse_category(&input.category),
+        experience_id,
+    );
+
+    let skill_id = context
+        .skills
+        .register(skill)
+        .await
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+    Ok(ToolOutput::success(serde_json::json!({
+        "status": "discovered",
+        "id": skill_id.clone(),
+        "skill_id": skill_id,
+        "message": "Skill discovered from experience",
+        "mastery": 0.3,
+        "note": "Skill starts with low mastery until proven through practice"
+    })))
+}
+
+/// Execute get_skill tool
+pub async fn execute_get_skill(input: GetSkillInput, context: &McpContext) -> ToolOutput {
+    let skill = match context.skills.get(&input.skill_id).await {
+        Some(s) => s,
+        None => return ToolOutput::error(format!("Skill not found: {}", input.skill_id)),
+    };
+
+    ToolOutput::success(serde_json::json!({
+        "skill": {
+            "id": skill.id,
+            "name": skill.metadata.name,
+            "description": skill.metadata.description,
+            "category": skill.metadata.category.as_str(),
+            "version": skill.metadata.version,
+            "enabled": skill.enabled,
+            "mastery": skill.mastery,
+            "usage_count": skill.usage_count,
+            "success_count": skill.success_count,
+            "failure_count": skill.failure_count,
+            "success_rate": skill.success_rate(),
+            "execution_score": skill.execution_score(),
+            "last_used": skill.last_used.map(|dt| dt.to_rfc3339()),
+            "prerequisites": skill.prerequisites,
+            "source": match &skill.source {
+                SkillSource::Manual => "manual",
+                SkillSource::Discovered { .. } => "discovered",
+                SkillSource::Learned { .. } => "learned",
+            }
+        }
+    }))
+}
+
+/// Execute list_skills tool
+pub async fn execute_list_skills(
+    input: ListSkillsInput,
+    context: &McpContext,
+) -> Result<ToolOutput> {
+    let skills = if let Some(category) = &input.category {
+        context
+            .skills
+            .list_by_category(parse_category(category))
+            .await
+    } else if input.enabled_only.unwrap_or(false) {
+        context.skills.list_enabled().await
+    } else {
+        context.skills.list().await
+    };
+
+    let skill_list: Vec<serde_json::Value> = skills
+        .iter()
+        .map(|s| {
+            serde_json::json!({
+                "id": s.id,
+                "name": s.metadata.name,
+                "description": s.metadata.description,
+                "category": s.metadata.category.as_str(),
+                "enabled": s.enabled,
+                "mastery": s.mastery,
+                "usage_count": s.usage_count,
+                "success_rate": s.success_rate(),
+            })
+        })
+        .collect();
+
+    Ok(ToolOutput::success(serde_json::json!({
+        "skills": skill_list,
+        "count": skill_list.len()
+    })))
+}
+
+/// Execute update_skill_mastery tool
+pub async fn execute_update_skill_mastery(
+    input: UpdateSkillMasteryInput,
+    context: &McpContext,
+) -> Result<ToolOutput> {
+    let success = input.success.unwrap_or(true);
+    context
+        .skills
+        .record_usage(&input.skill_id, success)
+        .await
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
+
+    let skill = context
+        .skills
+        .get(&input.skill_id)
+        .await
+        .ok_or_else(|| anyhow::anyhow!("Skill not found"))?;
+
+    Ok(ToolOutput::success(serde_json::json!({
+        "status": "updated",
+        "skill_id": input.skill_id,
+        "mastery": skill.mastery,
+        "success_rate": skill.success_rate(),
+        "usage_count": skill.usage_count
+    })))
+}
+
+/// Execute get_skill_recommendations tool
+pub async fn execute_get_skill_recommendations(
+    input: GetSkillRecommendationsInput,
+    context: &McpContext,
+) -> Result<ToolOutput> {
+    let limit = input.limit.unwrap_or(5) as usize;
+    let ready_skills = context.skills.get_ready_skills().await;
+    let most_used = context.skills.get_most_used(limit).await;
+
+    // Combine and deduplicate
+    let mut recommendations = Vec::new();
+    let mut seen = HashSet::new();
+
+    for skill in ready_skills.iter().take(limit) {
+        if seen.insert(&skill.id) {
+            recommendations.push(serde_json::json!({
+                "id": skill.id,
+                "name": skill.metadata.name,
+                "description": skill.metadata.description,
+                "category": skill.metadata.category.as_str(),
+                "mastery": skill.mastery,
+                "reason": "ready_to_use"
+            }));
+        }
+    }
+
+    for skill in most_used.iter() {
+        if seen.insert(&skill.id) && recommendations.len() < limit {
+            recommendations.push(serde_json::json!({
+                "id": skill.id,
+                "name": skill.metadata.name,
+                "description": skill.metadata.description,
+                "category": skill.metadata.category.as_str(),
+                "usage_count": skill.usage_count,
+                "reason": "frequently_used"
+            }));
+        }
+    }
+
+    Ok(ToolOutput::success(serde_json::json!({
+        "recommendations": recommendations,
+        "count": recommendations.len()
+    })))
+}
+
+/// Execute execute_skill tool
+pub async fn execute_execute_skill(
+    input: ExecuteSkillInput,
+    context: &McpContext,
+) -> Result<ToolOutput> {
+    let skill = context
+        .skills
+        .get(&input.skill_id)
+        .await
+        .ok_or_else(|| anyhow::anyhow!("Skill not found: {}", input.skill_id))?;
+
+    if !skill.enabled {
+        anyhow::bail!("Skill is disabled");
+    }
+
+    if !skill.is_ready() {
+        anyhow::bail!("Skill is not ready (mastery too low: {})", skill.mastery);
+    }
+
+    // Check prerequisites
+    if !skill.prerequisites_met(&[]) {
+        anyhow::bail!("Prerequisites not met for skill: {}", skill.metadata.name);
+    }
+
+    // Create execution context using the builder API so the context
+    // builders remain live and the parameters flow through consistently.
+    let mut exec_context = ExecutionContext::new(
+        input
+            .task
+            .unwrap_or_else(|| skill.metadata.description.clone()),
+    );
+    if let Some(params) = input.parameters {
+        for (key, value) in params {
+            exec_context = exec_context.with_param(key, value);
+        }
+    }
+    // Surface the working memory key as a marker entry so the
+    // with_memory builder is exercised on the execution path.
+    exec_context = exec_context.with_memory(
+        "skill_name",
+        serde_json::Value::String(skill.metadata.name.clone()),
+    );
+    // Pass any known knowledge ids through the knowledge-context builder.
+    if !skill.metadata.tags.is_empty() {
+        exec_context = exec_context.with_knowledge_context(skill.metadata.tags.clone());
+    }
+    if let Some(secs) = input.time_limit_secs {
+        exec_context = exec_context.with_time_limit(secs);
+    }
+
+    // Delegate execution to SkillExecutor (Architecture §15) so the
+    // executor, ExecutionResult, and ExecutionMetrics code paths are live
+    // rather than dead code. The executor records usage + metrics and
+    // returns a structured ExecutionResult.
+    let exec_result = context
+        .skill_executor
+        .execute_skill(&input.skill_id, exec_context)
+        .await?;
+
+    let result = serde_json::json!({
+        "status": if exec_result.success { "executed" } else { "failed" },
+        "category": skill.metadata.category.as_str(),
+        "success": exec_result.success,
+        "output": exec_result.output,
+        "error": exec_result.error,
+        "duration_ms": exec_result.duration_ms,
+    });
+
+    let updated_skill = context
+        .skills
+        .get(&input.skill_id)
+        .await
+        .ok_or_else(|| anyhow::anyhow!("Skill {} not found after execution", input.skill_id))?;
+
+    Ok(ToolOutput::success(serde_json::json!({
+        "result": result,
+        "skill_id": input.skill_id,
+        "mastery_after": updated_skill.mastery,
+        "execution_score": updated_skill.execution_score()
+    })))
+}
+
+/// Execute get_skill_stats tool
+pub async fn execute_get_skill_stats(
+    _: GetSkillStatsInput,
+    context: &McpContext,
+) -> Result<ToolOutput> {
+    let stats = context.skills.get_discovery_stats().await;
+    let mastered = context.skills.get_mastered_skills(0.0).await;
+    let most_successful = context.skills.get_most_successful(5).await;
+
+    Ok(ToolOutput::success(serde_json::json!({
+        "stats": {
+            "total_skills": stats.total_skills,
+            "manual_skills": stats.manual_skills,
+            "discovered_skills": stats.discovered_skills,
+            "learned_skills": stats.learned_skills,
+            "avg_mastery": stats.avg_mastery,
+            "mastered_skills": stats.mastered_skills,
+            "highly_successful": most_successful.len(),
+            "ready_to_use": context.skills.get_ready_skills().await.len()
+        },
+        "mastered_skills": mastered.iter().map(|s| {
+            serde_json::json!({
+                "id": s.id,
+                "name": s.metadata.name,
+                "mastery": s.mastery,
+                "execution_score": s.execution_score()
+            })
+        }).collect::<Vec<_>>()
+    })))
+}
+
+/// Execute apply_skill_decay tool
+pub async fn execute_apply_skill_decay(
+    input: ApplySkillDecayInput,
+    context: &McpContext,
+) -> Result<ToolOutput> {
+    let decay_rate = input.decay_rate.unwrap_or(0.05);
+    let decayed_count = context.skills.apply_decay_all(decay_rate).await;
+
+    Ok(ToolOutput::success(serde_json::json!({
+        "status": "decay_applied",
+        "skills_decayed": decayed_count,
+        "decay_rate": decay_rate,
+        "message": format!("Decay applied to {} skills", decayed_count)
+    })))
+}
+
+/// Execute enable_disable_skill tool
+pub async fn execute_enable_disable_skill(
+    input: EnableDisableSkillInput,
+    context: &McpContext,
+) -> Result<ToolOutput> {
+    if input.enable.unwrap_or(false) {
+        context
+            .skills
+            .enable(&input.skill_id)
+            .await
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        Ok(ToolOutput::success(serde_json::json!({
+            "status": "enabled",
+            "skill_id": input.skill_id
+        })))
+    } else {
+        context
+            .skills
+            .disable(&input.skill_id)
+            .await
+            .map_err(|e| anyhow::anyhow!("{}", e))?;
+        Ok(ToolOutput::success(serde_json::json!({
+            "status": "disabled",
+            "skill_id": input.skill_id
+        })))
+    }
+}
+
+/// Execute search_skills tool
+pub async fn execute_search_skills(
+    input: SearchSkillsInput,
+    context: &McpContext,
+) -> Result<ToolOutput> {
+    let all_skills = context.skills.list().await;
+
+    let results: Vec<_> = all_skills
+        .iter()
+        .filter(|s| {
+            let matches_query = s
+                .metadata
+                .name
+                .to_lowercase()
+                .contains(&input.query.to_lowercase())
+                || s.metadata
+                    .description
+                    .to_lowercase()
+                    .contains(&input.query.to_lowercase());
+
+            let matches_category = input
+                .category
+                .as_ref()
+                .map(|c| s.metadata.category.as_str() == c)
+                .unwrap_or(true);
+
+            let matches_mastery = input.min_mastery.map(|m| s.mastery >= m).unwrap_or(true);
+
+            matches_query && matches_category && matches_mastery
+        })
+        .map(|s| {
+            serde_json::json!({
+                "id": s.id,
+                "name": s.metadata.name,
+                "description": s.metadata.description,
+                "category": s.metadata.category.as_str(),
+                "mastery": s.mastery,
+                "success_rate": s.success_rate()
+            })
+        })
+        .collect();
+
+    Ok(ToolOutput::success(serde_json::json!({
+        "results": results,
+        "count": results.len()
+    })))
+}
+
+/// Parse skill category from string.
+///
+/// The built-in categories are the ones the skill registry can reason about
+/// (Architecture §13). A category outside that taxonomy is a custom category
+/// rather than a rejected registration: the taxonomy is advisory metadata, and
+/// the registry already carries a `Custom` category for domain-specific
+/// skills.
+fn parse_category(category: &str) -> SkillCategory {
+    match category.trim().to_lowercase().as_str() {
+        "file_operation" | "fileoperation" | "file" => SkillCategory::FileOperation,
+        "code_analysis" | "codeanalysis" | "code" => SkillCategory::CodeAnalysis,
+        "search" => SkillCategory::Search,
+        "memory" => SkillCategory::Memory,
+        "learning" => SkillCategory::Learning,
+        "planning" => SkillCategory::Planning,
+        "communication" => SkillCategory::Communication,
+        "web" => SkillCategory::Web,
+        "database" | "db" => SkillCategory::Database,
+        "system" => SkillCategory::System,
+        "custom" => SkillCategory::Custom,
+        _ => {
+            tracing::debug!(
+                category = %category,
+                "Category outside the built-in taxonomy — registering as custom"
+            );
+            SkillCategory::Custom
+        }
+    }
+}
+
+/// Execute get_skill_metrics tool
+/// Exercises SkillExecutor::get_execution_metrics, get_all_metrics,
+/// get_skills_by_success_rate (Architecture §15).
+pub async fn execute_get_skill_metrics(
+    input: GetSkillMetricsInput,
+    context: &McpContext,
+) -> Result<ToolOutput> {
+    if let Some(skill_id) = &input.skill_id {
+        match context.skill_executor.get_execution_metrics(skill_id) {
+            Some(m) => Ok(ToolOutput::success(serde_json::json!({
+                "skill_id": skill_id,
+                "metrics": {
+                    "total_executions": m.total_executions,
+                    "successful_executions": m.successful_executions,
+                    "failed_executions": m.failed_executions,
+                    "success_rate": m.success_rate(),
+                    "avg_duration_ms": m.avg_duration(),
+                    "is_stable": m.is_stable(),
+                    "is_unreliable": m.is_unreliable(),
+                }
+            }))),
+            None => Ok(ToolOutput::success(serde_json::json!({
+                "skill_id": skill_id,
+                "metrics": null,
+                "message": "No execution metrics recorded for this skill"
+            }))),
+        }
+    } else {
+        let all = context.skill_executor.get_all_metrics();
+        let by_rate = context.skill_executor.get_skills_by_success_rate();
+        let metrics: Vec<serde_json::Value> = all
+            .iter()
+            .map(|(id, m)| {
+                serde_json::json!({
+                    "skill_id": id,
+                    "total_executions": m.total_executions,
+                    "success_rate": m.success_rate(),
+                    "avg_duration_ms": m.avg_duration(),
+                    "is_stable": m.is_stable(),
+                    "is_unreliable": m.is_unreliable(),
+                })
+            })
+            .collect();
+        let ranked: Vec<serde_json::Value> = by_rate
+            .iter()
+            .map(|(id, rate)| serde_json::json!({"skill_id": id, "success_rate": rate}))
+            .collect();
+        Ok(ToolOutput::success(serde_json::json!({
+            "metrics": metrics,
+            "count": metrics.len(),
+            "ranked_by_success_rate": ranked,
+        })))
+    }
+}
+
+/// Execute get_unreliable_skills tool
+/// Exercises SkillExecutor::get_unreliable_skills (Architecture §15).
+pub async fn execute_get_unreliable_skills(context: &McpContext) -> Result<ToolOutput> {
+    let unreliable = context.skill_executor.get_unreliable_skills();
+    Ok(ToolOutput::success(serde_json::json!({
+        "unreliable_skills": unreliable,
+        "count": unreliable.len()
+    })))
+}
+
+/// Execute clear_skill_metrics tool
+/// Exercises SkillExecutor::clear_metrics, clear_all_metrics (Architecture §15).
+pub async fn execute_clear_skill_metrics(
+    input: ClearSkillMetricsInput,
+    context: &McpContext,
+) -> Result<ToolOutput> {
+    if let Some(skill_id) = &input.skill_id {
+        context.skill_executor.clear_metrics(skill_id);
+        Ok(ToolOutput::success(serde_json::json!({
+            "status": "cleared",
+            "skill_id": skill_id
+        })))
+    } else {
+        context.skill_executor.clear_all_metrics();
+        Ok(ToolOutput::success(serde_json::json!({
+            "status": "all_cleared"
+        })))
+    }
+}
+
+/// Execute search_skills_by_tag tool
+/// Exercises SkillRegistry::search_by_tag (Architecture §15).
+pub async fn execute_search_skills_by_tag(
+    input: SearchSkillsByTagInput,
+    context: &McpContext,
+) -> Result<ToolOutput> {
+    let found = context.skills.search_by_tag(&input.tag).await;
+    let results: Vec<serde_json::Value> = found
+        .iter()
+        .map(|s| {
+            serde_json::json!({
+                "id": s.id,
+                "name": s.metadata.name,
+                "description": s.metadata.description,
+                "category": s.metadata.category.as_str(),
+                "mastery": s.mastery,
+                "tags": s.metadata.tags,
+            })
+        })
+        .collect();
+    Ok(ToolOutput::success(serde_json::json!({
+        "results": results,
+        "count": results.len()
+    })))
+}
+
+/// Execute unregister_skill tool
+/// Exercises SkillRegistry::unregister (Architecture §15).
+pub async fn execute_unregister_skill(
+    input: UnregisterSkillInput,
+    context: &McpContext,
+) -> Result<ToolOutput> {
+    context
+        .skills
+        .unregister(&input.skill_id)
+        .await
+        .map_err(|e| anyhow::anyhow!("{}", e))?;
+    Ok(ToolOutput::success(serde_json::json!({
+        "status": "unregistered",
+        "skill_id": input.skill_id
+    })))
+}

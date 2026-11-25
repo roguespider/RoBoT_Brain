@@ -6,12 +6,12 @@
 //! - Strategic updates: changes to capabilities, skills, workflows (§18.3)
 //! - Strategic evaluation: assessment of strategic progress (§18.4)
 //! - Strategic feedback: feedback loop to execution/planning (§18.5)
-//! - Wiring: strategic_learning/ -> cooboploop/ (existing loop) -> learning/ (ch 10) ->
+//! - Wiring: learning/strategic/ -> cooboploop/ (existing loop) -> learning/ (ch 10) ->
 //!   execution/ (ch 12, feedback loop 12.34) -> database/ (strategic updates persistence)
 
 /// Strategic objective categories per Architecture §18.2.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub enum StrategicCategory {
+pub(crate) enum StrategicCategory {
     /// System reliability improvement.
     SystemReliability,
     /// Memory retrieval improvement.
@@ -48,7 +48,7 @@ impl StrategicCategory {
 
 /// A strategic objective defining a long-term improvement goal.
 #[derive(Debug, Clone, PartialEq)]
-pub struct StrategicObjective {
+pub(crate) struct StrategicObjective {
     /// Objective identifier.
     pub id: String,
     /// Objective name.
@@ -114,7 +114,7 @@ impl StrategicObjective {
 /// A strategic update describing a change to apply.
 /// Per Architecture §18.3 (Strategic Updates).
 #[derive(Debug, Clone, PartialEq)]
-pub struct StrategicUpdate {
+pub(crate) struct StrategicUpdate {
     /// Update identifier.
     pub id: String,
     /// Related objective ID.
@@ -163,7 +163,7 @@ impl StrategicUpdate {
 /// Strategic evaluation assessing progress toward objectives.
 /// Per Architecture §18.4 (Strategic Evaluation).
 #[derive(Debug, Clone, PartialEq)]
-pub struct StrategicEvaluation {
+pub(crate) struct StrategicEvaluation {
     /// Objective ID.
     pub objective_id: String,
     /// Progress score (0.0 to 1.0).
@@ -215,7 +215,7 @@ impl StrategicEvaluation {
 /// Strategic feedback connecting execution/planning to strategic objectives.
 /// Per Architecture §18.5 (Strategic Feedback) and §12.34 (Execution/Planning Feedback).
 #[derive(Debug, Clone, PartialEq)]
-pub struct StrategicFeedback {
+pub(crate) struct StrategicFeedback {
     /// Source subsystem (execution, planning, learning, etc.).
     pub source: String,
     /// Related objective ID.
@@ -253,7 +253,7 @@ impl StrategicFeedback {
 /// The strategic learning engine manages strategic objectives and updates.
 /// Per Architecture §18.1 (Strategic Learning Overview).
 #[derive(Debug, Clone, Default)]
-pub struct StrategicLearningEngine {
+pub(crate) struct StrategicLearningEngine {
     /// Active strategic objectives.
     objectives: std::collections::HashMap<String, StrategicObjective>,
     /// Pending strategic updates.
@@ -280,14 +280,30 @@ impl StrategicLearningEngine {
         self.objectives.insert(objective.id.clone(), objective);
     }
 
-    /// Get an objective by ID.
-    pub fn get_objective(&self, id: &str) -> Option<&StrategicObjective> {
-        self.objectives.get(id)
-    }
-
-    /// Add a strategic update.
+    /// Add a strategic update (Architecture §18.3).
     pub fn add_update(&mut self, update: StrategicUpdate) {
         self.updates.insert(update.id.clone(), update);
+    }
+
+    /// Add success indicator to strategic evaluation (Architecture §18.4).
+    pub fn add_evaluation_success(&mut self, objective_id: &str, indicator: &str) {
+        if let Some(eval) = self.evaluations.get_mut(objective_id) {
+            eval.add_success(indicator);
+        }
+    }
+
+    /// Add failure indicator to strategic evaluation (Architecture §18.4).
+    pub fn add_evaluation_failure(&mut self, objective_id: &str, indicator: &str) {
+        if let Some(eval) = self.evaluations.get_mut(objective_id) {
+            eval.add_failure(indicator);
+        }
+    }
+
+    /// Add recommendation to strategic evaluation (Architecture §18.4).
+    pub fn add_evaluation_recommendation(&mut self, objective_id: &str, recommendation: &str) {
+        if let Some(eval) = self.evaluations.get_mut(objective_id) {
+            eval.add_recommendation(recommendation);
+        }
     }
 
     /// Apply a strategic update.
@@ -327,5 +343,174 @@ impl StrategicLearningEngine {
             .values()
             .filter(|u| u.status == "pending")
             .collect()
+    }
+
+    /// Update a strategic objective by ID (modifies in place).
+    pub fn update_objective<F>(&mut self, id: &str, f: F)
+    where
+        F: Fn(&mut StrategicObjective),
+    {
+        if let Some(obj) = self.objectives.get_mut(id) {
+            f(obj);
+        }
+    }
+
+    /// Process strategic feedback: update objectives and refine strategies.
+    /// Per Architecture §18.5: feedback SHALL form a continuous improvement loop
+    /// by updating strategic objectives and generating strategic updates.
+    pub fn process_feedback(&mut self) -> Vec<String> {
+        let mut processed = Vec::new();
+        // Process each feedback record to update objectives or create updates.
+        for feedback in self.feedback.iter() {
+            // Positive feedback: add success indicator to related objective evaluation.
+            if let Some(obj) = self.objectives.get_mut(&feedback.objective_id)
+                && feedback.feedback_type == "positive"
+            {
+                obj.status = "active".to_string();
+                obj.updated_at = chrono::Utc::now().timestamp();
+                processed.push(format!(
+                    "positive_feedback_applied: {} -> {}",
+                    feedback.objective_id, feedback.content
+                ));
+            }
+            // Negative feedback: add failure indicator and create strategic update.
+            if let Some(obj) = self.objectives.get_mut(&feedback.objective_id)
+                && feedback.feedback_type == "negative"
+            {
+                obj.status = "active".to_string();
+                obj.updated_at = chrono::Utc::now().timestamp();
+                // Create a strategic update to address the negative feedback.
+                let update_id = format!("feedback_update_{}", feedback.timestamp);
+                let update = StrategicUpdate::new(
+                    &update_id,
+                    &feedback.objective_id,
+                    "review",
+                    &feedback.content,
+                    &format!("Address negative feedback: {}", feedback.content),
+                );
+                self.updates.insert(update.id.clone(), update);
+                processed.push(format!(
+                    "negative_feedback_update_created: {} -> {}",
+                    feedback.objective_id, update_id
+                ));
+            }
+            // Neutral feedback: add recommendation to evaluation.
+            if let Some(eval) = self.evaluations.get_mut(&feedback.objective_id)
+                && feedback.feedback_type == "neutral"
+            {
+                eval.add_recommendation(&feedback.content);
+                processed.push(format!(
+                    "neutral_feedback_recommendation: {} -> {}",
+                    feedback.objective_id, feedback.content
+                ));
+            }
+        }
+        // Clear processed feedback after applying updates.
+        self.feedback.clear();
+        processed
+    }
+
+    /// Update objective priorities based on feedback impact scores.
+    /// Per Architecture §18.5: feedback SHALL update strategic objectives.
+    /// Positive feedback increases priority; negative feedback decreases it.
+    pub fn update_objectives_from_feedback(&mut self) {
+        for feedback in self.feedback.iter() {
+            if let Some(obj) = self.objectives.get_mut(&feedback.objective_id) {
+                // Adjust priority based on feedback impact score.
+                // Positive impact (0.0-1.0): increase priority
+                // Negative impact (-1.0-0.0): decrease priority
+                let impact = feedback.impact_score;
+                let priority_delta = if impact > 0.0 {
+                    (impact * 10.0) as u32
+                } else {
+                    ((-impact) * 10.0) as u32
+                };
+                obj.priority = if impact > 0.0 {
+                    obj.priority.saturating_add(priority_delta)
+                } else {
+                    obj.priority.saturating_sub(priority_delta)
+                };
+                obj.updated_at = chrono::Utc::now().timestamp();
+            }
+        }
+    }
+
+    /// Refine strategies based on accumulated feedback patterns.
+    /// Per Architecture §18.4-18.5: evaluation results SHALL refine future strategies.
+    pub fn refine_strategies(&mut self) -> Vec<String> {
+        let mut refined = Vec::new();
+        // Analyze feedback patterns to identify strategy improvements.
+        let positive_count = self
+            .feedback
+            .iter()
+            .filter(|f| f.feedback_type == "positive")
+            .count();
+        let negative_count = self
+            .feedback
+            .iter()
+            .filter(|f| f.feedback_type == "negative")
+            .count();
+        if positive_count > negative_count * 2 && !self.feedback.is_empty() {
+            // Strong positive signal: reinforce current strategy.
+            for obj in self.objectives.values_mut() {
+                if obj.status == "active" {
+                    obj.priority = obj.priority.saturating_add(1);
+                    refined.push(format!(
+                        "strategy_reinforced: {} (positive_ratio={:.2})",
+                        obj.id,
+                        positive_count as f32 / (positive_count + negative_count) as f32
+                    ));
+                }
+            }
+        } else if negative_count > positive_count && !self.feedback.is_empty() {
+            // Negative signal: flag objectives for review.
+            for obj in self.objectives.values_mut() {
+                if obj.status == "active" {
+                    obj.updated_at = chrono::Utc::now().timestamp();
+                    refined.push(format!(
+                        "strategy_flagged_for_review: {} (negative_ratio={:.2})",
+                        obj.id,
+                        negative_count as f32 / (positive_count + negative_count) as f32
+                    ));
+                }
+            }
+        }
+        refined
+    }
+
+    /// Generate new objectives from feedback patterns.
+    /// Per Architecture §18.5: feedback SHALL generate new learning objectives.
+    pub fn generate_objectives_from_feedback(&self) -> Vec<StrategicObjective> {
+        let mut objectives = Vec::new();
+        // Find objectives with high negative feedback rates.
+        for feedback in self.feedback.iter() {
+            if feedback.feedback_type == "negative"
+                && let Some(obj) = self.objectives.get(&feedback.objective_id)
+            {
+                let new_id = format!("improvement_{}_{}", obj.id, uuid::Uuid::new_v4());
+                let improvement_obj = StrategicObjective::new(
+                    &new_id,
+                    &format!("Improve: {}", obj.name),
+                    obj.category.clone(),
+                    &format!(
+                        "Address repeated failures: {} (impact: {})",
+                        feedback.content, feedback.impact_score
+                    ),
+                    obj.priority.saturating_add(2),
+                );
+                objectives.push(improvement_obj);
+            }
+        }
+        objectives
+    }
+
+    /// Update a strategic update by ID (modifies in place).
+    pub fn update_strategic_update<F>(&mut self, id: &str, f: F)
+    where
+        F: Fn(&mut StrategicUpdate),
+    {
+        if let Some(update) = self.updates.get_mut(id) {
+            f(update);
+        }
     }
 }

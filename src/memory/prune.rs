@@ -29,30 +29,3 @@ pub fn prune(
     Ok(deleted_by_importance + deleted_by_age)
 }
 
-/// Active reference to memory pruning contracts.
-pub fn reference_memory_prune_contracts() {
-    // Wire prune_below_importance
-    let conn = rusqlite::Connection::open_in_memory().ok();
-    if let Some(ref conn) = conn {
-        match prune_below_importance(conn, 0.5) {
-            Ok(n) => tracing::info!("prune_below_importance wired, pruned {n} memories", n = n),
-            Err(e) => tracing::warn!("prune_below_importance wired with error: {e}"),
-        }
-    }
-
-    // Wire prune_older_than
-    if let Some(ref conn) = conn {
-        match prune_older_than(conn, 86400, chrono::Utc::now().timestamp()) {
-            Ok(n) => tracing::info!("prune_older_than wired, pruned {n} memories", n = n),
-            Err(e) => tracing::warn!("prune_older_than wired with error: {e}"),
-        }
-    }
-
-    // Wire prune
-    if let Some(ref conn) = conn {
-        match prune(conn, 0.5, 86400, chrono::Utc::now().timestamp()) {
-            Ok(n) => tracing::info!("prune wired, pruned {n} total memories", n = n),
-            Err(e) => tracing::warn!("prune wired with error: {e}"),
-        }
-    }
-}

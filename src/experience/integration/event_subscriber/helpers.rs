@@ -97,7 +97,7 @@ impl EventSubscriber {
             reflection.confidence.score,
             uuid::Uuid::parse_str(&reflection.id).unwrap_or_default(),
         );
-        let added_id = self.knowledge_store.add(knowledge).await;
+        let added_id = self.knowledge_store.add(knowledge);
         let insight_count = reflection.experience_ids.len();
 
         tracing::info!(
@@ -135,7 +135,7 @@ impl EventSubscriber {
                     hypothesis.confidence.value,
                     uuid::Uuid::new_v4(),
                 );
-                let added_id = self.knowledge_store.add(knowledge).await;
+                let added_id = self.knowledge_store.add(knowledge);
                 tracing::debug!(
                     "Promoted validated hypothesis to knowledge (knowledge_id={})",
                     added_id

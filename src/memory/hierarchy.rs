@@ -13,70 +13,7 @@
 
 use serde::{Deserialize, Serialize};
 
-/// Memory layer types per Architecture §14.
-#[derive(Debug, Clone, PartialEq, Eq, Hash, Serialize, Deserialize)]
-pub enum MemoryLayer {
-    /// Active working memory buffer.
-    Working,
-    /// Short-term working buffer.
-    ShortTerm,
-    /// Long-term integrated knowledge.
-    LongTerm,
-    /// Semantic memory (concepts, facts).
-    Semantic,
-    /// Episodic memory (specific events).
-    Episodic,
-    /// Procedural memory (skills, procedures).
-    Procedural,
-    /// Graph-based memory (relationships, knowledge graph).
-    Graph,
-    /// Archived historical memory.
-    Archive,
-}
-
-impl MemoryLayer {
-    /// Return the promotion target for this layer, if any.
-    pub fn promote_to(&self) -> Option<MemoryLayer> {
-        match self {
-            MemoryLayer::Working => Some(MemoryLayer::ShortTerm),
-            MemoryLayer::ShortTerm => Some(MemoryLayer::LongTerm),
-            MemoryLayer::LongTerm => Some(MemoryLayer::Semantic),
-            MemoryLayer::Semantic => Some(MemoryLayer::Episodic),
-            MemoryLayer::Episodic => Some(MemoryLayer::Procedural),
-            MemoryLayer::Procedural => Some(MemoryLayer::Graph),
-            MemoryLayer::Graph => Some(MemoryLayer::Archive),
-            MemoryLayer::Archive => None,
-        }
-    }
-
-    /// Return the demotion target for this layer, if any.
-    pub fn demote_to(&self) -> Option<MemoryLayer> {
-        match self {
-            MemoryLayer::ShortTerm => Some(MemoryLayer::Working),
-            MemoryLayer::LongTerm => Some(MemoryLayer::ShortTerm),
-            MemoryLayer::Semantic => Some(MemoryLayer::LongTerm),
-            MemoryLayer::Episodic => Some(MemoryLayer::Semantic),
-            MemoryLayer::Procedural => Some(MemoryLayer::Episodic),
-            MemoryLayer::Graph => Some(MemoryLayer::Procedural),
-            MemoryLayer::Archive => Some(MemoryLayer::Graph),
-            MemoryLayer::Working => None,
-        }
-    }
-
-    /// Return a human-readable name for the layer.
-    pub fn name(&self) -> &'static str {
-        match self {
-            MemoryLayer::Working => "working",
-            MemoryLayer::ShortTerm => "short_term",
-            MemoryLayer::LongTerm => "long_term",
-            MemoryLayer::Semantic => "semantic",
-            MemoryLayer::Episodic => "episodic",
-            MemoryLayer::Procedural => "procedural",
-            MemoryLayer::Graph => "graph",
-            MemoryLayer::Archive => "archive",
-        }
-    }
-}
+pub use crate::memory::types::MemoryLayer;
 
 /// Memory index card — lightweight representation per Architecture §14.407.
 /// Contains metadata rather than complete content for fast retrieval.
@@ -502,7 +439,7 @@ impl MemoryHierarchy {
         let card = MemoryIndexCard {
             id: record.id.clone(),
             title: record.content.clone(),
-            layer: record.layer.clone(),
+            layer: record.layer,
             memory_type: MemoryType::Generic,
             summary: record.content.clone(),
             confidence: record.confidence,
@@ -542,16 +479,11 @@ impl MemoryHierarchy {
             .records
             .get_mut(id)
             .filter(|r| r.access_count >= 10 && r.confidence >= 0.8 && !r.archived)
-            .and_then(|record| {
-                record
-                    .layer
-                    .promote_to()
-                    .inspect(|nl| record.promote(nl.clone()))
-            });
+            .and_then(|record| record.layer.promote_to().inspect(|nl| record.promote(*nl)));
         if let Some(new_layer) = promotion {
             // Update index card
             let card_result = self.index_cards.get_mut(id).map(|card| {
-                card.layer = new_layer.clone();
+                card.layer = new_layer;
                 card.confidence = self.records.get(id).map(|r| r.confidence).unwrap_or(0.0);
                 card.importance = self.records.get(id).map(|r| r.importance).unwrap_or(0.0);
             });
@@ -777,7 +709,8 @@ pub fn should_promote(memory: &HierarchyRecord, gate: &PromotionGate) -> bool {
 
 /// Run autonomous memory restructuring per Architecture §14.
 /// Performs promotion, compression, forgetting, and importance recalculation.
-pub fn restructure_hierarchy(hierarchy: &mut MemoryHierarchy) {
+/// Returns the number of records promoted to higher layers.
+pub fn restructure_hierarchy(hierarchy: &mut MemoryHierarchy) -> usize {
     tracing::debug!("Running autonomous memory restructuring");
 
     // 1. Recalculate importance scores
@@ -816,4 +749,5 @@ pub fn restructure_hierarchy(hierarchy: &mut MemoryHierarchy) {
         forgotten = forgotten.len(),
         "Memory restructuring completed"
     );
+    promoted
 }

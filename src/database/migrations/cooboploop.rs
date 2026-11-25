@@ -115,6 +115,14 @@ pub fn run(conn: &Connection) -> Result<()> {
             risk_adjustments TEXT DEFAULT '[]',
             timestamp TEXT DEFAULT (datetime('now'))
         );
+
+        -- §12.24 / Architecture: job checkpoint persistence for durable recovery
+        CREATE TABLE IF NOT EXISTS job_checkpoints (
+            job_id TEXT PRIMARY KEY,
+            step_index INTEGER DEFAULT 0,
+            partial_results TEXT DEFAULT '[]',
+            timestamp INTEGER NOT NULL
+        );
     ",
     )?;
     Ok(())

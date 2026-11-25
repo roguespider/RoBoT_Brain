@@ -75,33 +75,3 @@ impl ExecutionLifecycle {
     }
 }
 
-/// Active reference to lifecycle types to eliminate dead-code warnings.
-/// Per Architecture Chapter 12.6 (Execution Lifecycle) and AGENTS.md (0 warnings).
-pub fn reference_lifecycle_types() {
-    let mut lifecycle = ExecutionLifecycle::new("exec-1");
-    // Actively use all LifecycleState variants
-    lifecycle.advance(LifecycleState::Validated);
-    lifecycle.advance(LifecycleState::Initialized);
-    lifecycle.advance(LifecycleState::ResourcesAllocated);
-    lifecycle.advance(LifecycleState::Scheduled);
-    lifecycle.advance(LifecycleState::Dispatched);
-    lifecycle.advance(LifecycleState::Monitoring);
-    lifecycle.advance(LifecycleState::Completed);
-    lifecycle.advance(LifecycleState::Failed);
-    lifecycle.advance(LifecycleState::Cancelled);
-    lifecycle.advance(LifecycleState::ResultsCaptured);
-    // Actively read all ExecutionLifecycle fields
-    let id_ref = lifecycle.execution_id.clone();
-    let updated_ref = lifecycle.last_updated;
-    let history_ref = lifecycle.history.clone();
-    let state_ref = lifecycle.current_state().clone();
-    let terminal_ref = lifecycle.is_terminal();
-    tracing::debug!(
-        "Lifecycle types fully referenced: id={}, updated={}, history_len={}, state={:?}, terminal={:?}",
-        id_ref,
-        updated_ref,
-        history_ref.len(),
-        state_ref,
-        terminal_ref
-    );
-}

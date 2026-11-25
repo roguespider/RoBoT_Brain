@@ -51,33 +51,3 @@ pub fn apply_generalization(rule: &GeneralizationRule, context: &str) -> bool {
     context.contains(&rule.general_pattern)
 }
 
-/// Actively reference learning generalization functions to prevent dead-code warnings.
-/// Per Architecture §10.2: generalization is core to pattern discovery.
-pub fn reference_generalization_functions() {
-    let sample_patterns = vec![
-        crate::learning::patterns::Pattern {
-            id: "pat-1".to_string(),
-            frequency: 3,
-            success_rate: 0.7,
-            context_signature: "context_A action_X".to_string(),
-            actions: vec!["X".to_string()],
-        },
-        crate::learning::patterns::Pattern {
-            id: "pat-2".to_string(),
-            frequency: 4,
-            success_rate: 0.8,
-            context_signature: "context_A action_Y".to_string(),
-            actions: vec!["Y".to_string()],
-        },
-    ];
-    let rules = detect_generalizations(&sample_patterns, 2);
-    for rule in &rules {
-        let matches = apply_generalization(rule, "context_A some_other_action");
-        tracing::info!(
-            rule = %rule.general_pattern,
-            matches,
-            support = %rule.supporting_experiences.len(),
-            "Generalization reference: rule applied"
-        );
-    }
-}

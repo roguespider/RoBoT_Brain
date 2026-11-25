@@ -10,6 +10,13 @@ pub struct JinaProvider {
 }
 
 #[cfg(feature = "http")]
+impl Default for JinaProvider {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+#[cfg(feature = "http")]
 impl JinaProvider {
     pub fn new() -> Self {
         Self {

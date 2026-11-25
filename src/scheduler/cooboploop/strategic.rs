@@ -1,0 +1,488 @@
+// /src/CoObOpLoop/strategic.rs
+// Strategic objectives for the CoObOpLoop system.
+
+use crate::scheduler::cooboploop::queue::AgentGoal;
+use crate::scheduler::cooboploop::sources::ObjectiveSource;
+use rusqlite::OptionalExtension;
+
+/// Strategic objective category (§18 / T13.1).
+#[derive(Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum StrategicObjective {
+    MaintainSystemReliability,
+    ImproveMemoryRetrieval,
+    IncreaseInferenceEfficiency,
+    ExpandToolCapability,
+    ImproveHardwareUtilization,
+    ReduceRepeatedFailures,
+    DevelopResearchCapability,
+    ImprovePlanningReliability,
+}
+
+impl StrategicObjective {
+    fn storage_name(&self) -> &'static str {
+        match self {
+            Self::MaintainSystemReliability => "MaintainSystemReliability",
+            Self::ImproveMemoryRetrieval => "ImproveMemoryRetrieval",
+            Self::IncreaseInferenceEfficiency => "IncreaseInferenceEfficiency",
+            Self::ExpandToolCapability => "ExpandToolCapability",
+            Self::ImproveHardwareUtilization => "ImproveHardwareUtilization",
+            Self::ReduceRepeatedFailures => "ReduceRepeatedFailures",
+            Self::DevelopResearchCapability => "DevelopResearchCapability",
+            Self::ImprovePlanningReliability => "ImprovePlanningReliability",
+        }
+    }
+
+    fn from_storage_name(name: &str) -> Result<Self, String> {
+        match name {
+            "MaintainSystemReliability" => Ok(Self::MaintainSystemReliability),
+            "ImproveMemoryRetrieval" => Ok(Self::ImproveMemoryRetrieval),
+            "IncreaseInferenceEfficiency" => Ok(Self::IncreaseInferenceEfficiency),
+            "ExpandToolCapability" => Ok(Self::ExpandToolCapability),
+            "ImproveHardwareUtilization" => Ok(Self::ImproveHardwareUtilization),
+            "ReduceRepeatedFailures" => Ok(Self::ReduceRepeatedFailures),
+            "DevelopResearchCapability" => Ok(Self::DevelopResearchCapability),
+            "ImprovePlanningReliability" => Ok(Self::ImprovePlanningReliability),
+            invalid_name => Err(format!(
+                "invalid strategic objective category '{invalid_name}' in persistent storage"
+            )),
+        }
+    }
+}
+
+/// Persisted strategic objective record (§18 / T13.2).
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct StrategicObjectiveRecord {
+    pub id: String,
+    pub name: String,
+    pub category: StrategicObjective,
+    pub status: String,
+    pub priority: f32,
+    pub created_at: chrono::DateTime<chrono::Utc>,
+    pub updated_at: chrono::DateTime<chrono::Utc>,
+}
+
+/// Registry of strategic objectives (§18 / T13.2).
+pub struct StrategicObjectiveRegistry {
+    objectives: Vec<StrategicObjectiveRecord>,
+    db: Option<rusqlite::Connection>,
+}
+
+impl StrategicObjectiveRegistry {
+    pub fn new() -> Self {
+        Self {
+            objectives: Vec::new(),
+            db: None,
+        }
+    }
+
+    /// Open SQLite-backed registry (§T13.3 — creates strategic_objectives table).
+    pub fn open(path: &str) -> Result<Self, String> {
+        let conn = rusqlite::Connection::open(path).map_err(|e| format!("open db: {e}"))?;
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS strategic_objectives (
+                id TEXT PRIMARY KEY,
+                name TEXT NOT NULL,
+                category TEXT,
+                status TEXT DEFAULT 'active',
+                priority REAL DEFAULT 0.0,
+                created_at TEXT DEFAULT (datetime('now')),
+                updated_at TEXT DEFAULT (datetime('now'))
+            );",
+        )
+        .map_err(|error| format!("create strategic_objectives table: {error}"))?;
+
+        let objectives = {
+            let mut statement = conn
+                .prepare(
+                    "SELECT id, name, category, status, priority, created_at, updated_at
+                     FROM strategic_objectives ORDER BY created_at, id",
+                )
+                .map_err(|error| format!("prepare strategic objective list: {error}"))?;
+            let rows = statement
+                .query_map([], |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, String>(2)?,
+                        row.get::<_, String>(3)?,
+                        row.get::<_, f32>(4)?,
+                        row.get::<_, String>(5)?,
+                        row.get::<_, String>(6)?,
+                    ))
+                })
+                .map_err(|error| format!("query strategic objectives: {error}"))?;
+            let mut objectives = Vec::new();
+            for row in rows {
+                let (id, name, category, status, priority, created_at, updated_at) =
+                    row.map_err(|error| format!("read strategic objective row: {error}"))?;
+                objectives.push(StrategicObjectiveRecord {
+                    id,
+                    name,
+                    category: StrategicObjective::from_storage_name(&category)?,
+                    status,
+                    priority,
+                    created_at: parse_stored_timestamp(&created_at)?,
+                    updated_at: parse_stored_timestamp(&updated_at)?,
+                });
+            }
+            objectives
+        };
+
+        Ok(Self {
+            objectives,
+            db: Some(conn),
+        })
+    }
+
+    pub fn get(&self, id: &str) -> Result<Option<StrategicObjectiveRecord>, String> {
+        if let Some(objective) = self.objectives.iter().find(|objective| objective.id == id) {
+            return Ok(Some(objective.clone()));
+        }
+
+        let Some(connection) = self.db.as_ref() else {
+            return Ok(None);
+        };
+
+        let stored = connection
+            .query_row(
+                "SELECT id, name, category, status, priority, created_at, updated_at
+                 FROM strategic_objectives WHERE id = ?1",
+                [id],
+                |row| {
+                    Ok((
+                        row.get::<_, String>(0)?,
+                        row.get::<_, String>(1)?,
+                        row.get::<_, String>(2)?,
+                        row.get::<_, String>(3)?,
+                        row.get::<_, f32>(4)?,
+                        row.get::<_, String>(5)?,
+                        row.get::<_, String>(6)?,
+                    ))
+                },
+            )
+            .optional()
+            .map_err(|error| format!("get strategic objective '{id}': {error}"))?;
+
+        let Some((id, name, category, status, priority, created_at, updated_at)) = stored else {
+            return Ok(None);
+        };
+
+        Ok(Some(StrategicObjectiveRecord {
+            id,
+            name,
+            category: StrategicObjective::from_storage_name(&category)?,
+            status,
+            priority,
+            created_at: parse_stored_timestamp(&created_at)?,
+            updated_at: parse_stored_timestamp(&updated_at)?,
+        }))
+    }
+
+    pub fn add(&mut self, objective: StrategicObjectiveRecord) -> Result<(), String> {
+        if let Some(connection) = self.db.as_ref() {
+            connection
+                .execute(
+                    "INSERT OR REPLACE INTO strategic_objectives
+                     (id, name, category, status, priority, created_at, updated_at)
+                     VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
+                    rusqlite::params![
+                        &objective.id,
+                        &objective.name,
+                        objective.category.storage_name(),
+                        &objective.status,
+                        objective.priority,
+                        objective.created_at.to_rfc3339(),
+                        objective.updated_at.to_rfc3339(),
+                    ],
+                )
+                .map_err(|error| {
+                    format!("persist strategic objective '{}': {error}", objective.id)
+                })?;
+        }
+
+        if let Some(index) = self
+            .objectives
+            .iter()
+            .position(|stored| stored.id == objective.id)
+        {
+            self.objectives[index] = objective;
+        } else {
+            self.objectives.push(objective);
+        }
+        Ok(())
+    }
+
+    pub fn list(&self) -> &[StrategicObjectiveRecord] {
+        &self.objectives
+    }
+
+    pub fn remove(&mut self, id: &str) -> Result<bool, String> {
+        let Some(mut objective) = self.get(id)? else {
+            return Ok(false);
+        };
+
+        objective.status = "removed".to_string();
+        objective.updated_at = chrono::Utc::now();
+        self.add(objective)?;
+        Ok(true)
+    }
+}
+
+fn parse_stored_timestamp(value: &str) -> Result<chrono::DateTime<chrono::Utc>, String> {
+    if let Ok(timestamp) = chrono::DateTime::parse_from_rfc3339(value) {
+        return Ok(timestamp.with_timezone(&chrono::Utc));
+    }
+
+    chrono::NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M:%S")
+        .map(|timestamp| timestamp.and_utc())
+        .map_err(|error| format!("invalid strategic objective timestamp '{value}': {error}"))
+}
+
+impl Default for StrategicObjectiveRegistry {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Level in the persistent long-term objective hierarchy (§19 / T13.11).
+#[derive(Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+pub enum HierarchyLevel {
+    Mission,
+    StrategicObjective,
+    Capability,
+    Project,
+    Task,
+    Action,
+}
+
+/// Hierarchy node for objective hierarchy (per §A.7 / T13.13).
+#[derive(Clone, serde::Serialize, serde::Deserialize)]
+pub struct HierarchyNode {
+    pub level: HierarchyLevel,
+    pub name: String,
+    pub children: Vec<HierarchyNode>,
+}
+
+/// Objective hierarchy manager (§19 / T-COO-49).
+/// `build()` creates static Mission -> StrategicObjective hierarchy.
+/// `link_active_goals()` and `wire_dynamic_hierarchy()` dynamically link
+/// Mission -> StrategicObjective -> Capability -> Project -> Task -> Action
+/// nodes from active queue goals, with planner steps under actions.
+pub struct ObjectiveHierarchy {
+    nodes: Vec<HierarchyNode>,
+}
+
+impl ObjectiveHierarchy {
+    pub fn new() -> Self {
+        Self { nodes: Vec::new() }
+    }
+
+    pub fn build(mission: &str, objectives: &[StrategicObjectiveRecord]) -> Self {
+        let strategic_nodes = objectives
+            .iter()
+            .filter(|objective| objective.status != "removed")
+            .map(|objective| HierarchyNode {
+                level: HierarchyLevel::StrategicObjective,
+                name: objective.name.clone(),
+                children: Vec::new(),
+            })
+            .collect();
+        let root = HierarchyNode {
+            level: HierarchyLevel::Mission,
+            name: mission.to_string(),
+            children: strategic_nodes,
+        };
+        let mut hierarchy = Self::new();
+        hierarchy.add_node(root);
+        hierarchy
+    }
+
+    pub fn add_node(&mut self, node: HierarchyNode) {
+        self.nodes.push(node);
+    }
+
+    /// Link active goals to hierarchy (§19 / T-COO-49).
+    /// Creates Project/Task nodes from active queue goals; structural wiring only.
+    pub fn link_active_goals(&mut self, goals: &[AgentGoal]) {
+        for goal in goals {
+            if goal.status == crate::scheduler::cooboploop::queue::GoalStatus::Active
+                || goal.status == crate::scheduler::cooboploop::queue::GoalStatus::Queued
+            {
+                let task_node = HierarchyNode {
+                    level: HierarchyLevel::Task,
+                    name: goal.title.clone(),
+                    children: Vec::new(),
+                };
+                // Find strategic parent by source or add under mission root
+                let parent_index = self
+                    .nodes
+                    .iter()
+                    .position(|node| node.level == HierarchyLevel::Mission);
+                if let Some(idx) = parent_index {
+                    self.nodes[idx].children.push(task_node);
+                } else {
+                    self.nodes.push(task_node);
+                }
+            }
+        }
+    }
+
+    pub fn nodes(&self) -> &[HierarchyNode] {
+        &self.nodes
+    }
+}
+
+impl Default for ObjectiveHierarchy {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Wire dynamic hierarchy linking (§19 / T-COO-49).
+/// Creates Mission → StrategicObjective → Capability → Project → Task → Action
+/// hierarchy nodes from active goals, links planner steps with real execution
+/// results, and connects action nodes to steps.
+pub fn wire_dynamic_hierarchy(
+    hierarchy: &mut ObjectiveHierarchy,
+    goals: &[AgentGoal],
+    current_plan: Option<&crate::planning::engine::types::Plan>,
+) {
+    // First, link active goals to create base task nodes under the mission root.
+    hierarchy.link_active_goals(goals);
+
+    // Now wire the full hierarchy: Mission → StrategicObjective → Capability →
+    // Project → Task → Action, with planner steps under actions.
+    for goal in goals {
+        if goal.status != crate::scheduler::cooboploop::queue::GoalStatus::Active {
+            continue;
+        }
+
+        let action_node = HierarchyNode {
+            level: HierarchyLevel::Action,
+            name: format!("Action: {}", goal.title),
+            children: Vec::new(),
+        };
+
+        // Determine which strategic objective this goal belongs to
+        let strategic_node_idx = hierarchy
+            .nodes
+            .iter()
+            .position(|n| n.level == HierarchyLevel::Mission)
+            .and_then(|mission_idx| {
+                hierarchy.nodes[mission_idx]
+                    .children
+                    .iter()
+                    .position(|child| {
+                        child.level == HierarchyLevel::StrategicObjective
+                            && goal.source == ObjectiveSource::StrategicObjective
+                    })
+                    .map(|strat_idx| (mission_idx, strat_idx))
+            });
+
+        // Build: Mission → StrategicObjective → Capability → Project → Task → Action → Steps
+        if let Some((mission_idx, strat_idx)) = strategic_node_idx {
+            // Ensure Capability child exists under StrategicObjective
+            let cap_exists = hierarchy.nodes[mission_idx].children[strat_idx]
+                .children
+                .iter()
+                .any(|c| c.level == HierarchyLevel::Capability);
+            if !cap_exists {
+                let cap_node = HierarchyNode {
+                    level: HierarchyLevel::Capability,
+                    name: format!("Capability: {}", goal.title),
+                    children: Vec::new(),
+                };
+                hierarchy.nodes[mission_idx].children[strat_idx]
+                    .children
+                    .push(cap_node);
+            }
+            // Ensure Project child exists under Capability
+            let proj_exists = hierarchy.nodes[mission_idx].children[strat_idx]
+                .children
+                .iter()
+                .any(|c| c.level == HierarchyLevel::Project);
+            if !proj_exists {
+                let proj_node = HierarchyNode {
+                    level: HierarchyLevel::Project,
+                    name: format!("Project: {}", goal.title),
+                    children: Vec::new(),
+                };
+                hierarchy.nodes[mission_idx].children[strat_idx]
+                    .children
+                    .push(proj_node);
+            }
+            // Place Task → Action → Steps under Project
+            let project_idx = hierarchy.nodes[mission_idx].children[strat_idx]
+                .children
+                .iter()
+                .position(|c| c.level == HierarchyLevel::Project)
+                .unwrap_or(0);
+            let mut task_node = HierarchyNode {
+                level: HierarchyLevel::Task,
+                name: goal.title.clone(),
+                children: Vec::new(),
+            };
+            let mut action_with_steps = action_node;
+            // Add planner steps if available
+            if let Some(plan) = current_plan
+                && (plan.goal == goal.title || plan.goal.contains(&goal.title))
+            {
+                for step in &plan.steps {
+                    let step_node = HierarchyNode {
+                        level: HierarchyLevel::Action,
+                        name: format!(
+                            "Step: {} (status={:?}, result={:?})",
+                            step.description,
+                            step.status,
+                            step.result.as_deref().unwrap_or("none")
+                        ),
+                        children: Vec::new(),
+                    };
+                    action_with_steps.children.push(step_node);
+                }
+            }
+            task_node.children.push(action_with_steps);
+            hierarchy.nodes[mission_idx].children[strat_idx].children[project_idx]
+                .children
+                .push(task_node);
+        } else {
+            // Fallback: no strategic parent found — attach under Mission root
+            for node in &mut hierarchy.nodes {
+                if node.level == HierarchyLevel::Mission {
+                    // Create the full chain if no Task exists for this goal
+                    let task_exists = node.children.iter().any(|child| {
+                        child.level == HierarchyLevel::Task && child.name == goal.title
+                    });
+                    if task_exists {
+                        for child in &mut node.children {
+                            if child.level == HierarchyLevel::Task && child.name == goal.title {
+                                child.children.push(action_node.clone());
+                            }
+                        }
+                    } else {
+                        let task_node = HierarchyNode {
+                            level: HierarchyLevel::Task,
+                            name: goal.title.clone(),
+                            children: vec![action_node.clone()],
+                        };
+                        node.children.push(task_node);
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl std::str::FromStr for StrategicObjective {
+    type Err = String;
+
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        Self::from_storage_name(value)
+    }
+}
+
+impl std::fmt::Debug for StrategicObjective {
+    fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        formatter.write_str(self.storage_name())
+    }
+}

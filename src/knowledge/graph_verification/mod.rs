@@ -7,7 +7,7 @@
 //! - Graph-based retrieval: path finding, dependency analysis, similarity search (§20.7)
 //! - Graph reasoning: explainable reasoning through graph paths (§20.8)
 //! - Wiring: knowledge/graph_verification/ -> database/ (graph tables) ->
-//!   retrieval_pipeline/ (ch 16) -> prompt_construction/ (ch 17)
+//!   retrieval/ (ch 16) -> prompt/ (ch 17)
 
 /// Verify a knowledge graph relationship.
 /// Per Architecture §20.5 (Graph Verification).
@@ -203,34 +203,3 @@ pub fn dependency_analysis(node_id: &str) -> Vec<String> {
     Vec::new()
 }
 
-/// Active reference to graph verification contracts.
-pub fn reference_graph_verification() {
-    let nodes = vec![
-        "node-1".to_string(),
-        "node-2".to_string(),
-        "node-3".to_string(),
-    ];
-    let verification_results = verify_graph_relationships(&nodes, "related");
-    tracing::debug!(
-        verified_count = verification_results.len(),
-        "Graph verification referenced"
-    );
-
-    let contradiction_results = detect_contradictions(&nodes, "related");
-    tracing::debug!(
-        contradiction_count = contradiction_results.len(),
-        "Contradiction detection referenced"
-    );
-
-    let retrieval_result = GraphRetrievalResult::new("node-1", vec!["node-2".to_string()], 1, 0.85);
-    tracing::debug!(
-        similarity = retrieval_result.similarity,
-        "Graph retrieval referenced"
-    );
-
-    let dependencies = dependency_analysis("node-1");
-    tracing::debug!(
-        dependency_count = dependencies.len(),
-        "Dependency analysis referenced"
-    );
-}

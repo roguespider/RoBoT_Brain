@@ -22,13 +22,3 @@ pub fn register_alias(table: &mut HashMap<String, String>, canonical_id: &str, a
     table.insert(alias.to_string(), canonical_id.to_string());
 }
 
-/// Active reference to knowledge resolution contracts.
-pub fn reference_knowledge_resolution_contracts() {
-    let mut table = HashMap::new();
-    register_alias(&mut table, "canonical-id", "alias-name");
-    let resolved = resolve_entity("alias-name", &table);
-    tracing::info!(
-        resolved = ?resolved,
-        "Knowledge resolution actively referenced"
-    );
-}

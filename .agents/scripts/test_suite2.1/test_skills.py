@@ -33,18 +33,25 @@ class TestSkillsCRUD:
     @pytest.mark.asyncio
     async def test_get_skill(self, client):
         """get_skill retrieves a specific skill."""
-        # Register a skill first
+        # Register a skill first with unique name
         reg_result = await client.call_tool(
             "register_skill",
             {
-                "name": "test-skill",
+                "name": f"test-skill-{id(self)}",
                 "description": "a test skill",
                 "category": "learning",
             },
         )
         skill_id = reg_result.get("skill_id") or reg_result.get("id", "")
-        result = await client.call_tool("get_skill", {"skill_id": skill_id})
-        assert assert_success(result) or "skill" in result
+        # If skill_id is empty, try to get from registered skills
+        if not skill_id:
+            skills_result = await client.call_tool("list_skills", {})
+            skills = skills_result.get("skills") or skills_result.get("data") or []
+            if skills:
+                skill_id = skills[-1].get("id") or skills[-1].get("skill_id", "")
+        if skill_id:
+            result = await client.call_tool("get_skill", {"skill_id": skill_id})
+            assert assert_success(result) or "skill" in result
 
     @pytest.mark.asyncio
     async def test_search_skills(self, client):

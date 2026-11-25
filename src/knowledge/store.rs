@@ -3,8 +3,7 @@
 //! Knowledge store - repository for managing knowledge items
 
 use std::collections::HashMap;
-use std::sync::Arc;
-use tokio::sync::RwLock;
+use std::sync::{Arc, RwLock};
 use uuid::Uuid;
 
 use super::types::{
@@ -51,16 +50,16 @@ impl KnowledgeStore {
     }
 
     /// Add a new knowledge item
-    pub async fn add(&self, item: KnowledgeItem) -> Uuid {
+    pub fn add(&self, item: KnowledgeItem) -> Uuid {
         let id = item.id;
 
         // Add to main store
-        let mut items = self.items.write().await;
+        let mut items = self.items.write().unwrap_or_else(|e| e.into_inner());
         items.insert(id, item.clone());
 
         // Update type index
         {
-            let mut by_type = self.by_type.write().await;
+            let mut by_type = self.by_type.write().unwrap_or_else(|e| e.into_inner());
             by_type
                 .entry(item.knowledge_type.clone())
                 .or_default()
@@ -69,7 +68,7 @@ impl KnowledgeStore {
 
         // Update tag index
         {
-            let mut by_tag = self.by_tag.write().await;
+            let mut by_tag = self.by_tag.write().unwrap_or_else(|e| e.into_inner());
             for tag in &item.tags {
                 by_tag.entry(tag.clone()).or_default().push(id);
             }
@@ -78,7 +77,7 @@ impl KnowledgeStore {
         // Enforce max items - remove lowest confidence if over limit
         if items.len() > self.max_items {
             drop(items); // Release lock before recursive call
-            self.prune_low_confidence().await;
+            self.prune_low_confidence();
         }
 
         tracing::info!("[Knowledge] Added knowledge item: {}", id);
@@ -86,14 +85,18 @@ impl KnowledgeStore {
     }
 
     /// Get a knowledge item by ID
-    pub async fn get(&self, id: Uuid) -> Option<KnowledgeItem> {
-        self.items.read().await.get(&id).cloned()
+    pub fn get(&self, id: Uuid) -> Option<KnowledgeItem> {
+        self.items
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .get(&id)
+            .cloned()
     }
 
     /// Update a knowledge item
-    pub async fn update(&self, mut item: KnowledgeItem) -> bool {
+    pub fn update(&self, mut item: KnowledgeItem) -> bool {
         item.updated_at = chrono::Utc::now();
-        let mut items = self.items.write().await;
+        let mut items = self.items.write().unwrap_or_else(|e| e.into_inner());
         if let std::collections::hash_map::Entry::Occupied(mut e) = items.entry(item.id) {
             e.insert(item);
             true
@@ -103,18 +106,18 @@ impl KnowledgeStore {
     }
 
     /// Delete a knowledge item
-    pub async fn delete(&self, id: Uuid) -> bool {
-        let mut items = self.items.write().await;
+    pub fn delete(&self, id: Uuid) -> bool {
+        let mut items = self.items.write().unwrap_or_else(|e| e.into_inner());
         if let Some(item) = items.remove(&id) {
             // Clean up indices
             {
-                let mut by_type = self.by_type.write().await;
+                let mut by_type = self.by_type.write().unwrap_or_else(|e| e.into_inner());
                 if let Some(ids) = by_type.get_mut(&item.knowledge_type) {
                     ids.retain(|i| *i != id);
                 }
             }
             {
-                let mut by_tag = self.by_tag.write().await;
+                let mut by_tag = self.by_tag.write().unwrap_or_else(|e| e.into_inner());
                 for tag in &item.tags {
                     if let Some(ids) = by_tag.get_mut(tag) {
                         ids.retain(|i| *i != id);
@@ -128,14 +131,19 @@ impl KnowledgeStore {
     }
 
     /// Get all knowledge items
-    pub async fn get_all(&self) -> Vec<KnowledgeItem> {
-        self.items.read().await.values().cloned().collect()
+    pub fn get_all(&self) -> Vec<KnowledgeItem> {
+        self.items
+            .read()
+            .unwrap_or_else(|e| e.into_inner())
+            .values()
+            .cloned()
+            .collect()
     }
 
     /// Get knowledge items by type
-    pub async fn get_by_type(&self, knowledge_type: &KnowledgeType) -> Vec<KnowledgeItem> {
-        let by_type = self.by_type.read().await;
-        let items = self.items.read().await;
+    pub fn get_by_type(&self, knowledge_type: &KnowledgeType) -> Vec<KnowledgeItem> {
+        let by_type = self.by_type.read().unwrap_or_else(|e| e.into_inner());
+        let items = self.items.read().unwrap_or_else(|e| e.into_inner());
         by_type
             .get(knowledge_type)
             .map(|ids| ids.iter().filter_map(|id| items.get(id).cloned()).collect())
@@ -143,9 +151,9 @@ impl KnowledgeStore {
     }
 
     /// Get knowledge items by tag
-    pub async fn get_by_tag(&self, tag: &str) -> Vec<KnowledgeItem> {
-        let by_tag = self.by_tag.read().await;
-        let items = self.items.read().await;
+    pub fn get_by_tag(&self, tag: &str) -> Vec<KnowledgeItem> {
+        let by_tag = self.by_tag.read().unwrap_or_else(|e| e.into_inner());
+        let items = self.items.read().unwrap_or_else(|e| e.into_inner());
         by_tag
             .get(tag)
             .map(|ids| ids.iter().filter_map(|id| items.get(id).cloned()).collect())
@@ -153,10 +161,10 @@ impl KnowledgeStore {
     }
 
     /// Get mature knowledge items (high confidence)
-    pub async fn get_mature(&self) -> Vec<KnowledgeItem> {
+    pub fn get_mature(&self) -> Vec<KnowledgeItem> {
         self.items
             .read()
-            .await
+            .unwrap_or_else(|e| e.into_inner())
             .values()
             .filter(|item| item.is_mature())
             .cloned()
@@ -164,10 +172,10 @@ impl KnowledgeStore {
     }
 
     /// Get knowledge items needing review
-    pub async fn get_needing_review(&self) -> Vec<KnowledgeItem> {
+    pub fn get_needing_review(&self) -> Vec<KnowledgeItem> {
         self.items
             .read()
-            .await
+            .unwrap_or_else(|e| e.into_inner())
             .values()
             .filter(|item| item.needs_review())
             .cloned()
@@ -175,11 +183,11 @@ impl KnowledgeStore {
     }
 
     /// Search knowledge by statement content
-    pub async fn search(&self, query: &str) -> Vec<KnowledgeItem> {
+    pub fn search(&self, query: &str) -> Vec<KnowledgeItem> {
         let query_lower = query.to_lowercase();
         self.items
             .read()
-            .await
+            .unwrap_or_else(|e| e.into_inner())
             .values()
             .filter(|item| item.statement.to_lowercase().contains(&query_lower))
             .cloned()
@@ -187,9 +195,9 @@ impl KnowledgeStore {
     }
 
     /// Get related knowledge
-    pub async fn get_related(&self, id: Uuid) -> Vec<KnowledgeItem> {
-        if let Some(item) = self.items.read().await.get(&id) {
-            let items = self.items.read().await;
+    pub fn get_related(&self, id: Uuid) -> Vec<KnowledgeItem> {
+        let items = self.items.read().unwrap_or_else(|e| e.into_inner());
+        if let Some(item) = items.get(&id) {
             item.relations
                 .iter()
                 .filter_map(|rel| items.get(&rel.target_id).cloned())
@@ -200,14 +208,14 @@ impl KnowledgeStore {
     }
 
     /// Add relation between two knowledge items
-    pub async fn add_relation(
+    pub fn add_relation(
         &self,
         source_id: Uuid,
         target_id: Uuid,
         relation_type: RelationType,
         strength: f32,
     ) -> bool {
-        let mut items = self.items.write().await;
+        let mut items = self.items.write().unwrap_or_else(|e| e.into_inner());
 
         if let Some(source) = items.get_mut(&source_id) {
             source.relations.push(super::types::KnowledgeRelation {
@@ -222,8 +230,8 @@ impl KnowledgeStore {
     }
 
     /// Record successful application of knowledge
-    pub async fn record_success(&self, id: Uuid) -> bool {
-        let mut items = self.items.write().await;
+    pub fn record_success(&self, id: Uuid) -> bool {
+        let mut items = self.items.write().unwrap_or_else(|e| e.into_inner());
         if let Some(item) = items.get_mut(&id) {
             item.record_success();
             true
@@ -233,8 +241,8 @@ impl KnowledgeStore {
     }
 
     /// Record failed application of knowledge
-    pub async fn record_failure(&self, id: Uuid) -> bool {
-        let mut items = self.items.write().await;
+    pub fn record_failure(&self, id: Uuid) -> bool {
+        let mut items = self.items.write().unwrap_or_else(|e| e.into_inner());
         if let Some(item) = items.get_mut(&id) {
             item.record_failure();
             true
@@ -244,8 +252,8 @@ impl KnowledgeStore {
     }
 
     /// Promote item to active status
-    pub async fn activate(&self, id: Uuid) -> bool {
-        let mut items = self.items.write().await;
+    pub fn activate(&self, id: Uuid) -> bool {
+        let mut items = self.items.write().unwrap_or_else(|e| e.into_inner());
         if let Some(item) = items.get_mut(&id)
             && (item.status == KnowledgeStatus::New || item.status == KnowledgeStatus::Validating)
         {
@@ -257,8 +265,8 @@ impl KnowledgeStore {
     }
 
     /// Suspend knowledge (needs re-evaluation)
-    pub async fn suspend(&self, id: Uuid) -> bool {
-        let mut items = self.items.write().await;
+    pub fn suspend(&self, id: Uuid) -> bool {
+        let mut items = self.items.write().unwrap_or_else(|e| e.into_inner());
         if let Some(item) = items.get_mut(&id) {
             item.status = KnowledgeStatus::Suspended;
             item.updated_at = chrono::Utc::now();
@@ -268,8 +276,8 @@ impl KnowledgeStore {
     }
 
     /// Disprove knowledge (remove from active use)
-    pub async fn disprove(&self, id: Uuid) -> bool {
-        let mut items = self.items.write().await;
+    pub fn disprove(&self, id: Uuid) -> bool {
+        let mut items = self.items.write().unwrap_or_else(|e| e.into_inner());
         if let Some(item) = items.get_mut(&id) {
             item.status = KnowledgeStatus::Disproven;
             item.updated_at = chrono::Utc::now();
@@ -279,8 +287,8 @@ impl KnowledgeStore {
     }
 
     /// Prune low-confidence items when over capacity
-    async fn prune_low_confidence(&self) {
-        let mut items = self.items.write().await;
+    fn prune_low_confidence(&self) {
+        let mut items = self.items.write().unwrap_or_else(|e| e.into_inner());
 
         // Sort by confidence, keep highest
         let mut sorted: Vec<_> = items.values().collect();
@@ -306,8 +314,8 @@ impl KnowledgeStore {
     }
 
     /// Get knowledge statistics
-    pub async fn stats(&self) -> KnowledgeStats {
-        let items = self.items.read().await;
+    pub fn stats(&self) -> KnowledgeStats {
+        let items = self.items.read().unwrap_or_else(|e| e.into_inner());
         let total = items.len();
         let active = items
             .values()
@@ -339,7 +347,7 @@ impl KnowledgeStore {
     ///
     /// Per Architecture: Knowledge dependencies track which knowledge items
     /// rely on other knowledge items to function correctly.
-    pub async fn add_dependency(
+    pub fn add_dependency(
         &self,
         knowledge_id: Uuid,
         depends_on_id: Uuid,
@@ -348,7 +356,7 @@ impl KnowledgeStore {
     ) -> bool {
         // Verify both items exist
         {
-            let items = self.items.read().await;
+            let items = self.items.read().unwrap_or_else(|e| e.into_inner());
             if !items.contains_key(&knowledge_id) || !items.contains_key(&depends_on_id) {
                 return false;
             }
@@ -362,18 +370,14 @@ impl KnowledgeStore {
 
         // Add to dependency index
         {
-            let mut deps = self.dependencies.write().await;
-            deps.entry(knowledge_id)
-                .or_insert_with(Vec::new)
-                .push(dependency);
+            let mut deps = self.dependencies.write().unwrap_or_else(|e| e.into_inner());
+            deps.entry(knowledge_id).or_default().push(dependency);
         }
 
         // Add to reverse index (dependents)
         {
-            let mut rev = self.dependents.write().await;
-            rev.entry(depends_on_id)
-                .or_insert_with(Vec::new)
-                .push(knowledge_id);
+            let mut rev = self.dependents.write().unwrap_or_else(|e| e.into_inner());
+            rev.entry(depends_on_id).or_default().push(knowledge_id);
         }
 
         tracing::debug!("Added dependency: {} -> {}", knowledge_id, depends_on_id);
@@ -381,9 +385,9 @@ impl KnowledgeStore {
     }
 
     /// Remove a dependency
-    pub async fn remove_dependency(&self, knowledge_id: &Uuid, depends_on_id: &Uuid) -> bool {
-        let mut deps = self.dependencies.write().await;
-        let mut rev = self.dependents.write().await;
+    pub fn remove_dependency(&self, knowledge_id: &Uuid, depends_on_id: &Uuid) -> bool {
+        let mut deps = self.dependencies.write().unwrap_or_else(|e| e.into_inner());
+        let mut rev = self.dependents.write().unwrap_or_else(|e| e.into_inner());
 
         // Remove from dependency index
         if let Some(d) = deps.get_mut(knowledge_id) {
@@ -399,21 +403,21 @@ impl KnowledgeStore {
     }
 
     /// Get all dependencies for a knowledge item
-    pub async fn get_dependencies(&self, knowledge_id: &Uuid) -> Vec<KnowledgeDependency> {
-        let deps = self.dependencies.read().await;
+    pub fn get_dependencies(&self, knowledge_id: &Uuid) -> Vec<KnowledgeDependency> {
+        let deps = self.dependencies.read().unwrap_or_else(|e| e.into_inner());
         deps.get(knowledge_id).cloned().unwrap_or_default()
     }
 
     /// Get all items that depend on this knowledge item
-    pub async fn get_dependents(&self, knowledge_id: &Uuid) -> Vec<Uuid> {
-        let rev = self.dependents.read().await;
+    pub fn get_dependents(&self, knowledge_id: &Uuid) -> Vec<Uuid> {
+        let rev = self.dependents.read().unwrap_or_else(|e| e.into_inner());
         rev.get(knowledge_id).cloned().unwrap_or_default()
     }
 
     /// Check if a knowledge item's dependencies are satisfied
-    pub async fn check_dependencies(&self, knowledge_id: &Uuid) -> DependencyCheckResult {
-        let deps = self.dependencies.read().await;
-        let items = self.items.read().await;
+    pub fn check_dependencies(&self, knowledge_id: &Uuid) -> DependencyCheckResult {
+        let deps = self.dependencies.read().unwrap_or_else(|e| e.into_inner());
+        let items = self.items.read().unwrap_or_else(|e| e.into_inner());
 
         let mut result = DependencyCheckResult {
             satisfied: Vec::new(),
@@ -428,8 +432,11 @@ impl KnowledgeStore {
                         if items.contains_key(&dep.dependency_id) {
                             // Check version constraint if present
                             if let Some(ref constraint) = dep.version_constraint {
-                                if let Some(versions) =
-                                    self.versions.read().await.get(&dep.dependency_id)
+                                if let Some(versions) = self
+                                    .versions
+                                    .read()
+                                    .unwrap_or_else(|e| e.into_inner())
+                                    .get(&dep.dependency_id)
                                 {
                                     if let Some(ver) = versions.get_active() {
                                         if ver.satisfies_constraint(constraint) {
@@ -469,14 +476,14 @@ impl KnowledgeStore {
     }
 
     /// Get all items that would be affected if this knowledge item changed
-    pub async fn get_impact_set(&self, knowledge_id: &Uuid) -> Vec<Uuid> {
+    pub fn get_impact_set(&self, knowledge_id: &Uuid) -> Vec<Uuid> {
         let mut impact = Vec::new();
         let mut visited = std::collections::HashSet::new();
         let mut queue = vec![*knowledge_id];
 
         while let Some(current) = queue.pop() {
             if visited.insert(current) {
-                let dependents = self.get_dependents(&current).await;
+                let dependents = self.get_dependents(&current);
                 for dep in dependents {
                     if !visited.contains(&dep) {
                         impact.push(dep);
@@ -490,12 +497,12 @@ impl KnowledgeStore {
     }
 
     /// Validate all dependencies in the knowledge store
-    pub async fn validate_all_dependencies(&self) -> Vec<DependencyValidation> {
+    pub fn validate_all_dependencies(&self) -> Vec<DependencyValidation> {
         let mut validations = Vec::new();
-        let items = self.items.read().await;
+        let items = self.items.read().unwrap_or_else(|e| e.into_inner());
 
         for id in items.keys() {
-            let result = self.check_dependencies(id).await;
+            let result = self.check_dependencies(id);
             if !result.unsatisfied.is_empty() || !result.conflicts.is_empty() {
                 validations.push(DependencyValidation {
                     knowledge_id: *id,
@@ -512,15 +519,15 @@ impl KnowledgeStore {
     // ========================================================================
 
     /// Initialize version tracking for a knowledge item
-    pub async fn init_version(&self, knowledge_id: Uuid, initial_version: &str) -> bool {
-        let items = self.items.read().await;
+    pub fn init_version(&self, knowledge_id: Uuid, initial_version: &str) -> bool {
+        let items = self.items.read().unwrap_or_else(|e| e.into_inner());
         if !items.contains_key(&knowledge_id) {
             return false;
         }
         drop(items);
 
         let version_info = KnowledgeVersionInfo::new(initial_version);
-        let mut versions = self.versions.write().await;
+        let mut versions = self.versions.write().unwrap_or_else(|e| e.into_inner());
         versions.insert(knowledge_id, version_info);
 
         tracing::debug!(
@@ -532,14 +539,14 @@ impl KnowledgeStore {
     }
 
     /// Get version info for a knowledge item
-    pub async fn get_version_info(&self, knowledge_id: &Uuid) -> Option<KnowledgeVersionInfo> {
-        let versions = self.versions.read().await;
+    pub fn get_version_info(&self, knowledge_id: &Uuid) -> Option<KnowledgeVersionInfo> {
+        let versions = self.versions.read().unwrap_or_else(|e| e.into_inner());
         versions.get(knowledge_id).cloned()
     }
 
     /// Bump version number for a knowledge item
-    pub async fn bump_version(&self, knowledge_id: &Uuid, bump_type: VersionBumpType) -> bool {
-        let mut versions = self.versions.write().await;
+    pub fn bump_version(&self, knowledge_id: &Uuid, bump_type: VersionBumpType) -> bool {
+        let mut versions = self.versions.write().unwrap_or_else(|e| e.into_inner());
         if let Some(info) = versions.get_mut(knowledge_id) {
             let current = info.current_version.clone();
             match bump_type {
@@ -569,7 +576,7 @@ impl KnowledgeStore {
 
     /// Seed the knowledge store with default knowledge about the project.
     /// This prevents the knowledge base from being empty on first startup.
-    pub async fn seed(&self) {
+    pub fn seed(&self) {
         use super::types::KnowledgeSource;
         let default_items = vec![
             KnowledgeItem::new(
@@ -639,7 +646,7 @@ impl KnowledgeStore {
         ];
         let count = default_items.len();
         for item in default_items {
-            let id = self.add(item).await;
+            let id = self.add(item);
             if id.is_nil() {
                 tracing::warn!("seeded item has nil uuid, skipping");
             }

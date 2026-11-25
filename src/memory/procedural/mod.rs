@@ -1,6 +1,6 @@
 //! Procedural Memory — Skill and procedure storage (Architecture Chapter 8 — Memory Engine upgrade).
-#![allow(unused)]
 //!
+//! Per Architecture §8.5 (Procedural Memory): reusable skills, workflows,
 //! Per Architecture §8.5 (Procedural Memory): reusable skills, workflows,
 //! and procedures. Separate from semantic (concepts) and episodic (experience) memory.
 
@@ -166,27 +166,4 @@ impl ForgettingPolicy {
         self.archive_enabled
             && (access_count == 0 || confidence < 0.1 || age_days > self.max_age_days * 2)
     }
-}
-
-/// Active reference to procedural memory contracts.
-pub fn reference_procedural_memory() {
-    let mut store = ProceduralMemoryStore::new();
-    let record = ProceduralRecord::new(
-        "skill-1",
-        "Retrieve Memory",
-        "Retrieve relevant memories for a query",
-    );
-    store.add(record);
-    tracing::debug!(
-        record_count = store.all().len(),
-        "Procedural memory referenced"
-    );
-
-    let policy = ForgettingPolicy::default();
-    tracing::debug!(
-        min_access = policy.min_access_count,
-        min_confidence = policy.min_confidence,
-        max_age = policy.max_age_days,
-        "Forgetting policy referenced"
-    );
 }
