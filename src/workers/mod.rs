@@ -3,111 +3,33 @@
 //! Background workers provide non-blocking intelligence for long-running,
 //! resource-intensive, and asynchronous operations.
 //!
-//! MaintenanceWorker is implemented in the `maintenance` submodule with
+//! MaintenanceWorker is implemented in the `maintenance_worker` submodule with
 //! real autonomous maintenance tasks: compaction, aging, checkpointing,
 //! and pattern learning (Architecture §23.6.5).
 
-use crate::database::sqlite::SqliteDatabase;
+pub mod experience_worker;
+pub mod knowledge_worker;
+pub mod learning_worker;
+pub mod maintenance_worker;
+pub mod memory_worker;
+pub mod queue;
+pub mod scheduler;
+pub mod supervisor;
 
-/// Maintenance worker with real autonomous maintenance tasks.
-pub mod maintenance;
-pub use maintenance::{
+// Re-export worker types from submodules
+pub use experience_worker::ExperienceWorker;
+pub use knowledge_worker::KnowledgeGraphWorker;
+pub use learning_worker::LearningWorker;
+pub use maintenance_worker::{
     MaintenanceResult, MaintenanceScheduler, MaintenanceStats, MaintenanceTaskType,
-    MaintenanceWorker,
 };
+pub use memory_worker::MemoryWorker;
+pub use queue::BackgroundTask;
+pub use scheduler::{SchedulingMode, WorkerPriority, WorkerTask, recover_worker, schedule_task};
+pub use supervisor::{WorkerStatus, WorkerSupervisor};
 
-/// Re-export the real WorkerSupervisor from scheduler module.
-/// The BackgroundWorkerSystem uses the full-featured scheduler supervisor
-/// (with submit/schedule_task/pending_tasks/running_tasks) instead of
-/// the simplified placeholder that only tracked status strings.
-pub use crate::scheduler::WorkerSupervisor;
-
-/// Status of a background worker.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum WorkerStatus {
-    /// Worker is running.
-    Running,
-    /// Worker is idle.
-    Idle,
-    /// Worker is processing a task.
-    Processing,
-    /// Worker has failed.
-    Failed,
-    /// Worker is being restarted.
-    Restarting,
-}
-
-/// A queued background task.
-#[derive(Debug, Clone, PartialEq)]
-pub struct BackgroundTask {
-    /// Task identifier.
-    pub id: String,
-    /// Type of task.
-    pub task_type: String,
-    /// Priority level.
-    pub priority: String,
-    /// Status.
-    pub status: String,
-    /// Payload data.
-    pub payload: serde_json::Value,
-    /// Created timestamp.
-    pub created_at: i64,
-}
-
-impl BackgroundTask {
-    /// Create a new background task.
-    pub fn new(
-        id: impl Into<String>,
-        task_type: impl Into<String>,
-        priority: impl Into<String>,
-        payload: serde_json::Value,
-    ) -> Self {
-        Self {
-            id: id.into(),
-            task_type: task_type.into(),
-            priority: priority.into(),
-            status: "pending".to_string(),
-            payload,
-            created_at: chrono::Utc::now().timestamp(),
-        }
-    }
-}
-
-/// Memory worker handles memory-related background tasks.
-#[derive(Debug, Clone, Default)]
-pub struct MemoryWorker {
-    /// Whether the worker is enabled.
-    pub enabled: bool,
-    /// Current priority.
-    pub priority: String,
-}
-
-/// Learning worker handles learning-related background tasks.
-#[derive(Debug, Clone, Default)]
-pub struct LearningWorker {
-    /// Whether the worker is enabled.
-    pub enabled: bool,
-    /// Current priority.
-    pub priority: String,
-}
-
-/// Experience worker handles experience-related background tasks.
-#[derive(Debug, Clone, Default)]
-pub struct ExperienceWorker {
-    /// Whether the worker is enabled.
-    pub enabled: bool,
-    /// Current priority.
-    pub priority: String,
-}
-
-/// Knowledge graph worker handles graph-related background tasks.
-#[derive(Debug, Clone, Default)]
-pub struct KnowledgeGraphWorker {
-    /// Whether the worker is enabled.
-    pub enabled: bool,
-    /// Current priority.
-    pub priority: String,
-}
+use crate::database::sqlite::SqliteDatabase;
+use crate::scheduler::WorkerType;
 
 /// The background worker system manages asynchronous cognitive tasks.
 #[derive(Debug, Clone, Default)]
@@ -175,8 +97,6 @@ impl BackgroundWorkerSystem {
     /// Start all enabled workers by submitting initial tasks to the supervisor.
     /// Per Architecture §23.7: workers SHALL be started during bootstrap.
     pub fn start_workers(&mut self, db: &SqliteDatabase) {
-        use crate::scheduler::{WorkerPriority, WorkerTask, WorkerType, schedule_task};
-
         if self.memory_worker.enabled {
             let task = WorkerTask::new(
                 "memory-worker-001",

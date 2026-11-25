@@ -340,6 +340,7 @@ impl ObjectiveQueue {
                             "LearningTarget" => ObjectiveSource::LearningTarget,
                             "ImprovementTarget" => ObjectiveSource::ImprovementTarget,
                             "StrategicObjective" => ObjectiveSource::StrategicObjective,
+                            "Research" => ObjectiveSource::Research,
                             _ => ObjectiveSource::SystemTrigger,
                         },
                         expected_value: row.get(7)?,
@@ -483,6 +484,7 @@ impl ObjectiveQueue {
                             "LearningTarget" => ObjectiveSource::LearningTarget,
                             "ImprovementTarget" => ObjectiveSource::ImprovementTarget,
                             "StrategicObjective" => ObjectiveSource::StrategicObjective,
+                            "Research" => ObjectiveSource::Research,
                             _ => ObjectiveSource::SystemTrigger,
                         },
                         status: match row.get::<_, String>(5)?.as_str() {

@@ -1,5 +1,3 @@
-use std::fmt;
-
 /// Research errors with structured information for better error handling
 #[derive(Debug)]
 pub enum ResearchError {
@@ -20,8 +18,8 @@ pub enum ResearchError {
     Cancelled,
 }
 
-impl fmt::Display for ResearchError {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+impl std::fmt::Display for ResearchError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
             ResearchError::Timeout { query, elapsed } => {
                 write!(f, "Timeout after {:?} for query: {}", elapsed, query)

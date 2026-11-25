@@ -1,7 +1,22 @@
+pub mod audit;
+pub mod capabilities;
 pub mod full;
+pub mod identity;
+pub mod permissions;
+pub mod policy;
+pub mod trust;
+pub mod validation;
 
 use full::{ActorCapabilities, Capability};
+
+pub use audit::{AuditEvent, AuditLog};
+pub use capabilities::CapabilityRegistry;
+pub use identity::{Identity, IdentitySystem};
+pub use permissions::{Permission, PermissionSystem};
+pub use policy::{Policy, PolicyManager};
 use rusqlite::OptionalExtension;
+pub use trust::TrustScore;
+pub use validation::{ValidationResult, Validator};
 
 /// Security error types.
 #[derive(Debug, Clone, PartialEq, Eq)]

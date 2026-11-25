@@ -35,6 +35,28 @@ pub enum ExperienceType {
     Custom(String),
 }
 
+impl std::fmt::Display for ExperienceType {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ExperienceType::ToolExecution => write!(f, "tool_execution"),
+            ExperienceType::MemoryLookup => write!(f, "memory_lookup"),
+            ExperienceType::MemoryStore => write!(f, "memory_store"),
+            ExperienceType::Workflow => write!(f, "workflow"),
+            ExperienceType::Planning => write!(f, "planning"),
+            ExperienceType::Exploration => write!(f, "exploration"),
+            ExperienceType::Hypothesis => write!(f, "hypothesis"),
+            ExperienceType::Reflection => write!(f, "reflection"),
+            ExperienceType::Learning => write!(f, "learning"),
+            ExperienceType::Conversation => write!(f, "conversation"),
+            ExperienceType::UserFeedback => write!(f, "user_feedback"),
+            ExperienceType::ModelInference => write!(f, "model_inference"),
+            ExperienceType::Error => write!(f, "error"),
+            ExperienceType::System => write!(f, "system"),
+            ExperienceType::Custom(s) => write!(f, "{s}"),
+        }
+    }
+}
+
 /// A single recorded experience within the system.
 ///
 /// Per Architecture §07 Design Invariants:
@@ -219,7 +241,9 @@ impl Experience {
     }
 
     /// Returns a PostTaskEvaluation by analyzing this experience's outcome and metadata.
-    pub fn evaluate_post_task(&self) -> crate::scheduler::cooboploop::post_task::PostTaskEvaluation {
+    pub fn evaluate_post_task(
+        &self,
+    ) -> crate::scheduler::cooboploop::post_task::PostTaskEvaluation {
         use crate::scheduler::cooboploop::post_task::PostTaskEvaluation;
         let mut eval = PostTaskEvaluation::new();
         eval.set_did_succeed(self.outcome.kind == OutcomeKind::Success);

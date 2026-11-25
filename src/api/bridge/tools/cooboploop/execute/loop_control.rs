@@ -13,7 +13,8 @@ pub async fn execute_cooboploop_record_capability_outcome(
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let cap_id = crate::scheduler::cooboploop::capability::CapabilityId::from_string(&input.capability_id);
+    let cap_id =
+        crate::scheduler::cooboploop::capability::CapabilityId::from_string(&input.capability_id);
     let result = if input.success {
         reg.record_success(&cap_id)
     } else {
@@ -39,7 +40,8 @@ pub async fn execute_cooboploop_get_capability_assessment(
         Ok(guard) => guard,
         Err(poisoned) => poisoned.into_inner(),
     };
-    let cap_id = crate::scheduler::cooboploop::capability::CapabilityId::from_string(&input.capability_id);
+    let cap_id =
+        crate::scheduler::cooboploop::capability::CapabilityId::from_string(&input.capability_id);
     match reg.get(&cap_id) {
         Some(assessment) => ToolOutput::success(serde_json::json!({
             "message": "Capability assessment retrieved",
@@ -88,15 +90,35 @@ pub async fn execute_cooboploop_start_loop(
     if let Some(v) = input.max_cycles {
         runner.set_max_cycles(v as u32);
     }
-    runner.start();
+    let already_running = runner.should_continue();
+    if !already_running {
+        runner.start();
+        // Spawn the continuous loop on a background thread so the MCP call
+        // returns immediately while the cognitive cycle runs autonomously.
+        let runner_clone = loop_runner.clone();
+        let max_cycles = runner.max_cycles();
+        tokio::task::spawn_blocking(move || {
+            let mut r = match runner_clone.lock() {
+                Ok(g) => g,
+                Err(p) => p.into_inner(),
+            };
+            tracing::info!("Continuous cognitive loop started (max_cycles={max_cycles})");
+            if let Err(e) = r.run_continuous_sync() {
+                tracing::warn!("Continuous cognitive loop error: {e}");
+            }
+            tracing::info!("Continuous cognitive loop stopped");
+        });
+    }
+    let max_cycles = runner.max_cycles();
     let status_str = if runner.should_continue() {
         "running"
     } else {
         "stopped"
     };
     ToolOutput::success(serde_json::json!({
-        "message": "Loop started",
+        "message": if already_running { "Loop already running" } else { "Loop started in background" },
         "status": status_str,
+        "max_cycles": max_cycles,
     }))
 }
 
@@ -146,8 +168,10 @@ pub async fn execute_cooboploop_get_loop_status(
     let summary = runner.cycle_summary();
     let events: &[String] = runner.learning_events();
     // Wire human action handler: include audit summary in loop status
-    let human_summary = crate::scheduler::cooboploop::human::HumanActionHandler::default().audit_summary();
-    let state_summary_str = crate::scheduler::cooboploop::human::HumanActionHandler::default().state_summary();
+    let human_summary =
+        crate::scheduler::cooboploop::human::HumanActionHandler::default().audit_summary();
+    let state_summary_str =
+        crate::scheduler::cooboploop::human::HumanActionHandler::default().state_summary();
     ToolOutput::success(serde_json::json!({
         "status": status_str,
         "cycles_completed": cycles,

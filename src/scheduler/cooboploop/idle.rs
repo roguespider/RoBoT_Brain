@@ -196,12 +196,12 @@ impl IdleState {
         let mut inactivity = None;
 
         // Evaluate pending objectives (§9 / T-COO-08)
-        if self.queue_empty && self.objectives_processed > 0 {
+        if !self.queue_empty || self.objectives_processed > 0 {
             work.push(ActivityCategory::PendingObjectives);
         }
 
         // System maintenance (§9 / T-COO-08)
-        if self.maintenance_current {
+        if !self.maintenance_current {
             work.push(ActivityCategory::SystemMaintenance);
         }
 
@@ -221,13 +221,19 @@ impl IdleState {
         }
 
         // Memory maintenance (§9 / T-COO-08)
-        work.push(ActivityCategory::MemoryMaintenance);
+        if self.seconds_since_activity >= self.reevaluation_interval_secs {
+            work.push(ActivityCategory::MemoryMaintenance);
+        }
 
         // Hardware evaluation (§9 / T-COO-08)
-        work.push(ActivityCategory::HardwareEvaluation);
+        if self.seconds_since_activity >= self.reevaluation_interval_secs {
+            work.push(ActivityCategory::HardwareEvaluation);
+        }
 
         // Performance optimization (§9 / T-COO-08)
-        work.push(ActivityCategory::PerformanceOptimization);
+        if self.problems_count > 0 {
+            work.push(ActivityCategory::PerformanceOptimization);
+        }
 
         // Capability development (§9 / T-COO-08)
         if self.relevant_capability_gaps {
@@ -235,10 +241,14 @@ impl IdleState {
         }
 
         // Self-improvement (§9 / T-COO-08)
-        work.push(ActivityCategory::SelfImprovement);
+        if self.relevant_capability_gaps {
+            work.push(ActivityCategory::SelfImprovement);
+        }
 
         // Environmental observation (§9 / T-COO-08)
-        work.push(ActivityCategory::EnvironmentalObservation);
+        if self.seconds_since_activity >= self.reevaluation_interval_secs {
+            work.push(ActivityCategory::EnvironmentalObservation);
+        }
 
         // Long-term planning (§9 / T-COO-08)
         if strategic_objectives.iter().any(|o| o.status == "active") {

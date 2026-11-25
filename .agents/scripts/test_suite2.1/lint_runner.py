@@ -5,6 +5,8 @@ import logging
 import subprocess
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
+
 
 class LintIssue:
     def __init__(self, file_path: str, line_number: int, level: str, message: str):
@@ -20,14 +22,14 @@ class LintRunner:
 
     def run(self) -> list[LintIssue]:
         issues: list[LintIssue] = []
-        # Run cargo check (timeout 600s — builds take ~250s)
+        # Run cargo check (timeout 30s for fast gate — longer builds run separately)
         try:
             result = subprocess.run(
                 ["cargo", "check", "--message-format=json"],
                 cwd=self.project_root,
                 capture_output=True,
                 text=True,
-                timeout=600,
+                timeout=30,
                 check=False,
             )
             # Parse JSON messages from cargo check
@@ -48,24 +50,24 @@ class LintRunner:
                                     )
                                 )
                     except (json.JSONDecodeError, KeyError, IndexError):
-                        logging.debug("Failed to parse compiler message JSON")
+                        logger.debug("Failed to parse compiler message JSON")
                 # Also capture stderr lines
             if result.returncode != 0:
                 for line in result.stderr.splitlines():
                     if "warning" in line.lower() or "error" in line.lower():
                         issues.append(LintIssue("unknown", 0, "warning", line))
         except subprocess.TimeoutExpired:
-            logging.warning("Cargo check timed out (600s limit)")
+            logger.warning("Cargo check timed out (600s limit)")
         except OSError as e:
-            logging.warning("Cargo check error: %s", e)
-        # Run cargo clippy (timeout 600s)
+            logger.warning("Cargo check error: %s", e)
+        # Run cargo clippy (timeout 30s for fast gate — longer builds run separately)
         try:
             result = subprocess.run(
                 ["cargo", "clippy", "--message-format=json"],
                 cwd=self.project_root,
                 capture_output=True,
                 text=True,
-                timeout=600,
+                timeout=30,
                 check=False,
             )
             # Parse JSON messages if available
@@ -86,9 +88,9 @@ class LintRunner:
                                     )
                                 )
                     except (json.JSONDecodeError, KeyError, IndexError):
-                        logging.debug("Failed to parse clippy message JSON")
+                        logger.debug("Failed to parse clippy message JSON")
         except subprocess.TimeoutExpired:
-            logging.warning("Cargo clippy timed out (600s limit)")
+            logger.warning("Cargo clippy timed out (600s limit)")
         except OSError as e:
-            logging.warning("Clippy error: %s", e)
+            logger.warning("Clippy error: %s", e)
         return issues

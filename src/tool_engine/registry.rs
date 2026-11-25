@@ -61,7 +61,7 @@ pub struct ToolContract {
     pub capability_level: CapabilityLevel,
     /// Retry policy for this tool.
     /// Per Architecture §13.23: tools declare retry characteristics.
-    pub retry_policy: Option<crate::tool_engine::retry_policy::RetryPolicy>,
+    pub retry_policy: Option<crate::tool_engine::retries::RetryPolicy>,
 }
 
 impl ToolContract {
@@ -148,7 +148,7 @@ impl ToolContract {
     }
 
     /// Set the retry policy for this tool.
-    pub fn with_retry_policy(self, policy: crate::tool_engine::retry_policy::RetryPolicy) -> Self {
+    pub fn with_retry_policy(self, policy: crate::tool_engine::retries::RetryPolicy) -> Self {
         Self {
             retry_policy: Some(policy),
             ..self
@@ -320,7 +320,7 @@ impl ToolRegistry {
     pub fn get_retry_policy(
         &self,
         tool_name: &str,
-    ) -> Option<&crate::tool_engine::retry_policy::RetryPolicy> {
+    ) -> Option<&crate::tool_engine::retries::RetryPolicy> {
         self.tools
             .get(tool_name)
             .and_then(|c| c.retry_policy.as_ref())

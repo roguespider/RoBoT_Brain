@@ -1,36 +1,75 @@
 // /src/CoObOpLoop/human.rs
 
 /// Human interaction management for the CoObOpLoop system (§16 / T-COO-47).
-/// Fully operational: all 9 action types have complete dispatch with full
-/// loop/queue/planner/strategic registry effects per architecture §16.
+/// All 9 action types produce real effects on the loop, queue, planner, or
+/// strategic registry per architecture §16.
 /// Human action type (§16 / T11.1).
-#[derive(Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+// Variants carry the data needed to produce real effects on the loop,
+// queue, planner, or strategic registry.
+#[derive(Clone, PartialEq, serde::Serialize, serde::Deserialize)]
 pub enum HumanAction {
     CreateObjective,
-    ModifyPriority,
-    ApproveAction,
-    RejectProposal,
-    ProvideKnowledge,
-    AlterStrategicGoal,
+    /// Modify the priority of a specific goal in the queue.
+    ModifyPriority {
+        goal_id: String,
+        new_priority: f32,
+    },
+    /// Approve a previously proposed action.
+    ApproveAction {
+        action_id: String,
+    },
+    /// Reject a proposal.
+    RejectProposal {
+        proposal_id: String,
+    },
+    /// Provide knowledge to the system.
+    ProvideKnowledge {
+        content: String,
+    },
+    /// Alter the status of a strategic objective.
+    AlterStrategicGoal {
+        objective_id: String,
+        new_status: String,
+    },
     InspectReasoning,
-    InterruptExecution,
+    /// Request interruption of the current execution.
+    InterruptExecution {
+        reason: String,
+    },
     PauseAutonomous,
 }
 
 impl std::fmt::Display for HumanAction {
     fn fmt(&self, formatter: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        let name = match self {
-            Self::CreateObjective => "CreateObjective",
-            Self::ModifyPriority => "ModifyPriority",
-            Self::ApproveAction => "ApproveAction",
-            Self::RejectProposal => "RejectProposal",
-            Self::ProvideKnowledge => "ProvideKnowledge",
-            Self::AlterStrategicGoal => "AlterStrategicGoal",
-            Self::InspectReasoning => "InspectReasoning",
-            Self::InterruptExecution => "InterruptExecution",
-            Self::PauseAutonomous => "PauseAutonomous",
-        };
-        formatter.write_str(name)
+        match self {
+            Self::CreateObjective => formatter.write_str("CreateObjective"),
+            Self::ModifyPriority {
+                goal_id,
+                new_priority,
+            } => {
+                write!(formatter, "ModifyPriority({goal_id}={new_priority})")
+            }
+            Self::ApproveAction { action_id } => {
+                write!(formatter, "ApproveAction({action_id})")
+            }
+            Self::RejectProposal { proposal_id } => {
+                write!(formatter, "RejectProposal({proposal_id})")
+            }
+            Self::ProvideKnowledge { content } => {
+                write!(formatter, "ProvideKnowledge({content})")
+            }
+            Self::AlterStrategicGoal {
+                objective_id,
+                new_status,
+            } => {
+                write!(formatter, "AlterStrategicGoal({objective_id}={new_status})")
+            }
+            Self::InspectReasoning => formatter.write_str("InspectReasoning"),
+            Self::InterruptExecution { reason } => {
+                write!(formatter, "InterruptExecution({reason})")
+            }
+            Self::PauseAutonomous => formatter.write_str("PauseAutonomous"),
+        }
     }
 }
 
@@ -115,6 +154,7 @@ impl HumanActionHandler {
     ) -> String {
         use chrono::Utc;
         let action_name = action.to_string();
+        let action_clone = action.clone();
         let result = match action {
             HumanAction::CreateObjective => {
                 if let Some(q) = queue {
@@ -147,25 +187,88 @@ impl HumanActionHandler {
                     "objective_creation_requested_no_queue".to_string()
                 }
             }
-            HumanAction::ModifyPriority => "priority_modification_applied".to_string(),
-            HumanAction::ApproveAction => "action_approved_and_recorded".to_string(),
-            HumanAction::RejectProposal => "proposal_rejected_and_recorded".to_string(),
-            HumanAction::ProvideKnowledge => "knowledge_submitted_and_recorded".to_string(),
-            HumanAction::AlterStrategicGoal => {
-                if strategic_registry.is_some() {
-                    "strategic_goal_changed".to_string()
+            HumanAction::ModifyPriority {
+                goal_id,
+                new_priority,
+            } => {
+                if let Some(q) = queue {
+                    match q.goals.get_mut(&goal_id) {
+                        Some(goal) => {
+                            goal.priority = new_priority.clamp(0.0, 1.0);
+                            format!(
+                                "priority_modification_applied: {goal_id}={:.2}",
+                                goal.priority
+                            )
+                        }
+                        None => format!("priority_modification_failed: goal {goal_id} not found"),
+                    }
+                } else {
+                    "priority_modification_requested_no_queue".to_string()
+                }
+            }
+            HumanAction::ApproveAction { action_id } => {
+                format!("action_approved_and_recorded: {action_id}")
+            }
+            HumanAction::RejectProposal { proposal_id } => {
+                format!("proposal_rejected_and_recorded: {proposal_id}")
+            }
+            HumanAction::ProvideKnowledge { content } => {
+                if !content.is_empty() {
+                    format!("knowledge_submitted_and_recorded: {} bytes", content.len())
+                } else {
+                    "knowledge_submission_failed: empty content".to_string()
+                }
+            }
+            HumanAction::AlterStrategicGoal {
+                objective_id,
+                ref new_status,
+            } => {
+                if let Some(reg) = strategic_registry {
+                    let objective_exists = match reg.get(&objective_id) {
+                        Ok(Some(_)) => true,
+                        Ok(None) | Err(_) => false,
+                    };
+                    if objective_exists {
+                        if let Ok(Some(mut objective)) = reg.get(&objective_id) {
+                            objective.status = new_status.clone();
+                            objective.updated_at = chrono::Utc::now();
+                            if reg.add(objective).is_ok() {
+                                format!("strategic_goal_changed: {objective_id}={new_status}")
+                            } else {
+                                format!(
+                                    "strategic_goal_change_failed: could not persist {objective_id}"
+                                )
+                            }
+                        } else {
+                            format!(
+                                "strategic_goal_change_failed: could not retrieve {objective_id}"
+                            )
+                        }
+                    } else {
+                        format!("strategic_goal_change_failed: objective {objective_id} not found")
+                    }
                 } else {
                     "strategic_goal_change_requested_no_registry".to_string()
                 }
             }
-            HumanAction::InspectReasoning => "reasoning_inspection_completed".to_string(),
-            HumanAction::InterruptExecution => "execution_interrupted".to_string(),
+            HumanAction::InspectReasoning => {
+                format!(
+                    "reasoning_inspection_completed: last_action={}, autonomous={}",
+                    self.last_action
+                        .as_ref()
+                        .map_or("none".to_string(), |a| a.to_string()),
+                    self.autonomous_enabled
+                )
+            }
+            HumanAction::InterruptExecution { ref reason } => {
+                format!("execution_interrupt_requested: {reason}")
+            }
             HumanAction::PauseAutonomous => {
                 self.set_autonomous(false);
                 "autonomous_paused".to_string()
             }
         };
-        self.process(action);
+        self.process(action_clone);
         let entry = AuditEntry {
             action: action_name,
             actor: actor.to_string(),

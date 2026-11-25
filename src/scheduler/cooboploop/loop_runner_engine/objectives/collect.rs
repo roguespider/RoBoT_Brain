@@ -311,9 +311,33 @@ pub fn select_objective(runner: &mut LoopRunner) -> Option<AgentGoal> {
                 .is_some_and(|a| a.level >= 0.5)
         });
 
-        if has_capability && goal.priority > best_priority {
+        // Dependency resolution per spec §20: only select goals whose
+        // dependencies are all in Completed status (§4 state transitions).
+        let deps_resolved = if goal.dependencies.is_empty() {
+            true
+        } else {
+            queued_goals.iter().all(|dep_goal| {
+                goal.dependencies.iter().all(|dep_id| {
+                    dep_goal.id == *dep_id && dep_goal.status == GoalStatus::Completed
+                })
+            })
+        };
+
+        if has_capability && deps_resolved && goal.priority > best_priority {
             best_priority = goal.priority;
             best_goal = Some(goal.clone());
+        } else if !deps_resolved && goal.status == GoalStatus::Queued {
+            // Mark goals with unmet dependencies as Blocked per spec §4
+            if let Err(e) = runner
+                .objective_queue
+                .transition(&goal.id, GoalStatus::Blocked)
+            {
+                tracing::warn!("block failed: {e}");
+            }
+            tracing::debug!(
+                "select_objective: goal '{}' blocked by unmet dependencies",
+                goal.title
+            );
         }
     }
 

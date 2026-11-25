@@ -27,6 +27,7 @@ tested on Windows, and Linux
 | **Windows** | Visual Studio Build Tools or MinGW |
 | **Linux** | GCC/Clang, SQLite development headers |
 | **macOS** | Xcode Command Line Tools (`xcode-select --install`) |
+| **Python** | 3.9+ for test suite (`pytest>=7.0`, `pytest-asyncio>=0.21`, `pytest-xdist>=3.0`) |
 
 ### Build Commands
 

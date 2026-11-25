@@ -5,6 +5,8 @@ import re
 from pathlib import Path
 from typing import Any
 
+logger = logging.getLogger(__name__)
+
 
 class Issue:
     def __init__(
@@ -233,7 +235,7 @@ class CodeAnalyzer:
                 content = file_path.read_text(encoding="utf-8")
                 issues.extend(self.analyze_file_content(file_path, content))
             except OSError as e:
-                logging.debug(f"Could not read {file_path}: {e}")
+                logger.debug("Could not read %s: %s", file_path, e)
         return issues
 
     def get_summary(self, issues: list[Issue]) -> dict[str, Any]:

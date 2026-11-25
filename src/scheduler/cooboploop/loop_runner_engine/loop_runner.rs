@@ -235,6 +235,11 @@ impl LoopRunner {
 
     pub fn start(&mut self) {
         self.should_continue = true;
+        // Set the continue flag; the caller is responsible for invoking
+        // run_continuous_sync() in a background task so the loop does not
+        // block the calling thread.  Per CoObOpLoop.md §20: the loop SHALL
+        // NOT terminate simply because the current objective completed.
+        tracing::info!("CoObOpLoop: cognitive loop started (should_continue=true)");
     }
 
     pub fn stop(&mut self) {
@@ -324,9 +329,9 @@ impl LoopRunner {
     }
 
     /// Set autonomous operation mode (Section 16 / Section 22 / T-COO-50).
-    /// Fully operational: activates autonomous objective generation, opportunity
-    /// discovery, prioritization, capability development, testing, optimization,
-    /// hardware adaptation, software maintenance, improvement proposal, and verification.
+    /// Partial: sets autonomous_operation_enabled flag; the cognitive cycle stages
+    /// (objective generation, opportunity discovery, etc.) are gated by this flag
+    /// in run_autonomous_cycle() but are not all fully operational (see COO-01 through COO-21).
     pub fn set_autonomous(&mut self, enabled: bool) {
         self.autonomous_operation_enabled = enabled;
         if enabled {
@@ -387,25 +392,29 @@ impl LoopRunner {
     /// running autonomously between external objectives.
     /// Per Architecture Section 20: The loop SHALL NOT terminate when a task
     /// completes; it transitions to evaluation and continues cognitive activity.
+    /// The loop runs continuously until should_continue returns false.
     pub fn run_continuous_sync(&mut self) -> Result<(), String> {
         // Dispatch pending research objectives (Section 11 / T8.1-T8.4).
         // Research SHALL be first-class objective; SHALL produce persistent knowledge/experience.
         if let Err(e) = self.dispatch_research() {
             tracing::debug!("Research dispatch skipped: {e}");
         }
-        // Run one full cycle
-        match self.run_cycle() {
-            Ok(()) => {
-                tracing::debug!("Continuous sync: completed one cognitive cycle");
-                // Transition to wait/idle state between cycles
-                self.enter_wait();
-            }
-            Err(e) => {
-                tracing::warn!("Continuous sync: cycle failed: {e}");
-                // Don't fail the loop on individual cycle errors - enter wait state
-                self.enter_wait();
+        // Continuous loop: run cycles until should_continue returns false.
+        // Per CoObOpLoop.md §20: the loop SHALL NOT terminate simply because
+        // the current objective completed.
+        while self.should_continue() {
+            match self.run_cycle() {
+                Ok(()) => {
+                    tracing::debug!("Continuous sync: completed one cognitive cycle");
+                }
+                Err(e) => {
+                    tracing::warn!("Continuous sync: cycle failed: {e}");
+                    // Don't fail the loop on individual cycle errors - enter wait state
+                    self.enter_wait();
+                }
             }
         }
+        tracing::debug!("Continuous sync: loop stopped (should_continue=false)");
         Ok(())
     }
 

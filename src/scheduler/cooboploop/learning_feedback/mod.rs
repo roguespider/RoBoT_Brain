@@ -6,37 +6,8 @@ use crate::knowledge::store::KnowledgeStore;
 use crate::scheduler::cooboploop::capability::{
     CapabilityAssessment, CapabilityId, CapabilityRegistry,
 };
+use crate::scheduler::cooboploop::loop_runner_engine::StrategyTracker;
 use chrono::Utc;
-
-/// Strategy tracker: records reinforced and avoided strategies from learning feedback (§15).
-#[derive(Debug, Default)]
-pub struct StrategyTracker {
-    pub reinforced: Vec<String>,
-    pub avoided: Vec<String>,
-}
-
-impl StrategyTracker {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Add strategy refinements from learning update (§15).
-    pub fn absorb_refinements(&mut self, refinements: &[String]) {
-        for r in refinements {
-            if r.starts_with("reinforce: ") {
-                let strategy = r.strip_prefix("reinforce: ").unwrap_or(r);
-                if !self.reinforced.contains(&strategy.to_string()) {
-                    self.reinforced.push(strategy.to_string());
-                }
-            } else if r.starts_with("avoid: ") {
-                let strategy = r.strip_prefix("avoid: ").unwrap_or(r);
-                if !self.avoided.contains(&strategy.to_string()) {
-                    self.avoided.push(strategy.to_string());
-                }
-            }
-        }
-    }
-}
 
 /// Apply learning feedback to the knowledge store, capability registry, and strategy tracker.
 /// Per CoObOpLoop.md §15: Experience → Learning → Capability/Knowledge Update → Better Evaluation.
@@ -61,10 +32,7 @@ pub fn apply_learning_feedback(
                 knowledge_confidence,
                 exp.id,
             );
-            let handle = tokio::runtime::Handle::current();
-            handle.block_on(async {
-                knowledge_store.add(item);
-            });
+            knowledge_store.add(item);
             tracing::debug!("Learning feedback: stored knowledge from experience");
         }
     }

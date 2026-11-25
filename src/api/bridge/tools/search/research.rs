@@ -2,13 +2,53 @@
 // Research pipeline functions: research, quick_research, deep_research, find_error_resolution.
 
 use std::sync::Arc;
+use std::sync::Mutex as StdMutex;
 
 use anyhow::Result;
+use tokio::sync::Mutex;
 
+use crate::agent::decision::{CascadeDeps, ResearchCascade};
 use crate::api::bridge::tools::ToolOutput;
 use crate::database::sqlite::SqliteDatabase;
+use crate::experience::hypothesis::HypothesisEngine;
+use crate::experience::reflection::ReflectionEngine;
+use crate::experience::types::Experience;
+use crate::knowledge::store::KnowledgeStore;
+use crate::knowledge::world_model::store::WorldModel;
+use crate::memory::permanent::PermanentMemory;
 use crate::memory::repository::SqliteMemoryRepository;
+use crate::planning::engine::types::Plan;
 use crate::research;
+use crate::scheduler::cooboploop::capability::CapabilityRegistry;
+
+/// Build cascade dependencies from available sources and check if research should proceed.
+/// Per research_engine.md Rule 1: "Research is NEVER triggered if any internal source
+/// has confidence >= 0.7. The cascade must run in full order."
+/// Returns `true` if research should proceed (all tiers 1-8 failed), `false` if research
+/// should be skipped because a tier 1-8 internal source can answer the query.
+async fn should_bypass_cascade(database: &Arc<SqliteDatabase>, query: &str) -> bool {
+    let permanent_memory = PermanentMemory::new_with_db(10000, database.clone());
+    let knowledge_store = KnowledgeStore::new(10000);
+    let capability_registry = StdMutex::new(CapabilityRegistry::new());
+    let world_model = WorldModel::new();
+    let reflection_engine = Mutex::new(ReflectionEngine::new());
+    let hypothesis_engine = HypothesisEngine::new();
+    let current_plan: Option<Plan> = None;
+    let latest_experience: Option<Experience> = None;
+
+    let deps = CascadeDeps {
+        capability_registry: Some(&capability_registry),
+        knowledge_store: &knowledge_store,
+        latest_experience: latest_experience.as_ref(),
+        reflection_engine: &reflection_engine,
+        current_plan: &current_plan,
+        permanent_memory: &permanent_memory,
+        world_model: &world_model,
+        hypothesis_engine: &hypothesis_engine,
+    };
+
+    ResearchCascade::should_research(query, &deps).await
+}
 
 /// Build a research pipeline wired to the memory repository.
 ///
@@ -70,6 +110,14 @@ pub async fn execute_research(
                 research::adapter_registry::readiness_report()
             )));
         }
+        // 9-tier confidence cascade check (Rule 1: research is last resort).
+        // If any tier 1-8 internal source can answer the query, skip research.
+        if !should_bypass_cascade(database, &input.query).await {
+            return Ok(ToolOutput::error(format!(
+                "research skipped: internal knowledge suffices for query '{}'",
+                input.query
+            )));
+        }
         let pipeline = pipeline_with_memory(database);
         let result = pipeline
             .run_pipeline(&input.query, research::pipeline::Mode::Auto)
@@ -93,6 +141,13 @@ pub async fn execute_quick_research(
 ) -> Result<ToolOutput> {
     #[cfg(feature = "http")]
     {
+        // 9-tier confidence cascade check (Rule 1: research is last resort).
+        if !should_bypass_cascade(database, &input.query).await {
+            return Ok(ToolOutput::error(format!(
+                "research skipped: internal knowledge suffices for query '{}'",
+                input.query
+            )));
+        }
         let quick =
             research::quick_research::QuickMode::new(Arc::new(pipeline_with_memory(database)));
         let result = quick
@@ -117,6 +172,13 @@ pub async fn execute_deep_research(
 ) -> Result<ToolOutput> {
     #[cfg(feature = "http")]
     {
+        // 9-tier confidence cascade check (Rule 1: research is last resort).
+        if !should_bypass_cascade(database, &input.query).await {
+            return Ok(ToolOutput::error(format!(
+                "research skipped: internal knowledge suffices for query '{}'",
+                input.query
+            )));
+        }
         let deep = research::deep_research::DeepMode::new(Arc::new(pipeline_with_memory(database)));
         let result = deep
             .run(&input.query)
@@ -140,8 +202,15 @@ pub async fn execute_find_error_resolution(
 ) -> Result<ToolOutput> {
     #[cfg(feature = "http")]
     {
-        let pipeline = pipeline_with_memory(database);
         let query = format!("error resolution for: {}", input.error);
+        // 9-tier confidence cascade check (Rule 1: research is last resort).
+        if !should_bypass_cascade(database, &query).await {
+            return Ok(ToolOutput::error(format!(
+                "research skipped: internal knowledge suffices for error '{}'",
+                input.error
+            )));
+        }
+        let pipeline = pipeline_with_memory(database);
         match pipeline
             .run_pipeline(&query, research::pipeline::Mode::Quick)
             .await

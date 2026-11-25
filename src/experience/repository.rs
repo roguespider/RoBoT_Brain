@@ -128,7 +128,7 @@ impl MemoryCard {
             .clone()
             .unwrap_or_else(|| format!("{:?}", experience.outcome.kind));
         let content = format!(
-            "Experience: {}\n{}\n(outcome: {}, type: {:?}, committed: {}, archived: {}, evidence_count: {})",
+            "Experience: {}\n{}\n(outcome: {}, type: {}, committed: {}, archived: {}, evidence_count: {})",
             experience.title,
             experience.description,
             outcome_label,

@@ -30,7 +30,10 @@ impl ToolOutput {
     pub fn error<E: std::fmt::Display>(msg: E) -> Self {
         Self {
             success: false,
-            data: serde_json::Value::Null,
+            data: serde_json::json!({
+                "error": msg.to_string(),
+                "success": false,
+            }),
             error: Some(msg.to_string()),
         }
     }
@@ -38,6 +41,7 @@ impl ToolOutput {
 
 pub mod agent;
 pub mod cooboploop;
+pub mod developer_interface;
 pub mod experience;
 pub mod exploration;
 pub mod hypothesis;
@@ -139,6 +143,13 @@ pub fn register_tools() {
     let ingestor_tools = ingestor::definitions::all();
     tracing::info!("Registered {} ingestor tools", ingestor_tools.len());
 
+    // Phase 12: Developer Interface
+    let developer_interface_tools = developer_interface::definitions::all();
+    tracing::info!(
+        "Registered {} developer interface tools",
+        developer_interface_tools.len()
+    );
+
     // Collect all tools in pipeline order (Agent entry point first)
     let all_tools = agent_tools
         .into_iter()
@@ -154,6 +165,7 @@ pub fn register_tools() {
         .chain(skills_tools)
         .chain(ingestor_tools)
         .chain(cooboploop::definitions::all())
+        .chain(developer_interface_tools)
         .collect();
 
     // Update registry using mutex lock with error handling

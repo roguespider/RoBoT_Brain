@@ -74,6 +74,14 @@ impl App {
         // Wire pipeline functions to eliminate dead-code warnings
         crate::execution::wire_pipeline();
 
+        // Wire tool engine permissions, retry policy, and experience integration into production paths
+        crate::tool_engine::wire_permissions();
+        crate::tool_engine::wire_retry_policy();
+        crate::tool_engine::wire_experience_integration();
+
+        // Wire context engine into production paths
+        crate::context_engine::wire_context_engine();
+
         // Build learning engines (reflection, hypothesis, evolution, metrics)
         let engines = crate::api::bridge::app::initialization::engines::build_engines();
         let reflection_engine = engines.reflection_engine;
@@ -345,7 +353,7 @@ impl App {
 
         // Run autonomous memory promotion and consolidation cycle (Architecture §17).
         // Wires MemoryHierarchy::promote_record() into production via the memory engine.
-        crate::workers::run_memory_maintenance_cycle(&*memory_engine);
+        crate::workers::run_memory_maintenance_cycle(memory_engine.as_ref());
 
         // Goal-driven agent loop + App struct (Architecture §5.7)
         let app = agent_loop::create_app(agent_loop::AgentLoopSystems {
@@ -399,31 +407,9 @@ impl App {
             session_count
         );
 
-        // Start autonomous cognitive loop (Architecture §20-21, CoObOpLoop.md).
-        // The loop SHALL NOT terminate when a task completes; it transitions
-        // to evaluation and continues cognitive activity.
-        let loop_runner = std::sync::Arc::new(std::sync::Mutex::new(
-            crate::scheduler::cooboploop::loop_runner_engine::LoopRunner::new(),
-        ));
-        // Run continuous sync: start the loop at boot with one initial cycle
-        // to warm up the system and establish baseline objectives.
-        {
-            let mut runner = loop_runner
-                .lock()
-                .map_err(|e| anyhow::anyhow!("Loop runner lock poisoned: {}", e))?;
-            if let Err(e) = runner.run_continuous_sync() {
-                tracing::warn!("Initial cognitive cycle failed: {}", e);
-            } else {
-                tracing::info!("Autonomous cognitive loop started with initial cycle");
-            }
-        }
-        // Store loop runner for later use by MCP tools.
-        let loop_runner_active = loop_runner.clone();
-        tracing::info!(
-            loop_runner_wired = true,
-            loop_active = loop_runner_active.lock().is_ok(),
-            "Autonomous cognitive loop wired and started"
-        );
+        // Note: The autonomous CoObOpLoop is now started by CooboploopToolsHandler::new()
+        // during MCP handler initialization, ensuring a single shared LoopRunner instance
+        // that is both MCP-controllable and autonomously running (Architecture §20-21).
 
         // Start background scheduler worker
         let scheduler = self.mcp_context.scheduler.clone();

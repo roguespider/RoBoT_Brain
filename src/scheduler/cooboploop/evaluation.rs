@@ -328,6 +328,31 @@ impl GoalEvaluator {
         // Adjust cost based on capability blocking status (§5 / T-COO-42)
         let cost_multiplier = if blocking { 2.0 } else { 1.0 };
 
+        // Capability assessment branching per spec §6:
+        // - Sufficient → execute (normal priority)
+        // - Uncertain → research (boost to allow research as fallback)
+        // - Insufficient → learn/build capability (reduce priority for learning objectives)
+        // - Unavailable → defer/reject (significantly reduce priority)
+        let capability_branch_factor = match cap_req {
+            CapabilityRequirement::Sufficient => 1.0,
+            CapabilityRequirement::Uncertain => {
+                // Boost uncertain capabilities to allow research-based discovery
+                if goal.source == super::sources::ObjectiveSource::Research {
+                    1.3
+                } else {
+                    1.1
+                }
+            }
+            CapabilityRequirement::Insufficient => {
+                // Reduce priority; this signals a need for learning/building capability
+                0.6
+            }
+            CapabilityRequirement::Unavailable => {
+                // Significantly reduce; defer or reject this objective
+                0.3
+            }
+        };
+
         // Strategic alignment: check strategic registry for active objectives
         let strategic_alignment_boost = if let Some(ref registry_arc) = self.strategic_registry {
             if let Ok(registry) = registry_arc.lock() {
@@ -397,7 +422,8 @@ impl GoalEvaluator {
             * workload_factor
             / cost.max(0.1);
         let adjusted = self.use_current_policy().compute(raw, goal);
-        (adjusted.max(goal.priority) * strategic_alignment_boost).min(1.0)
+        // Apply capability branch factor per spec §6 decision tree
+        adjusted * capability_branch_factor * strategic_alignment_boost.min(1.0).max(goal.priority)
     }
 
     /// Evaluate a goal and return the criteria.

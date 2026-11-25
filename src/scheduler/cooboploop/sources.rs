@@ -73,7 +73,7 @@ pub enum ImprovementTarget {
     RecoveryProcedure,
 }
 
-/// Objective source variant types (§3 — 5 core + 4 extensions).
+/// Objective source variant types (§3 — 5 core + 4 extensions + Research §11).
 #[derive(Debug, Clone, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ObjectiveSource {
     HumanOrigin,
@@ -85,6 +85,7 @@ pub enum ObjectiveSource {
     HardwareUtilization,
     InferencePerformance,
     SoftwareArchitecture,
+    Research,
 }
 
 /// Trait for objective source providers.

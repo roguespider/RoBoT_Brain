@@ -25,6 +25,7 @@ pub mod scheduling;
 pub mod security;
 pub mod subsystems_v18;
 pub mod tracking;
+pub mod worker_coordination;
 
 /// Run all pending migrations.
 pub fn run(database: &SqliteDatabase) -> Result<()> {
@@ -40,7 +41,7 @@ fn run_migrations(conn: &Connection) -> Result<()> {
     let mut version = current_version(conn)?;
 
     // Run all pending migrations sequentially
-    while version < 20 {
+    while version < 21 {
         match version {
             0..=2 => {
                 core_data_storage::run(conn)?;
@@ -94,6 +95,10 @@ fn run_migrations(conn: &Connection) -> Result<()> {
             19 => {
                 cognitive_observability::run(conn)?;
                 version = 20;
+            }
+            20 => {
+                worker_coordination::run(conn)?;
+                version = 21;
             }
             _ => break,
         }

@@ -8,6 +8,26 @@
 mod types;
 pub use types::RetrievalSource;
 
+pub mod analyzer;
+pub mod cache;
+pub mod confidence;
+pub mod context_builder;
+pub mod contradictions;
+pub mod coordinator;
+pub mod expansion;
+pub mod experience;
+pub mod feedback;
+pub mod filtering;
+pub mod graph;
+pub mod query;
+pub mod ranking;
+pub mod reranker;
+pub mod semantic;
+pub mod skills;
+pub mod symbolic;
+pub mod telemetry;
+pub mod vector;
+
 /// Retrieval stages per Architecture §16.4.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub enum RetrievalStage {
@@ -741,17 +761,6 @@ pub struct RetrievalPipelineResult {
     pub source_id: String,
 }
 
-/// Query expansion using basic synonym/keyword expansion.
-pub fn expand_query_simple(query: &str) -> Vec<String> {
-    let mut expanded = Vec::new();
-    expanded.push(query.to_string());
-    expanded.push(query.to_lowercase());
-    for word in query.split_whitespace() {
-        expanded.push(word.to_string());
-    }
-    expanded
-}
-
 /// Hybrid retrieval with source filtering.
 pub fn hybrid_retrieve_with_sources(
     query: &str,
@@ -759,7 +768,7 @@ pub fn hybrid_retrieve_with_sources(
     limit: usize,
 ) -> Vec<RetrievalPipelineResult> {
     let pipeline = RetrievalPipeline::new();
-    let expanded = expand_query_simple(query);
+    let expanded = expansion::expand_query_simple(query);
     let retrieval_query = RetrievalQuery::new(query)
         .with_expanded(expanded)
         .with_sources(sources)

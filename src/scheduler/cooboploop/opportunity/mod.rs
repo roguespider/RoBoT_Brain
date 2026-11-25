@@ -2,9 +2,9 @@
 // External opportunity intake for the CoObOpLoop system (§17).
 //
 // Per CoObOpLoop.md §17: external opportunities are optional.
-// The intake pipeline is fully operational but requires live external
-// feeds (API keys) to produce real opportunities.
-// When reqwest is not available (no http feature), adapters return empty.
+// Adapters use public search URLs (no API keys required) to discover
+// opportunities. When reqwest is not available (no http feature),
+// adapters return empty rather than fabricating data.
 
 use crate::scheduler::cooboploop::capability;
 use crate::scheduler::cooboploop::hardware;
@@ -309,9 +309,8 @@ impl OpportunityAdapter for GitHubIssuesAdapter {
     }
 }
 
-/// Note: Adapter implementations removed — live fetching requires
-/// external API integration (reqwest or similar) with proper API keys.
-/// See architecture spec §17 for adapter requirements.
+/// Adapters use public search URLs with no API keys required.
+/// Per CoObOpLoop.md §17: only genuinely detected objectives SHALL enter the queue.
 /// Intake decision (§17).
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize, Debug)]
 pub enum IntakeDecision {
@@ -359,11 +358,11 @@ pub struct ValueAssessment {
 }
 
 /// Opportunity intake pipeline (§T12.6 — T12.15 / §17 / T-COO-48).
-/// Fully operational: process() executes all evaluation stages (understand,
-/// estimate, capability_check, resource_check, risk_check, value_check, decide)
-/// with live adapter connections feeding the queue.
-/// (no live external feeds). `pending_opportunities` is maintained by the handler
-/// but not fully integrated into objective queue evaluation (requires live intake).
+/// Partial: process() executes all evaluation stages (understand, estimate,
+/// capability_check, resource_check, risk_check, value_check, decide).
+/// No live external feeds — adapters exist but fetch() results are not wired into
+/// the objective queue (see COO-13). `pending_opportunities` is maintained by the
+/// handler but not fully integrated into objective queue evaluation.
 pub struct OpportunityIntake {
     pub default_policy_never_auto_accept: bool,
 }

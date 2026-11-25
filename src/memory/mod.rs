@@ -13,12 +13,19 @@
 //! - Permanent Memory: Indexed, connected, confidence weighted, relationship aware
 use crate::memory::types::ResearchProvenance;
 
+pub mod archive;
+pub mod compression;
 pub mod confidence;
 pub mod consolidation;
 pub mod contradiction;
+pub mod coordinator;
 pub mod dedup;
 pub mod embedding;
+pub mod episodic;
+pub mod forgetting;
 pub mod hierarchy;
+pub mod importance;
+pub mod index_cards;
 pub mod integrity;
 pub mod lifecycle;
 pub mod permanent;
@@ -29,16 +36,26 @@ pub mod ranking;
 pub mod repository;
 pub mod retrieval;
 pub mod semantic;
+pub mod sensory_buffer;
+pub mod statistics;
+pub mod storage;
 pub mod summarize;
 pub mod types;
 pub mod working;
 
+pub use archive::ArchiveMemory;
+pub use compression::Compression;
 pub use confidence::ConfidenceSystem;
 pub use consolidation::MemoryConsolidator;
 pub use contradiction::{ContradictionDetector, check_new_item_contradictions, detect_and_resolve};
+pub use coordinator::Coordinator;
 pub use dedup::merge_duplicates;
 pub use embedding::generate_embedding;
+pub use episodic::EpisodicMemory;
+pub use forgetting::Forgetting;
 pub use hierarchy::{MemoryHierarchy, restructure_hierarchy};
+pub use importance::Importance;
+pub use index_cards::IndexCards;
 pub use integrity::{check_integrity, compute_checksum, detect_duplicates, validate_schema};
 pub use lifecycle::{MemoryLifecycle, PromotionGate, can_promote, is_terminal};
 pub use permanent::PermanentMemory;
@@ -50,6 +67,9 @@ pub use repository::SqliteMemoryRepository;
 pub use retrieval::MemoryRetrieval;
 pub use semantic::SemanticMemoryStore;
 pub use semantic::SemanticRecord;
+pub use sensory_buffer::SensoryBuffer;
+pub use statistics::Statistics;
+pub use storage::{BlobStore, GraphStore, SqliteStore, VectorStore};
 pub use summarize::summarize;
 pub use working::WorkingMemory;
 

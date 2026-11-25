@@ -45,6 +45,8 @@ pub struct ResearchObjective {
     pub trigger: ResearchTrigger,
     pub persistence_target: PersistenceTarget,
     pub expected_knowledge: String,
+    /// Confidence in the research outcome (0.0-1.0), set after research completes.
+    pub confidence: f32,
 }
 
 /// Research manager.
@@ -123,6 +125,7 @@ impl ResearchManager {
             trigger,
             persistence_target,
             expected_knowledge,
+            confidence: 0.0, // Initial confidence before research
         });
         id
     }

@@ -6,6 +6,7 @@ use std::sync::Mutex;
 
 use crate::api::acp::AcpRouter;
 use crate::api::bridge::app::agent::AgentLoop;
+use crate::api::developer_interface::DeveloperInterface;
 use crate::api::mcp::McpContext;
 use crate::common::personality::Personality;
 use crate::context::ContextEngine;
@@ -74,6 +75,11 @@ pub struct App {
     /// confidence evaluation.
     pub(crate) confidence_system: Arc<Mutex<ConfidenceSystem>>,
 
+    /// Developer Interface: control plane for visibility and debugging
+    /// (Architecture Chapter 28). Provides read-only inspection of memory,
+    /// workers, strategic learning, and experience without direct mutation.
+    pub(crate) developer_interface: Arc<Mutex<DeveloperInterface>>,
+
     /// Storage Architecture: manages storage layers, policies, and audit trails
     /// (Architecture Chapter 21). Coordinates persistence through hot/warm/cold/frozen
     /// layers with retention, promotion, and provenance tracking.
@@ -102,6 +108,11 @@ impl App {
     /// Get the Confidence System.
     pub fn confidence_system(&self) -> &std::sync::Mutex<crate::memory::ConfidenceSystem> {
         &self.confidence_system
+    }
+
+    /// Get the Developer Interface.
+    pub fn developer_interface(&self) -> &std::sync::Mutex<DeveloperInterface> {
+        &self.developer_interface
     }
 
     /// Get the Conversation Engine's session count.

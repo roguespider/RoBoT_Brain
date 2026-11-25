@@ -114,12 +114,50 @@ impl CooboploopToolsHandler {
         tracing::debug!("Memory repository wired into handler research manager");
         research_mgr.set_capability_registry(Arc::clone(&capability_registry_arc));
         tracing::debug!("Capability registry wired into handler research manager");
+        // Start the autonomous cognitive loop (§20-21) and spawn its background thread.
+        // This ensures a single LoopRunner instance that is both MCP-controllable and
+        // autonomously running, rather than a separate orphaned instance from App::run.
+        //
+        // CRITICAL FIX: The background task must NOT hold the Mutex lock while
+        // running the continuous loop, otherwise all MCP tool calls will deadlock.
+        // Solution: Use std::mem::take to extract the LoopRunner from the Mutex,
+        // run the continuous loop with the extracted runner, then restore it.
+        loop_runner.start();
+        let loop_runner_arc = Arc::new(Mutex::new(loop_runner));
+
+        // Clone the Arc for the background task.
+        let runner_for_background = Arc::clone(&loop_runner_arc);
+        tokio::task::spawn_blocking(move || {
+            // CRITICAL: Extract the LoopRunner from the mutex using std::mem::take.
+            // This leaves a default-constructed LoopRunner in place, so MCP tool
+            // queries won't deadlock while the background task runs.
+            let mut runner = {
+                let mut guard = match runner_for_background.lock() {
+                    Ok(g) => g,
+                    Err(p) => p.into_inner(),
+                };
+                std::mem::take(&mut *guard)
+            };
+            // Drop the guard before running the continuous loop
+
+            // Run the continuous loop - this runs until should_continue returns false
+            // The LoopRunner is owned here, so no lock is held
+            if let Err(e) = runner.run_continuous_sync() {
+                tracing::warn!("Continuous cognitive loop error: {e}");
+            }
+            tracing::info!("Continuous cognitive loop stopped");
+
+            // Restore the LoopRunner to the Arc<Mutex<>> so MCP tools can access it
+            if let Ok(mut guard) = runner_for_background.lock() {
+                *guard = runner;
+            }
+        });
         Ok(Self {
             hardware_registry: Arc::clone(&hardware_registry_arc),
             queue: Arc::new(Mutex::new(objective_queue)),
             policy_registry: Arc::new(Mutex::new(policy_reg)),
             capability_registry: Arc::clone(&capability_registry_arc),
-            loop_runner: Arc::new(Mutex::new(loop_runner)),
+            loop_runner: loop_runner_arc,
             research_manager: Arc::new(Mutex::new(research_mgr)),
             hardware_discovery: Arc::new(Mutex::new(
                 crate::scheduler::cooboploop::hardware::HardwareDiscovery::new(),

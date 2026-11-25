@@ -1,6 +1,5 @@
 """Python replacement for Rust report generation."""
 
-import logging
 from pathlib import Path
 from typing import Any
 
@@ -16,7 +15,4 @@ class ReportWriter:
         lint_issues: list[Any],
         registry_items: list[dict[str, Any]],
     ):
-        # No JSON output — only .agents/scripts/test_output.txt is produced.
-        logging.info(
-            "[PASS] Report writer: JSON output disabled (test_output.txt only)"
-        )
+        pass  # Report written inline in main.py

@@ -7,10 +7,12 @@
 //! -> generate new objectives.
 
 use super::super::Inspector;
+use super::super::idle::{IdlePhase, IdleState};
+use super::super::learning_feedback::apply_learning_feedback;
 use super::super::queue::{AgentGoal, GoalStatus};
 use super::super::sources::ObjectiveSource;
 use super::LoopRunner;
-use super::enums::LoopStage;
+use super::enums::{CyclePhase, LoopStage};
 use crate::memory::restructure_hierarchy;
 use std::sync::Arc;
 
@@ -26,6 +28,45 @@ impl LoopRunner {
         if let Err(e) = self.objective_queue.reload() {
             tracing::warn!("Failed to reload objective queue from DB: {e}");
         }
+
+        // Wire idle state evaluation into cycle start (§9-10).
+        // Before executing the full cycle, evaluate whether useful work exists.
+        // If no useful work exists and the system is not already active,
+        // enter deliberate inactivity instead of running all stages.
+        {
+            let mut idle_state = IdleState::new(self.reevaluation_interval_secs);
+            idle_state.phase = match self.phase {
+                CyclePhase::Wait => IdlePhase::Waiting,
+                _ => IdlePhase::Active,
+            };
+            idle_state.seconds_since_activity = self.heartbeat_secs;
+            idle_state.objectives_processed = self.task_completion_count;
+            idle_state.queue_empty = self.objective_queue.goals.is_empty();
+
+            let strategic: Vec<crate::scheduler::cooboploop::strategic::StrategicObjectiveRecord> =
+                match self.strategic_registry.lock() {
+                    Ok(reg) => reg.list().to_vec(),
+                    Err(_) => Vec::new(),
+                };
+
+            let (useful_work, inactivity) = idle_state.evaluate_useful_work(&strategic);
+
+            if useful_work.is_empty() {
+                if let Some(inactivity_event) = inactivity {
+                    tracing::debug!("Deliberate inactivity: {}", inactivity_event.reason);
+                    self.event_tracer
+                        .log(&format!("Idle: {}", inactivity_event.reason));
+                }
+                self.enter_wait();
+                return Ok(());
+            }
+
+            tracing::debug!(
+                "Idle evaluation: {} useful work categories found",
+                useful_work.len()
+            );
+        }
+
         self.current_stage = LoopStage::ObserveState;
         self.current_stage = LoopStage::CollectObjectives;
         self.current_stage = LoopStage::EvaluateQueue;
@@ -39,7 +80,9 @@ impl LoopRunner {
         self.current_stage = LoopStage::EvaluateCurrentState;
         self.current_stage = LoopStage::GenerateNewObjectives;
         // Execute full cognitive cycle (architecture compliance)
-        super::objectives::observe_state(self).ok();
+        if let Err(e) = super::objectives::observe_state(self) {
+            tracing::warn!("observe_state failed: {e}");
+        }
         super::objectives::collect_objectives(self);
         super::objectives::evaluate_queue(self);
         let selected_goal_result = super::objectives::select_objective(self);
@@ -55,72 +98,22 @@ impl LoopRunner {
         if let Some(ref exp) = self.latest_experience {
             let learning_update =
                 crate::scheduler::cooboploop::learning_pipeline::LearningPipeline::process(exp);
-            // Apply capability updates to capability_registry.
+            // Apply learning feedback: knowledge store, capability registry, strategy tracker (§15).
             let mut cap_guard = match self.capability_registry.lock() {
                 Ok(g) => g,
                 Err(poisoned) => poisoned.into_inner(),
             };
-            for cap_update in &learning_update.capability_updates {
-                let cap_id = crate::scheduler::cooboploop::capability::CapabilityId::from_string(
-                    &cap_update.capability_id,
-                );
-                let current = cap_guard.get(&cap_id).unwrap_or(
-                    crate::scheduler::cooboploop::capability::CapabilityAssessment {
-                        id: cap_id.clone(),
-                        name: cap_update.capability_id.clone(),
-                        level: 0.5,
-                        last_assessed: None,
-                        success_rate: 0.5,
-                    },
-                );
-                let new_level = (current.level + cap_update.level_delta).clamp(0.0, 1.0);
-                cap_guard.update(
-                    crate::scheduler::cooboploop::capability::CapabilityAssessment {
-                        id: cap_id.clone(),
-                        name: cap_update.capability_id.clone(),
-                        level: new_level,
-                        last_assessed: Some(chrono::Utc::now()),
-                        success_rate: current.success_rate,
-                    },
-                );
-                tracing::info!(
-                    "Learning applied: capability {} level {} -> {} ({})",
-                    cap_update.capability_id,
-                    current.level,
-                    new_level,
-                    cap_update.reason
-                );
-            }
-            // Wire knowledge_additions into KnowledgeStore (Section 15: Knowledge Update).
-            for lesson in &learning_update.knowledge_additions {
-                if !lesson.is_empty() {
-                    let knowledge_confidence = if exp.outcome.kind
-                        == crate::experience::types::outcome::OutcomeKind::Success
-                    {
-                        exp.confidence.max(0.6)
-                    } else {
-                        exp.confidence * 0.5
-                    };
-                    let item = crate::knowledge::types::KnowledgeItem::from_reflection(
-                        lesson,
-                        knowledge_confidence,
-                        exp.id,
-                    );
-                    self.knowledge_store.add(item);
-                    tracing::debug!("Learning feedback: stored knowledge from experience");
-                }
-            }
-
-            // Wire strategy_refinements into strategy tracker (Section 15: Strategy Refinement).
-            if let Ok(mut tracker) = self.strategy_tracker.lock() {
-                tracker.absorb_refinements(&learning_update.strategy_refinements);
-                tracing::debug!(
-                    "Learning feedback: strategy_tracker has {} reinforced, {} avoided",
-                    tracker.reinforced.len(),
-                    tracker.avoided.len()
-                );
-            }
-
+            let mut strategy_guard = match self.strategy_tracker.lock() {
+                Ok(g) => g,
+                Err(poisoned) => poisoned.into_inner(),
+            };
+            apply_learning_feedback(
+                &self.knowledge_store,
+                &mut cap_guard,
+                &mut strategy_guard,
+                &learning_update,
+                exp,
+            );
             // Wire risk_adjustments into evaluation system (Section 15: Risk Adjustment).
             for risk_adj in &learning_update.risk_adjustments {
                 if risk_adj.adjustment == "increase_trust" {
@@ -131,7 +124,29 @@ impl LoopRunner {
                         .decrease_trust(&risk_adj.domain, risk_adj.confidence_impact);
                 }
             }
-
+            // Wire post-task evaluation with actual cycle data from experience
+            for lesson in &exp.lessons_learned {
+                self.post_task_evaluation.add_knowledge_gap(lesson.clone());
+            }
+            for failure in &exp.failures {
+                self.post_task_evaluation.add_new_bug(failure.clone());
+            }
+            if let Some(ref constraint) = exp.discovered_constraints.first() {
+                self.post_task_evaluation
+                    .set_capability_limitation(constraint.to_string());
+            }
+            if let Some(ref score) = exp.score {
+                self.post_task_evaluation
+                    .set_efficiency_score(score.importance);
+            }
+            if let Some(ref refinement) = learning_update.strategy_refinements.first() {
+                self.post_task_evaluation
+                    .set_future_planning_adjustment(refinement.to_string());
+            }
+            if let Some(ref strategy) = exp.successful_strategies.first() {
+                self.post_task_evaluation
+                    .set_improvement_opportunity(strategy.to_string());
+            }
             // Append to learning_history for cycle tracking
             self.learning_history.push(learning_update.clone());
         }
@@ -150,14 +165,10 @@ impl LoopRunner {
                 new_objectives.len()
             );
         }
-        // Return unprocessed objectives (Section 4 / T-COO-31)
-        let return_goals: Vec<AgentGoal> = Vec::new();
-        let return_result = super::objectives::return_to_queue(self, &return_goals);
-        tracing::debug!("Returned {} objectives", return_result);
-        // Enqueue new objectives (Section 4 / T-COO-31)
-        let new_goal = AgentGoal::default();
-        let enqueue_result = super::objectives::enqueue(self, new_goal);
-        tracing::debug!("Enqueue result: {:?}", enqueue_result.is_ok());
+        // Generate learning objectives from idle evaluation (Section 9 / §10).
+        // Only generates objectives for genuinely detected useful work, not
+        // arbitrary empty goals — per CoObOpLoop.md §10: "MUST NOT generate
+        // arbitrary work merely to remain active."
         super::objectives::generate_learning_objectives(self);
         // Wire self-improvement pipeline into cycle (Section 14 / Section 26.22):
         if let Ok(mut pipeline_guard) = self.self_improvement_pipeline.lock() {

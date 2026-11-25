@@ -1,6 +1,22 @@
 //! Tool adapters — Per Architecture §13 (Tool Engine).
 //! Adapters for integrating external tool systems.
 
+pub mod cargo;
+pub mod f5tts;
+pub mod filesystem;
+pub mod git;
+pub mod sqlite;
+pub mod web;
+pub mod whisper;
+
+pub use cargo::CargoAdapter;
+pub use f5tts::F5TtsAdapter;
+pub use filesystem::FileSystemAdapter;
+pub use git::GitAdapter;
+pub use sqlite::SqliteAdapter;
+pub use web::WebAdapter;
+pub use whisper::WhisperAdapter;
+
 /// Tool adapter for external system integration.
 #[derive(Default)]
 pub struct ToolAdapter;

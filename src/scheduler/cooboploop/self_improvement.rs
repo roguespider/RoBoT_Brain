@@ -176,9 +176,9 @@ impl SelfImprovementPipeline {
         self.stage_history.push(stage);
     }
 
-    /// Run all 12 controlled stages (§T9.3-T9.15 / §14 / T-COO-46).
-    /// Fully operational: all stages execute with full sandbox/test/deploy
-    /// verification using isolated environments and complete measurement.
+    /// Run self-improvement stages (§T9.3-T9.15 / §14 / T-COO-46).
+    /// Partial: runs IdentifyLimitation, CreateObjective, and Research stages;
+    /// Sandbox, Test, Verify, Approve, Deploy, Measure, and Record stages are unimplemented.
     pub fn run(&mut self) -> Result<SelfImprovementProposal, String> {
         self.stage_history.clear();
         self.enter_stage(ImprovementStage::IdentifyLimitation);
@@ -216,6 +216,7 @@ impl SelfImprovementPipeline {
             trigger: super::research::ResearchTrigger::PreviousFailure,
             persistence_target: super::research::PersistenceTarget::Both,
             expected_knowledge: format!("A verified prevention strategy for {limitation}"),
+            confidence: 0.0, // Initial confidence before research
         });
 
         self.enter_stage(ImprovementStage::GenerateProposal);

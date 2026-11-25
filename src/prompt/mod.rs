@@ -16,6 +16,21 @@
 //! - Wiring: prompt_construction/ -> retrieval/ (ch 16) ->
 //!   context/ (ch 7) -> agent/loop_runner.rs (consumes prompt)
 
+pub mod attribution;
+pub mod budgeting;
+pub mod builder;
+pub mod composer;
+pub mod compression;
+pub mod formatter;
+pub mod injection_guard;
+pub mod layers;
+pub mod model_adapter;
+pub mod optimization;
+pub mod selector;
+pub mod telemetry;
+pub mod templates;
+pub mod validation;
+
 /// Prompt layer types per Architecture §17.2.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum PromptLayer {

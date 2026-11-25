@@ -12,6 +12,8 @@ import json
 import logging
 from pathlib import Path
 
+logger = logging.getLogger(__name__)
+
 
 class RobotBrainClient:
     """MCP client using robot_brain's line-based JSON-RPC protocol."""
@@ -62,6 +64,7 @@ class RobotBrainClient:
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            limit=10 * 1024 * 1024,
         )
         # Send initialize request (protocol version 2025-03-26, matching Rust client)
         await self._send(
@@ -109,7 +112,7 @@ class RobotBrainClient:
     async def list_tools(self) -> list:
         """List all available tools."""
         await self._send("tools/list", {})
-        response = await self._read_response_line()
+        response = await self._read_response_line(timeout=15.0)
         data = json.loads(response)
         return data["result"]["tools"]
 
@@ -152,7 +155,7 @@ class RobotBrainClient:
         stdin.write((notification + "\n").encode())
         await stdin.drain()
 
-    async def _read_response_line(self) -> str:
+    async def _read_response_line(self, timeout: float = 30.0) -> str:
         """Read one line from stdout that looks like a JSON-RPC response."""
         process = self._process
         if process is None:
@@ -161,34 +164,62 @@ class RobotBrainClient:
         if stdout is None:
             raise RuntimeError("Process stdout not available")
         for _ in range(100):  # Safety limit
-            line = await stdout.readline()
+            try:
+                line = await asyncio.wait_for(stdout.readline(), timeout=timeout)
+            except TimeoutError:
+                break
             line_str = line.decode().strip()
             if line_str and line_str.startswith("{") and "jsonrpc" in line_str:
                 return line_str
-        raise RuntimeError("No JSON-RPC response received")
-
-    async def _call_tool_impl(self, tool_name: str, params: dict) -> dict:
-        """Call a tool and return the parsed result."""
-        await self._send(
-            "tools/call",
-            {
-                "name": tool_name,
-                "arguments": params,
-            },
+        raise RuntimeError(
+            f"No JSON-RPC response received within {timeout}s. "
+            f"Server may be hanging. Check robot_brain status."
         )
-        response = await self._read_response_line()
-        data = json.loads(response)
-        result = data.get("result", {})
-        # MCP returns content as [{"type": "text", "text": "..."}]
-        # The text field may contain a JSON string that needs parsing
-        content = result.get("content")
-        if content:
-            text = content[0].get("text", "")
-            if text:
-                try:
-                    return json.loads(text)
-                except json.JSONDecodeError:
-                    logging.debug(
-                        f"Failed to parse JSON from MCP response: {text[:200]}"
-                    )
-        return result
+
+    async def _call_tool_impl(
+        self, tool_name: str, params: dict, timeout: float = 30.0
+    ) -> dict:
+        """Call a tool and return the parsed result."""
+        try:
+            await self._send(
+                "tools/call",
+                {
+                    "name": tool_name,
+                    "arguments": params,
+                },
+            )
+            response = await self._read_response_line(timeout=timeout)
+            data = json.loads(response)
+            # Check for error responses first (JSON-RPC error format)
+            if "error" in data:
+                return {
+                    "error": True,
+                    "error_message": data["error"].get("message", "Unknown error"),
+                    "error_code": data["error"].get("code"),
+                }
+            # Handle null results - data.get returns None when key exists with null value
+            result = data.get("result") or {}
+            # MCP returns content as [{"type": "text", "text": "..."}]
+            # The text field may contain a JSON string that needs parsing
+            content = result.get("content")
+            if content:
+                text = content[0].get("text", "")
+                if text:
+                    try:
+                        return json.loads(text)
+                    except json.JSONDecodeError:
+                        logger.debug(
+                            "Failed to parse JSON from MCP response: %s",
+                            str(text)[:200],
+                        )
+            return result
+        except TimeoutError:
+            raise RuntimeError(
+                f"Tool '{tool_name}' timed out after {timeout}s. "
+                f"Parameters: {params}. "
+                f"Server may be stuck or the tool may be hanging."
+            )
+        except Exception as e:
+            if "timed out" in str(e):
+                raise
+            raise RuntimeError(f"Tool '{tool_name}' failed: {e}")

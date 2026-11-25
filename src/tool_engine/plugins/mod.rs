@@ -1,6 +1,14 @@
 //! Tool plugins — Per Architecture §13 (Tool Engine).
 //! Plugin system for extensible tool capabilities.
 
+pub mod lifecycle;
+pub mod loader;
+pub mod manifest;
+
+pub use lifecycle::PluginLifecycle;
+pub use loader::PluginLoader;
+pub use manifest::PluginManifest;
+
 use serde_json::Value;
 
 /// Tool plugin trait for extensible capabilities.

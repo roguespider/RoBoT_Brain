@@ -13,10 +13,37 @@
 
 use std::sync::Arc;
 
+/// Macro to initialize a single tool handler with graceful degradation.
+/// Attempts to create the handler, logs success with tool count,
+/// or logs warning and captures the error.
+macro_rules! init_handler {
+    ($field:ident, $HandlerType:ty, $context:expr, $collection:expr, $errors:expr, $name:expr) => {
+        match <$HandlerType>::new($context.clone()) {
+            Ok(handler) => {
+                tracing::info!(
+                    "{} tools handler initialized with {} tools",
+                    $name,
+                    handler.tool_names().len()
+                );
+                $collection.$field = Some(handler);
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "Failed to initialize {} tools handler: {}",
+                    $name,
+                    e.message
+                );
+                $errors.push(e);
+            }
+        }
+    };
+}
+
 pub mod acp_handler;
 pub mod agent_handler;
 pub mod conversation_handler;
 pub mod cooboploop_handler;
+pub mod developer_interface_handler;
 pub mod experience_handler;
 pub mod exploration_handler;
 pub mod hypothesis_handler;
@@ -156,6 +183,7 @@ pub use acp_handler::AcpToolsHandler;
 pub use agent_handler::AgentToolsHandler;
 pub use conversation_handler::ConversationToolsHandler;
 pub use cooboploop_handler::CooboploopToolsHandler;
+pub use developer_interface_handler::DeveloperInterfaceToolsHandler;
 pub use experience_handler::ExperienceToolsHandler;
 pub use exploration_handler::ExplorationToolsHandler;
 pub use hypothesis_handler::HypothesisToolsHandler;
@@ -190,6 +218,7 @@ pub struct ToolHandlerCollection {
     pub workflow: Option<WorkflowToolsHandler>,
     pub world_model: Option<WorldModelToolsHandler>,
     pub conversation: Option<ConversationToolsHandler>,
+    pub developer_interface: Option<DeveloperInterfaceToolsHandler>,
 }
 
 impl ToolHandlerCollection {
@@ -209,270 +238,143 @@ impl ToolHandlerCollection {
         let mut errors = Vec::new();
 
         // Initialize each handler, capturing errors but continuing
-        match AcpToolsHandler::new(context.clone()) {
-            Ok(handler) => {
-                tracing::info!(
-                    "ACP tools handler initialized with {} tools",
-                    handler.tool_names().len()
-                );
-                collection.acp = Some(handler);
-            }
-            Err(e) => {
-                tracing::warn!("Failed to initialize ACP tools handler: {}", e.message);
-                errors.push(e);
-            }
-        }
-
-        match CooboploopToolsHandler::new(context.clone()) {
-            Ok(handler) => {
-                tracing::info!(
-                    "Cooboploop tools handler initialized with {} tools",
-                    handler.tool_names().len()
-                );
-                collection.cooboploop = Some(handler);
-            }
-            Err(e) => {
-                tracing::warn!(
-                    "Failed to initialize cooboploop tools handler: {}",
-                    e.message
-                );
-                errors.push(e);
-            }
-        }
-
-        match AgentToolsHandler::new(context.clone()) {
-            Ok(handler) => {
-                tracing::info!(
-                    "Agent tools handler initialized with {} tools",
-                    handler.tool_names().len()
-                );
-                collection.agent = Some(handler);
-            }
-            Err(e) => {
-                tracing::warn!("Failed to initialize agent tools handler: {}", e.message);
-                errors.push(e);
-            }
-        }
-
-        match ExperienceToolsHandler::new(context.clone()) {
-            Ok(handler) => {
-                tracing::info!(
-                    "Experience tools handler initialized with {} tools",
-                    handler.tool_names().len()
-                );
-                collection.experience = Some(handler);
-            }
-            Err(e) => {
-                tracing::warn!(
-                    "Failed to initialize experience tools handler: {}",
-                    e.message
-                );
-                errors.push(e);
-            }
-        }
-
-        match ExplorationToolsHandler::new(context.clone()) {
-            Ok(handler) => {
-                tracing::info!(
-                    "Exploration tools handler initialized with {} tools",
-                    handler.tool_names().len()
-                );
-                collection.exploration = Some(handler);
-            }
-            Err(e) => {
-                tracing::warn!(
-                    "Failed to initialize exploration tools handler: {}",
-                    e.message
-                );
-                errors.push(e);
-            }
-        }
-
-        match HypothesisToolsHandler::new(context.clone()) {
-            Ok(handler) => {
-                tracing::info!(
-                    "Hypothesis tools handler initialized with {} tools",
-                    handler.tool_names().len()
-                );
-                collection.hypothesis = Some(handler);
-            }
-            Err(e) => {
-                tracing::warn!(
-                    "Failed to initialize hypothesis tools handler: {}",
-                    e.message
-                );
-                errors.push(e);
-            }
-        }
-
-        match IngestorToolsHandler::new(context.clone()) {
-            Ok(handler) => {
-                tracing::info!(
-                    "Ingestor tools handler initialized with {} tools",
-                    handler.tool_names().len()
-                );
-                collection.ingestor = Some(handler);
-            }
-            Err(e) => {
-                tracing::warn!("Failed to initialize ingestor tools handler: {}", e.message);
-                errors.push(e);
-            }
-        }
-
-        match KnowledgeToolsHandler::new(context.clone()) {
-            Ok(handler) => {
-                tracing::info!(
-                    "Knowledge tools handler initialized with {} tools",
-                    handler.tool_names().len()
-                );
-                collection.knowledge = Some(handler);
-            }
-            Err(e) => {
-                tracing::warn!(
-                    "Failed to initialize knowledge tools handler: {}",
-                    e.message
-                );
-                errors.push(e);
-            }
-        }
-
-        match MemoryToolsHandler::new(context.clone()) {
-            Ok(handler) => {
-                tracing::info!(
-                    "Memory tools handler initialized with {} tools",
-                    handler.tool_names().len()
-                );
-                collection.memory = Some(handler);
-            }
-            Err(e) => {
-                tracing::warn!("Failed to initialize memory tools handler: {}", e.message);
-                errors.push(e);
-            }
-        }
-
-        match PersonalityToolsHandler::new(context.clone()) {
-            Ok(handler) => {
-                tracing::info!(
-                    "Personality tools handler initialized with {} tools",
-                    handler.tool_names().len()
-                );
-                collection.personality = Some(handler);
-            }
-            Err(e) => {
-                tracing::warn!(
-                    "Failed to initialize personality tools handler: {}",
-                    e.message
-                );
-                errors.push(e);
-            }
-        }
-
-        match PlannerToolsHandler::new(context.clone()) {
-            Ok(handler) => {
-                tracing::info!(
-                    "Planner tools handler initialized with {} tools",
-                    handler.tool_names().len()
-                );
-                collection.planner = Some(handler);
-            }
-            Err(e) => {
-                tracing::warn!("Failed to initialize planner tools handler: {}", e.message);
-                errors.push(e);
-            }
-        }
-
-        match ReflectionToolsHandler::new(context.clone()) {
-            Ok(handler) => {
-                tracing::info!(
-                    "Reflection tools handler initialized with {} tools",
-                    handler.tool_names().len()
-                );
-                collection.reflection = Some(handler);
-            }
-            Err(e) => {
-                tracing::warn!(
-                    "Failed to initialize reflection tools handler: {}",
-                    e.message
-                );
-                errors.push(e);
-            }
-        }
-
-        match SearchToolsHandler::new(context.clone()) {
-            Ok(handler) => {
-                tracing::info!(
-                    "Search tools handler initialized with {} tools",
-                    handler.tool_names().len()
-                );
-                collection.search = Some(handler);
-            }
-            Err(e) => {
-                tracing::warn!("Failed to initialize search tools handler: {}", e.message);
-                errors.push(e);
-            }
-        }
-
-        match SkillsToolsHandler::new(context.clone()) {
-            Ok(handler) => {
-                tracing::info!(
-                    "Skills tools handler initialized with {} tools",
-                    handler.tool_names().len()
-                );
-                collection.skills = Some(handler);
-            }
-            Err(e) => {
-                tracing::warn!("Failed to initialize skills tools handler: {}", e.message);
-                errors.push(e);
-            }
-        }
-
-        match WorkflowToolsHandler::new(context.clone()) {
-            Ok(handler) => {
-                tracing::info!(
-                    "Workflow tools handler initialized with {} tools",
-                    handler.tool_names().len()
-                );
-                collection.workflow = Some(handler);
-            }
-            Err(e) => {
-                tracing::warn!("Failed to initialize workflow tools handler: {}", e.message);
-                errors.push(e);
-            }
-        }
-
-        match WorldModelToolsHandler::new(context.clone()) {
-            Ok(handler) => {
-                tracing::info!(
-                    "World-model tools handler initialized with {} tools",
-                    handler.tool_names().len()
-                );
-                collection.world_model = Some(handler);
-            }
-            Err(e) => {
-                tracing::warn!(
-                    "Failed to initialize world-model tools handler: {}",
-                    e.message
-                );
-                errors.push(e);
-            }
-        }
-
-        match ConversationToolsHandler::new(context.clone()) {
-            Ok(handler) => {
-                tracing::info!(
-                    "Conversation tools handler initialized with {} tools",
-                    handler.tool_names().len()
-                );
-                collection.conversation = Some(handler);
-            }
-            Err(e) => {
-                tracing::warn!(
-                    "Failed to initialize conversation tools handler: {}",
-                    e.message
-                );
-                errors.push(e);
-            }
-        }
+        init_handler!(acp, AcpToolsHandler, context, collection, errors, "ACP");
+        init_handler!(
+            cooboploop,
+            CooboploopToolsHandler,
+            context,
+            collection,
+            errors,
+            "Cooboploop"
+        );
+        init_handler!(
+            agent,
+            AgentToolsHandler,
+            context,
+            collection,
+            errors,
+            "Agent"
+        );
+        init_handler!(
+            experience,
+            ExperienceToolsHandler,
+            context,
+            collection,
+            errors,
+            "Experience"
+        );
+        init_handler!(
+            exploration,
+            ExplorationToolsHandler,
+            context,
+            collection,
+            errors,
+            "Exploration"
+        );
+        init_handler!(
+            hypothesis,
+            HypothesisToolsHandler,
+            context,
+            collection,
+            errors,
+            "Hypothesis"
+        );
+        init_handler!(
+            ingestor,
+            IngestorToolsHandler,
+            context,
+            collection,
+            errors,
+            "Ingestor"
+        );
+        init_handler!(
+            knowledge,
+            KnowledgeToolsHandler,
+            context,
+            collection,
+            errors,
+            "Knowledge"
+        );
+        init_handler!(
+            memory,
+            MemoryToolsHandler,
+            context,
+            collection,
+            errors,
+            "Memory"
+        );
+        init_handler!(
+            personality,
+            PersonalityToolsHandler,
+            context,
+            collection,
+            errors,
+            "Personality"
+        );
+        init_handler!(
+            planner,
+            PlannerToolsHandler,
+            context,
+            collection,
+            errors,
+            "Planner"
+        );
+        init_handler!(
+            reflection,
+            ReflectionToolsHandler,
+            context,
+            collection,
+            errors,
+            "Reflection"
+        );
+        init_handler!(
+            search,
+            SearchToolsHandler,
+            context,
+            collection,
+            errors,
+            "Search"
+        );
+        init_handler!(
+            skills,
+            SkillsToolsHandler,
+            context,
+            collection,
+            errors,
+            "Skills"
+        );
+        init_handler!(
+            workflow,
+            WorkflowToolsHandler,
+            context,
+            collection,
+            errors,
+            "Workflow"
+        );
+        init_handler!(
+            world_model,
+            WorldModelToolsHandler,
+            context,
+            collection,
+            errors,
+            "World-model"
+        );
+        init_handler!(
+            conversation,
+            ConversationToolsHandler,
+            context,
+            collection,
+            errors,
+            "Conversation"
+        );
+        init_handler!(
+            developer_interface,
+            DeveloperInterfaceToolsHandler,
+            context,
+            collection,
+            errors,
+            "Developer interface"
+        );
 
         let total_tools = collection.count_tools();
         tracing::info!(
@@ -538,6 +440,9 @@ impl ToolHandlerCollection {
         if let Some(ref h) = self.conversation {
             count += h.tool_names().len();
         }
+        if let Some(ref h) = self.developer_interface {
+            count += h.tool_names().len();
+        }
         count
     }
 
@@ -561,6 +466,10 @@ impl ToolHandlerCollection {
             || self.workflow.as_ref().is_some_and(|h| h.is_healthy())
             || self.world_model.as_ref().is_some_and(|h| h.is_healthy())
             || self.conversation.as_ref().is_some_and(|h| h.is_healthy())
+            || self
+                .developer_interface
+                .as_ref()
+                .is_some_and(|h| h.is_healthy())
     }
 
     /// Get all tools from all handlers as MCP Tool definitions
@@ -615,6 +524,9 @@ impl ToolHandlerCollection {
             tools.extend(h.get_tools());
         }
         if let Some(ref h) = self.conversation {
+            tools.extend(h.get_tools());
+        }
+        if let Some(ref h) = self.developer_interface {
             tools.extend(h.get_tools());
         }
         tools
@@ -741,6 +653,13 @@ impl ToolHandlerCollection {
         {
             return Some(tool);
         }
+        if let Some(tool) = self
+            .developer_interface
+            .as_ref()
+            .and_then(|h| h.get_tools().into_iter().find(|t| t.name == name))
+        {
+            return Some(tool);
+        }
         None
     }
 
@@ -784,6 +703,7 @@ impl ToolHandlerCollection {
         try_handler!(self.workflow);
         try_handler!(self.world_model);
         try_handler!(self.conversation);
+        try_handler!(self.developer_interface);
 
         tracing::warn!(tool = name, "Tool not found in any handler category");
         Err(HandlerError::ToolNotFound(name.to_string()))

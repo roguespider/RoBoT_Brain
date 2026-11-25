@@ -67,27 +67,51 @@ pub async fn execute_create_reflection(
     match result {
         Ok(Some(r)) => {
             let reflection_title = if r.title.is_empty() { title } else { r.title };
-            let mut card = crate::database::models::MemoryCard::new(
-                description.clone(),
-                crate::database::models::MemoryType::Experience,
+            // Generate a proper UUID for the reflection ID
+            let reflection_id = Uuid::new_v4();
+            // Store reflection using the same format as experiences so it can be
+            // retrieved via get_experience (Architecture §5.11).
+            // Format: "Experience: {title}\n{content}\n(outcome: ..., type: reflection, committed: false, archived: false, evidence_count: 0)"
+            let content = format!(
+                "Experience: {}\n{}\n(outcome: none, type: reflection, committed: false, archived: false, evidence_count: 0)",
+                reflection_title, description
             );
-            if let Ok(parsed_id) = Uuid::parse_str(&r.id) {
-                card.id = parsed_id;
-            }
-            card.title = Some(reflection_title.clone());
+            let card = crate::database::models::MemoryCard {
+                id: reflection_id,
+                content,
+                title: Some(reflection_title.clone()),
+                memory_type: crate::database::models::MemoryType::Experience,
+                layer: crate::memory::types::MemoryLayer::Working,
+                parent_id: None,
+                hierarchy_level: crate::database::models::HierarchyLevel::Document,
+                order_index: 0,
+                path: String::new(),
+                file_source: None,
+                access_count: 0,
+                last_accessed: None,
+                confidence: 0.8,
+                importance: 0.5,
+                created_at: chrono::Utc::now(),
+                updated_at: chrono::Utc::now(),
+            };
             match database.connection() {
                 Ok(conn) => {
-                    if let Err(e) = crate::database::queries::insert_memory(&conn, &card) {
-                        tracing::warn!(error = %e, "Failed to persist reflection");
+                    let result = crate::database::queries::insert_memory(&conn, &card);
+                    if let Err(e) = result {
+                        tracing::error!(error = %e, "Failed to persist reflection to database");
+                    } else {
+                        tracing::info!(reflection_id = %reflection_id, "Reflection persisted to database");
                     }
                 }
-                Err(e) => tracing::warn!(error = %e, "Failed to open database for reflection"),
+                Err(e) => {
+                    tracing::error!(error = %e, "Failed to open database for reflection");
+                }
             }
 
             Ok(ToolOutput::success(serde_json::json!({
                 "success": true,
-                "id": r.id.to_string(),
-                "reflection_id": r.id.to_string(),
+                "id": reflection_id.to_string(),
+                "reflection_id": reflection_id.to_string(),
                 "title": reflection_title,
                 "description": description,
                 "content": description,

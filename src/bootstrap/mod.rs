@@ -1,68 +1,17 @@
-// src/cli/mod.rs
-//! Command-line interface module
+//! Bootstrap — Per Architecture Appendix A.
+//!
+//! Bootstrap subsystem: system startup, shutdown, dependency validation,
+//! and health checking for the RoBoT cognitive architecture.
 
-pub mod commands;
-pub mod output;
+pub mod bootstrap_manager;
+pub mod dependency_graph;
+pub mod health_check;
+pub mod shutdown;
+pub mod startup;
 
-use anyhow::Result;
-use output::{bold, list_item, section_header};
-
-/// Run the CLI with the given arguments
-pub fn run() -> Result<()> {
-    cli()
-}
-
-/// Main CLI entry point
-fn cli() -> Result<()> {
-    let args: Vec<String> = std::env::args().collect();
-
-    if args.len() < 2 {
-        print_usage();
-        return Ok(());
-    }
-
-    match args[1].as_str() {
-        "server" => commands::server::run(),
-        "init" => commands::init::run(),
-        "status" => commands::status::run(),
-        "memory" => commands::memory::run(&args[2..]),
-        "experience" => commands::experience::run(),
-        "config" => commands::config::run(),
-        "migrate" => commands::migrate::run(),
-        "diagnose" => commands::diagnose::run(),
-        "help" | "-h" | "--help" => {
-            print_usage();
-            Ok(())
-        }
-        _ => {
-            output::error_msg(format!("Unknown command: {}", args[1]));
-            print_usage();
-            std::process::exit(1);
-        }
-    }
-}
-
-/// Print CLI usage information
-fn print_usage() {
-    section_header("RoBoT MCP - Command Line Interface");
-
-    println!("{}", bold("Usage:"));
-    println!("  robot <command> [options]");
-    println!();
-    println!("{}", bold("Commands:"));
-    list_item("server       - Start the MCP server");
-    list_item("init         - Initialize the database");
-    list_item("status       - Check system status");
-    list_item("memory       - Memory management commands");
-    list_item("experience   - Show experience statistics");
-    list_item("config       - Show configuration");
-    list_item("migrate      - Run database migrations");
-    list_item("diagnose     - Run explicit subsystem diagnostics");
-    list_item("help         - Show this help message");
-    println!();
-    println!("{}", bold("Memory subcommands:"));
-    list_item("memory list [limit]    - List memories");
-    list_item("memory search <query>  - Search memories");
-    list_item("memory add <content>  - Add a new memory");
-    list_item("memory stats          - Show memory statistics");
-}
+// Re-export key types from submodules
+pub use bootstrap_manager::BootstrapManager;
+pub use dependency_graph::validate_dependencies;
+pub use health_check::{HealthStatus, health_check};
+pub use shutdown::shutdown;
+pub use startup::startup;

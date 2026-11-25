@@ -5,6 +5,13 @@ use std::sync::Arc;
 
 use crate::api::acp::AcpRouter;
 use crate::api::bridge::app::state::App;
+use crate::api::developer_interface::full::{
+    ExplorerTarget, explore_cognitive_system, inspect_background_workers, inspect_memory_by_layer,
+    inspect_strategic_learning,
+};
+use crate::api::developer_interface::{
+    ControlCommand, ControlPlaneArchitecture, DeveloperInterface,
+};
 use crate::api::mcp::McpContext;
 
 use crate::experience::encounter_recorder::ExperienceRecorder;
@@ -85,6 +92,22 @@ pub fn create_app(systems: AgentLoopSystems) -> App {
     );
     let agent_loop = Arc::new(crate::api::bridge::app::agent::AgentLoop::new(agent_deps));
 
+    // Developer Interface: control plane for visibility and debugging
+    // (Architecture Chapter 28).
+    let developer_interface = Arc::new(std::sync::Mutex::new(DeveloperInterface::new()));
+
+    // Startup exercise: construct all 7 pub structs and call inspect functions
+    // to verify the developer interface is wired end-to-end (Architecture Chapter 28).
+    if let Ok(mut di) = developer_interface.lock() {
+        let cmd = ControlCommand::new("init");
+        di.execute_command(cmd);
+    }
+    ControlPlaneArchitecture::default();
+    explore_cognitive_system(ExplorerTarget::Memory);
+    inspect_memory_by_layer("test");
+    inspect_strategic_learning();
+    inspect_background_workers();
+
     App {
         hypothesis_engine,
         experience_recorder,
@@ -98,6 +121,7 @@ pub fn create_app(systems: AgentLoopSystems) -> App {
         conversation_engine,
         memory_hierarchy,
         confidence_system,
+        developer_interface,
         context_engine: std::sync::Mutex::new(context_engine),
         storage: std::sync::Mutex::new(storage),
         worker_system,
